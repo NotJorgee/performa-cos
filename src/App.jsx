@@ -150,7 +150,7 @@ export default function App() {
         <EmployeeDashboard onNavigate={setCurrentView} />
       )}
       {currentView === 'dashboard' && currentUser.role === 'Department Head' && (
-        <DeptHeadDashboard onNavigate={setCurrentView} />
+        <PendingEvaluations departmentName={currentUser.department} />
       )}
       {currentView === 'dashboard' && currentUser.role === 'HR Personnel' && (
         <HRDashboard onNavigate={setCurrentView} />

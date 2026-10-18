@@ -119,7 +119,12 @@ export default function AppLayout({
           <a
             href="#dashboard"
             onClick={(e) => { e.preventDefault(); handleNavClick('dashboard'); }}
-            className={`nav-item ${currentPath === 'dashboard' ? 'active' : ''}`}
+            className={`nav-item ${
+              currentPath === 'dashboard' ||
+              (currentUser.role === 'Department Head' && currentPath === 'pending_evaluations')
+                ? 'active'
+                : ''
+            }`}
           >
             <span className="icon">▦</span> Dashboard
           </a>
@@ -158,16 +163,7 @@ export default function AppLayout({
             </>
           )}
 
-          {/* 2. Department Head Modules */}
-          {currentUser.role === 'Department Head' && (
-            <a
-              href="#pending-evaluations"
-              onClick={(e) => { e.preventDefault(); handleNavClick('pending_evaluations'); }}
-              className={`nav-item ${currentPath === 'pending_evaluations' ? 'active' : ''}`}
-            >
-              <span className="icon">⚖️</span> Pending Evaluations
-            </a>
-          )}
+          {/* 2. Department Head has their complete appraisal workspace in the main Dashboard */}
 
           {/* 3. HR Personnel Modules */}
           {currentUser.role === 'HR Personnel' && (

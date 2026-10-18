@@ -141,23 +141,19 @@ export default function DynamicRubric({
   return (
     <div className="dynamic-rubric">
       {/* Questionnaire Header */}
-      <div className="flex-between" style={{ marginBottom: '12px' }}>
-        <div>
-          <span className="badge badge-dept" style={{ marginRight: '8px' }}>
-            {categoryLabel}
-          </span>
-          <span className="muted" style={{ fontSize: '13px' }}>
-            Dynamic Questionnaire Criteria (FR-07)
-          </span>
-        </div>
-        <div style={{ textAlign: 'right', fontSize: '13px' }}>
-          <b>{scoredCount} / {totalItems}</b> Scored · Raw Sum: <b>{rawSum} / 100</b>
-        </div>
+      <div style={{ textAlign: 'right', fontSize: '13px', marginBottom: '12px' }}>
+        <b>{scoredCount} / {totalItems}</b> Scored · Raw Sum: <b>{rawSum} / 100</b>
       </div>
+
+      {readOnly && (
+        <div className="flash flash-info" style={{ marginBottom: '14px', fontSize: '13px' }}>
+          This evaluation has already been submitted and is locked in read-only mode while undergoing peer and HR review.
+        </div>
+      )}
 
       {evaluatorRole === 'Peer' && (
         <div className="flash flash-info" style={{ marginBottom: '14px', fontSize: '12.5px', padding: '8px 12px' }}>
-          🔒 <b>Anonymous Grading (UC-04, FR-27):</b> Your identity will be permanently stripped when your 20% peer score is recorded.
+          <b>Anonymous Grading (UC-04, FR-27):</b> Your identity will be permanently stripped when your 20% peer score is recorded.
         </div>
       )}
 
@@ -278,7 +274,7 @@ export default function DynamicRubric({
             className="btn"
             onClick={() => onSaveDraft({ scores, strengths, recommendation, rawSum })}
           >
-            💾 Save as Draft
+            Save as Draft
           </button>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -289,7 +285,7 @@ export default function DynamicRubric({
                 style={{ color: 'var(--red-600)', borderColor: 'var(--red-600)', background: 'transparent' }}
                 onClick={onFastTrackReject}
               >
-                ⚠️ Fast-Track Rejection (UC-06)
+                Fast-Track Rejection
               </button>
             )}
 

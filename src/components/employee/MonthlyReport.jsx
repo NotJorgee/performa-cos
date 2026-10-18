@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 export default function MonthlyReport({
   employeeName = 'Jorge Mikhael Gubantes',
   department = 'Computer Studies Department',
+  onBack = null,
+  backLabel = '← Back to Performance Appraisal',
   initialRecords = [
     {
       id: 1,
@@ -97,11 +99,18 @@ export default function MonthlyReport({
   return (
     <div>
       {/* Page Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ margin: '0 0 6px' }}>Compiled Monthly Accomplishment Report (MAR)</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          {department} — Paginated compilation of daily verified DAR task entries for {employeeName} (FR-04).
-        </p>
+      <div className="flex-between" style={{ marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 6px' }}>Compiled Monthly Accomplishment Report (MAR)</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            {department} — Paginated compilation of daily verified DAR task entries for <b>{employeeName}</b>.
+          </p>
+        </div>
+        {onBack && (
+          <button type="button" className="btn btn-sm" onClick={onBack}>
+            {backLabel}
+          </button>
+        )}
       </div>
 
       {/* FILTER BAR (FR-04, UC-13 step 9) */}
