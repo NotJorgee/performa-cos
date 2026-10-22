@@ -28,6 +28,7 @@ export { default as HRDashboard } from './dashboard/HRDashboard';
 export { default as EvaluationManagement } from './hr/EvaluationManagement';
 export { default as HREvaluationsProxy } from './hr/HREvaluationsProxy';
 export { default as EmployeeManagement } from './management/EmployeeManagement';
+export { default as AdministratorManagement } from './management/AdministratorManagement';
 export { default as DepartmentManagement } from './management/DepartmentManagement';
 export { default as ReportGenerator } from './reports/ReportGenerator';
 export { default as AuditTrail } from './reports/AuditTrail';

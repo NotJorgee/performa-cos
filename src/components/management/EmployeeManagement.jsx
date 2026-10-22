@@ -1,47 +1,62 @@
 import React, { useState } from 'react';
+import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 
 export default function EmployeeManagement({
   employees = [
     {
       id: 1,
-      idNumber: '2026-00101',
+      idNumber: 'G10222026JMR',
       fullName: 'Jorge Mikhael Gubantes',
       email: 'jorge.gubantes@evsu.edu.ph',
       department: 'Computer Studies Department',
       college: 'College of Technology',
       cosCategory: 'Administrative',
-      dateAppointed: 'Oct 01, 2024',
-      contractEndDate: 'Dec 31, 2026',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
       latestScore: 92,
       latestRating: 'Outstanding',
       status: 'Active',
     },
     {
       id: 2,
-      idNumber: '2026-00102',
+      idNumber: 'R10222026IJM',
       fullName: 'Ian Joseph Ranoco',
       email: 'ian.ranoco@evsu.edu.ph',
       department: 'Computer Studies Department',
       college: 'College of Technology',
       cosCategory: 'Administrative',
-      dateAppointed: 'Oct 01, 2024',
-      contractEndDate: 'Dec 31, 2026',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
       latestScore: 86,
       latestRating: 'Very Satisfactory',
       status: 'Active',
     },
     {
       id: 3,
-      idNumber: '2026-00103',
+      idNumber: 'P10222026JLP',
       fullName: 'Jeramae Pace',
       email: 'jeramae.pace@evsu.edu.ph',
       department: 'Library Office',
       college: 'Administrative and Support Services',
       cosCategory: 'Administrative',
-      dateAppointed: 'Nov 01, 2024',
-      contractEndDate: 'Dec 31, 2026',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
       latestScore: null,
       latestRating: 'Unrated',
+      status: 'Active',
+    },
+    {
+      id: 4,
+      idNumber: 'M10222026CBM',
+      fullName: 'Carlos Mendoza',
+      email: 'carlos.mendoza@evsu.edu.ph',
+      department: 'Maintenance/Janitorial (MESO) Office',
+      college: 'Physical Plant and General Services',
+      cosCategory: 'Maintenance/Janitorial',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
+      latestScore: 88,
+      latestRating: 'Very Satisfactory',
       status: 'Active',
     },
   ],
@@ -56,101 +71,225 @@ export default function EmployeeManagement({
   onSelectEmployee = () => {},
   onAddEmployee = () => {},
   onSendTokenInvite = () => {},
+  onBack = null,
 }) {
+  const [employeeList, setEmployeeList] = useState(employees);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Archived'
   const [deptFilter, setDeptFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState(null);
+  const [modalMode, setModalMode] = useState('invite'); // 'invite' | 'manual'
+  const [toastMsg, setToastMsg] = useState(null);
 
-  // New employee state
+  // New employee state (manual mode)
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedDept, setSelectedDept] = useState(departments[0]);
-  const [cosCategory, setCosCategory] = useState('Administrative');
   const [dateAppointed, setDateAppointed] = useState('');
-  const [contractEndDate, setContractEndDate] = useState('');
 
   // Token invite state (UC-07)
   const [inviteEmail, setInviteEmail] = useState('');
 
-  const filtered = employees.filter((e) => {
-    const matchesSearch = e.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          e.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          e.idNumber.toLowerCase().includes(searchTerm.toLowerCase());
+  // Auto-category mapping: Every department EXCEPT maintenance is Administrative
+  const isMaintenanceDept = (dept) => {
+    if (!dept) return false;
+    const lower = dept.toLowerCase();
+    return lower.includes('maintenance') || lower.includes('janitorial') || lower.includes('meso');
+  };
+
+  const getComputedCategory = (dept) => {
+    return isMaintenanceDept(dept) ? 'Maintenance/Janitorial' : 'Administrative';
+  };
+
+  // Contract length is strictly 6 months from appointed date (SRS Section 2.1)
+  const calculateContractEndDate = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month + 6, day);
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+    }
+    const d = new Date(dateStr);
+    d.setMonth(d.getMonth() + 6);
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      });
+    }
+    return dateStr;
+  };
+
+  const filtered = employeeList.filter((e) => {
+    const matchesSearch =
+      e.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.idNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDept = !deptFilter || e.department === deptFilter;
-    return matchesSearch && matchesDept;
+    const matchesStatus =
+      statusFilter === 'All'
+        ? true
+        : statusFilter === 'Archived'
+        ? e.status === 'Archived'
+        : e.status !== 'Archived';
+    return matchesSearch && matchesDept && matchesStatus;
   });
+
+  const handleArchiveEmployee = (empId) => {
+    setEmployeeList((prev) =>
+      prev.map((e) => (e.id === empId ? { ...e, status: 'Archived' } : e))
+    );
+    const emp = employeeList.find((e) => e.id === empId);
+    setToastMsg(`Personnel record for "${emp?.fullName || 'Employee'}" has been archived.`);
+    setSelectedEmp(null);
+    setTimeout(() => setToastMsg(null), 4500);
+  };
+
+  const handleRestoreEmployee = (empId) => {
+    setEmployeeList((prev) =>
+      prev.map((e) => (e.id === empId ? { ...e, status: 'Active' } : e))
+    );
+    const emp = employeeList.find((e) => e.id === empId);
+    setToastMsg(`Personnel record for "${emp?.fullName || 'Employee'}" has been restored to Active status.`);
+    setSelectedEmp(null);
+    setTimeout(() => setToastMsg(null), 4500);
+  };
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    onAddEmployee({
+    const assignedCategory = getComputedCategory(selectedDept);
+    const computedEndDate = calculateContractEndDate(dateAppointed);
+    const existingIds = employeeList.map((emp) => emp.idNumber).filter(Boolean);
+    const generatedIdNumber = generateEvsuEmployeeId(fullName, dateAppointed || new Date(), existingIds);
+
+    const newEmployee = {
+      id: Date.now(),
+      idNumber: generatedIdNumber,
       fullName,
       email,
-      password,
       department: selectedDept,
-      cosCategory,
-      dateAppointed,
-      contractEndDate,
-    });
+      college: isMaintenanceDept(selectedDept)
+        ? 'Physical Plant and General Services'
+        : 'Administrative and Support Services',
+      cosCategory: assignedCategory,
+      dateAppointed: formatDisplayDate(dateAppointed),
+      contractEndDate: computedEndDate,
+      latestScore: null,
+      latestRating: 'Unrated',
+      status: 'Active',
+    };
+
+    setEmployeeList([newEmployee, ...employeeList]);
+    onAddEmployee(newEmployee);
     setShowAddModal(false);
+    setModalMode('invite');
+    setFullName('');
+    setEmail('');
+    setPassword('');
+    setDateAppointed('');
+    setToastMsg(`COS Personnel "${fullName}" successfully added to ${selectedDept}!`);
+    setTimeout(() => setToastMsg(null), 4500);
   };
 
   const handleInviteSubmit = (e) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    onSendTokenInvite({ email: inviteEmail });
-    setShowInviteModal(false);
+    onSendTokenInvite({ email: inviteEmail, department: selectedDept });
+    setShowAddModal(false);
+    setToastMsg(`Tokenized sign-up URL dispatched to ${inviteEmail}! Token valid for 72 hours.`);
     setInviteEmail('');
+    setTimeout(() => setToastMsg(null), 4500);
   };
 
   return (
     <div>
-      <div className="flex-between" style={{ marginBottom: '6px' }}>
+      <div className="flex-between" style={{ marginBottom: '14px' }}>
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Employee Management</h1>
           <p className="muted" style={{ margin: 0 }}>
             Personnel directory, appraisal setup, and tokenized invitations for EVSU Contract of Service staff.
           </p>
         </div>
-        {/* Out-of-scope SMS button completely discarded; tokenized invite and add employee provided */}
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            className="btn"
-            type="button"
-            onClick={() => setShowInviteModal(true)}
-          >
-            ✉ Send Tokenized Sign-Up (UC-07)
-          </button>
+          {onBack && (
+            <button className="btn btn-sm" type="button" onClick={onBack}>
+              ← Back to Dashboard
+            </button>
+          )}
           <button
             className="btn btn-primary"
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setShowAddModal(true);
+              setModalMode('invite');
+            }}
           >
             + Add Employee
           </button>
         </div>
       </div>
 
-      <div style={{ height: '20px' }}></div>
+      {toastMsg && (
+        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
+          ✓ {toastMsg}
+        </div>
+      )}
 
       {/* Filter Row */}
-      <div className="filter-row">
+      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
         <input
           className="form-control"
           type="text"
           placeholder="Search by name, email, or EVSU ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ flex: 2 }}
         />
+        <select
+          className="form-control"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ flex: 1 }}
+        >
+          <option value="All">All Statuses ({employeeList.length})</option>
+          <option value="Active">Active ({employeeList.filter((e) => e.status !== 'Archived').length})</option>
+          <option value="Archived">Archived ({employeeList.filter((e) => e.status === 'Archived').length})</option>
+        </select>
         <select
           className="form-control"
           value={deptFilter}
           onChange={(e) => setDeptFilter(e.target.value)}
+          style={{ flex: 1.2 }}
         >
           <option value="">All Departments</option>
           {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
+            <option key={d} value={d}>
+              {d}
+            </option>
           ))}
         </select>
       </div>
@@ -166,16 +305,21 @@ export default function EmployeeManagement({
               <th>COS Category</th>
               <th>Contract End</th>
               <th>Latest Score</th>
+              <th>Status</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((emp) => (
               <tr key={emp.id}>
-                <td><span className="emp-id-chip">{emp.idNumber}</span></td>
+                <td>
+                  <span className="emp-id-chip">{emp.idNumber}</span>
+                </td>
                 <td>
                   <b>{emp.fullName}</b>
-                  <div className="muted" style={{ fontSize: '12px' }}>{emp.email}</div>
+                  <div className="muted" style={{ fontSize: '12px' }}>
+                    {emp.email}
+                  </div>
                 </td>
                 <td>{emp.department}</td>
                 <td>
@@ -184,7 +328,15 @@ export default function EmployeeManagement({
                 <td>{emp.contractEndDate}</td>
                 <td>
                   {emp.latestScore !== null ? (
-                    <span className={`score-pill ${emp.latestScore >= 80 ? 'score-good' : emp.latestScore >= 60 ? 'score-mid' : 'score-bad'}`}>
+                    <span
+                      className={`score-pill ${
+                        emp.latestScore >= 80
+                          ? 'score-good'
+                          : emp.latestScore >= 60
+                          ? 'score-mid'
+                          : 'score-bad'
+                      }`}
+                    >
                       {emp.latestScore}
                     </span>
                   ) : (
@@ -192,7 +344,22 @@ export default function EmployeeManagement({
                   )}
                 </td>
                 <td>
-                  <button className="btn btn-sm" onClick={() => onSelectEmployee(emp.id)}>
+                  <span
+                    className={`badge ${
+                      emp.status === 'Archived' ? 'badge-delete' : 'badge-active'
+                    }`}
+                  >
+                    {emp.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => {
+                      setSelectedEmp(emp);
+                      onSelectEmployee(emp.id);
+                    }}
+                  >
                     View Record
                   </button>
                 </td>
@@ -200,7 +367,7 @@ export default function EmployeeManagement({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="7" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
+                <td colSpan="8" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
                   No personnel matching search criteria.
                 </td>
               </tr>
@@ -209,145 +376,424 @@ export default function EmployeeManagement({
         </table>
       </div>
 
-      {/* Add Employee Modal (FR-18) */}
+      {/* Add Employee Modal (Tokenized Sign-Up default with nested Manual Add option) */}
       {showAddModal && (
-        <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}>
-          <div className="modal-card">
+        <div
+          className="modal-overlay open"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowAddModal(false);
+              setModalMode('invite');
+            }
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: modalMode === 'manual' ? '540px' : '480px' }}>
             <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>Add COS Employee</div>
-              <button type="button" className="modal-close" onClick={() => setShowAddModal(false)}>✕</button>
+              <div className="card-title" style={{ margin: 0 }}>
+                {modalMode === 'invite' ? 'Add Employee' : 'Add COS Employee Manually'}
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setModalMode('invite');
+                }}
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleCreateSubmit}>
-              <div className="form-group">
-                <label>Full Name <span style={{ color: 'var(--red-600)' }}>*</span></label>
-                <input
-                  className="form-control"
-                  type="text"
-                  required
-                  placeholder="e.g. Juan Dela Cruz"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
-              </div>
 
-              <div className="form-group">
-                <label>Institutional Email <span style={{ color: 'var(--red-600)' }}>*</span></label>
-                <input
-                  className="form-control"
-                  type="email"
-                  required
-                  placeholder="name@evsu.edu.ph"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+            {modalMode === 'invite' ? (
+              /* TOKENIZED SIGN-UP (Default Add Employee - UC-07) */
+              <div>
+                <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
+                  Dispatches a secure, single-use registration URL to the new hire. Upon registration, the system autonomously generates their official EVSU Employee ID and invalidates the token.
+                </p>
 
-              <div className="form-group">
-                <label>Temporary Password <span style={{ color: 'var(--red-600)' }}>*</span></label>
-                <input
-                  className="form-control"
-                  type="password"
-                  required
-                  minLength={8}
-                  placeholder="At least 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
+                <form onSubmit={handleInviteSubmit}>
+                  <div className="form-group">
+                    <label>
+                      New Hire Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="email"
+                      required
+                      placeholder="newhire@evsu.edu.ph"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                    />
+                  </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Department</label>
-                  <select
-                    className="form-control"
-                    value={selectedDept}
-                    onChange={(e) => setSelectedDept(e.target.value)}
+                  <div className="form-group">
+                    <label>Assigned Department</label>
+                    <select
+                      className="form-control"
+                      value={selectedDept}
+                      onChange={(e) => setSelectedDept(e.target.value)}
+                    >
+                      {departments.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--ink-500)' }}>
+                      COS Category:{' '}
+                      <span className="badge badge-unassigned" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                        {getComputedCategory(selectedDept)}
+                      </span>{' '}
+                      <span className="muted">(Auto-assigned based on department)</span>
+                    </div>
+                  </div>
+
+                  {/* Button to access Manual Add Employee */}
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px dashed var(--line)',
+                      borderRadius: '8px',
+                      padding: '12px 14px',
+                      marginBottom: '18px',
+                      marginTop: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                    }}
                   >
-                    {departments.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>COS Category</label>
-                  <select
-                    className="form-control"
-                    value={cosCategory}
-                    onChange={(e) => setCosCategory(e.target.value)}
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-800)' }}>
+                        Registering an offline employee?
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--ink-500)' }}>
+                        Directly input employee details and set temporary password.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => setModalMode('manual')}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      📝 Add Manually
+                    </button>
+                  </div>
+
+                  <div className="flex-between" style={{ marginTop: '20px' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setModalMode('invite');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Send Registration Invite
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              /* MANUAL ADD EMPLOYEE (Accessed via nested button) */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
+                    Manually encode employee information for staff without online access.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => setModalMode('invite')}
                   >
-                    <option value="Administrative">COS-Administrative Offices</option>
-                    <option value="Maintenance/Janitorial">COS-Maintenance/Janitorial Personnel</option>
-                  </select>
+                    ← Back to Invite
+                  </button>
                 </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Date Appointed</label>
-                  <input
-                    className="form-control"
-                    type="date"
-                    value={dateAppointed}
-                    onChange={(e) => setDateAppointed(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Contract End Date</label>
-                  <input
-                    className="form-control"
-                    type="date"
-                    value={contractEndDate}
-                    onChange={(e) => setContractEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
+                <form onSubmit={handleCreateSubmit}>
+                  <div className="form-group">
+                    <label>
+                      Full Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      placeholder="e.g. Juan Dela Cruz"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
+                  </div>
 
-              <div className="flex-between" style={{ marginTop: '16px' }}>
-                <button type="button" className="btn" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Personnel Record
-                </button>
+                  <div className="form-group">
+                    <label>
+                      Institutional Email <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="email"
+                      required
+                      placeholder="name@evsu.edu.ph"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      Temporary Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="At least 8 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Department with Auto-Assigned Category (COS Category selection removed) */}
+                  <div className="form-group">
+                    <label>
+                      Department <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <select
+                      className="form-control"
+                      value={selectedDept}
+                      onChange={(e) => setSelectedDept(e.target.value)}
+                    >
+                      {departments.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                    <div
+                      style={{
+                        marginTop: '6px',
+                        fontSize: '12px',
+                        color: 'var(--ink-500)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>COS Category:</span>
+                      <span className="badge badge-unassigned" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                        {getComputedCategory(selectedDept)}
+                      </span>
+                      <span className="muted">(Auto-assigned based on department)</span>
+                    </div>
+                  </div>
+
+                  {/* Date Appointed with Auto-Calculated 6-Month Contract Expiry (Contract End Date input removed) */}
+                  <div className="form-group">
+                    <label>
+                      Date Appointed <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="date"
+                      required
+                      value={dateAppointed}
+                      onChange={(e) => setDateAppointed(e.target.value)}
+                    />
+                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--ink-500)' }}>
+                      {dateAppointed ? (
+                        <span>
+                          Contract End Date:{' '}
+                          <b style={{ color: 'var(--brand-700)' }}>{calculateContractEndDate(dateAppointed)}</b>{' '}
+                          (Strict 6-month contract cycle from appointed date)
+                        </span>
+                      ) : (
+                        <span className="muted">Contract end date is automatically set to 6 months from the date appointed.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-between" style={{ marginTop: '20px' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setModalMode('invite');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Save Personnel Record
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}
-
-      {/* Tokenized Sign-Up Invite Modal (UC-07) */}
-      {showInviteModal && (
-        <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }}>
-          <div className="modal-card">
+      {/* Detailed Personnel Dossier Modal */}
+      {selectedEmp && (
+        <div
+          className="modal-overlay open"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedEmp(null);
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: '560px' }}>
             <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>Dispatch Tokenized Sign-Up Link</div>
-              <button type="button" className="modal-close" onClick={() => setShowInviteModal(false)}>✕</button>
+              <div className="card-title" style={{ margin: 0 }}>
+                Personnel Record Dossier (UC-09)
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setSelectedEmp(null)}
+              >
+                ✕
+              </button>
             </div>
-            <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px' }}>
-              Dispatches a secure, single-use registration URL to the hire. Upon submission, the system
-              autonomously generates their official EVSU Employee ID and invalidates the token.
-            </p>
-            <form onSubmit={handleInviteSubmit}>
-              <div className="form-group">
-                <label>New Hire Email Address</label>
-                <input
-                  className="form-control"
-                  type="email"
-                  required
-                  placeholder="newhire@evsu.edu.ph"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                />
+
+            {/* Employee Header */}
+            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+              <span className="emp-id-chip" style={{ margin: '0 auto 8px', display: 'inline-block' }}>
+                {selectedEmp.idNumber}
+              </span>
+              <h2 style={{ margin: '6px 0 2px' }}>{selectedEmp.fullName}</h2>
+              <div className="muted" style={{ fontSize: '13px' }}>
+                {selectedEmp.email}
               </div>
-              <div className="flex-between">
-                <button type="button" className="btn" onClick={() => setShowInviteModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Send Registration Invite
-                </button>
+              <div style={{ marginTop: '8px' }}>
+                <span
+                  className={`badge ${
+                    selectedEmp.status === 'Archived' ? 'badge-delete' : 'badge-active'
+                  }`}
+                  style={{ fontWeight: 700, padding: '4px 10px' }}
+                >
+                  {selectedEmp.status === 'Archived' ? '📦 Archived Personnel' : '✓ Active Employee'}
+                </span>
               </div>
-            </form>
+            </div>
+
+            {/* Dossier Details Sections */}
+            <div
+              style={{
+                background: '#f8fafc',
+                padding: '16px',
+                borderRadius: '10px',
+                border: '1px solid var(--line)',
+                marginBottom: '20px',
+              }}
+            >
+              <div className="section-label" style={{ marginTop: 0 }}>
+                Institutional Assignment
+              </div>
+              <div className="detail-row">
+                <span>Department / Office:</span>
+                <span>
+                  <b>{selectedEmp.department}</b>
+                </span>
+              </div>
+              <div className="detail-row">
+                <span>COS Category:</span>
+                <span className="badge badge-unassigned">{selectedEmp.cosCategory}</span>
+              </div>
+
+              <div className="section-label">Contract Lifecycle</div>
+              <div className="detail-row">
+                <span>Date Appointed:</span>
+                <span>{selectedEmp.dateAppointed || 'Oct 22, 2026'}</span>
+              </div>
+              <div className="detail-row">
+                <span>Contract Expiration:</span>
+                <span style={{ color: 'var(--brand-700)', fontWeight: 700 }}>
+                  {selectedEmp.contractEndDate}
+                </span>
+              </div>
+
+              <div className="section-label">Performance Summary</div>
+              <div className="detail-row">
+                <span>Latest Evaluation Score:</span>
+                <span>
+                  {selectedEmp.latestScore !== null ? (
+                    <span
+                      className={`score-pill ${
+                        selectedEmp.latestScore >= 80
+                          ? 'score-good'
+                          : selectedEmp.latestScore >= 60
+                          ? 'score-mid'
+                          : 'score-bad'
+                      }`}
+                    >
+                      {selectedEmp.latestScore} / 100 ({selectedEmp.latestRating})
+                    </span>
+                  ) : (
+                    <span className="muted">Unrated (Evaluation In Progress)</span>
+                  )}
+                </span>
+              </div>
+              <div className="detail-row" style={{ borderBottom: 'none' }}>
+                <span>DAR Compliance:</span>
+                <span>
+                  <b>84 Verified Logs</b>
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex-between" style={{ alignItems: 'center' }}>
+              {selectedEmp.status === 'Archived' ? (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    color: 'var(--green-700)',
+                    borderColor: '#bfe8cd',
+                    background: 'var(--green-50)',
+                    fontWeight: 700,
+                  }}
+                  onClick={() => handleRestoreEmployee(selectedEmp.id)}
+                >
+                  ↩ Restore Employee
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    color: 'var(--red-600)',
+                    borderColor: '#f3c2c2',
+                    background: 'var(--red-50)',
+                    fontWeight: 700,
+                  }}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Are you sure you want to archive the personnel record for "${selectedEmp.fullName}"? They will be moved to the Archived directory.`
+                      )
+                    ) {
+                      handleArchiveEmployee(selectedEmp.id);
+                    }
+                  }}
+                >
+                  📦 Archive Employee
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setSelectedEmp(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

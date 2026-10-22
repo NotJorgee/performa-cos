@@ -1,173 +1,195 @@
 import React from 'react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
+import { getFullFirstName } from '../../utils/nameHelper';
 
 export default function HRDashboard({
+  currentUser = {
+    fullName: 'Dr. Maria Clara Ramos',
+    department: 'HRMDO Office',
+  },
   metrics = {
     totalEmployees: 48,
+    totalAdministrators: 6,
     activeColleges: 6,
     darSubmittedToday: 42,
     pendingEvaluations: 9,
     marReportsSubmitted: 45,
     completionRate: 85,
+    nearingExpiration: 4,
   },
-  recentSubmissions = [
-    {
-      id: 1,
-      employeeName: 'Jorge Mikhael Gubantes',
-      department: 'Computer Studies Department',
-      date: 'Oct 17, 2026',
-      status: 'Pending HR Review',
-    },
-    {
-      id: 2,
-      employeeName: 'Ian Joseph Ranoco',
-      department: 'Technology Department',
-      date: 'Oct 16, 2026',
-      status: 'Ready for Computation',
-    },
-    {
-      id: 3,
-      employeeName: 'Jeramae Pace',
-      department: 'Library Office',
-      date: 'Oct 15, 2026',
-      status: 'Completed',
-    },
-  ],
-  collegeProgress = [
-    { name: 'Computer Studies Department', pct: 90 },
-    { name: 'Technology Department', pct: 82 },
-    { name: 'Engineering Department', pct: 75 },
-    { name: 'Education Department', pct: 60 },
-  ],
   onNavigate = () => {},
 }) {
+  const expiringCount = metrics?.nearingExpiration ?? 4;
+  const pendingHrEvalCount = metrics?.pendingEvaluations ?? 9;
+  const fullFirstName = getFullFirstName(currentUser.fullName || 'Maria Clara');
+
   return (
     <div>
-      <div className="hero-banner">
-        <div className="hero-left">
-          <img src={evsuSeal} alt="EVSU Seal" className="hero-logo" />
-          <div>
-            <h1>HR Administrative Portal</h1>
-            <p>
-              Eastern Visayas State University — Contract of Service Performance Management System
-            </p>
-          </div>
+      {/* Hero Banner matching UI reference photo */}
+      <div className="hero-banner" style={{ marginBottom: '24px' }}>
+        <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
+        <div>
+          <h1>Welcome, {fullFirstName}</h1>
+          <p>
+            {currentUser.department || 'HRMDO Office'} | Eastern Visayas State University Ormoc Campus
+          </p>
         </div>
       </div>
 
-      <div className="stat-grid">
-        <div className="card stat-card">
-          <div className="stat-top">
-            <span className="stat-label">Total COS Personnel</span>
-            <span className="stat-icon">👥</span>
-          </div>
-          <div className="stat-value">{metrics.totalEmployees}</div>
-          <div className="stat-sub">
-            <span className="pos">Active</span> Across {metrics.activeColleges} Departments
-          </div>
-        </div>
-
-        {/* Replaced legacy Attendance with in-scope Geofenced DARs */}
-        <div className="card stat-card">
-          <div className="stat-top">
-            <span className="stat-label">Geofenced DARs Today</span>
-            <span className="stat-icon">📍</span>
-          </div>
-          <div className="stat-value">{metrics.darSubmittedToday} / {metrics.totalEmployees}</div>
-          <div className="stat-sub">
-            <span className="pos">Campus Validated</span>
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-top">
-            <span className="stat-label">Pending 30% HR Scores</span>
-            <span className="stat-icon">⚖️</span>
-          </div>
-          <div className="stat-value">{metrics.pendingEvaluations}</div>
-          <div className="stat-sub">Awaiting Administrative Review</div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-top">
-            <span className="stat-label">MAR Reports Submitted</span>
-            <span className="stat-icon">📑</span>
-          </div>
-          <div className="stat-value">{metrics.marReportsSubmitted}</div>
-          <div className="stat-sub">Current Evaluation Cycle</div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-top">
-            <span className="stat-label">Evaluation Completion</span>
-            <span className="stat-icon">🎯</span>
-          </div>
-          <div className="stat-value">{metrics.completionRate}%</div>
-          <div className="stat-sub">Institutional Target: 100%</div>
-        </div>
+      {/* QUICK ACCESS Section Header */}
+      <div style={{ marginBottom: '14px' }}>
+        <span
+          style={{
+            fontSize: '12px',
+            fontWeight: 800,
+            letterSpacing: '.06em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-500)',
+          }}
+        >
+          Quick Access
+        </span>
       </div>
 
-      <div className="two-col">
-        <div className="card">
-          <div className="card-title">Recent Submissions</div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Department</th>
-                <th>Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentSubmissions.map((s) => (
-                <tr key={s.id}>
-                  <td><b>{s.employeeName}</b></td>
-                  <td>{s.department}</td>
-                  <td>{s.date}</td>
-                  <td>
-                    <span className={`badge badge-${s.status.toLowerCase().replace(/[\s_]+/g, '')}`}>
-                      {s.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* 4-Column Module Panels Grid */}
+      <div className="quick-access-grid">
+        {/* Panel 1: Evaluation Management */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('evaluation_management')}
+          title="Click to manage Individualized Contract Expiration & Routing (UC-01)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Evaluation Management</span>
+            <div className="quick-access-icon">⏱️</div>
+          </div>
+          <div
+            className="quick-access-value"
+            style={{
+              color: 'var(--amber-600)',
+              fontSize: '24px',
+              fontWeight: 800,
+            }}
+          >
+            {expiringCount} Expiring Soon
+          </div>
+          <div className="quick-access-link">
+            Contract lifecycles &amp; routing →
+          </div>
         </div>
 
-        <div className="card">
-          <div className="card-title">Evaluation Progress by Department</div>
-          {collegeProgress.map((cp, idx) => (
-            <div className="progress-row" key={idx}>
-              <div className="progress-head">
-                <span>{cp.name}</span>
-                <span>{cp.pct}%</span>
-              </div>
-              <div className="progress-track">
-                <div
-                  className={`progress-fill ${cp.pct >= 70 ? 'green' : cp.pct >= 50 ? 'amber' : 'red'}`}
-                  style={{ width: `${cp.pct}%` }}
-                ></div>
-              </div>
-            </div>
-          ))}
+        {/* Panel 2: HR & Proxy Evaluations */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('hr_evaluations_proxy')}
+          title="Click to input 30% HR Score and offline proxy ratings (UC-05)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">HR &amp; Proxy Evaluations</span>
+            <div className="quick-access-icon">📝</div>
+          </div>
+          <div
+            className="quick-access-value"
+            style={{
+              color: 'var(--amber-600)',
+              fontSize: '24px',
+              fontWeight: 800,
+            }}
+          >
+            {pendingHrEvalCount} {pendingHrEvalCount === 1 ? 'Pending Evaluation' : 'Pending Evaluations'}
+          </div>
+          <div className="quick-access-link">
+            30% administrative scores →
+          </div>
+        </div>
 
-          <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-            <button
-              className="btn btn-primary"
-              style={{ flex: 1 }}
-              onClick={() => onNavigate('evaluation_management')}
-            >
-              Evaluation Management (UC-01)
-            </button>
-            <button
-              className="btn"
-              style={{ flex: 1 }}
-              onClick={() => onNavigate('report_generator')}
-            >
-              Generate Executive Report (US-07)
-            </button>
+        {/* Panel 3: Employee Management */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('employee_management')}
+          title="Click to manage COS Personnel accounts & tokenized invites (UC-09)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Employee Management</span>
+            <div className="quick-access-icon">👥</div>
+          </div>
+          <div className="quick-access-value">
+            {metrics.totalEmployees}
+          </div>
+          <div className="quick-access-link">
+            COS directory &amp; accounts →
+          </div>
+        </div>
+
+        {/* Panel 4: Administrator Management */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('administrator_management')}
+          title="Click to manage permanent university staff accounts (Dept Heads & HR accounts)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Administrator Management</span>
+            <div className="quick-access-icon">🛡️</div>
+          </div>
+          <div className="quick-access-value">
+            {metrics.totalAdministrators || 6}
+          </div>
+          <div className="quick-access-link">
+            Dept Heads &amp; HR accounts →
+          </div>
+        </div>
+
+        {/* Panel 5: Department Management */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('department_management')}
+          title="Click to configure departments and geofence boundaries (UC-10)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Department Management</span>
+            <div className="quick-access-icon">🏛️</div>
+          </div>
+          <div className="quick-access-value">
+            {metrics.activeColleges}
+          </div>
+          <div className="quick-access-link">
+            Colleges &amp; work zones →
+          </div>
+        </div>
+
+        {/* Panel 5: Executive Reports */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('report_generator')}
+          title="Click to generate 50/20/30 appraisal executive reports (UC-07)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Executive Reports</span>
+            <div className="quick-access-icon">📊</div>
+          </div>
+          <div className="quick-access-value text-lg">
+            Generate a report
+          </div>
+          <div className="quick-access-link">
+            50/20/30 appraisal analytics →
+          </div>
+        </div>
+
+        {/* Panel 6: Audit Trail & Backup */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('audit_trail')}
+          title="Click to inspect security audit logs and database snapshots (UC-12)"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Audit Trail &amp; Backup</span>
+            <div className="quick-access-icon">🛡️</div>
+          </div>
+          <div className="quick-access-value text-lg">
+            Security logs
+          </div>
+          <div className="quick-access-link">
+            Access trails &amp; snapshots →
           </div>
         </div>
       </div>

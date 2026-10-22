@@ -21,6 +21,7 @@ import {
   EvaluationManagement,
   HREvaluationsProxy,
   EmployeeManagement,
+  AdministratorManagement,
   DepartmentManagement,
   ReportGenerator,
   AuditTrail,
@@ -35,6 +36,7 @@ export default function App() {
     role: 'COS Employee', // 'COS Employee' | 'Department Head' | 'HR Personnel'
     department: 'Computer Studies Department',
     initials: 'JG',
+    employeeIdNumber: 'G10222026JMR',
     avatarUrl: null,
   });
 
@@ -42,10 +44,28 @@ export default function App() {
     setCurrentUser((prev) => ({
       ...prev,
       role: newRole,
+      fullName:
+        newRole === 'HR Personnel'
+          ? 'Dr. Maria Clara Ramos'
+          : newRole === 'Department Head'
+          ? 'Engr. Roberto Del Rosario'
+          : 'Jorge Mikhael Gubantes',
       department:
         newRole === 'HR Personnel'
           ? 'HRMDO Office'
           : 'Computer Studies Department',
+      initials:
+        newRole === 'HR Personnel'
+          ? 'MR'
+          : newRole === 'Department Head'
+          ? 'RD'
+          : 'JG',
+      employeeIdNumber:
+        newRole === 'HR Personnel'
+          ? 'R10222026MCR'
+          : newRole === 'Department Head'
+          ? 'D10222026RDR'
+          : 'G10222026JMR',
     }));
     setCurrentView('dashboard');
   };
@@ -147,33 +167,48 @@ export default function App() {
 
       {/* Universal Dashboard */}
       {currentView === 'dashboard' && currentUser.role === 'COS Employee' && (
-        <EmployeeDashboard onNavigate={setCurrentView} />
+        <EmployeeDashboard currentUser={currentUser} onNavigate={setCurrentView} />
       )}
       {currentView === 'dashboard' && currentUser.role === 'Department Head' && (
-        <PendingEvaluations departmentName={currentUser.department} />
+        <DeptHeadDashboard
+          currentUser={currentUser}
+          onNavigate={setCurrentView}
+        />
       )}
       {currentView === 'dashboard' && currentUser.role === 'HR Personnel' && (
-        <HRDashboard onNavigate={setCurrentView} />
+        <HRDashboard currentUser={currentUser} onNavigate={setCurrentView} />
       )}
 
       {/* COS Employee Modules (SRS Section 8.1) */}
       {currentUser.role === 'COS Employee' && (
         <>
           {currentView === 'daily_report' && (
-            <DailyReporting onNavigate={setCurrentView} />
+            <DailyReporting
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'monthly_report' && (
             <MonthlyReport
               onNavigate={setCurrentView}
               employeeName={currentUser.fullName}
               department={currentUser.department}
+              onBack={() => setCurrentView('dashboard')}
+              backLabel="← Back to Dashboard"
             />
           )}
           {currentView === 'contract_status' && (
-            <ContractStatus />
+            <ContractStatus
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'peer_evaluations' && (
-            <PeerEvaluations departmentName={currentUser.department} />
+            <PeerEvaluations
+              departmentName={currentUser.department}
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
         </>
       )}
@@ -182,7 +217,10 @@ export default function App() {
       {currentUser.role === 'Department Head' && (
         <>
           {currentView === 'pending_evaluations' && (
-            <PendingEvaluations departmentName={currentUser.department} />
+            <PendingEvaluations
+              departmentName={currentUser.department}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
         </>
       )}
@@ -191,29 +229,60 @@ export default function App() {
       {currentUser.role === 'HR Personnel' && (
         <>
           {currentView === 'evaluation_management' && (
-            <EvaluationManagement />
+            <EvaluationManagement
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'hr_evaluations_proxy' && (
-            <HREvaluationsProxy />
+            <HREvaluationsProxy
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'employee_management' && (
-            <EmployeeManagement />
+            <EmployeeManagement
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          )}
+          {currentView === 'administrator_management' && (
+            <AdministratorManagement
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'department_management' && (
-            <DepartmentManagement />
+            <DepartmentManagement
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'report_generator' && (
-            <ReportGenerator />
+            <ReportGenerator
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
           {currentView === 'audit_trail' && (
-            <AuditTrail />
+            <AuditTrail
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
           )}
         </>
       )}
 
-      {/* Universal Profile & Security Settings (UC-11) */}
-      {currentView === 'profile_settings' && (
-        <ProfileSettings currentUser={currentUser} />
+      {/* Universal Profile, Account Settings & Security (UC-11) */}
+      {(currentView === 'profile_settings' ||
+        currentView === 'view_profile' ||
+        currentView === 'account_settings' ||
+        currentView === 'change_password') && (
+        <ProfileSettings
+          currentUser={currentUser}
+          initialTab={currentView}
+          onBack={() => setCurrentView('dashboard')}
+        />
       )}
     </AppLayout>
   );

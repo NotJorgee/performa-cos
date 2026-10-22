@@ -14,6 +14,7 @@ export default function ContractStatus({
   },
   onConfirmRenewal = () => {},
   onDeclineRenewal = () => {},
+  onBack = null,
 }) {
   const [status, setStatus] = useState(contract.renewalStatus);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,11 +46,18 @@ export default function ContractStatus({
 
   return (
     <div>
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ margin: '0 0 6px' }}>Contract Status</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Monitor your 6-month Contract of Service lifecycle and submit your formal digital renewal confirmation.
-        </p>
+      <div className="flex-between" style={{ marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 6px' }}>Contract Status</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            Monitor your 6-month Contract of Service lifecycle and submit your formal digital renewal confirmation.
+          </p>
+        </div>
+        {onBack && (
+          <button type="button" className="btn btn-sm" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
+        )}
       </div>
 
       {/* Contract Lifecycle Overview Card */}
@@ -64,7 +72,14 @@ export default function ContractStatus({
           </div>
           <div>
             <span className="muted" style={{ fontSize: '12px' }}>DAYS UNTIL EXPIRATION</span>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--amber-600)', marginTop: '2px' }}>
+            <div
+              style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: (contract.daysRemaining ?? 74) <= 30 ? 'var(--amber-600)' : 'var(--ink-900)',
+                marginTop: '2px',
+              }}
+            >
               {contract.daysRemaining} Days
             </div>
           </div>

@@ -12,6 +12,7 @@ const AUTOCOMPLETE_SUGGESTIONS = [
 ];
 
 export default function DailyReporting({
+  onBack = null,
   onSubmitDar = () => {},
 }) {
   const [jobDescription, setJobDescription] = useState('');
@@ -106,11 +107,18 @@ export default function DailyReporting({
   return (
     <div>
       {/* Module Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting (UC-13)</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.
-        </p>
+      <div className="flex-between" style={{ marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting (UC-13)</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.
+          </p>
+        </div>
+        {onBack && (
+          <button type="button" className="btn btn-sm" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
+        )}
       </div>
 
       {successToast && (

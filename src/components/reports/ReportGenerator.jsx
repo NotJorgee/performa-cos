@@ -19,6 +19,7 @@ export default function ReportGenerator({
     },
   ],
   onGenerateReport = () => {},
+  onBack = null,
 }) {
   const [semester, setSemester] = useState('First Semester (2026-2027)');
   const [department, setDepartment] = useState('All Departments');
@@ -43,10 +44,19 @@ export default function ReportGenerator({
 
   return (
     <div>
-      <h1 style={{ margin: '0 0 6px' }}>Performance Report Generator (US-07)</h1>
-      <p className="muted" style={{ margin: '0 0 20px' }}>
-        Compile 50/20/30 scores, qualitative supervisor feedback, and official recommendations into printable executive summaries.
-      </p>
+      <div className="flex-between" style={{ marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 6px' }}>Performance Report Generator (US-07)</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            Compile 50/20/30 scores, qualitative supervisor feedback, and official recommendations into printable executive summaries.
+          </p>
+        </div>
+        {onBack && (
+          <button className="btn btn-sm" type="button" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
+        )}
+      </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
         <div className="card-title">Previously Generated Executive Reports</div>

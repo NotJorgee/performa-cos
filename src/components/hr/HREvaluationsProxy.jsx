@@ -6,6 +6,7 @@ export default function HREvaluationsProxy({
     {
       id: 1,
       employeeId: 101,
+      employeeIdNumber: 'G10222026JMR',
       fullName: 'Jorge Mikhael Gubantes',
       department: 'Computer Studies Department',
       cosCategory: 'Administrative',
@@ -18,6 +19,7 @@ export default function HREvaluationsProxy({
     {
       id: 2,
       employeeId: 102,
+      employeeIdNumber: 'R10222026IJM',
       fullName: 'Ian Joseph Ranoco',
       department: 'Computer Studies Department',
       cosCategory: 'Administrative',
@@ -30,6 +32,7 @@ export default function HREvaluationsProxy({
     {
       id: 3,
       employeeId: 103,
+      employeeIdNumber: 'M10222026CBM',
       fullName: 'Carlos Mendoza',
       department: 'Maintenance/Janitorial (MESO) Office',
       cosCategory: 'Maintenance/Janitorial',
@@ -42,6 +45,7 @@ export default function HREvaluationsProxy({
   ],
   onSubmitHrScore = () => {},
   onSubmitProxyEntry = () => {},
+  onBack = null,
 }) {
   const [selectedEvalId, setSelectedEvalId] = useState(null);
   const [proxyMode, setProxyMode] = useState(false);
@@ -92,11 +96,18 @@ export default function HREvaluationsProxy({
             Input the 30% administrative compliance score and proxy-encode physical paper rating sheets for offline maintenance personnel.
           </p>
         </div>
-        {selectedEvalId && (
-          <button type="button" className="btn btn-sm" onClick={() => setSelectedEvalId(null)}>
-            ← Back to Evaluation List
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {selectedEvalId && (
+            <button type="button" className="btn btn-sm" onClick={() => setSelectedEvalId(null)}>
+              ← Back to Evaluation List
+            </button>
+          )}
+          {onBack && (
+            <button type="button" className="btn btn-sm" onClick={onBack}>
+              ← Back to Dashboard
+            </button>
+          )}
+        </div>
       </div>
 
       {successToast && (
@@ -137,6 +148,7 @@ export default function HREvaluationsProxy({
                   <tr key={ev.id}>
                     <td>
                       <b>{ev.fullName}</b>
+                      <div className="muted" style={{ fontSize: '12px' }}>ID: {ev.employeeIdNumber}</div>
                       {ev.isOfflineStaff && (
                         <div style={{ color: 'var(--amber-600)', fontSize: '11.5px', fontWeight: 600 }}>
                           📝 Offline Staff (Proxy Entry)

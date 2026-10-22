@@ -61,6 +61,7 @@ export default function DepartmentManagement({
   onAddDepartment = () => {},
   onUpdateDepartment = () => {},
   onDeleteDepartment = () => {},
+  onBack = null,
 }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedDeptId, setExpandedDeptId] = useState(null);
@@ -102,13 +103,20 @@ export default function DepartmentManagement({
             Configure university colleges, offices, and campus geofence boundary coordinates.
           </p>
         </div>
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => setShowAddModal(true)}
-        >
-          + Add Department
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {onBack && (
+            <button className="btn btn-sm" type="button" onClick={onBack}>
+              ← Back to Dashboard
+            </button>
+          )}
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => setShowAddModal(true)}
+          >
+            + Add Department
+          </button>
+        </div>
       </div>
 
       {deleteError && (

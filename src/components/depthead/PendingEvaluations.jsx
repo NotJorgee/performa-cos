@@ -19,6 +19,7 @@ const DEFAULT_SUBMITTED_SCORES = {
 export default function PendingEvaluations({
   departmentName = 'Computer Studies Department',
   collegeName = 'College of Technology',
+  onBack = null,
   metrics = {
     totalSubordinates: 12,
     pendingReviews: 3,
@@ -28,6 +29,7 @@ export default function PendingEvaluations({
   subordinates = [
     {
       id: 101,
+      employeeIdNumber: 'G10222026JMR',
       fullName: 'Jorge Mikhael Gubantes',
       role: 'COS Employee',
       cosCategory: 'Administrative',
@@ -54,6 +56,7 @@ export default function PendingEvaluations({
     },
     {
       id: 102,
+      employeeIdNumber: 'R10222026IJM',
       fullName: 'Ian Joseph Ranoco',
       role: 'COS Employee',
       cosCategory: 'Administrative',
@@ -120,6 +123,7 @@ export default function PendingEvaluations({
     },
     {
       id: 103,
+      employeeIdNumber: 'M10222026CBM',
       fullName: 'Carlos Mendoza',
       role: 'COS Employee',
       cosCategory: 'Maintenance/Janitorial',
@@ -218,7 +222,7 @@ export default function PendingEvaluations({
                 : departmentName}
             </h1>
           </div>
-          {selectedEmpId && (
+          {selectedEmpId ? (
             <button
               type="button"
               className="btn btn-sm"
@@ -230,7 +234,15 @@ export default function PendingEvaluations({
             >
               ← Back to Subordinates List
             </button>
-          )}
+          ) : onBack ? (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={onBack}
+            >
+              ← Back to Dashboard
+            </button>
+          ) : null}
         </div>
       )}
 
@@ -266,7 +278,7 @@ export default function PendingEvaluations({
                 <tr key={sub.id}>
                   <td>
                     <b>{sub.fullName}</b>
-                    <div className="muted" style={{ fontSize: '12px' }}>ID: 2026-{sub.id}</div>
+                    <div className="muted" style={{ fontSize: '12px' }}>ID: {sub.employeeIdNumber || 'G10222026JMR'}</div>
                   </td>
                   <td>
                     <b>{sub.totalDarEntries}</b> verified logs

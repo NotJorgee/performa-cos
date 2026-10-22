@@ -1,4 +1,6 @@
 import React from 'react';
+import evsuSeal from '../../assets/images/evsu-seal.png';
+import { getFullFirstName } from '../../utils/nameHelper';
 
 export default function EmployeeDashboard({
   currentUser = {
@@ -17,88 +19,99 @@ export default function EmployeeDashboard({
   },
   onNavigate = () => {},
 }) {
-  const firstName = currentUser.fullName.split(' ')[0];
-  const lastName = currentUser.fullName.split(' ').slice(-1)[0];
+  const fullFirstName = getFullFirstName(currentUser.fullName || 'Jorge Mikhael Gubantes');
+  const isExpiringSoon = (metrics.daysUntilExpiration ?? 74) <= 30;
 
   return (
     <div>
       {/* Hero Banner */}
-      <div className="hero-banner">
+      <div className="hero-banner" style={{ marginBottom: '24px' }}>
+        <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
         <div>
-          <h1>Welcome, {firstName} {lastName}</h1>
-          <p>{currentUser.position} | {currentUser.department} ({currentUser.cosCategory})</p>
+          <h1>Welcome, {fullFirstName}</h1>
+          <p>
+            {currentUser.department || 'Computer Studies Department'} | Eastern Visayas State University Ormoc Campus
+          </p>
         </div>
       </div>
 
-      {/* Quick Metrics */}
-      <div className="stat-grid">
-        <div className="card stat-card">
+      {/* Category Panels (4 Core COS Modules) */}
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
+        {/* Panel 1: Contract Expiration */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('contract_status')}
+          title="Click to check Contract Status (UC-02)"
+        >
           <div className="stat-top">
             <span className="stat-label">Contract Expiration</span>
             <span className="stat-icon">⏱️</span>
           </div>
-          <div className="stat-value" style={{ fontSize: '20px', color: 'var(--amber-600)' }}>
+          <div
+            className="stat-value"
+            style={{
+              fontSize: '24px',
+              color: isExpiringSoon ? 'var(--amber-600)' : 'var(--ink-900)',
+            }}
+          >
             {metrics.daysUntilExpiration} Days
           </div>
-          <div className="stat-sub">
-            <a
-              href="#contract-status"
-              onClick={(e) => { e.preventDefault(); onNavigate('contract_status'); }}
-            >
-              Check Contract Status (UC-02) →
-            </a>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
+            Check Contract Status (UC-02) →
           </div>
         </div>
 
-        <div className="card stat-card">
+        {/* Panel 2: Today's DAR Status */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('daily_report')}
+          title="Click to log campus DAR (UC-13)"
+        >
           <div className="stat-top">
             <span className="stat-label">Today's DAR Status</span>
             <span className="stat-icon">📍</span>
           </div>
-          <div className="stat-value" style={{ fontSize: '18px' }}>
+          <div className="stat-value" style={{ fontSize: '20px' }}>
             {metrics.darTasksToday > 0 ? `${metrics.darTasksToday} Task(s) Logged` : 'No Entry Yet'}
           </div>
-          <div className="stat-sub">
-            <a
-              href="#daily-report"
-              onClick={(e) => { e.preventDefault(); onNavigate('daily_report'); }}
-            >
-              Log Campus DAR (UC-13) →
-            </a>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
+            Log Campus DAR (UC-13) →
           </div>
         </div>
 
-        <div className="card stat-card">
+        {/* Panel 3: Accumulated MAR Logs */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('monthly_report')}
+          title="Click to view Compiled MAR (FR-04)"
+        >
           <div className="stat-top">
             <span className="stat-label">Accumulated MAR Logs</span>
             <span className="stat-icon">📑</span>
           </div>
-          <div className="stat-value">{metrics.totalDarsLogged}</div>
-          <div className="stat-sub">
-            <a
-              href="#monthly-report"
-              onClick={(e) => { e.preventDefault(); onNavigate('monthly_report'); }}
-            >
-              View Compiled MAR (FR-04) →
-            </a>
+          <div className="stat-value" style={{ fontSize: '26px' }}>
+            {metrics.totalDarsLogged}
+          </div>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
+            View Compiled MAR (FR-04) →
           </div>
         </div>
 
-        <div className="card stat-card">
+        {/* Panel 4: Peer Reviews Assigned */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('peer_evaluations')}
+          title="Click to evaluate assigned peers (UC-04)"
+        >
           <div className="stat-top">
             <span className="stat-label">Peer Reviews Assigned</span>
             <span className="stat-icon">👥</span>
           </div>
-          <div className="stat-value" style={{ fontSize: '18px' }}>
+          <div className="stat-value" style={{ fontSize: '20px' }}>
             {metrics.pendingPeerReviews} Colleague(s)
           </div>
-          <div className="stat-sub">
-            <a
-              href="#peer-evaluations"
-              onClick={(e) => { e.preventDefault(); onNavigate('peer_evaluations'); }}
-            >
-              Evaluate Peers (UC-04) →
-            </a>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
+            Evaluate Peers (UC-04) →
           </div>
         </div>
       </div>

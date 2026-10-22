@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function ProfileSettings({
   currentUser = {
@@ -6,17 +6,32 @@ export default function ProfileSettings({
     email: 'jorge.gubantes@evsu.edu.ph',
     role: 'COS Employee',
     department: 'Computer Studies Department',
-    employeeIdNumber: '2026-00101',
+    position: 'College Office Staff',
+    cosCategory: 'Administrative',
+    employeeIdNumber: 'G10222026JMR',
     contactNumber: '+63 912 345 6789',
     avatarUrl: null,
   },
+  initialTab = 'profile',
+  onBack = null,
   onUpdateProfile = () => {},
   onChangePassword = () => {},
 }) {
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'security'
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'account' | 'security'
   const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '');
   const [alternateEmail, setAlternateEmail] = useState('');
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
+
+  // Sync tab with initialTab prop when navigating from burger menu
+  useEffect(() => {
+    if (initialTab === 'change_password' || initialTab === 'security') {
+      setActiveTab('security');
+    } else if (initialTab === 'account_settings' || initialTab === 'account') {
+      setActiveTab('account');
+    } else {
+      setActiveTab('profile');
+    }
+  }, [initialTab]);
 
   // Security password fields (FR-24)
   const [currentPassword, setCurrentPassword] = useState('');
@@ -64,9 +79,14 @@ export default function ProfileSettings({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Personal Profile &amp; Security (UC-11)</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Manage your personal contact details, profile picture, and secure password credentials.
+            View your institutional profile, manage personal contact details, and update secure credentials.
           </p>
         </div>
+        {onBack && (
+          <button type="button" className="btn btn-sm" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
+        )}
       </div>
 
       {toastMsg && (
@@ -82,26 +102,130 @@ export default function ProfileSettings({
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button
           type="button"
           className={`btn ${activeTab === 'profile' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('profile')}
         >
-          👤 Profile Information (FR-24, FR-25)
+          ◉ View Profile
+        </button>
+        <button
+          type="button"
+          className={`btn ${activeTab === 'account' ? 'btn-primary' : ''}`}
+          onClick={() => setActiveTab('account')}
+        >
+          ⚙ Account Settings
         </button>
         <button
           type="button"
           className={`btn ${activeTab === 'security' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('security')}
         >
-          🔒 Security &amp; Password
+          🔑 Change Password
         </button>
       </div>
 
+      {/* 1. VIEW PROFILE TAB */}
       {activeTab === 'profile' && (
+        <div className="card" style={{ maxWidth: '680px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--line)', marginBottom: '20px' }}>
+            <div
+              style={{
+                width: '76px',
+                height: '76px',
+                borderRadius: '50%',
+                background: 'var(--brand-50)',
+                border: '2px solid var(--brand-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '26px',
+                color: 'var(--brand-700)',
+                fontWeight: 700,
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                currentUser.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('')
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                {currentUser.fullName}
+              </div>
+              <div className="muted" style={{ fontSize: '13px', marginTop: '2px' }}>
+                {currentUser.position || 'College Office Staff'} · {currentUser.department}
+              </div>
+              <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                <span className="badge badge-completed">Active Contract</span>
+                <span className="badge badge-dept">{currentUser.cosCategory || 'Administrative'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-title" style={{ fontSize: '15px', marginBottom: '14px' }}>
+            Institutional Profile Details
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>Employee ID</span>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px' }}>{currentUser.employeeIdNumber || 'G10222026JMR'}</div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>Institutional Email</span>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px', wordBreak: 'break-all' }}>{currentUser.email || 'jorge.gubantes@evsu.edu.ph'}</div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>Assigned College / Dept</span>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px' }}>{currentUser.department}</div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>Campus Assignment</span>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px' }}>EVSU - Ormoc Campus</div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>Contract Term</span>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px' }}>July 01, 2026 – Dec 31, 2026</div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>Contact Phone</span>
+              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px' }}>{contactNumber || 'Not provided'}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setActiveTab('account')}
+            >
+              ⚙ Edit Account Settings →
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setActiveTab('security')}
+            >
+              🔑 Change Password →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. ACCOUNT SETTINGS TAB */}
+      {activeTab === 'account' && (
         <div className="card" style={{ maxWidth: '640px' }}>
-          <div className="card-title" style={{ marginBottom: '16px' }}>Account Information</div>
+          <div className="card-title" style={{ marginBottom: '16px' }}>Account Settings &amp; Personal Info</div>
           <form onSubmit={handleProfileSubmit}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '18px' }}>
               <div
@@ -118,6 +242,7 @@ export default function ProfileSettings({
                   color: 'var(--brand-700)',
                   fontWeight: 700,
                   overflow: 'hidden',
+                  flexShrink: 0,
                 }}
               >
                 {avatarPreview ? (
@@ -145,7 +270,7 @@ export default function ProfileSettings({
             </div>
 
             <div className="form-group">
-              <label>Full Name</label>
+              <label>Full Legal Name (Institutional Record)</label>
               <input className="form-control" type="text" disabled value={currentUser.fullName} />
             </div>
 
@@ -194,6 +319,7 @@ export default function ProfileSettings({
         </div>
       )}
 
+      {/* 3. CHANGE PASSWORD TAB */}
       {activeTab === 'security' && (
         <div className="card" style={{ maxWidth: '540px' }}>
           <div className="card-title" style={{ marginBottom: '16px' }}>Change Account Password (FR-24)</div>

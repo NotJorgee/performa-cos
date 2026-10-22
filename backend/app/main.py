@@ -8,6 +8,7 @@ from sqlalchemy import text
 from .config import settings
 from .database import get_db, engine, Base
 from . import models, schemas
+from .id_generator import generate_evsu_employee_id
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -99,6 +100,44 @@ def delete_department(dept_id: int, db: Session = Depends(get_db)):
 @app.get("/api/users", response_model=list[schemas.UserAccountOut])
 def list_users(db: Session = Depends(get_db)):
     return db.query(models.UserAccount).all()
+
+
+@app.post("/api/users", response_model=schemas.UserAccountOut, status_code=status.HTTP_201_CREATED)
+@app.post("/api/auth/register", response_model=schemas.UserAccountOut, status_code=status.HTTP_201_CREATED)
+def register_user(user_in: schemas.UserAccountCreate, db: Session = Depends(get_db)):
+    """
+    Registers a new employee account and autonomously generates their official
+    unique EVSU Employee ID in the format: Last Name Initial + MMDDYYYY + First Initial + Middle Initial.
+    Handles duplicate collisions with incremental suffixes (-1, -2).
+    """
+    existing = db.query(models.UserAccount).filter(models.UserAccount.email == user_in.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Institutional email is already registered.")
+
+    emp_id = user_in.employee_id_number
+    if not emp_id:
+        emp_id = generate_evsu_employee_id(
+            db=db,
+            full_name=user_in.full_name,
+            contract_start_date=user_in.date_appointed or datetime.date.today(),
+        )
+
+    new_user = models.UserAccount(
+        employee_id_number=emp_id,
+        full_name=user_in.full_name,
+        email=user_in.email,
+        password_hash=f"mock_hash_{user_in.password}",
+        role=user_in.role,
+        department_id=user_in.department_id,
+        cos_category=user_in.cos_category or "Administrative",
+        date_appointed=user_in.date_appointed or datetime.date.today(),
+        contract_end_date=user_in.contract_end_date,
+        is_active=user_in.is_active,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 
 @app.post("/api/auth/login")

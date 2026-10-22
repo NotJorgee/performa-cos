@@ -16,7 +16,6 @@ export default function AppLayout({
 }) {
   // Sidebar only pops up when pressing the menu button (Off-canvas drawer)
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
   // In-system notifications
@@ -68,7 +67,6 @@ export default function AppLayout({
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setSidebarOpen(false);
-        setUserMenuOpen(false);
         setNotifOpen(false);
       }
     };
@@ -119,110 +117,36 @@ export default function AppLayout({
           <a
             href="#dashboard"
             onClick={(e) => { e.preventDefault(); handleNavClick('dashboard'); }}
-            className={`nav-item ${
-              currentPath === 'dashboard' ||
-              (currentUser.role === 'Department Head' && currentPath === 'pending_evaluations')
-                ? 'active'
-                : ''
-            }`}
+            className={`nav-item ${currentPath === 'dashboard' ? 'active' : ''}`}
           >
             <span className="icon">▦</span> Dashboard
           </a>
 
-          {/* 1. COS Employee Modules */}
-          {currentUser.role === 'COS Employee' && (
-            <>
-              <a
-                href="#daily-report"
-                onClick={(e) => { e.preventDefault(); handleNavClick('daily_report'); }}
-                className={`nav-item ${currentPath === 'daily_report' ? 'active' : ''}`}
-              >
-                <span className="icon">◷</span> Daily Report (DAR)
-              </a>
-              <a
-                href="#monthly-report"
-                onClick={(e) => { e.preventDefault(); handleNavClick('monthly_report'); }}
-                className={`nav-item ${currentPath === 'monthly_report' ? 'active' : ''}`}
-              >
-                <span className="icon">📑</span> Monthly Report (MAR)
-              </a>
-              <a
-                href="#contract-status"
-                onClick={(e) => { e.preventDefault(); handleNavClick('contract_status'); }}
-                className={`nav-item ${currentPath === 'contract_status' ? 'active' : ''}`}
-              >
-                <span className="icon">📋</span> Contract Status
-              </a>
-              <a
-                href="#peer-evaluations"
-                onClick={(e) => { e.preventDefault(); handleNavClick('peer_evaluations'); }}
-                className={`nav-item ${currentPath === 'peer_evaluations' ? 'active' : ''}`}
-              >
-                <span className="icon">👥</span> Peer Evaluations
-              </a>
-            </>
-          )}
-
-          {/* 2. Department Head has their complete appraisal workspace in the main Dashboard */}
-
-          {/* 3. HR Personnel Modules */}
-          {currentUser.role === 'HR Personnel' && (
-            <>
-              <a
-                href="#evaluation-management"
-                onClick={(e) => { e.preventDefault(); handleNavClick('evaluation_management'); }}
-                className={`nav-item ${currentPath === 'evaluation_management' ? 'active' : ''}`}
-              >
-                <span className="icon">⏱️</span> Evaluation Management
-              </a>
-              <a
-                href="#hr-evaluations-proxy"
-                onClick={(e) => { e.preventDefault(); handleNavClick('hr_evaluations_proxy'); }}
-                className={`nav-item ${currentPath === 'hr_evaluations_proxy' ? 'active' : ''}`}
-              >
-                <span className="icon">📝</span> HR &amp; Proxy Evaluations
-              </a>
-              <a
-                href="#employee-management"
-                onClick={(e) => { e.preventDefault(); handleNavClick('employee_management'); }}
-                className={`nav-item ${currentPath === 'employee_management' ? 'active' : ''}`}
-              >
-                <span className="icon">◍</span> Employee Management
-              </a>
-              <a
-                href="#department-management"
-                onClick={(e) => { e.preventDefault(); handleNavClick('department_management'); }}
-                className={`nav-item ${currentPath === 'department_management' ? 'active' : ''}`}
-              >
-                <span className="icon">▣</span> Department Management
-              </a>
-              <a
-                href="#report-generator"
-                onClick={(e) => { e.preventDefault(); handleNavClick('report_generator'); }}
-                className={`nav-item ${currentPath === 'report_generator' ? 'active' : ''}`}
-              >
-                <span className="icon">▥</span> Executive Reports
-              </a>
-              <a
-                href="#audit-trail"
-                onClick={(e) => { e.preventDefault(); handleNavClick('audit_trail'); }}
-                className={`nav-item ${currentPath === 'audit_trail' ? 'active' : ''}`}
-              >
-                <span className="icon">🛡️</span> Audit Trail &amp; Backup
-              </a>
-            </>
-          )}
-
-          {/* Profile & Security (UC-11) */}
-          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
-            <a
-              href="#profile-settings"
-              onClick={(e) => { e.preventDefault(); handleNavClick('profile_settings'); }}
-              className={`nav-item ${currentPath === 'profile_settings' ? 'active' : ''}`}
-            >
-              <span className="icon">⚙️</span> Profile &amp; Security
-            </a>
-          </div>
+          {/* Role-Unified Burger Menu: Dashboard, View Profile, Account Settings, Logout */}
+          <a
+            href="#view-profile"
+            onClick={(e) => { e.preventDefault(); handleNavClick('view_profile'); }}
+            className={`nav-item ${currentPath === 'view_profile' ? 'active' : ''}`}
+          >
+            <span className="icon">◉</span> View Profile
+          </a>
+          <a
+            href="#account-settings"
+            onClick={(e) => { e.preventDefault(); handleNavClick('account_settings'); }}
+            className={`nav-item ${currentPath === 'account_settings' ? 'active' : ''}`}
+          >
+            <span className="icon">⚙</span> Account Settings
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              closeSidebar();
+              onLogout();
+            }}
+            className="nav-item logout"
+          >
+            <span className="icon">⎋</span> Logout
+          </button>
         </nav>
       </aside>
 
@@ -321,75 +245,22 @@ export default function AppLayout({
               )}
             </div>
 
-            {/* User Profile Chip with Caret */}
-            <div className="user-menu" style={{ position: 'relative' }}>
-              <button
-                type="button"
-                className="user-chip"
-                onClick={() => {
-                  setUserMenuOpen((prev) => !prev);
-                  setNotifOpen(false);
-                }}
-              >
-                <div className="user-avatar">
-                  {currentUser.avatarUrl ? (
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt="Avatar"
-                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    currentUser.initials || 'JG'
-                  )}
-                </div>
-                <div className="user-info" style={{ textAlign: 'left' }}>
-                  <div className="user-name">{currentUser.fullName}</div>
-                  <div className="user-org">Eastern Visayas State University</div>
-                </div>
-                <span className="user-menu-caret">▾</span>
-              </button>
-
-              {/* User Menu Panel Dropdown */}
-              <div className={`user-menu-panel ${userMenuOpen ? 'open' : ''}`}>
-                <div className="user-menu-header">
-                  <div className="user-menu-avatar">
-                    {currentUser.avatarUrl ? (
-                      <img
-                        src={currentUser.avatarUrl}
-                        alt="Avatar"
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      currentUser.initials || 'JG'
-                    )}
-                  </div>
-                  <div className="user-menu-name">{currentUser.fullName}</div>
-                  <div style={{ fontSize: '12px', opacity: 0.9, marginTop: '3px' }}>{currentUser.role}</div>
-                  <div style={{ fontSize: '11px', opacity: 0.75 }}>{currentUser.department}</div>
-                </div>
-
-                <div className="user-menu-items">
-                  <button
-                    type="button"
-                    className="user-menu-item"
-                    onClick={() => {
-                      onNavigate('profile_settings');
-                      setUserMenuOpen(false);
-                    }}
-                  >
-                    <span className="icon">⚙️</span> Profile &amp; Security
-                  </button>
-                  <button
-                    type="button"
-                    className="user-menu-item logout"
-                    onClick={() => {
-                      onLogout();
-                      setUserMenuOpen(false);
-                    }}
-                  >
-                    <span className="icon">↪</span> Sign Out
-                  </button>
-                </div>
+            {/* User Profile Chip (Static display without dropdown - profile features moved to burger menu) */}
+            <div className="user-chip-static">
+              <div className="user-avatar">
+                {currentUser.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt="Avatar"
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  currentUser.initials || 'JG'
+                )}
+              </div>
+              <div className="user-info" style={{ textAlign: 'left' }}>
+                <div className="user-name">{currentUser.fullName}</div>
+                <div className="user-org">Eastern Visayas State University</div>
               </div>
             </div>
           </div>

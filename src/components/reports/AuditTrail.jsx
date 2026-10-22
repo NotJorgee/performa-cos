@@ -45,6 +45,7 @@ export default function AuditTrail({
   ],
   onExportCsv = () => {},
   onExportDatabaseBackup = () => {},
+  onBack = null,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('');
@@ -67,6 +68,11 @@ export default function AuditTrail({
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          {onBack && (
+            <button className="btn btn-sm" type="button" onClick={onBack}>
+              ← Back to Dashboard
+            </button>
+          )}
           <button
             className="btn"
             type="button"

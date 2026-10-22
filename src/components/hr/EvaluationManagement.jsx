@@ -1,20 +1,10 @@
 import React, { useState } from 'react';
 
 export default function EvaluationManagement({
-  activeCycles = [
-    {
-      id: 1,
-      periodName: '1st Semester 2026-2027',
-      deadline: '2026-11-15',
-      eligibleCount: 48,
-      routedCount: 42,
-      completedCount: 31,
-      status: 'Active Period',
-    },
-  ],
   eligibleEmployees = [
     {
       id: 101,
+      idNumber: 'G10222026JMR',
       fullName: 'Jorge Mikhael Gubantes',
       department: 'Computer Studies Department',
       cosCategory: 'Administrative',
@@ -24,6 +14,7 @@ export default function EvaluationManagement({
     },
     {
       id: 102,
+      idNumber: 'R10222026IJM',
       fullName: 'Ian Joseph Ranoco',
       department: 'Computer Studies Department',
       cosCategory: 'Administrative',
@@ -33,6 +24,7 @@ export default function EvaluationManagement({
     },
     {
       id: 103,
+      idNumber: 'M10222026CBM',
       fullName: 'Carlos Mendoza',
       department: 'Maintenance/Janitorial (MESO) Office',
       cosCategory: 'Maintenance/Janitorial',
@@ -42,6 +34,7 @@ export default function EvaluationManagement({
     },
     {
       id: 104,
+      idNumber: 'P10222026JLP',
       fullName: 'Jeramae Pace',
       department: 'Library Office',
       cosCategory: 'Administrative',
@@ -50,12 +43,9 @@ export default function EvaluationManagement({
       routingStatus: 'Awaiting Employee Intent',
     },
   ],
-  onInitiateCycle = () => {},
   onStartEmployeeEvaluation = () => {},
+  onBack = null,
 }) {
-  const [deadline, setDeadline] = useState('2026-11-15');
-  const [periodName, setPeriodName] = useState('1st Semester 2026-2027');
-  const [showConfigModal, setShowConfigModal] = useState(false);
   const [employees, setEmployees] = useState(eligibleEmployees);
   const [toastMsg, setToastMsg] = useState(null);
 
@@ -71,30 +61,20 @@ export default function EvaluationManagement({
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleCreatePeriod = (e) => {
-    e.preventDefault();
-    onInitiateCycle({ periodName, deadline });
-    setShowConfigModal(false);
-    setToastMsg(`Evaluation Period '${periodName}' initiated with deadline ${deadline}.`);
-    setTimeout(() => setToastMsg(null), 4000);
-  };
-
   return (
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Evaluation Management Module (UC-01)</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Configure evaluation cycles, set submission deadlines, and trigger concurrent evaluation routing for eligible COS personnel.
+            Continuous individualized contract lifecycle tracking and concurrent evaluation routing for eligible COS personnel nearing 6-month contract expiration.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setShowConfigModal(true)}
-        >
-          + Configure Evaluation Period
-        </button>
+        {onBack && (
+          <button type="button" className="btn btn-sm" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
+        )}
       </div>
 
       {toastMsg && (
@@ -102,38 +82,6 @@ export default function EvaluationManagement({
           ✓ {toastMsg}
         </div>
       )}
-
-      {/* Active Evaluation Cycles Summary */}
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-title">Active Evaluation Period Status</div>
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginTop: '14px' }}>
-          <div>
-            <span className="muted" style={{ fontSize: '12px' }}>ACTIVE CYCLE</span>
-            <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>{activeCycles[0].periodName}</div>
-          </div>
-          <div>
-            <span className="muted" style={{ fontSize: '12px' }}>SUBMISSION DEADLINE</span>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--amber-600)', marginTop: '2px' }}>
-              {activeCycles[0].deadline}
-            </div>
-            <div className="muted" style={{ fontSize: '11px', marginTop: '2px' }}>
-              ✉ 3-day automated reminder active (FR-03)
-            </div>
-          </div>
-          <div>
-            <span className="muted" style={{ fontSize: '12px' }}>ELIGIBLE COS STAFF</span>
-            <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>
-              {activeCycles[0].eligibleCount} Personnel
-            </div>
-          </div>
-          <div>
-            <span className="muted" style={{ fontSize: '12px' }}>TRIAD COMPLETION</span>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f6b32', marginTop: '2px' }}>
-              {activeCycles[0].completedCount} / {activeCycles[0].eligibleCount} Finalized
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* COS Employees Roster & Routing Control */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -163,7 +111,7 @@ export default function EvaluationManagement({
               <tr key={emp.id}>
                 <td>
                   <b>{emp.fullName}</b>
-                  <div className="muted" style={{ fontSize: '12px' }}>ID: 2026-{emp.id}</div>
+                  <div className="muted" style={{ fontSize: '12px' }}>ID: {emp.idNumber || 'G10222026JMR'}</div>
                 </td>
                 <td>{emp.department}</td>
                 <td>
@@ -214,47 +162,6 @@ export default function EvaluationManagement({
           </tbody>
         </table>
       </div>
-
-      {/* Configure Evaluation Period Modal */}
-      {showConfigModal && (
-        <div className="modal-backdrop" style={{ display: 'flex' }}>
-          <div className="modal-card" style={{ maxWidth: '460px' }}>
-            <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>Initiate Evaluation Period (FR-01)</div>
-              <button type="button" className="modal-close" onClick={() => setShowConfigModal(false)}>×</button>
-            </div>
-            <form onSubmit={handleCreatePeriod}>
-              <div className="form-group">
-                <label>Evaluation Period Label</label>
-                <input
-                  className="form-control"
-                  type="text"
-                  required
-                  value={periodName}
-                  onChange={(e) => setPeriodName(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>Submission Deadline Date (FR-01)</label>
-                <input
-                  className="form-control"
-                  type="date"
-                  required
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                />
-                <small className="muted" style={{ display: 'block', marginTop: '4px' }}>
-                  The system will automatically dispatch reminder emails 3 days prior to this date (FR-03).
-                </small>
-              </div>
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" className="btn" onClick={() => setShowConfigModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Initiate Period</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

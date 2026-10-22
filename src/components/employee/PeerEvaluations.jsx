@@ -6,6 +6,7 @@ export default function PeerEvaluations({
   assignedPeers = [
     {
       id: 201,
+      employeeIdNumber: 'R10222026IJM',
       targetName: 'Ian Joseph Ranoco',
       department: 'Computer Studies Department',
       cosCategory: 'Administrative',
@@ -13,6 +14,7 @@ export default function PeerEvaluations({
     },
     {
       id: 202,
+      employeeIdNumber: 'V10222026MAV',
       targetName: 'Mark Anthony Villa',
       department: 'Computer Studies Department',
       cosCategory: 'Maintenance/Janitorial',
@@ -20,6 +22,7 @@ export default function PeerEvaluations({
     },
   ],
   onSubmitPeerScore = () => {},
+  onBack = null,
 }) {
   const [selectedPeerId, setSelectedPeerId] = useState(null);
   const [submittedPeerIds, setSubmittedPeerIds] = useState([]);
@@ -45,11 +48,18 @@ export default function PeerEvaluations({
         <div>
           <h1 style={{ margin: 0 }}>Pending Peer Evaluations (UC-04)</h1>
         </div>
-        {selectedPeerId && (
-          <button type="button" className="btn btn-sm" onClick={() => setSelectedPeerId(null)}>
-            ← Back to Peer List
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {selectedPeerId && (
+            <button type="button" className="btn btn-sm" onClick={() => setSelectedPeerId(null)}>
+              ← Back to Peer List
+            </button>
+          )}
+          {onBack && (
+            <button type="button" className="btn btn-sm" onClick={onBack}>
+              ← Back to Dashboard
+            </button>
+          )}
+        </div>
       </div>
 
       {successMsg && (
@@ -86,7 +96,8 @@ export default function PeerEvaluations({
                   <tr key={peer.id}>
                     <td>
                       <b>{peer.targetName}</b>
-                      <div className="muted" style={{ fontSize: '12px' }}>{peer.department}</div>
+                      <div className="muted" style={{ fontSize: '12px' }}>ID: {peer.employeeIdNumber}</div>
+                      <div className="muted" style={{ fontSize: '11px' }}>{peer.department}</div>
                     </td>
                     <td>
                       <span className="badge badge-dept">{peer.cosCategory}</span>
