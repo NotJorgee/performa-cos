@@ -38,14 +38,24 @@ export default function FastTrackModal({
   };
 
   return (
-    <div className="modal-backdrop" style={{ display: 'flex' }}>
-      <div className="modal-card" style={{ maxWidth: '540px', width: '92%' }}>
+    <div
+      className="modal-overlay open"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="modal-card" style={{ maxWidth: '540px' }}>
         <div className="modal-header">
-          <div className="card-title" style={{ margin: 0, color: 'var(--red-600)' }}>
-            ⚠️ Process Fast-Track Rejection (UC-06)
+          <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>⚠️ Process Fast-Track Rejection (UC-06)</span>
           </div>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
-            ×
+          <button
+            type="button"
+            className="modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ✕
           </button>
         </div>
 

@@ -11,6 +11,7 @@ export { default as ProfileSettings } from './auth/ProfileSettings';
 // Common Rubrics & Modals
 export { default as DynamicRubric } from './common/DynamicRubric';
 export { default as FastTrackModal } from './common/FastTrackModal';
+export { default as CampusGeofenceModal } from './common/CampusGeofenceModal';
 
 // 1. COS Employee GUI Modules (SRS Section 8.1)
 export { default as EmployeeDashboard } from './dashboard/EmployeeDashboard';
@@ -28,6 +29,7 @@ export { default as HRDashboard } from './dashboard/HRDashboard';
 export { default as EvaluationManagement } from './hr/EvaluationManagement';
 export { default as HREvaluationsProxy } from './hr/HREvaluationsProxy';
 export { default as EmployeeManagement } from './management/EmployeeManagement';
+export { default as EmployeeRecordView } from './management/EmployeeRecordView';
 export { default as AdministratorManagement } from './management/AdministratorManagement';
 export { default as DepartmentManagement } from './management/DepartmentManagement';
 export { default as ReportGenerator } from './reports/ReportGenerator';

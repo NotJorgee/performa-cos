@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
+import EmployeeRecordView from './EmployeeRecordView';
 
 export default function EmployeeManagement({
   employees = [
@@ -78,9 +79,14 @@ export default function EmployeeManagement({
   const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Archived'
   const [deptFilter, setDeptFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedEmp, setSelectedEmp] = useState(null);
+  const [selectedRecordEmp, setSelectedRecordEmp] = useState(null);
+  const [settingsEmp, setSettingsEmp] = useState(null);
   const [modalMode, setModalMode] = useState('invite'); // 'invite' | 'manual'
   const [toastMsg, setToastMsg] = useState(null);
+
+  // Department Transfer in Account Settings modal (HR Administrative Action)
+  const [transferDept, setTransferDept] = useState('');
+  const [transferSuccessMsg, setTransferSuccessMsg] = useState('');
 
   // New employee state (manual mode)
   const [fullName, setFullName] = useState('');
@@ -165,7 +171,7 @@ export default function EmployeeManagement({
     );
     const emp = employeeList.find((e) => e.id === empId);
     setToastMsg(`Personnel record for "${emp?.fullName || 'Employee'}" has been archived.`);
-    setSelectedEmp(null);
+    setSettingsEmp((prev) => (prev && prev.id === empId ? { ...prev, status: 'Archived' } : prev));
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -175,8 +181,62 @@ export default function EmployeeManagement({
     );
     const emp = employeeList.find((e) => e.id === empId);
     setToastMsg(`Personnel record for "${emp?.fullName || 'Employee'}" has been restored to Active status.`);
-    setSelectedEmp(null);
+    setSettingsEmp((prev) => (prev && prev.id === empId ? { ...prev, status: 'Active' } : prev));
     setTimeout(() => setToastMsg(null), 4500);
+  };
+
+  const handleOpenSettings = (emp) => {
+    setSettingsEmp(emp);
+    const availableDepts = departments.filter((d) => d !== emp.department);
+    setTransferDept(availableDepts[0] || departments[0] || '');
+    setTransferSuccessMsg('');
+  };
+
+  const handleTransferDepartment = (e) => {
+    e.preventDefault();
+    if (!settingsEmp || !transferDept || transferDept === settingsEmp.department) return;
+
+    const prevDept = settingsEmp.department;
+    const newDept = transferDept;
+    const newCategory = getComputedCategory(newDept);
+    const newCollege = isMaintenanceDept(newDept)
+      ? 'Physical Plant and General Services'
+      : 'Administrative and Support Services';
+
+    setEmployeeList((prev) =>
+      prev.map((emp) =>
+        emp.id === settingsEmp.id
+          ? {
+              ...emp,
+              department: newDept,
+              college: newCollege,
+              cosCategory: newCategory,
+            }
+          : emp
+      )
+    );
+
+    setSettingsEmp((prev) =>
+      prev
+        ? {
+            ...prev,
+            department: newDept,
+            college: newCollege,
+            cosCategory: newCategory,
+          }
+        : null
+    );
+
+    const remainingDepts = departments.filter((d) => d !== newDept);
+    setTransferDept(remainingDepts[0] || '');
+
+    const msg = `✓ Department transfer executed: "${settingsEmp.fullName}" transferred from ${prevDept} to ${newDept}.`;
+    setTransferSuccessMsg(msg);
+    setToastMsg(msg);
+    setTimeout(() => {
+      setTransferSuccessMsg('');
+      setToastMsg(null);
+    }, 5000);
   };
 
   const handleCreateSubmit = (e) => {
@@ -224,6 +284,16 @@ export default function EmployeeManagement({
     setInviteEmail('');
     setTimeout(() => setToastMsg(null), 4500);
   };
+
+  if (selectedRecordEmp) {
+    const activeEmp = employeeList.find((e) => e.id === selectedRecordEmp.id) || selectedRecordEmp;
+    return (
+      <EmployeeRecordView
+        employee={activeEmp}
+        onBack={() => setSelectedRecordEmp(null)}
+      />
+    );
+  }
 
   return (
     <div>
@@ -353,15 +423,34 @@ export default function EmployeeManagement({
                   </span>
                 </td>
                 <td>
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => {
-                      setSelectedEmp(emp);
-                      onSelectEmployee(emp.id);
-                    }}
-                  >
-                    View Record
-                  </button>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => {
+                        setSelectedRecordEmp(emp);
+                        onSelectEmployee(emp.id);
+                      }}
+                    >
+                      View Record
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '13px',
+                        lineHeight: 1,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title={`Account Settings - ${emp.fullName}`}
+                      onClick={() => handleOpenSettings(emp)}
+                    >
+                      ⚙️
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -638,117 +727,149 @@ export default function EmployeeManagement({
           </div>
         </div>
       )}
-      {/* Detailed Personnel Dossier Modal */}
-      {selectedEmp && (
+      {/* Account Settings Modal */}
+      {settingsEmp && (
         <div
           className="modal-overlay open"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedEmp(null);
+            if (e.target === e.currentTarget) setSettingsEmp(null);
           }}
         >
-          <div className="modal-card" style={{ maxWidth: '560px' }}>
+          <div className="modal-card" style={{ maxWidth: '540px' }}>
             <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>
-                Personnel Record Dossier (UC-09)
+              <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚙️ Account Settings</span>
               </div>
               <button
                 type="button"
                 className="modal-close"
-                onClick={() => setSelectedEmp(null)}
+                onClick={() => setSettingsEmp(null)}
               >
                 ✕
               </button>
             </div>
 
-            {/* Employee Header */}
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-              <span className="emp-id-chip" style={{ margin: '0 auto 8px', display: 'inline-block' }}>
-                {selectedEmp.idNumber}
-              </span>
-              <h2 style={{ margin: '6px 0 2px' }}>{selectedEmp.fullName}</h2>
-              <div className="muted" style={{ fontSize: '13px' }}>
-                {selectedEmp.email}
+            {/* Profile Brief */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: '#f8fafc',
+                border: '1px solid var(--line)',
+                borderRadius: '8px',
+                marginBottom: '18px',
+              }}
+            >
+              <div>
+                <span className="emp-id-chip" style={{ marginBottom: '4px', display: 'inline-block' }}>
+                  {settingsEmp.idNumber}
+                </span>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>
+                  {settingsEmp.fullName}
+                </div>
+                <div className="muted" style={{ fontSize: '12px' }}>
+                  {settingsEmp.email} • {settingsEmp.department}
+                </div>
               </div>
-              <div style={{ marginTop: '8px' }}>
+              <div>
                 <span
                   className={`badge ${
-                    selectedEmp.status === 'Archived' ? 'badge-delete' : 'badge-active'
+                    settingsEmp.status === 'Archived' ? 'badge-delete' : 'badge-active'
                   }`}
                   style={{ fontWeight: 700, padding: '4px 10px' }}
                 >
-                  {selectedEmp.status === 'Archived' ? '📦 Archived Personnel' : '✓ Active Employee'}
+                  {settingsEmp.status === 'Archived' ? '📦 Archived' : '✓ Active'}
                 </span>
               </div>
             </div>
 
-            {/* Dossier Details Sections */}
-            <div
-              style={{
-                background: '#f8fafc',
-                padding: '16px',
-                borderRadius: '10px',
-                border: '1px solid var(--line)',
-                marginBottom: '20px',
-              }}
-            >
-              <div className="section-label" style={{ marginTop: 0 }}>
-                Institutional Assignment
+            {/* Section 1: Department Transfer & Reassignment (HR Administrative Action) */}
+            <div style={{ marginBottom: '20px' }}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '6px', color: 'var(--ink)' }}>
+                Department Transfer &amp; Reassignment
               </div>
-              <div className="detail-row">
-                <span>Department / Office:</span>
-                <span>
-                  <b>{selectedEmp.department}</b>
-                </span>
-              </div>
-              <div className="detail-row">
-                <span>COS Category:</span>
-                <span className="badge badge-unassigned">{selectedEmp.cosCategory}</span>
-              </div>
+              <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.45 }}>
+                Reassign this COS employee to another university department. As department transfers are an HR-level administrative prerogative, executing this transfer immediately updates their department assignment, college, and evaluation routing.
+              </p>
 
-              <div className="section-label">Contract Lifecycle</div>
-              <div className="detail-row">
-                <span>Date Appointed:</span>
-                <span>{selectedEmp.dateAppointed || 'Oct 22, 2026'}</span>
-              </div>
-              <div className="detail-row">
-                <span>Contract Expiration:</span>
-                <span style={{ color: 'var(--brand-700)', fontWeight: 700 }}>
-                  {selectedEmp.contractEndDate}
-                </span>
-              </div>
+              {transferSuccessMsg && (
+                <div className="flash flash-success" style={{ marginBottom: '12px', fontSize: '12.5px', padding: '8px 12px' }}>
+                  {transferSuccessMsg}
+                </div>
+              )}
 
-              <div className="section-label">Performance Summary</div>
-              <div className="detail-row">
-                <span>Latest Evaluation Score:</span>
-                <span>
-                  {selectedEmp.latestScore !== null ? (
-                    <span
-                      className={`score-pill ${
-                        selectedEmp.latestScore >= 80
-                          ? 'score-good'
-                          : selectedEmp.latestScore >= 60
-                          ? 'score-mid'
-                          : 'score-bad'
-                      }`}
+              <form
+                onSubmit={handleTransferDepartment}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <label className="muted" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Current Department
+                    </label>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', padding: '6px 0' }}>
+                      {settingsEmp.department}
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="settingsTransferDeptSelect" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Target Department <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <select
+                      id="settingsTransferDeptSelect"
+                      className="form-control"
+                      style={{ fontSize: '13px', padding: '6px 10px' }}
+                      value={transferDept}
+                      onChange={(e) => setTransferDept(e.target.value)}
                     >
-                      {selectedEmp.latestScore} / 100 ({selectedEmp.latestRating})
-                    </span>
-                  ) : (
-                    <span className="muted">Unrated (Evaluation In Progress)</span>
-                  )}
-                </span>
-              </div>
-              <div className="detail-row" style={{ borderBottom: 'none' }}>
-                <span>DAR Compliance:</span>
-                <span>
-                  <b>84 Verified Logs</b>
-                </span>
-              </div>
+                      {departments
+                        .filter((d) => d !== settingsEmp.department)
+                        .map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-sm"
+                    disabled={!transferDept || transferDept === settingsEmp.department}
+                    style={{
+                      background: '#d97706',
+                      color: '#fff',
+                      borderColor: '#d97706',
+                      fontWeight: 700,
+                      cursor: !transferDept || transferDept === settingsEmp.department ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ⇄ Execute Department Transfer
+                  </button>
+                </div>
+              </form>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex-between" style={{ alignItems: 'center' }}>
-              {selectedEmp.status === 'Archived' ? (
+            {/* Section 2: Account Lifecycle & Status */}
+            <div style={{ marginBottom: '20px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
+                Account Lifecycle &amp; Status
+              </div>
+              <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px' }}>
+                {settingsEmp.status === 'Archived'
+                  ? 'This account is currently archived. Restoring it will re-enable portal access and restore them to active evaluation cycles.'
+                  : 'Archiving disables active portal access for this employee and hides them from active evaluation cycles, while securely preserving all historical MARs and evaluation records.'}
+              </p>
+              {settingsEmp.status === 'Archived' ? (
                 <button
                   type="button"
                   className="btn"
@@ -758,7 +879,7 @@ export default function EmployeeManagement({
                     background: 'var(--green-50)',
                     fontWeight: 700,
                   }}
-                  onClick={() => handleRestoreEmployee(selectedEmp.id)}
+                  onClick={() => handleRestoreEmployee(settingsEmp.id)}
                 >
                   ↩ Restore Employee
                 </button>
@@ -775,21 +896,73 @@ export default function EmployeeManagement({
                   onClick={() => {
                     if (
                       window.confirm(
-                        `Are you sure you want to archive the personnel record for "${selectedEmp.fullName}"? They will be moved to the Archived directory.`
+                        `Are you sure you want to archive the personnel record for "${settingsEmp.fullName}"? They will be moved to the Archived directory.`
                       )
                     ) {
-                      handleArchiveEmployee(selectedEmp.id);
+                      handleArchiveEmployee(settingsEmp.id);
                     }
                   }}
                 >
                   📦 Archive Employee
                 </button>
               )}
+            </div>
 
+            {/* Section 3: Future Administrative Controls (Placeholders) */}
+            <div
+              style={{
+                background: '#fdfdfe',
+                border: '1px dashed #cbd5e1',
+                borderRadius: '8px',
+                padding: '14px 16px',
+                marginBottom: '20px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '10px',
+                }}
+              >
+                <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>
+                  Administrative Controls (Upcoming)
+                </span>
+                <span className="badge badge-unassigned" style={{ fontSize: '11px' }}>
+                  Future Release
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>Reset Password Credentials</div>
+                    <div className="muted" style={{ fontSize: '11px' }}>Dispatches a 24-hr secure password reset link to institutional email</div>
+                  </div>
+                  <button type="button" className="btn btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+                    Send Reset Link
+                  </button>
+                </div>
+
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>Institutional Email Update</div>
+                    <div className="muted" style={{ fontSize: '11px' }}>Requires HR Master Administrator identity verification token</div>
+                  </div>
+                  <button type="button" className="btn btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
+                    Edit Email
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => setSelectedEmp(null)}
+                onClick={() => setSettingsEmp(null)}
               >
                 Close
               </button>

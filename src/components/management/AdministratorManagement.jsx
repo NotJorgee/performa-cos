@@ -81,13 +81,45 @@ export default function AdministratorManagement({
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [settingsAdmin, setSettingsAdmin] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
+
+  // Edit settings form fields
+  const [editRole, setEditRole] = useState('Department Head');
+  const [editDept, setEditDept] = useState(departments[0]);
+  const [editContact, setEditContact] = useState('');
 
   // Tokenized invite form fields
   const [inviteEmail, setInviteEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState('Department Head'); // strictly 'Department Head' | 'HR Personnel'
   const [selectedDept, setSelectedDept] = useState(departments[0]);
+
+  const openAdminSettings = (adm) => {
+    setSettingsAdmin(adm);
+    setEditRole(adm.role);
+    setEditDept(adm.department);
+    setEditContact(adm.contactNumber || '');
+  };
+
+  const handleSaveAdminSettings = (e) => {
+    e.preventDefault();
+    if (!settingsAdmin) return;
+    setAdminList((prev) =>
+      prev.map((a) =>
+        a.id === settingsAdmin.id
+          ? {
+              ...a,
+              role: editRole,
+              department: editDept,
+              contactNumber: editContact.trim(),
+            }
+          : a
+      )
+    );
+    setToastMsg(`Settings updated successfully for "${settingsAdmin.fullName}".`);
+    setSettingsAdmin(null);
+    setTimeout(() => setToastMsg(null), 4500);
+  };
 
   const filtered = adminList.filter((a) => {
     const matchesSearch =
@@ -111,7 +143,7 @@ export default function AdministratorManagement({
     );
     const adm = adminList.find((a) => a.id === adminId);
     setToastMsg(`Administrator account for "${adm?.fullName || 'Staff'}" has been archived.`);
-    setSelectedAdmin(null);
+    setSettingsAdmin(null);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -123,7 +155,7 @@ export default function AdministratorManagement({
     setToastMsg(
       `Administrator account for "${adm?.fullName || 'Staff'}" has been restored to Active status.`
     );
-    setSelectedAdmin(null);
+    setSettingsAdmin(null);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -242,13 +274,13 @@ export default function AdministratorManagement({
         </select>
       </div>
 
-      {/* Administrator Roster Table (Appointment Type removed) */}
+      {/* Administrator Roster Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
             <tr>
               <th>ID Number</th>
-              <th>Full Name</th>
+              <th>Administrator Name</th>
               <th>System Role</th>
               <th>Department / Office</th>
               <th>Status</th>
@@ -259,9 +291,7 @@ export default function AdministratorManagement({
             {filtered.map((adm) => (
               <tr key={adm.id}>
                 <td>
-                  <span className="emp-id-chip" style={{ margin: 0 }}>
-                    {adm.idNumber}
-                  </span>
+                  <span className="emp-id-chip">{adm.idNumber}</span>
                 </td>
                 <td>
                   <b>{adm.fullName}</b>
@@ -297,9 +327,16 @@ export default function AdministratorManagement({
                   <button
                     className="btn btn-sm"
                     type="button"
-                    onClick={() => setSelectedAdmin(adm)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => openAdminSettings(adm)}
+                    title={`Edit Settings - ${adm.fullName}`}
                   >
-                    View Record
+                    ⚙️ Settings
                   </button>
                 </td>
               </tr>
@@ -315,7 +352,203 @@ export default function AdministratorManagement({
         </table>
       </div>
 
-      {/* Tokenized Invite Modal (Strictly Restricted to Dept Head & HR Personnel) */}
+      {/* 1. ADMINISTRATOR SETTINGS MODAL */}
+      {settingsAdmin && (
+        <div
+          className="modal-overlay open"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSettingsAdmin(null);
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: '540px' }}>
+            <div className="modal-header">
+              <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚙️ Administrator Settings</span>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setSettingsAdmin(null)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Administrator Profile Brief */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: '#f8fafc',
+                border: '1px solid var(--line)',
+                borderRadius: '8px',
+                marginBottom: '18px',
+              }}
+            >
+              <div>
+                <span className="emp-id-chip" style={{ marginBottom: '4px', display: 'inline-block' }}>
+                  {settingsAdmin.idNumber}
+                </span>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>
+                  {settingsAdmin.fullName}
+                </div>
+                <div className="muted" style={{ fontSize: '12px' }}>
+                  {settingsAdmin.email} • {settingsAdmin.department}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span
+                  className={`badge ${
+                    settingsAdmin.status === 'Archived' ? 'badge-delete' : 'badge-active'
+                  }`}
+                  style={{ fontWeight: 700, padding: '4px 10px', display: 'block', marginBottom: '4px' }}
+                >
+                  {settingsAdmin.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                </span>
+                <span
+                  className={`badge ${
+                    settingsAdmin.role === 'Department Head' ? 'badge-inprogress' : 'badge-dept'
+                  }`}
+                  style={{ fontWeight: 700, padding: '2px 8px', fontSize: '11.5px' }}
+                >
+                  {settingsAdmin.role === 'Department Head' ? '🏛️ Dept Head' : '📋 HRMO'}
+                </span>
+              </div>
+            </div>
+
+            {/* Edit Administrator Form */}
+            <form onSubmit={handleSaveAdminSettings}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
+                Account Assignments &amp; Privileges
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editAdminRole">
+                  System Role &amp; Evaluation Authority <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <select
+                  id="editAdminRole"
+                  className="form-control"
+                  required
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                >
+                  <option value="Department Head">Department Head (50% Subordinate Appraisals & Fast-Track Rejection)</option>
+                  <option value="HR Personnel">HR Personnel (30% Institutional Scoring & Contract Lifecycles)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editAdminDept">
+                  Department / Office Assignment <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <select
+                  id="editAdminDept"
+                  className="form-control"
+                  required
+                  value={editDept}
+                  onChange={(e) => setEditDept(e.target.value)}
+                >
+                  {departments.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editAdminContact">Contact Number</label>
+                <input
+                  id="editAdminContact"
+                  className="form-control"
+                  type="text"
+                  placeholder="+63 9XX XXX XXXX"
+                  value={editContact}
+                  onChange={(e) => setEditContact(e.target.value)}
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <button type="submit" className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                  Save Administrator Settings
+                </button>
+              </div>
+            </form>
+
+            {/* Section 2: Account Lifecycle & Archival */}
+            <div style={{ marginBottom: '18px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
+                Account Lifecycle &amp; Status
+              </div>
+              <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.4 }}>
+                {settingsAdmin.status === 'Archived'
+                  ? 'This administrator account is currently archived. Restoring it will re-enable institutional privileges, departmental evaluation authority, and portal login.'
+                  : 'Archiving revokes administrative portal access and evaluation authority for this staff member while securely preserving institutional audit records.'}
+              </p>
+
+              {settingsAdmin.status === 'Archived' ? (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    color: 'var(--green-700)',
+                    borderColor: '#bfe8cd',
+                    background: 'var(--green-50)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => handleRestoreAdmin(settingsAdmin.id)}
+                >
+                  ↩ Restore Administrator
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    color: 'var(--red-600)',
+                    borderColor: '#f3c2c2',
+                    background: 'var(--red-50)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Are you sure you want to archive the administrator account for "${settingsAdmin.fullName}"? They will be moved to the Archived directory.`
+                      )
+                    ) {
+                      handleArchiveAdmin(settingsAdmin.id);
+                    }
+                  }}
+                >
+                  📦 Archive Administrator
+                </button>
+              )}
+            </div>
+
+            <div className="flex-between">
+              <span className="muted" style={{ fontSize: '12px' }}>
+                Institutional SSO &amp; MFA Protected
+              </span>
+              <button
+                type="button"
+                className="btn"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSettingsAdmin(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. TOKENIZED INVITE MODAL (Restricted to Dept Head & HR Personnel) */}
       {showInviteModal && (
         <div
           className="modal-overlay open"
@@ -344,10 +577,11 @@ export default function AdministratorManagement({
             <form onSubmit={handleInviteSubmit}>
               {/* Email Address Input */}
               <div className="form-group">
-                <label>
+                <label htmlFor="inviteAdminEmail">
                   Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
                 <input
+                  id="inviteAdminEmail"
                   className="form-control"
                   type="email"
                   required
@@ -357,12 +591,13 @@ export default function AdministratorManagement({
                 />
               </div>
 
-              {/* System Role Dropdown (Restricted strictly to Dept Head and HR Personnel) */}
+              {/* System Role Dropdown */}
               <div className="form-group">
-                <label>
+                <label htmlFor="inviteAdminRole">
                   System Role <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
                 <select
+                  id="inviteAdminRole"
                   className="form-control"
                   required
                   value={selectedRole}
@@ -371,17 +606,15 @@ export default function AdministratorManagement({
                   <option value="Department Head">Department Head</option>
                   <option value="HR Personnel">HR Personnel</option>
                 </select>
-                <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--ink-500)' }}>
-                  Institutional access permissions are automatically provisioned based on the chosen role.
-                </div>
               </div>
 
-              {/* Assigned Department */}
+              {/* Department Dropdown */}
               <div className="form-group">
-                <label>
-                  Assigned Department / Office <span style={{ color: 'var(--red-600)' }}>*</span>
+                <label htmlFor="inviteAdminDept">
+                  Department / Office <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
                 <select
+                  id="inviteAdminDept"
                   className="form-control"
                   required
                   value={selectedDept}
@@ -395,7 +628,7 @@ export default function AdministratorManagement({
                 </select>
               </div>
 
-              <div className="flex-between" style={{ marginTop: '22px' }}>
+              <div className="flex-between" style={{ marginTop: '20px' }}>
                 <button
                   type="button"
                   className="btn"
@@ -408,163 +641,6 @@ export default function AdministratorManagement({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Administrator Record Dossier Modal (Styled like Employee Version, Appointment Type removed) */}
-      {selectedAdmin && (
-        <div
-          className="modal-overlay open"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedAdmin(null);
-          }}
-        >
-          <div className="modal-card" style={{ maxWidth: '560px' }}>
-            <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>
-                Personnel Record Dossier (UC-09)
-              </div>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setSelectedAdmin(null)}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Administrator Header */}
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-              <span className="emp-id-chip" style={{ margin: '0 auto 8px', display: 'inline-block' }}>
-                {selectedAdmin.idNumber}
-              </span>
-              <h2 style={{ margin: '6px 0 2px' }}>{selectedAdmin.fullName}</h2>
-              <div className="muted" style={{ fontSize: '13px' }}>
-                {selectedAdmin.email}
-              </div>
-              <div style={{ marginTop: '8px' }}>
-                <span
-                  className={`badge ${
-                    selectedAdmin.status === 'Archived' ? 'badge-delete' : 'badge-active'
-                  }`}
-                  style={{ fontWeight: 700, padding: '4px 10px' }}
-                >
-                  {selectedAdmin.status === 'Archived'
-                    ? '📦 Archived Administrator'
-                    : '✓ Active Administrator'}
-                </span>
-              </div>
-            </div>
-
-            {/* Dossier Details Sections */}
-            <div
-              style={{
-                background: '#f8fafc',
-                padding: '16px',
-                borderRadius: '10px',
-                border: '1px solid var(--line)',
-                marginBottom: '20px',
-              }}
-            >
-              <div className="section-label" style={{ marginTop: 0 }}>
-                Institutional Assignment
-              </div>
-              <div className="detail-row">
-                <span>System Role:</span>
-                <span>
-                  <span
-                    className={`badge ${
-                      selectedAdmin.role === 'Department Head'
-                        ? 'badge-inprogress'
-                        : 'badge-dept'
-                    }`}
-                    style={{ fontWeight: 700, padding: '3px 8px', fontSize: '12px' }}
-                  >
-                    {selectedAdmin.role === 'Department Head'
-                      ? '🏛️ Department Head'
-                      : '📋 HR Personnel'}
-                  </span>
-                </span>
-              </div>
-              <div className="detail-row">
-                <span>Department / Office:</span>
-                <span>
-                  <b>{selectedAdmin.department}</b>
-                </span>
-              </div>
-              <div className="detail-row">
-                <span>Campus Location:</span>
-                <span>Eastern Visayas State University Ormoc Campus</span>
-              </div>
-
-              <div className="section-label">Administrative Privileges &amp; Scope</div>
-              <div className="detail-row">
-                <span>Evaluation Authority:</span>
-                <span>
-                  {selectedAdmin.role === 'Department Head'
-                    ? 'Subordinate Performance Appraisal (50%) & Fast-Track Rejection'
-                    : 'HR Triad Evaluation (30%), Proxy Scoring & Contract Lifecycle Management'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span>Contact Number:</span>
-                <span>{selectedAdmin.contactNumber || '—'}</span>
-              </div>
-              <div className="detail-row" style={{ borderBottom: 'none' }}>
-                <span>Account Security:</span>
-                <span>Institutional SSO &amp; MFA Enabled</span>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex-between" style={{ alignItems: 'center' }}>
-              {selectedAdmin.status === 'Archived' ? (
-                <button
-                  type="button"
-                  className="btn"
-                  style={{
-                    color: 'var(--green-700)',
-                    borderColor: '#bfe8cd',
-                    background: 'var(--green-50)',
-                    fontWeight: 700,
-                  }}
-                  onClick={() => handleRestoreAdmin(selectedAdmin.id)}
-                >
-                  ↩ Restore Administrator
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn"
-                  style={{
-                    color: 'var(--red-600)',
-                    borderColor: '#f3c2c2',
-                    background: 'var(--red-50)',
-                    fontWeight: 700,
-                  }}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Are you sure you want to archive the administrator account for "${selectedAdmin.fullName}"? They will be moved to the Archived directory.`
-                      )
-                    ) {
-                      handleArchiveAdmin(selectedAdmin.id);
-                    }
-                  }}
-                >
-                  📦 Archive Administrator
-                </button>
-              )}
-
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setSelectedAdmin(null)}
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}

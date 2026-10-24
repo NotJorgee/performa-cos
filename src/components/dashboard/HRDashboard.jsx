@@ -143,7 +143,7 @@ export default function HRDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('department_management')}
-          title="Click to configure departments and geofence boundaries (UC-10)"
+          title="Click to configure university departments and colleges (UC-10)"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Department Management</span>
@@ -153,7 +153,7 @@ export default function HRDashboard({
             {metrics.activeColleges}
           </div>
           <div className="quick-access-link">
-            Colleges &amp; work zones →
+            Colleges &amp; departments →
           </div>
         </div>
 

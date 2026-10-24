@@ -31,9 +31,6 @@ export default function DepartmentManagement({
       collegeCode: 'COT',
       employeeCount: 12,
       activeEvaluations: 3,
-      latitude: 11.0065,
-      longitude: 124.6075,
-      radiusM: 500,
     },
     {
       id: 2,
@@ -42,9 +39,6 @@ export default function DepartmentManagement({
       collegeCode: 'COT',
       employeeCount: 8,
       activeEvaluations: 1,
-      latitude: 11.0068,
-      longitude: 124.6072,
-      radiusM: 500,
     },
     {
       id: 3,
@@ -53,9 +47,30 @@ export default function DepartmentManagement({
       collegeCode: 'ADMIN',
       employeeCount: 5,
       activeEvaluations: 0,
-      latitude: 11.0062,
-      longitude: 124.6080,
-      radiusM: 400,
+    },
+    {
+      id: 4,
+      name: 'Engineering Department',
+      college: 'College of Engineering',
+      collegeCode: 'COE',
+      employeeCount: 10,
+      activeEvaluations: 2,
+    },
+    {
+      id: 5,
+      name: 'Education Department',
+      college: 'College of Education',
+      collegeCode: 'COED',
+      employeeCount: 6,
+      activeEvaluations: 1,
+    },
+    {
+      id: 6,
+      name: 'HRMDO Office',
+      college: 'Administrative and Support Services',
+      collegeCode: 'ADMIN',
+      employeeCount: 4,
+      activeEvaluations: 0,
     },
   ],
   onAddDepartment = () => {},
@@ -63,23 +78,65 @@ export default function DepartmentManagement({
   onDeleteDepartment = () => {},
   onBack = null,
 }) {
+  const [deptList, setDeptList] = useState(departments);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [expandedDeptId, setExpandedDeptId] = useState(null);
+  const [settingsDept, setSettingsDept] = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  // Add form fields
   const [newDeptName, setNewDeptName] = useState('');
   const [newCollege, setNewCollege] = useState('College of Technology');
   const [newCollegeCode, setNewCollegeCode] = useState('COT');
-  const [deleteError, setDeleteError] = useState(null);
+
+  // Edit settings form fields
+  const [editDeptName, setEditDeptName] = useState('');
+  const [editCollege, setEditCollege] = useState('');
+  const [editCollegeCode, setEditCollegeCode] = useState('');
+
+  const openDeptSettings = (dept) => {
+    setSettingsDept(dept);
+    setEditDeptName(dept.name);
+    setEditCollege(dept.college);
+    setEditCollegeCode(dept.collegeCode);
+    setDeleteError(null);
+  };
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (!newDeptName.trim()) return;
-    onAddDepartment({
-      name: newDeptName,
-      college: newCollege,
-      collegeCode: newCollegeCode,
-    });
+    const newDept = {
+      id: Date.now(),
+      name: newDeptName.trim(),
+      college: newCollege.trim(),
+      collegeCode: newCollegeCode.trim(),
+      employeeCount: 0,
+      activeEvaluations: 0,
+    };
+    setDeptList([newDept, ...deptList]);
+    onAddDepartment(newDept);
     setNewDeptName('');
     setShowAddModal(false);
+    setToastMsg(`Department "${newDept.name}" added successfully.`);
+    setTimeout(() => setToastMsg(null), 4500);
+  };
+
+  const handleSaveSettings = (e) => {
+    e.preventDefault();
+    if (!settingsDept || !editDeptName.trim()) return;
+
+    const updated = {
+      ...settingsDept,
+      name: editDeptName.trim(),
+      college: editCollege.trim(),
+      collegeCode: editCollegeCode.trim(),
+    };
+
+    setDeptList((prev) => prev.map((d) => (d.id === settingsDept.id ? updated : d)));
+    onUpdateDepartment(settingsDept.id, updated);
+    setToastMsg(`Department settings updated for "${updated.name}".`);
+    setSettingsDept(null);
+    setTimeout(() => setToastMsg(null), 4500);
   };
 
   const handleDelete = (dept) => {
@@ -90,17 +147,28 @@ export default function DepartmentManagement({
       );
       return;
     }
-    setDeleteError(null);
-    onDeleteDepartment(dept.id);
+    if (
+      window.confirm(
+        `Are you sure you want to permanently delete "${dept.name}"? This action cannot be undone.`
+      )
+    ) {
+      setDeleteError(null);
+      setDeptList((prev) => prev.filter((d) => d.id !== dept.id));
+      onDeleteDepartment(dept.id);
+      setToastMsg(`Department "${dept.name}" was successfully removed.`);
+      setSettingsDept(null);
+      setTimeout(() => setToastMsg(null), 4500);
+    }
   };
 
   return (
     <div>
-      <div className="flex-between" style={{ marginBottom: '20px' }}>
+      {/* Page Header */}
+      <div className="flex-between" style={{ marginBottom: '14px' }}>
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Department Management (UC-10)</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Configure university colleges, offices, and campus geofence boundary coordinates.
+            Configure university colleges, academic departments, and institutional administrative offices.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -119,12 +187,41 @@ export default function DepartmentManagement({
         </div>
       </div>
 
-      {deleteError && (
-        <div className="flash flash-danger flash-shake" style={{ marginBottom: '18px' }}>
-          {deleteError}
+      {/* Campus Geofence Info Notice */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'var(--brand-50)',
+          border: '1px solid var(--brand-border)',
+          borderRadius: '10px',
+          padding: '10px 14px',
+          marginBottom: '16px',
+          fontSize: '13px',
+          color: 'var(--ink-800)',
+        }}
+      >
+        <span>📍</span>
+        <div style={{ flex: 1 }}>
+          <b>Campus Geofence is Universal:</b> Geofencing coordinates are centralized in the top-left <b>Hamburger Menu (☰ → Campus Geofence)</b> so all departments operate under a unified EVSU-Ormoc campus boundary.
+        </div>
+      </div>
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
+          ✓ {toastMsg}
         </div>
       )}
 
+      {deleteError && (
+        <div className="flash flash-danger flash-shake" style={{ marginBottom: '16px' }}>
+          ⚠️ {deleteError}
+        </div>
+      )}
+
+      {/* Departments Roster Table without Geofence Boundary Column */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
@@ -133,121 +230,274 @@ export default function DepartmentManagement({
               <th>College / Scope</th>
               <th>Personnel</th>
               <th>Active Cycles</th>
-              <th>Geofence Boundary</th>
-              <th>Actions</th>
+              <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {departments.map((d) => (
-              <React.Fragment key={d.id}>
-                <tr>
-                  <td><b>{d.name}</b></td>
-                  <td>{d.college} ({d.collegeCode})</td>
-                  <td>{d.employeeCount} employees</td>
-                  <td>
-                    {d.activeEvaluations > 0 ? (
-                      <span className="badge badge-inprogress">{d.activeEvaluations} Active</span>
-                    ) : (
-                      <span className="muted">None</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className="badge badge-completed">
-                      {d.radiusM}m Radius
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => setExpandedDeptId(expandedDeptId === d.id ? null : d.id)}
-                      style={{ marginRight: '6px' }}
-                    >
-                      {expandedDeptId === d.id ? 'Close Map' : 'Set Boundary'}
-                    </button>
-                    <button
-                      className="btn btn-sm"
-                      style={{ color: 'var(--red-600)' }}
-                      onClick={() => handleDelete(d)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-
-                {/* Expanded Geofence Editor */}
-                {expandedDeptId === d.id && (
-                  <tr>
-                    <td colSpan="6" style={{ background: '#f8fafc', padding: '18px' }}>
-                      <div className="flex-between" style={{ marginBottom: '10px' }}>
-                        <b style={{ color: 'var(--brand-700)' }}>
-                          Geofence Boundary for {d.name}
-                        </b>
-                        <span className="muted" style={{ fontSize: '12px' }}>
-                          Drag marker or click map to reposition boundary center
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          height: '240px',
-                          background: '#e2e8f0',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '14px',
-                        }}
-                      >
-                        <div style={{ textAlign: 'center', color: 'var(--ink-700)' }}>
-                          🗺️ <b>Campus Boundary Center</b>
-                          <div style={{ fontSize: '13px', marginTop: '4px' }}>
-                            Lat: {d.latitude.toFixed(6)}, Lng: {d.longitude.toFixed(6)} (Radius: {d.radiusM}m)
-                          </div>
-                        </div>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Latitude</label>
-                          <input className="form-control" type="number" step="0.000001" defaultValue={d.latitude} />
-                        </div>
-                        <div className="form-group">
-                          <label>Longitude</label>
-                          <input className="form-control" type="number" step="0.000001" defaultValue={d.longitude} />
-                        </div>
-                        <div className="form-group">
-                          <label>Radius (meters)</label>
-                          <input className="form-control" type="number" defaultValue={d.radiusM} />
-                        </div>
-                      </div>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => {
-                          setExpandedDeptId(null);
-                          onUpdateDepartment(d.id, { latitude: d.latitude, longitude: d.longitude, radiusM: d.radiusM });
-                        }}
-                      >
-                        Save Boundary Coordinates
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
+            {deptList.map((d) => (
+              <tr key={d.id}>
+                <td>
+                  <b>{d.name}</b>
+                </td>
+                <td>
+                  {d.college} ({d.collegeCode})
+                </td>
+                <td>{d.employeeCount} employees</td>
+                <td>
+                  {d.activeEvaluations > 0 ? (
+                    <span className="badge badge-inprogress">{d.activeEvaluations} Active</span>
+                  ) : (
+                    <span className="muted">None</span>
+                  )}
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <button
+                    className="btn btn-sm"
+                    type="button"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => openDeptSettings(d)}
+                    title={`Edit Settings - ${d.name}`}
+                  >
+                    ⚙️ Settings
+                  </button>
+                </td>
+              </tr>
             ))}
+            {deptList.length === 0 && (
+              <tr>
+                <td colSpan="5" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
+                  No departments configured. Click "+ Add Department" to add one.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Add Department Modal */}
-      {showAddModal && (
-        <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}>
-          <div className="modal-card">
+      {/* 1. DEPARTMENT SETTINGS MODAL */}
+      {settingsDept && (
+        <div
+          className="modal-overlay open"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSettingsDept(null);
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: '540px' }}>
             <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>Add New Department</div>
-              <button type="button" className="modal-close" onClick={() => setShowAddModal(false)}>✕</button>
+              <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚙️ Department Settings</span>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setSettingsDept(null)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Department Summary Brief */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: '#f8fafc',
+                border: '1px solid var(--line)',
+                borderRadius: '8px',
+                marginBottom: '18px',
+              }}
+            >
+              <div>
+                <span className="emp-id-chip" style={{ marginBottom: '4px', display: 'inline-block' }}>
+                  {settingsDept.collegeCode}
+                </span>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>
+                  {settingsDept.name}
+                </div>
+                <div className="muted" style={{ fontSize: '12px' }}>
+                  {settingsDept.college}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span className="badge badge-dept" style={{ display: 'block', marginBottom: '4px' }}>
+                  {settingsDept.employeeCount} Personnel
+                </span>
+                <span className={`badge ${settingsDept.activeEvaluations > 0 ? 'badge-inprogress' : 'badge-completed'}`}>
+                  {settingsDept.activeEvaluations} Active Evals
+                </span>
+              </div>
+            </div>
+
+            {/* Delete Error inside Modal */}
+            {deleteError && (
+              <div className="flash flash-danger" style={{ marginBottom: '14px', fontSize: '12.5px' }}>
+                ⚠️ {deleteError}
+              </div>
+            )}
+
+            {/* Edit Department Details Form */}
+            <form onSubmit={handleSaveSettings}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
+                Department Configuration
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editDeptNameInput">
+                  Department Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <input
+                  id="editDeptNameInput"
+                  className="form-control"
+                  type="text"
+                  required
+                  list="editDeptPresets"
+                  value={editDeptName}
+                  onChange={(e) => setEditDeptName(e.target.value)}
+                />
+                <datalist id="editDeptPresets">
+                  {EVSU_DEPT_PRESETS.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="editCollegeInput">
+                    College / Institutional Unit <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <input
+                    id="editCollegeInput"
+                    className="form-control"
+                    type="text"
+                    required
+                    value={editCollege}
+                    onChange={(e) => setEditCollege(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="editCollegeCodeInput">
+                    College Code <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <input
+                    id="editCollegeCodeInput"
+                    className="form-control"
+                    type="text"
+                    required
+                    value={editCollegeCode}
+                    onChange={(e) => setEditCollegeCode(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '22px' }}>
+                <button type="submit" className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                  Save Department Changes
+                </button>
+              </div>
+            </form>
+
+            {/* Danger Zone: Delete Department with Referential Integrity */}
+            <div
+              style={{
+                border: '1px solid var(--red-200, #fecaca)',
+                background: '#fff5f5',
+                borderRadius: '8px',
+                padding: '14px 16px',
+                marginBottom: '18px',
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--red-700)', marginBottom: '4px' }}>
+                🗑️ Danger Zone — Delete Department
+              </div>
+              <p className="muted" style={{ fontSize: '12px', margin: '0 0 10px', lineHeight: 1.4 }}>
+                Permanently removes this department. Referential integrity prevents deletion if active personnel accounts or pending evaluation cycles are currently assigned.
+              </p>
+
+              {settingsDept.employeeCount > 0 || settingsDept.activeEvaluations > 0 ? (
+                <div
+                  style={{
+                    background: '#fff',
+                    border: '1px solid #fca5a5',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    color: 'var(--red-700)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>🔒</span>
+                  <span>
+                    Cannot delete: <b>{settingsDept.employeeCount} personnel</b> and <b>{settingsDept.activeEvaluations} active evaluations</b> assigned.
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    color: 'var(--red-600)',
+                    borderColor: '#f3c2c2',
+                    background: '#fff',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => handleDelete(settingsDept)}
+                >
+                  Delete Department
+                </button>
+              )}
+            </div>
+
+            <div className="flex-between">
+              <span className="muted" style={{ fontSize: '12px' }}>
+                EVSU-Ormoc Institutional Registry
+              </span>
+              <button
+                type="button"
+                className="btn"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSettingsDept(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. ADD DEPARTMENT MODAL */}
+      {showAddModal && (
+        <div
+          className="modal-overlay open"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddModal(false);
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <div className="card-title" style={{ margin: 0 }}>
+                Add New Department
+              </div>
+              <button type="button" className="modal-close" onClick={() => setShowAddModal(false)}>
+                ✕
+              </button>
             </div>
             <form onSubmit={handleAddSubmit}>
               <div className="form-group">
-                <label>Department Name</label>
+                <label htmlFor="newDeptName">Department Name</label>
                 <input
+                  id="newDeptName"
                   className="form-control"
                   type="text"
                   required
@@ -265,8 +515,9 @@ export default function DepartmentManagement({
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>College / Unit</label>
+                  <label htmlFor="newCollege">College / Unit</label>
                   <input
+                    id="newCollege"
                     className="form-control"
                     type="text"
                     required
@@ -275,8 +526,9 @@ export default function DepartmentManagement({
                   />
                 </div>
                 <div className="form-group">
-                  <label>College Code</label>
+                  <label htmlFor="newCollegeCode">College Code</label>
                   <input
+                    id="newCollegeCode"
                     className="form-control"
                     type="text"
                     required

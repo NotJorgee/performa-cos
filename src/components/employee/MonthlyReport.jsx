@@ -5,6 +5,9 @@ export default function MonthlyReport({
   department = 'Computer Studies Department',
   onBack = null,
   backLabel = '← Back to Performance Appraisal',
+  onDownload = null,
+  downloadLabel = '📄 Download MAR (PDF)',
+  cyclePeriod = null,
   initialRecords = [
     {
       id: 1,
@@ -103,14 +106,27 @@ export default function MonthlyReport({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Compiled Monthly Accomplishment Report (MAR)</h1>
           <p className="muted" style={{ margin: 0 }}>
-            {department} — Paginated compilation of daily verified DAR task entries for <b>{employeeName}</b>.
+            {department} — Paginated compilation of daily verified DAR task entries for <b>{employeeName}</b>
+            {cyclePeriod ? ` (${cyclePeriod})` : ''}.
           </p>
         </div>
-        {onBack && (
-          <button type="button" className="btn btn-sm" onClick={onBack}>
-            {backLabel}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {onDownload && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={onDownload}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+            >
+              {downloadLabel}
+            </button>
+          )}
+          {onBack && (
+            <button type="button" className="btn btn-sm" onClick={onBack} style={{ cursor: 'pointer' }}>
+              {backLabel}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* FILTER BAR (FR-04, UC-13 step 9) */}
@@ -261,11 +277,14 @@ export default function MonthlyReport({
 
       {/* Photo Evidence Modal Popup */}
       {previewPhoto && (
-        <div className="modal-backdrop" style={{ display: 'flex' }} onClick={() => setPreviewPhoto(null)}>
+        <div
+          className="modal-overlay open"
+          onClick={() => setPreviewPhoto(null)}
+        >
           <div className="modal-card" style={{ maxWidth: '580px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0 }}>📷 Verified DAR Task Photo Evidence</div>
-              <button type="button" className="modal-close" onClick={() => setPreviewPhoto(null)}>×</button>
+              <button type="button" className="modal-close" onClick={() => setPreviewPhoto(null)}>✕</button>
             </div>
             <div style={{ marginTop: '12px' }}>
               <img

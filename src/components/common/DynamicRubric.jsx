@@ -118,6 +118,7 @@ export default function DynamicRubric({
   onSubmit = () => {},
   onFastTrackReject = null, // Callback if supervisor wants to trigger Fast-Track Rejection (UC-06)
   readOnly = false,
+  hideAlerts = false,
 }) {
   const isMaintenance = cosCategory.toLowerCase().includes('maintenance') || cosCategory.toLowerCase().includes('janitorial');
   const criteria = isMaintenance ? MAINTENANCE_CRITERIA : ADMINISTRATIVE_CRITERIA;
@@ -145,13 +146,13 @@ export default function DynamicRubric({
         <b>{scoredCount} / {totalItems}</b> Scored · Raw Sum: <b>{rawSum} / 100</b>
       </div>
 
-      {readOnly && (
+      {!hideAlerts && readOnly && (
         <div className="flash flash-info" style={{ marginBottom: '14px', fontSize: '13px' }}>
           This evaluation has already been submitted and is locked in read-only mode while undergoing peer and HR review.
         </div>
       )}
 
-      {evaluatorRole === 'Peer' && (
+      {!hideAlerts && evaluatorRole === 'Peer' && (
         <div className="flash flash-info" style={{ marginBottom: '14px', fontSize: '12.5px', padding: '8px 12px' }}>
           <b>Anonymous Grading (UC-04, FR-27):</b> Your identity will be permanently stripped when your 20% peer score is recorded.
         </div>
