@@ -12,6 +12,7 @@ export { default as ProfileSettings } from './auth/ProfileSettings';
 export { default as DynamicRubric } from './common/DynamicRubric';
 export { default as FastTrackModal } from './common/FastTrackModal';
 export { default as CampusGeofenceModal } from './common/CampusGeofenceModal';
+export { default as CampusGeofence } from './common/CampusGeofence';
 
 // 1. COS Employee GUI Modules (SRS Section 8.1)
 export { default as EmployeeDashboard } from './dashboard/EmployeeDashboard';
@@ -34,3 +35,4 @@ export { default as AdministratorManagement } from './management/AdministratorMa
 export { default as DepartmentManagement } from './management/DepartmentManagement';
 export { default as ReportGenerator } from './reports/ReportGenerator';
 export { default as AuditTrail } from './reports/AuditTrail';
+export { default as BackupData } from './reports/BackupData';

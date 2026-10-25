@@ -157,39 +157,21 @@ export default function HRDashboard({
           </div>
         </div>
 
-        {/* Panel 5: Executive Reports */}
+        {/* Panel 6: Executive Reports */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('report_generator')}
-          title="Click to generate 50/20/30 appraisal executive reports (UC-07)"
+          title="Click to view personnel records, past MARs, and evaluation dossiers"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Executive Reports</span>
             <div className="quick-access-icon">📊</div>
           </div>
           <div className="quick-access-value text-lg">
-            Generate a report
+            Past MARs &amp; Records
           </div>
           <div className="quick-access-link">
-            50/20/30 appraisal analytics →
-          </div>
-        </div>
-
-        {/* Panel 6: Audit Trail & Backup */}
-        <div
-          className="quick-access-card"
-          onClick={() => onNavigate('audit_trail')}
-          title="Click to inspect security audit logs and database snapshots (UC-12)"
-        >
-          <div className="quick-access-top">
-            <span className="quick-access-label">Audit Trail &amp; Backup</span>
-            <div className="quick-access-icon">🛡️</div>
-          </div>
-          <div className="quick-access-value text-lg">
-            Security logs
-          </div>
-          <div className="quick-access-link">
-            Access trails &amp; snapshots →
+            Extract records &amp; evaluations →
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   VerifyOtp,
   ResetNewPassword,
   ProfileSettings,
+  CampusGeofence,
   // COS Employee GUI Modules (SRS Section 8.1)
   EmployeeDashboard,
   DailyReporting,
@@ -25,6 +26,7 @@ import {
   DepartmentManagement,
   ReportGenerator,
   AuditTrail,
+  BackupData,
 } from './components';
 
 export default function App() {
@@ -270,7 +272,20 @@ export default function App() {
               onBack={() => setCurrentView('dashboard')}
             />
           )}
+          {currentView === 'backup_data' && (
+            <BackupData
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          )}
         </>
+      )}
+
+      {/* Institutional Campus Geofence Page (Universal for HR & Dept Heads) */}
+      {currentView === 'campus_geofence' && (
+        <CampusGeofence
+          onBack={() => setCurrentView('dashboard')}
+        />
       )}
 
       {/* Universal Profile, Account Settings & Security (UC-11) */}

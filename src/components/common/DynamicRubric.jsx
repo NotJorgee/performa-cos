@@ -109,7 +109,7 @@ export const MAINTENANCE_CRITERIA = [
 ];
 
 export default function DynamicRubric({
-  cosCategory = 'Administrative', // 'Administrative' | 'Maintenance'
+  cosCategory = 'Administrative', // 'Administrative' | 'Maintenance/Janitorial'
   evaluatorRole = 'Immediate Supervisor', // 'Immediate Supervisor' | 'Peer' | 'HRMO'
   initialScores = {},
   initialStrengths = '',

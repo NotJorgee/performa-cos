@@ -58,7 +58,7 @@ export default function EvaluationManagement({
       idNumber: 'D10222026XYZ',
       fullName: 'Danilo Cruz',
       department: 'Technology Department',
-      cosCategory: 'Technical',
+      cosCategory: 'Administrative',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Confirmed',
       routingStatus: 'Supervisor Veto',

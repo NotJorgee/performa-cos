@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
-import EmployeeRecordView from './EmployeeRecordView';
 
 export default function EmployeeManagement({
   employees = [
@@ -79,7 +78,6 @@ export default function EmployeeManagement({
   const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Archived'
   const [deptFilter, setDeptFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedRecordEmp, setSelectedRecordEmp] = useState(null);
   const [settingsEmp, setSettingsEmp] = useState(null);
   const [modalMode, setModalMode] = useState('invite'); // 'invite' | 'manual'
   const [toastMsg, setToastMsg] = useState(null);
@@ -285,16 +283,6 @@ export default function EmployeeManagement({
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  if (selectedRecordEmp) {
-    const activeEmp = employeeList.find((e) => e.id === selectedRecordEmp.id) || selectedRecordEmp;
-    return (
-      <EmployeeRecordView
-        employee={activeEmp}
-        onBack={() => setSelectedRecordEmp(null)}
-      />
-    );
-  }
-
   return (
     <div>
       <div className="flex-between" style={{ marginBottom: '14px' }}>
@@ -373,10 +361,10 @@ export default function EmployeeManagement({
               <th>Full Name</th>
               <th>Department</th>
               <th>COS Category</th>
+              <th>Created</th>
               <th>Contract End</th>
-              <th>Latest Score</th>
               <th>Status</th>
-              <th>Action</th>
+              <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -395,24 +383,12 @@ export default function EmployeeManagement({
                 <td>
                   <span className="badge badge-unassigned">{emp.cosCategory}</span>
                 </td>
-                <td>{emp.contractEndDate}</td>
                 <td>
-                  {emp.latestScore !== null ? (
-                    <span
-                      className={`score-pill ${
-                        emp.latestScore >= 80
-                          ? 'score-good'
-                          : emp.latestScore >= 60
-                          ? 'score-mid'
-                          : 'score-bad'
-                      }`}
-                    >
-                      {emp.latestScore}
-                    </span>
-                  ) : (
-                    <span className="muted">—</span>
-                  )}
+                  <span style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
+                    {emp.dateAppointed || 'Oct 22, 2026'}
+                  </span>
                 </td>
+                <td>{emp.contractEndDate}</td>
                 <td>
                   <span
                     className={`badge ${
@@ -422,35 +398,21 @@ export default function EmployeeManagement({
                     {emp.status === 'Archived' ? '📦 Archived' : '✓ Active'}
                   </span>
                 </td>
-                <td>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      onClick={() => {
-                        setSelectedRecordEmp(emp);
-                        onSelectEmployee(emp.id);
-                      }}
-                    >
-                      View Record
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: '13px',
-                        lineHeight: 1,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      title={`Account Settings - ${emp.fullName}`}
-                      onClick={() => handleOpenSettings(emp)}
-                    >
-                      ⚙️
-                    </button>
-                  </div>
+                <td style={{ textAlign: 'right' }}>
+                  <button
+                    className="btn btn-sm"
+                    type="button"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => handleOpenSettings(emp)}
+                    title={`Account Settings - ${emp.fullName}`}
+                  >
+                    ⚙️ Settings
+                  </button>
                 </td>
               </tr>
             ))}

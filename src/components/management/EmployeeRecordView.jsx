@@ -18,6 +18,7 @@ export default function EmployeeRecordView({
     status: 'Active',
   },
   onBack = () => {},
+  backLabel = '← Back to Executive Reports',
 }) {
   const [toastMsg, setToastMsg] = useState(null);
   const [viewingMarCycle, setViewingMarCycle] = useState(null);
@@ -471,7 +472,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
           </p>
         </div>
         <button type="button" className="btn btn-sm" onClick={onBack} style={{ cursor: 'pointer' }}>
-          ← Back to Employee Directory
+          {backLabel}
         </button>
       </div>
 

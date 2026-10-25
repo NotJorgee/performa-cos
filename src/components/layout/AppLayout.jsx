@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
-import CampusGeofenceModal from '../common/CampusGeofenceModal';
 
 export default function AppLayout({
   children,
@@ -18,7 +17,6 @@ export default function AppLayout({
   // Sidebar only pops up when pressing the menu button (Off-canvas drawer)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [showGeofenceModal, setShowGeofenceModal] = useState(false);
 
   // In-system notifications
   const [notifications, setNotifications] = useState([
@@ -114,7 +112,7 @@ export default function AppLayout({
           </button>
         </div>
 
-        {/* Navigation Items strictly mapped per SRS Section 8.1 */}
+        {/* Navigation Items */}
         <nav className="nav">
           <a
             href="#dashboard"
@@ -124,22 +122,40 @@ export default function AppLayout({
             <span className="icon">▦</span> Dashboard
           </a>
 
-          {/* Institutional Campus Geofence (Universal scope for all departments) */}
-          {(currentUser.role === 'HR Personnel' || currentUser.role === 'Department Head') && (
+          {/* Institutional Campus Geofence Page (HR Only) */}
+          {currentUser.role === 'HR Personnel' && (
             <a
               href="#campus-geofence"
-              onClick={(e) => {
-                e.preventDefault();
-                closeSidebar();
-                setShowGeofenceModal(true);
-              }}
-              className="nav-item"
+              onClick={(e) => { e.preventDefault(); handleNavClick('campus_geofence'); }}
+              className={`nav-item ${currentPath === 'campus_geofence' ? 'active' : ''}`}
             >
               <span className="icon">📍</span> Campus Geofence
             </a>
           )}
 
-          {/* Role-Unified Burger Menu: Dashboard, View Profile, Account Settings, Logout */}
+          {/* Security Logs Page (HR Only) */}
+          {currentUser.role === 'HR Personnel' && (
+            <a
+              href="#security-logs"
+              onClick={(e) => { e.preventDefault(); handleNavClick('audit_trail'); }}
+              className={`nav-item ${currentPath === 'audit_trail' ? 'active' : ''}`}
+            >
+              <span className="icon">🛡️</span> Security Logs
+            </a>
+          )}
+
+          {/* Database Backup Data Page (HR / Admin) */}
+          {currentUser.role === 'HR Personnel' && (
+            <a
+              href="#backup-data"
+              onClick={(e) => { e.preventDefault(); handleNavClick('backup_data'); }}
+              className={`nav-item ${currentPath === 'backup_data' ? 'active' : ''}`}
+            >
+              <span className="icon">💾</span> Backup Data
+            </a>
+          )}
+
+          {/* Role-Unified Burger Menu: View Profile, Account Settings, Logout */}
           <a
             href="#view-profile"
             onClick={(e) => { e.preventDefault(); handleNavClick('view_profile'); }}
@@ -286,12 +302,6 @@ export default function AppLayout({
         {/* Page Content Body */}
         <main className="content">{children}</main>
       </div>
-
-      {/* University Campus Geofence Configuration Modal */}
-      <CampusGeofenceModal
-        isOpen={showGeofenceModal}
-        onClose={() => setShowGeofenceModal(false)}
-      />
     </div>
   );
 }
