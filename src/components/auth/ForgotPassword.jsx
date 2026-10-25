@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Mail, Clock, Lock, ShieldCheck } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function ForgotPassword({
@@ -27,22 +28,22 @@ export default function ForgotPassword({
         </div>
         <div className="auth-feature-strip">
           <div>
-            <span className="auth-feature-icon"><i>✉</i></span>
+            <span className="auth-feature-icon"><Mail size={18} /></span>
             <b>Email OTP Verification</b>
             <small>Code sent to institutional email</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>⏱</i></span>
+            <span className="auth-feature-icon"><Clock size={18} /></span>
             <b>Time-Limited</b>
             <small>Expires in 10 minutes</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>🔒</i></span>
+            <span className="auth-feature-icon"><Lock size={18} /></span>
             <b>One-Time Code</b>
             <small>Single use security token</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>🛡</i></span>
+            <span className="auth-feature-icon"><ShieldCheck size={18} /></span>
             <b>Anti-Enumeration</b>
             <small>Protected verification layer</small>
           </div>
@@ -81,7 +82,9 @@ export default function ForgotPassword({
               <div className="form-group">
                 <label htmlFor="resetEmail">Institutional Email</label>
                 <div className="auth-input-wrap">
-                  <span className="auth-input-icon" aria-hidden="true">✉</span>
+                  <span className="auth-input-icon" aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Mail size={16} />
+                  </span>
                   <input
                     className="form-control"
                     type="email"

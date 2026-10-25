@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import EmployeeRecordView from '../management/EmployeeRecordView';
+import { Download, Check, Archive, FileText } from 'lucide-react';
+import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
 
 export default function ReportGenerator({
   employees = [
@@ -46,9 +47,9 @@ export default function ReportGenerator({
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
       totalContracts: 2,
-      avgScore: 85.5,
-      latestScore: 85.5,
-      latestRating: 'Very Satisfactory',
+      avgScore: 78.5,
+      latestScore: 78.5,
+      latestRating: 'Satisfactory',
       status: 'Active',
     },
     {
@@ -62,9 +63,9 @@ export default function ReportGenerator({
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
       totalContracts: 4,
-      avgScore: 88.0,
-      latestScore: 88.0,
-      latestRating: 'Very Satisfactory',
+      avgScore: 68.0,
+      latestScore: 68.0,
+      latestRating: 'Needs Improvement',
       status: 'Active',
     },
     {
@@ -78,9 +79,9 @@ export default function ReportGenerator({
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
       totalContracts: 2,
-      avgScore: 89.2,
-      latestScore: 89.2,
-      latestRating: 'Very Satisfactory',
+      avgScore: 54.0,
+      latestScore: 54.0,
+      latestRating: 'Unsatisfactory',
       status: 'Active',
     },
     {
@@ -187,7 +188,7 @@ export default function ReportGenerator({
     link.click();
     document.body.removeChild(link);
 
-    setToastMsg('✓ Executive personnel summary report successfully generated and exported as CSV!');
+    setToastMsg('Executive personnel summary report successfully generated and exported as CSV!');
     setTimeout(() => setToastMsg(null), 4000);
   };
 
@@ -209,7 +210,7 @@ export default function ReportGenerator({
             onClick={handleExportRosterCsv}
             title="Download CSV report of current personnel records"
           >
-            📊 Export Roster (CSV)
+            <Download size={14} /> Export Roster (CSV)
           </button>
           {onBack && (
             <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer' }}>
@@ -220,8 +221,8 @@ export default function ReportGenerator({
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          {toastMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} /> <span>{toastMsg}</span>
         </div>
       )}
 
@@ -336,21 +337,17 @@ export default function ReportGenerator({
                   )}
                 </td>
                 <td>
-                  {emp.latestScore !== null ? (
+                  {emp.latestScore !== null && emp.latestScore !== undefined ? (
                     <div>
                       <span
                         className={`score-pill ${
-                          emp.latestScore >= 80
-                            ? 'score-good'
-                            : emp.latestScore >= 60
-                            ? 'score-mid'
-                            : 'score-bad'
+                          getScoreInterpretationColor(emp.latestRating, emp.latestScore).className
                         }`}
                       >
                         {emp.latestScore}
                       </span>
                       <div className="muted" style={{ fontSize: '11px', marginTop: '2px' }}>
-                        {emp.latestRating}
+                        {emp.latestRating || 'Evaluated'}
                       </div>
                     </div>
                   ) : (
@@ -362,8 +359,17 @@ export default function ReportGenerator({
                     className={`badge ${
                       emp.status === 'Archived' ? 'badge-delete' : 'badge-active'
                     }`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    {emp.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                    {emp.status === 'Archived' ? (
+                      <>
+                        <Archive size={12} /> Archived
+                      </>
+                    ) : (
+                      <>
+                        <Check size={12} /> Active
+                      </>
+                    )}
                   </span>
                 </td>
                 <td style={{ textAlign: 'right' }}>
@@ -380,7 +386,7 @@ export default function ReportGenerator({
                     onClick={() => setSelectedEmp(emp)}
                     title={`View and extract records for ${emp.fullName}`}
                   >
-                    📄 View Records
+                    <FileText size={14} /> View Records
                   </button>
                 </td>
               </tr>

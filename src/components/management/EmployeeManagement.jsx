@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings, Check, Archive, X, UserPlus, RotateCcw } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 
 export default function EmployeeManagement({
@@ -228,7 +229,7 @@ export default function EmployeeManagement({
     const remainingDepts = departments.filter((d) => d !== newDept);
     setTransferDept(remainingDepts[0] || '');
 
-    const msg = `✓ Department transfer executed: "${settingsEmp.fullName}" transferred from ${prevDept} to ${newDept}.`;
+    const msg = `Department transfer executed: "${settingsEmp.fullName}" transferred from ${prevDept} to ${newDept}.`;
     setTransferSuccessMsg(msg);
     setToastMsg(msg);
     setTimeout(() => {
@@ -312,8 +313,8 @@ export default function EmployeeManagement({
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {toastMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} /> <span>{toastMsg}</span>
         </div>
       )}
 
@@ -394,8 +395,17 @@ export default function EmployeeManagement({
                     className={`badge ${
                       emp.status === 'Archived' ? 'badge-delete' : 'badge-active'
                     }`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    {emp.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                    {emp.status === 'Archived' ? (
+                      <>
+                        <Archive size={12} /> Archived
+                      </>
+                    ) : (
+                      <>
+                        <Check size={12} /> Active
+                      </>
+                    )}
                   </span>
                 </td>
                 <td style={{ textAlign: 'right' }}>
@@ -411,7 +421,7 @@ export default function EmployeeManagement({
                     onClick={() => handleOpenSettings(emp)}
                     title={`Account Settings - ${emp.fullName}`}
                   >
-                    ⚙️ Settings
+                    <Settings size={14} /> Settings
                   </button>
                 </td>
               </tr>
@@ -451,7 +461,7 @@ export default function EmployeeManagement({
                   setModalMode('invite');
                 }}
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -475,28 +485,6 @@ export default function EmployeeManagement({
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
                     />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Assigned Department</label>
-                    <select
-                      className="form-control"
-                      value={selectedDept}
-                      onChange={(e) => setSelectedDept(e.target.value)}
-                    >
-                      {departments.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--ink-500)' }}>
-                      COS Category:{' '}
-                      <span className="badge badge-unassigned" style={{ fontSize: '11px', padding: '2px 8px' }}>
-                        {getComputedCategory(selectedDept)}
-                      </span>{' '}
-                      <span className="muted">(Auto-assigned based on department)</span>
-                    </div>
                   </div>
 
                   {/* Button to access Manual Add Employee */}
@@ -526,9 +514,9 @@ export default function EmployeeManagement({
                       type="button"
                       className="btn btn-sm"
                       onClick={() => setModalMode('manual')}
-                      style={{ whiteSpace: 'nowrap' }}
+                      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                     >
-                      📝 Add Manually
+                      <UserPlus size={14} /> Add Manually
                     </button>
                   </div>
 
@@ -700,14 +688,15 @@ export default function EmployeeManagement({
           <div className="modal-card" style={{ maxWidth: '540px' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚙️ Account Settings</span>
+                <Settings size={18} />
+                <span>Account Settings</span>
               </div>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setSettingsEmp(null)}
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -740,9 +729,17 @@ export default function EmployeeManagement({
                   className={`badge ${
                     settingsEmp.status === 'Archived' ? 'badge-delete' : 'badge-active'
                   }`}
-                  style={{ fontWeight: 700, padding: '4px 10px' }}
+                  style={{ fontWeight: 700, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
-                  {settingsEmp.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                  {settingsEmp.status === 'Archived' ? (
+                    <>
+                      <Archive size={12} /> Archived
+                    </>
+                  ) : (
+                    <>
+                      <Check size={12} /> Active
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -840,20 +837,27 @@ export default function EmployeeManagement({
                     borderColor: '#bfe8cd',
                     background: 'var(--green-50)',
                     fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                   onClick={() => handleRestoreEmployee(settingsEmp.id)}
                 >
-                  ↩ Restore Employee
+                  <RotateCcw size={14} /> Restore Employee
                 </button>
               ) : (
                 <button
                   type="button"
                   className="btn"
                   style={{
-                    color: 'var(--red-600)',
-                    borderColor: '#f3c2c2',
-                    background: 'var(--red-50)',
+                    background: 'var(--red-600)',
+                    color: '#fff',
+                    borderColor: 'var(--red-600)',
                     fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                   onClick={() => {
                     if (
@@ -865,7 +869,7 @@ export default function EmployeeManagement({
                     }
                   }}
                 >
-                  📦 Archive Employee
+                  <Archive size={14} /> Archive Employee
                 </button>
               )}
             </div>

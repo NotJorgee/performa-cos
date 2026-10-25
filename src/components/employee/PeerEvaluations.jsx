@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, Lock } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 
 export default function PeerEvaluations({
@@ -46,7 +47,7 @@ export default function PeerEvaluations({
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: 0 }}>Pending Peer Evaluations (UC-04)</h1>
+          <h1 style={{ margin: 0 }}>Pending Peer Evaluations</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           {selectedPeerId && (
@@ -63,8 +64,9 @@ export default function PeerEvaluations({
       </div>
 
       {successMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {successMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
+          {successMsg}
         </div>
       )}
 
@@ -73,7 +75,7 @@ export default function PeerEvaluations({
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
             <div className="card-title" style={{ margin: 0 }}>
-              System-Assigned Peer Review Board (FR-27)
+              System-Assigned Peer Review Board
             </div>
             <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
               These colleagues from your department were randomly assigned by the system to evenly distribute evaluation workload and eliminate selection bias.
@@ -137,8 +139,8 @@ export default function PeerEvaluations({
                 Assignment: <b>{activePeer.cosCategory}</b> &nbsp;·&nbsp; Weight: <b>20% Peer Review Score</b>
               </p>
             </div>
-            <span className="badge badge-completed">
-              🔒 Identity Masked from Subject (US-04)
+            <span className="badge badge-completed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Lock size={12} /> Identity Masked from Subject
             </span>
           </div>
 

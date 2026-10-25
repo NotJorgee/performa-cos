@@ -1,4 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import {
+  LayoutDashboard,
+  MapPin,
+  ShieldAlert,
+  Database,
+  User,
+  Settings,
+  LogOut,
+  Menu,
+  Bell,
+} from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function AppLayout({
@@ -119,7 +130,7 @@ export default function AppLayout({
             onClick={(e) => { e.preventDefault(); handleNavClick('dashboard'); }}
             className={`nav-item ${currentPath === 'dashboard' ? 'active' : ''}`}
           >
-            <span className="icon">▦</span> Dashboard
+            <span className="icon"><LayoutDashboard size={17} /></span> Dashboard
           </a>
 
           {/* Institutional Campus Geofence Page (HR Only) */}
@@ -129,7 +140,7 @@ export default function AppLayout({
               onClick={(e) => { e.preventDefault(); handleNavClick('campus_geofence'); }}
               className={`nav-item ${currentPath === 'campus_geofence' ? 'active' : ''}`}
             >
-              <span className="icon">📍</span> Campus Geofence
+              <span className="icon"><MapPin size={17} /></span> Campus Geofence
             </a>
           )}
 
@@ -140,7 +151,7 @@ export default function AppLayout({
               onClick={(e) => { e.preventDefault(); handleNavClick('audit_trail'); }}
               className={`nav-item ${currentPath === 'audit_trail' ? 'active' : ''}`}
             >
-              <span className="icon">🛡️</span> Security Logs
+              <span className="icon"><ShieldAlert size={17} /></span> Security Logs
             </a>
           )}
 
@@ -151,7 +162,7 @@ export default function AppLayout({
               onClick={(e) => { e.preventDefault(); handleNavClick('backup_data'); }}
               className={`nav-item ${currentPath === 'backup_data' ? 'active' : ''}`}
             >
-              <span className="icon">💾</span> Backup Data
+              <span className="icon"><Database size={17} /></span> Backup Data
             </a>
           )}
 
@@ -161,14 +172,14 @@ export default function AppLayout({
             onClick={(e) => { e.preventDefault(); handleNavClick('view_profile'); }}
             className={`nav-item ${currentPath === 'view_profile' ? 'active' : ''}`}
           >
-            <span className="icon">◉</span> View Profile
+            <span className="icon"><User size={17} /></span> View Profile
           </a>
           <a
             href="#account-settings"
             onClick={(e) => { e.preventDefault(); handleNavClick('account_settings'); }}
             className={`nav-item ${currentPath === 'account_settings' ? 'active' : ''}`}
           >
-            <span className="icon">⚙</span> Account Settings
+            <span className="icon"><Settings size={17} /></span> Account Settings
           </a>
           <button
             type="button"
@@ -178,7 +189,7 @@ export default function AppLayout({
             }}
             className="nav-item logout"
           >
-            <span className="icon">⎋</span> Logout
+            <span className="icon"><LogOut size={17} /></span> Logout
           </button>
         </nav>
       </aside>
@@ -196,7 +207,7 @@ export default function AppLayout({
               aria-label="Open Navigation Menu"
               onClick={toggleSidebar}
             >
-              ☰
+              <Menu size={20} />
             </button>
           </div>
 
@@ -219,7 +230,7 @@ export default function AppLayout({
                 }}
                 aria-label={`Notifications (${unreadCount} unread)`}
               >
-                <span style={{ fontSize: '18px' }}>🔔</span>
+                <Bell size={19} />
                 {unreadCount > 0 && <span className="dot">{unreadCount}</span>}
               </button>
 

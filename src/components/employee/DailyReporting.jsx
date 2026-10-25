@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, AlertTriangle, Lightbulb, Camera, MapPin } from 'lucide-react';
 
 const AUTOCOMPLETE_SUGGESTIONS = [
   'Assisted students with enrollment queries and clearance routing',
@@ -42,12 +43,12 @@ export default function DailyReporting({
     setIsSubmitting(true);
 
     if (!photoPreview) {
-      setGeoError('Live photo evidence is strictly required for daily task logging (FR-28).');
+      setGeoError('Live photo evidence is strictly required for daily task logging.');
       setIsSubmitting(false);
       return;
     }
 
-    // HTML5 Geolocation API validation (UC-13, FR-29, FR-30)
+    // HTML5 Geolocation API validation
     if (!navigator.geolocation) {
       setGeoError('Geolocation is not supported by your device or browser.');
       setIsSubmitting(false);
@@ -70,7 +71,7 @@ export default function DailyReporting({
 
         if (!isInsideCampus) {
           // Alternative flow 8a
-          setGeoError('Out of Bounds: Submissions must be made within EVSU campus premises (UC-13, FR-30).');
+          setGeoError('Out of Bounds: Submissions must be made within EVSU campus premises.');
           setIsSubmitting(false);
           return;
         }
@@ -109,7 +110,7 @@ export default function DailyReporting({
       {/* Module Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting (UC-13)</h1>
+          <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting</h1>
           <p className="muted" style={{ margin: 0 }}>
             Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.
           </p>
@@ -122,14 +123,16 @@ export default function DailyReporting({
       </div>
 
       {successToast && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {successToast}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
+          {successToast}
         </div>
       )}
 
       {geoError && (
-        <div className="flash flash-danger" style={{ marginBottom: '16px' }}>
-          ⚠️ {geoError}
+        <div className="flash flash-danger" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AlertTriangle size={16} />
+          {geoError}
         </div>
       )}
 
@@ -184,10 +187,11 @@ export default function DailyReporting({
                   {filteredSuggestions.map((s, idx) => (
                     <div
                       key={idx}
-                      style={{ padding: '8px 12px', fontSize: '12.5px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                      style={{ padding: '8px 12px', fontSize: '12.5px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '6px' }}
                       onClick={() => setJobDescription(s)}
                     >
-                      💡 {s}
+                      <Lightbulb size={13} color="var(--brand-700)" />
+                      <span>{s}</span>
                     </div>
                   ))}
                 </div>
@@ -240,8 +244,9 @@ export default function DailyReporting({
                 Live Photo Evidence <span style={{ color: 'var(--red-600)' }}>*</span>
               </label>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <label className="btn btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
-                  📷 Insert Image / Open Camera
+                <label className="btn btn-sm" style={{ cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Camera size={14} />
+                  <span>Insert Image / Open Camera</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -251,7 +256,9 @@ export default function DailyReporting({
                   />
                 </label>
                 {photoPreview && (
-                  <span className="badge badge-completed">✓ Photo Attached</span>
+                  <span className="badge badge-completed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Check size={12} /> Photo Attached
+                  </span>
                 )}
               </div>
               {photoPreview && (
@@ -269,8 +276,15 @@ export default function DailyReporting({
               type="submit"
               className="btn btn-primary btn-block"
               disabled={isSubmitting}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {isSubmitting ? '📍 Capturing GPS & Validating Geofence...' : 'Submit Geofenced DAR (UC-13)'}
+              {isSubmitting ? (
+                <>
+                  <MapPin size={16} /> Capturing GPS & Validating Geofence...
+                </>
+              ) : (
+                'Submit DAR'
+              )}
             </button>
           </form>
         </div>

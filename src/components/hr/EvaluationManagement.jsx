@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, Archive, AlertTriangle, X } from 'lucide-react';
 
 export default function EvaluationManagement({
   eligibleEmployees = [
@@ -153,7 +154,7 @@ export default function EvaluationManagement({
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Evaluation Management Module (UC-01)</h1>
+          <h1 style={{ margin: '0 0 6px' }}>Evaluation Management Module</h1>
           <p className="muted" style={{ margin: 0 }}>
             Continuous individualized contract lifecycle tracking and concurrent evaluation routing for eligible COS personnel nearing 6-month contract expiration.
           </p>
@@ -166,8 +167,9 @@ export default function EvaluationManagement({
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {toastMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
+          {toastMsg}
         </div>
       )}
 
@@ -211,24 +213,24 @@ export default function EvaluationManagement({
                       Supervisor Veto
                     </span>
                   ) : emp.routingStatus === 'Offboarded / Archived' ? (
-                    <span className="badge badge-delete" style={{ whiteSpace: 'nowrap' }}>
-                      📦 Offboarded
+                    <span className="badge badge-delete" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Archive size={12} /> Offboarded
                     </span>
                   ) : emp.intentStatus === 'Declined' || emp.intent === 'Declined' ? (
                     <span
                       className="badge badge-delete"
-                      style={{ whiteSpace: 'nowrap' }}
+                      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       title={emp.declineReason ? `Reason: ${emp.declineReason}` : undefined}
                     >
-                      ⨯ Declined
+                      <X size={12} /> Declined
                     </span>
                   ) : emp.routingStatus === 'Intervention Transfer Scheduled' ? (
                     <span className="badge badge-pending" style={{ whiteSpace: 'nowrap' }}>
                       Intervention Transfer
                     </span>
                   ) : emp.routingStatus === 'Routing Active' ? (
-                    <span className="badge badge-completed" style={{ whiteSpace: 'nowrap' }}>
-                      ✓ Routing Active
+                    <span className="badge badge-completed" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={12} /> Routing Active
                     </span>
                   ) : emp.routingStatus === 'Pending Initiation' ? (
                     <span className="badge badge-inprogress" style={{ whiteSpace: 'nowrap' }}>
@@ -325,7 +327,8 @@ export default function EvaluationManagement({
           <div className="modal-card" style={{ maxWidth: '580px', width: '92%' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚠️ HR Administrative Mediation — Supervisor Rejection</span>
+                <AlertTriangle size={18} color="var(--red-600)" />
+                <span>HR Administrative Mediation — Supervisor Rejection</span>
               </div>
               <button
                 type="button"
@@ -333,7 +336,7 @@ export default function EvaluationManagement({
                 onClick={() => setMediateEmp(null)}
                 aria-label="Close"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -445,7 +448,8 @@ export default function EvaluationManagement({
           <div className="modal-card" style={{ maxWidth: '500px', width: '92%' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📦 Process Personnel Offboarding</span>
+                <Archive size={18} color="var(--red-600)" />
+                <span>Process Personnel Offboarding</span>
               </div>
               <button
                 type="button"
@@ -453,12 +457,12 @@ export default function EvaluationManagement({
                 onClick={() => setOffboardEmp(null)}
                 aria-label="Close"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
             <p className="muted" style={{ margin: '0 0 14px', fontSize: '13.5px', lineHeight: 1.5 }}>
-              <b>{offboardEmp.fullName}</b> ({offboardEmp.idNumber || 'COS Personnel'}) has formally submitted a non-renewal decision (<b>⨯ Declined</b>) for their contract expiring on <b>{offboardEmp.contractEndDate}</b>.
+              <b>{offboardEmp.fullName}</b> ({offboardEmp.idNumber || 'COS Personnel'}) has formally submitted a non-renewal decision (<b>Declined</b>) for their contract expiring on <b>{offboardEmp.contractEndDate}</b>.
             </p>
 
             {offboardEmp.declineReason && (

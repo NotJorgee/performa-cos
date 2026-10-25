@@ -1,4 +1,5 @@
 import React from 'react';
+import { Clock, MapPin, FileText, Users, ArrowRight } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 
@@ -41,11 +42,11 @@ export default function EmployeeDashboard({
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('contract_status')}
-          title="Click to check Contract Status (UC-02)"
+          title="Click to check Contract Status"
         >
           <div className="stat-top">
             <span className="stat-label">Contract Expiration</span>
-            <span className="stat-icon">⏱️</span>
+            <span className="stat-icon"><Clock size={18} /></span>
           </div>
           <div
             className="stat-value"
@@ -56,8 +57,9 @@ export default function EmployeeDashboard({
           >
             {metrics.daysUntilExpiration} Days
           </div>
-          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
-            Check Contract Status (UC-02) →
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Check Contract Status</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -65,17 +67,24 @@ export default function EmployeeDashboard({
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('daily_report')}
-          title="Click to log campus DAR (UC-13)"
+          title="Click to log campus DAR"
         >
           <div className="stat-top">
             <span className="stat-label">Today's DAR Status</span>
-            <span className="stat-icon">📍</span>
+            <span className="stat-icon"><MapPin size={18} /></span>
           </div>
-          <div className="stat-value" style={{ fontSize: '20px' }}>
-            {metrics.darTasksToday > 0 ? `${metrics.darTasksToday} Task(s) Logged` : 'No Entry Yet'}
+          <div
+            className="stat-value"
+            style={{
+              fontSize: '20px',
+              color: (metrics.darTasksToday ?? 0) === 0 ? 'var(--red-600)' : 'var(--ink-900)',
+            }}
+          >
+            {metrics.darTasksToday ?? 0} Task(s) Logged
           </div>
-          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
-            Log Campus DAR (UC-13) →
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Log Campus DAR</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -83,17 +92,18 @@ export default function EmployeeDashboard({
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('monthly_report')}
-          title="Click to view Compiled MAR (FR-04)"
+          title="Click to view Compiled MAR"
         >
           <div className="stat-top">
             <span className="stat-label">Accumulated MAR Logs</span>
-            <span className="stat-icon">📑</span>
+            <span className="stat-icon"><FileText size={18} /></span>
           </div>
           <div className="stat-value" style={{ fontSize: '26px' }}>
             {metrics.totalDarsLogged}
           </div>
-          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
-            View Compiled MAR (FR-04) →
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>View Compiled MAR</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -101,17 +111,24 @@ export default function EmployeeDashboard({
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('peer_evaluations')}
-          title="Click to evaluate assigned peers (UC-04)"
+          title="Click to evaluate assigned peers"
         >
           <div className="stat-top">
             <span className="stat-label">Peer Reviews Assigned</span>
-            <span className="stat-icon">👥</span>
+            <span className="stat-icon"><Users size={18} /></span>
           </div>
-          <div className="stat-value" style={{ fontSize: '20px' }}>
-            {metrics.pendingPeerReviews} Colleague(s)
+          <div
+            className="stat-value"
+            style={{
+              fontSize: '20px',
+              color: (metrics.pendingPeerReviews ?? 0) > 0 ? 'var(--amber-600)' : '#111827',
+            }}
+          >
+            {metrics.pendingPeerReviews ?? 0} Colleague(s)
           </div>
-          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600 }}>
-            Evaluate Peers (UC-04) →
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Evaluate Peers</span>
+            <ArrowRight size={14} />
           </div>
         </div>
       </div>

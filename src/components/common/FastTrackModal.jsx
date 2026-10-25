@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AlertTriangle, X } from 'lucide-react';
 
 const REJECTION_CATEGORIES = [
   'Habitual Absenteeism / Tardiness',
@@ -47,7 +48,8 @@ export default function FastTrackModal({
       <div className="modal-card" style={{ maxWidth: '540px' }}>
         <div className="modal-header">
           <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>⚠️ Process Fast-Track Rejection (UC-06)</span>
+            <AlertTriangle size={18} color="var(--red-600)" />
+            <span>Process Fast-Track Rejection</span>
           </div>
           <button
             type="button"
@@ -55,7 +57,7 @@ export default function FastTrackModal({
             onClick={onClose}
             aria-label="Close"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 

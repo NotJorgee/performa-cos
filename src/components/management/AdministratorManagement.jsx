@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 
 export default function AdministratorManagement({
@@ -224,8 +225,8 @@ export default function AdministratorManagement({
 
       {/* Success Notification */}
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {toastMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} /> <span>{toastMsg}</span>
         </div>
       )}
 
@@ -300,18 +301,17 @@ export default function AdministratorManagement({
                   </div>
                 </td>
                 <td>
-                  <span
-                    className={`badge ${
-                      adm.role === 'Department Head' ? 'badge-inprogress' : 'badge-dept'
-                    }`}
-                    style={{
-                      fontWeight: 700,
-                      padding: '3px 9px',
-                      fontSize: '12px',
-                    }}
-                  >
-                    {adm.role === 'Department Head' ? '🏛️ Department Head' : '📋 HR Personnel'}
-                  </span>
+                  <b style={{ fontSize: '13px', color: 'var(--ink-900)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {adm.role === 'Department Head' ? (
+                      <>
+                        <Building2 size={13} /> Department Head
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardList size={13} /> HR Personnel
+                      </>
+                    )}
+                  </b>
                 </td>
                 <td>{adm.department}</td>
                 <td>
@@ -319,8 +319,17 @@ export default function AdministratorManagement({
                     className={`badge ${
                       adm.status === 'Archived' ? 'badge-delete' : 'badge-active'
                     }`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    {adm.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                    {adm.status === 'Archived' ? (
+                      <>
+                        <Archive size={12} /> Archived
+                      </>
+                    ) : (
+                      <>
+                        <Check size={12} /> Active
+                      </>
+                    )}
                   </span>
                 </td>
                 <td style={{ textAlign: 'right' }}>
@@ -336,7 +345,7 @@ export default function AdministratorManagement({
                     onClick={() => openAdminSettings(adm)}
                     title={`Edit Settings - ${adm.fullName}`}
                   >
-                    ⚙️ Settings
+                    <Settings size={14} /> Settings
                   </button>
                 </td>
               </tr>
@@ -363,7 +372,8 @@ export default function AdministratorManagement({
           <div className="modal-card" style={{ maxWidth: '540px' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚙️ Administrator Settings</span>
+                <Settings size={18} />
+                <span>Administrator Settings</span>
               </div>
               <button
                 type="button"
@@ -371,7 +381,7 @@ export default function AdministratorManagement({
                 onClick={() => setSettingsAdmin(null)}
                 aria-label="Close"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -404,17 +414,30 @@ export default function AdministratorManagement({
                   className={`badge ${
                     settingsAdmin.status === 'Archived' ? 'badge-delete' : 'badge-active'
                   }`}
-                  style={{ fontWeight: 700, padding: '4px 10px', display: 'block', marginBottom: '4px' }}
+                  style={{ fontWeight: 700, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}
                 >
-                  {settingsAdmin.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                  {settingsAdmin.status === 'Archived' ? (
+                    <>
+                      <Archive size={12} /> Archived
+                    </>
+                  ) : (
+                    <>
+                      <Check size={12} /> Active
+                    </>
+                  )}
                 </span>
                 <span
-                  className={`badge ${
-                    settingsAdmin.role === 'Department Head' ? 'badge-inprogress' : 'badge-dept'
-                  }`}
-                  style={{ fontWeight: 700, padding: '2px 8px', fontSize: '11.5px' }}
+                  style={{ fontWeight: 700, padding: '2px 8px', fontSize: '11.5px', color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
-                  {settingsAdmin.role === 'Department Head' ? '🏛️ Dept Head' : '📋 HRMO'}
+                  {settingsAdmin.role === 'Department Head' ? (
+                    <>
+                      <Building2 size={12} /> Dept Head
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardList size={12} /> HRMO
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -500,21 +523,27 @@ export default function AdministratorManagement({
                     background: 'var(--green-50)',
                     fontWeight: 700,
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                   onClick={() => handleRestoreAdmin(settingsAdmin.id)}
                 >
-                  ↩ Restore Administrator
+                  <RotateCcw size={14} /> Restore Administrator
                 </button>
               ) : (
                 <button
                   type="button"
                   className="btn"
                   style={{
-                    color: 'var(--red-600)',
-                    borderColor: '#f3c2c2',
-                    background: 'var(--red-50)',
+                    background: 'var(--red-600)',
+                    color: '#fff',
+                    borderColor: 'var(--red-600)',
                     fontWeight: 700,
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                   onClick={() => {
                     if (
@@ -526,7 +555,7 @@ export default function AdministratorManagement({
                     }
                   }}
                 >
-                  📦 Archive Administrator
+                  <Archive size={14} /> Archive Administrator
                 </button>
               )}
             </div>
@@ -566,7 +595,7 @@ export default function AdministratorManagement({
                 className="modal-close"
                 onClick={() => setShowInviteModal(false)}
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 

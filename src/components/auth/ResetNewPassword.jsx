@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ShieldCheck, Eye, EyeOff, Check, Lock, Circle } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function ResetNewPassword({
@@ -38,22 +39,22 @@ export default function ResetNewPassword({
         </div>
         <div className="auth-feature-strip">
           <div>
-            <span className="auth-feature-icon"><i>🛡</i></span>
+            <span className="auth-feature-icon"><ShieldCheck size={18} /></span>
             <b>Strong Password</b>
             <small>12+ chars, mixed symbols</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>👁</i></span>
+            <span className="auth-feature-icon"><Eye size={18} /></span>
             <b>Show / Hide</b>
             <small>Verify before submitting</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>✓</i></span>
+            <span className="auth-feature-icon"><Check size={18} /></span>
             <b>Live Checklist</b>
             <small>Real-time requirements validation</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>🔒</i></span>
+            <span className="auth-feature-icon"><Lock size={18} /></span>
             <b>BCRYPT Hashed</b>
             <small>Irreversible secure storage</small>
           </div>
@@ -91,7 +92,9 @@ export default function ResetNewPassword({
               <div className="form-group">
                 <label htmlFor="newPassword">New Password</label>
                 <div className="auth-input-wrap">
-                  <span className="auth-input-icon" aria-hidden="true">🔒</span>
+                  <span className="auth-input-icon" aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Lock size={16} />
+                  </span>
                   <input
                     className="form-control"
                     type={showPassword ? 'text' : 'password'}
@@ -107,8 +110,9 @@ export default function ResetNewPassword({
                     type="button"
                     className="password-toggle"
                     onClick={() => setShowPassword((prev) => !prev)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    {showPassword ? '👁‍🗨' : '👁'}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
@@ -116,7 +120,9 @@ export default function ResetNewPassword({
               <div className="form-group">
                 <label htmlFor="confirmPassword">Confirm New Password</label>
                 <div className="auth-input-wrap">
-                  <span className="auth-input-icon" aria-hidden="true">🔒</span>
+                  <span className="auth-input-icon" aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Lock size={16} />
+                  </span>
                   <input
                     className="form-control"
                     type={showPassword ? 'text' : 'password'}
@@ -133,24 +139,24 @@ export default function ResetNewPassword({
               {/* Password checklist */}
               <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', marginBottom: '18px', fontSize: '13px' }}>
                 <div style={{ fontWeight: '600', marginBottom: '6px', color: 'var(--ink-700)' }}>Password Requirements:</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                  <span style={{ color: hasMinLength ? 'var(--green-600)' : 'var(--ink-500)' }}>
-                    {hasMinLength ? '✓' : '○'} 12+ Characters
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <span style={{ color: hasMinLength ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {hasMinLength ? <Check size={13} /> : <Circle size={13} />} 12+ Characters
                   </span>
-                  <span style={{ color: hasUpper ? 'var(--green-600)' : 'var(--ink-500)' }}>
-                    {hasUpper ? '✓' : '○'} Uppercase Letter
+                  <span style={{ color: hasUpper ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {hasUpper ? <Check size={13} /> : <Circle size={13} />} Uppercase Letter
                   </span>
-                  <span style={{ color: hasLower ? 'var(--green-600)' : 'var(--ink-500)' }}>
-                    {hasLower ? '✓' : '○'} Lowercase Letter
+                  <span style={{ color: hasLower ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {hasLower ? <Check size={13} /> : <Circle size={13} />} Lowercase Letter
                   </span>
-                  <span style={{ color: hasNumber ? 'var(--green-600)' : 'var(--ink-500)' }}>
-                    {hasNumber ? '✓' : '○'} Number
+                  <span style={{ color: hasNumber ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {hasNumber ? <Check size={13} /> : <Circle size={13} />} Number
                   </span>
-                  <span style={{ color: hasSymbol ? 'var(--green-600)' : 'var(--ink-500)' }}>
-                    {hasSymbol ? '✓' : '○'} Special Symbol
+                  <span style={{ color: hasSymbol ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {hasSymbol ? <Check size={13} /> : <Circle size={13} />} Special Symbol
                   </span>
-                  <span style={{ color: passwordsMatch ? 'var(--green-600)' : 'var(--ink-500)' }}>
-                    {passwordsMatch ? '✓' : '○'} Passwords Match
+                  <span style={{ color: passwordsMatch ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    {passwordsMatch ? <Check size={13} /> : <Circle size={13} />} Passwords Match
                   </span>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 import FastTrackModal from '../common/FastTrackModal';
 import MonthlyReport from '../employee/MonthlyReport';
@@ -247,8 +248,9 @@ export default function PendingEvaluations({
       )}
 
       {savedDraftToast && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {savedDraftToast}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
+          {savedDraftToast}
         </div>
       )}
 

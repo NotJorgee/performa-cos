@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Database, FileSpreadsheet, Download, Check } from 'lucide-react';
 
 export default function BackupData({ onBack = null }) {
   const [toastMsg, setToastMsg] = useState(null);
@@ -70,7 +71,7 @@ export default function BackupData({ onBack = null }) {
       setBackupHistory((prev) => [newEntry, ...prev]);
 
       setDownloadingFormat(null);
-      setToastMsg(`✓ ${typeLabel} (${fileName}) downloaded successfully!`);
+      setToastMsg(`${typeLabel} (${fileName}) downloaded successfully!`);
       setTimeout(() => setToastMsg(null), 4500);
     }, 600);
   };
@@ -86,7 +87,7 @@ export default function BackupData({ onBack = null }) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    setToastMsg(`✓ Re-downloading ${item.fileName}`);
+    setToastMsg(`Re-downloading ${item.fileName}`);
     setTimeout(() => setToastMsg(null), 3500);
   };
 
@@ -95,7 +96,9 @@ export default function BackupData({ onBack = null }) {
       {/* Page Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>💾 Backup Data</h1>
+          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Database size={28} color="var(--brand-700)" /> Backup Data
+          </h1>
           <p className="muted" style={{ margin: 0 }}>
             Download an offline copy of university records in SQL or CSV format for safe archiving and compliance.
           </p>
@@ -110,7 +113,8 @@ export default function BackupData({ onBack = null }) {
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '18px' }}>
+        <div className="flash flash-success" style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
           {toastMsg}
         </div>
       )}
@@ -149,10 +153,9 @@ export default function BackupData({ onBack = null }) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '22px',
                 }}
               >
-                📊
+                <FileSpreadsheet size={24} />
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '16px' }}>CSV Data Archive</h3>
@@ -181,7 +184,11 @@ export default function BackupData({ onBack = null }) {
               cursor: downloadingFormat === 'csv' ? 'not-allowed' : 'pointer',
             }}
           >
-            {downloadingFormat === 'csv' ? 'Preparing CSV Archive...' : '⬇️ Download CSV Archive'}
+            {downloadingFormat === 'csv' ? 'Preparing CSV Archive...' : (
+              <>
+                <Download size={15} /> Download CSV Archive
+              </>
+            )}
           </button>
         </div>
 
@@ -210,10 +217,9 @@ export default function BackupData({ onBack = null }) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '22px',
                 }}
               >
-                🗄️
+                <Database size={24} />
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '16px' }}>SQL Database Dump</h3>
@@ -242,7 +248,11 @@ export default function BackupData({ onBack = null }) {
               cursor: downloadingFormat === 'sql' ? 'not-allowed' : 'pointer',
             }}
           >
-            {downloadingFormat === 'sql' ? 'Generating SQL Dump...' : '⬇️ Download SQL Dump'}
+            {downloadingFormat === 'sql' ? 'Generating SQL Dump...' : (
+              <>
+                <Download size={15} /> Download SQL Dump
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -293,10 +303,10 @@ export default function BackupData({ onBack = null }) {
                     type="button"
                     className="btn btn-sm"
                     onClick={() => handleDownloadExisting(item)}
-                    style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                     title={`Re-download ${item.fileName}`}
                   >
-                    ⬇️ Download
+                    <Download size={13} /> Download
                   </button>
                 </td>
               </tr>

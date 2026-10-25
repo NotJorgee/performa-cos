@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings, Check, AlertTriangle, X, Trash2, Lock } from 'lucide-react';
 
 const EVSU_DEPT_PRESETS = [
   'Disbursing / Cashier Office',
@@ -166,7 +167,7 @@ export default function DepartmentManagement({
       {/* Page Header */}
       <div className="flex-between" style={{ marginBottom: '14px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Department Management (UC-10)</h1>
+          <h1 style={{ margin: '0 0 6px' }}>Department Management</h1>
           <p className="muted" style={{ margin: 0 }}>
             Configure university colleges, academic departments, and institutional administrative offices.
           </p>
@@ -187,37 +188,16 @@ export default function DepartmentManagement({
         </div>
       </div>
 
-      {/* Campus Geofence Info Notice */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          background: 'var(--brand-50)',
-          border: '1px solid var(--brand-border)',
-          borderRadius: '10px',
-          padding: '10px 14px',
-          marginBottom: '16px',
-          fontSize: '13px',
-          color: 'var(--ink-800)',
-        }}
-      >
-        <span>📍</span>
-        <div style={{ flex: 1 }}>
-          <b>Campus Geofence is Universal:</b> Geofencing coordinates are centralized in the top-left <b>Hamburger Menu (☰ → Campus Geofence)</b> so all departments operate under a unified EVSU-Ormoc campus boundary.
-        </div>
-      </div>
-
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {toastMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} /> <span>{toastMsg}</span>
         </div>
       )}
 
       {deleteError && (
-        <div className="flash flash-danger flash-shake" style={{ marginBottom: '16px' }}>
-          ⚠️ {deleteError}
+        <div className="flash flash-danger flash-shake" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AlertTriangle size={16} /> <span>{deleteError}</span>
         </div>
       )}
 
@@ -263,7 +243,7 @@ export default function DepartmentManagement({
                     onClick={() => openDeptSettings(d)}
                     title={`Edit Settings - ${d.name}`}
                   >
-                    ⚙️ Settings
+                    <Settings size={14} /> Settings
                   </button>
                 </td>
               </tr>
@@ -290,7 +270,8 @@ export default function DepartmentManagement({
           <div className="modal-card" style={{ maxWidth: '540px' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚙️ Department Settings</span>
+                <Settings size={18} />
+                <span>Department Settings</span>
               </div>
               <button
                 type="button"
@@ -298,7 +279,7 @@ export default function DepartmentManagement({
                 onClick={() => setSettingsDept(null)}
                 aria-label="Close"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -338,8 +319,8 @@ export default function DepartmentManagement({
 
             {/* Delete Error inside Modal */}
             {deleteError && (
-              <div className="flash flash-danger" style={{ marginBottom: '14px', fontSize: '12.5px' }}>
-                ⚠️ {deleteError}
+              <div className="flash flash-danger" style={{ marginBottom: '14px', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={15} /> <span>{deleteError}</span>
               </div>
             )}
 
@@ -415,8 +396,9 @@ export default function DepartmentManagement({
                 marginBottom: '18px',
               }}
             >
-              <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--red-700)', marginBottom: '4px' }}>
-                🗑️ Danger Zone — Delete Department
+              <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--red-700)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Trash2 size={16} />
+                <span>Danger Zone — Delete Department</span>
               </div>
               <p className="muted" style={{ fontSize: '12px', margin: '0 0 10px', lineHeight: 1.4 }}>
                 Permanently removes this department. Referential integrity prevents deletion if active personnel accounts or pending evaluation cycles are currently assigned.
@@ -436,7 +418,7 @@ export default function DepartmentManagement({
                     gap: '6px',
                   }}
                 >
-                  <span>🔒</span>
+                  <Lock size={14} />
                   <span>
                     Cannot delete: <b>{settingsDept.employeeCount} personnel</b> and <b>{settingsDept.activeEvaluations} active evaluations</b> assigned.
                   </span>
@@ -490,7 +472,7 @@ export default function DepartmentManagement({
                 Add New Department
               </div>
               <button type="button" className="modal-close" onClick={() => setShowAddModal(false)}>
-                ✕
+                <X size={18} />
               </button>
             </div>
             <form onSubmit={handleAddSubmit}>

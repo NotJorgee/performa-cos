@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check } from 'lucide-react';
 
 export default function AuditTrail({
   logs = [
@@ -217,7 +218,7 @@ export default function AuditTrail({
     document.body.removeChild(link);
 
     setShowExportModal(false);
-    setToastMsg(`✓ Successfully exported ${candidateLogs.length} security log records to CSV!`);
+    setToastMsg(`Successfully exported ${candidateLogs.length} security log records to CSV!`);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -226,9 +227,11 @@ export default function AuditTrail({
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>🛡️ Security Logs &amp; Audit Trail</h1>
+          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldAlert size={28} color="var(--brand-700)" /> Security Logs &amp; Audit Trail
+          </h1>
           <p className="muted" style={{ margin: 0 }}>
-            Read-only timestamped record of grading actions, account changes, geofenced DAR submissions, and administrative transactions (UC-09).
+            Read-only timestamped record of grading actions, account changes, geofenced DAR submissions, and administrative transactions.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -243,13 +246,14 @@ export default function AuditTrail({
             onClick={() => setShowExportModal(true)}
             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
           >
-            📊 Export Security Logs
+            <FileDown size={16} /> Export Security Logs
           </button>
         </div>
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
           {toastMsg}
         </div>
       )}
@@ -295,7 +299,7 @@ export default function AuditTrail({
                 onChange={(e) => setTimeFilter(e.target.value)}
                 style={{ fontSize: '13.5px', width: '100%' }}
               >
-                <option value="all">🕒 All Time</option>
+                <option value="all">All Time</option>
                 <option value="today">Today (Oct 25, 2026)</option>
                 <option value="past7d">Past 7 Days</option>
                 <option value="past30d">Past 30 Days</option>
@@ -315,10 +319,10 @@ export default function AuditTrail({
                   setCustomStartDate('2026-10-01');
                   setCustomEndDate('2026-10-25');
                 }}
-                style={{ fontSize: '12px', padding: '6px 12px', cursor: 'pointer' }}
+                style={{ fontSize: '12px', padding: '6px 12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 title="Reset all search and filter fields"
               >
-                ✕ Clear
+                <X size={13} /> Clear
               </button>
             )}
           </div>
@@ -338,7 +342,7 @@ export default function AuditTrail({
               }}
             >
               <span style={{ fontWeight: 600, color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                📅 Custom Range:
+                <Calendar size={14} /> Custom Range:
               </span>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 <input
@@ -421,7 +425,8 @@ export default function AuditTrail({
           <div className="modal-card" style={{ maxWidth: '600px', width: '92%' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📊 Export Security Logs</span>
+                <FileDown size={20} color="var(--brand-700)" />
+                <span>Export Security Logs</span>
               </div>
               <button
                 type="button"
@@ -429,7 +434,7 @@ export default function AuditTrail({
                 onClick={() => setShowExportModal(false)}
                 aria-label="Close"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -440,8 +445,8 @@ export default function AuditTrail({
 
               {/* 1. Time / Date Filter */}
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ fontWeight: 600, fontSize: '13px', display: 'block', marginBottom: '6px' }}>
-                  🕒 Time Period to Export:
+                <label style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <Clock size={14} /> Time Period to Export:
                 </label>
                 <select
                   className="form-control"
@@ -479,8 +484,8 @@ export default function AuditTrail({
 
               {/* 2. User Role Filter */}
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ fontWeight: 600, fontSize: '13px', display: 'block', marginBottom: '6px' }}>
-                  👤 User Role:
+                <label style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <User size={14} /> User Role:
                 </label>
                 <select
                   className="form-control"
@@ -498,8 +503,8 @@ export default function AuditTrail({
               {/* 3. Action Types Filter */}
               <div className="form-group" style={{ marginBottom: '16px' }}>
                 <div className="flex-between" style={{ marginBottom: '6px' }}>
-                  <label style={{ fontWeight: 600, fontSize: '13px', margin: 0 }}>
-                    ⚡ Action Types to Include:
+                  <label style={{ fontWeight: 600, fontSize: '13px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Zap size={14} /> Action Types to Include:
                   </label>
                   <button
                     type="button"
@@ -566,8 +571,8 @@ export default function AuditTrail({
 
               {/* 4. Column Fields to Include */}
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ fontWeight: 600, fontSize: '13px', display: 'block', marginBottom: '6px' }}>
-                  📋 Columns to Include:
+                <label style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <TableProperties size={14} /> Columns to Include:
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '12.5px' }}>
                   {availableColumns.map((col) => (

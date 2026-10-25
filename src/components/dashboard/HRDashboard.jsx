@@ -1,4 +1,13 @@
 import React from 'react';
+import {
+  Clock,
+  FileSpreadsheet,
+  Users,
+  ShieldCheck,
+  Building2,
+  BarChart3,
+  ArrowRight,
+} from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 
@@ -36,32 +45,19 @@ export default function HRDashboard({
         </div>
       </div>
 
-      {/* QUICK ACCESS Section Header */}
-      <div style={{ marginBottom: '14px' }}>
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 800,
-            letterSpacing: '.06em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-500)',
-          }}
-        >
-          Quick Access
-        </span>
-      </div>
-
       {/* 4-Column Module Panels Grid */}
       <div className="quick-access-grid">
         {/* Panel 1: Evaluation Management */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('evaluation_management')}
-          title="Click to manage Individualized Contract Expiration & Routing (UC-01)"
+          title="Click to manage Individualized Contract Expiration & Routing"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Evaluation Management</span>
-            <div className="quick-access-icon">⏱️</div>
+            <div className="quick-access-icon">
+              <Clock size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div
             className="quick-access-value"
@@ -74,7 +70,8 @@ export default function HRDashboard({
             {expiringCount} Expiring Soon
           </div>
           <div className="quick-access-link">
-            Contract lifecycles &amp; routing →
+            <span>Contract lifecycles &amp; routing</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -82,11 +79,13 @@ export default function HRDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('hr_evaluations_proxy')}
-          title="Click to input 30% HR Score and offline proxy ratings (UC-05)"
+          title="Click to input 30% HR Score and offline proxy ratings"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">HR &amp; Proxy Evaluations</span>
-            <div className="quick-access-icon">📝</div>
+            <div className="quick-access-icon">
+              <FileSpreadsheet size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div
             className="quick-access-value"
@@ -99,7 +98,8 @@ export default function HRDashboard({
             {pendingHrEvalCount} {pendingHrEvalCount === 1 ? 'Pending Evaluation' : 'Pending Evaluations'}
           </div>
           <div className="quick-access-link">
-            30% administrative scores →
+            <span>30% administrative scores</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -107,17 +107,20 @@ export default function HRDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('employee_management')}
-          title="Click to manage COS Personnel accounts & tokenized invites (UC-09)"
+          title="Click to manage COS Personnel accounts & tokenized invites"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Employee Management</span>
-            <div className="quick-access-icon">👥</div>
+            <div className="quick-access-icon">
+              <Users size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div className="quick-access-value">
             {metrics.totalEmployees}
           </div>
           <div className="quick-access-link">
-            COS directory &amp; accounts →
+            <span>COS directory &amp; accounts</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -129,13 +132,16 @@ export default function HRDashboard({
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Administrator Management</span>
-            <div className="quick-access-icon">🛡️</div>
+            <div className="quick-access-icon">
+              <ShieldCheck size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div className="quick-access-value">
             {metrics.totalAdministrators || 6}
           </div>
           <div className="quick-access-link">
-            Dept Heads &amp; HR accounts →
+            <span>Dept Heads &amp; HR accounts</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -143,17 +149,20 @@ export default function HRDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('department_management')}
-          title="Click to configure university departments and colleges (UC-10)"
+          title="Click to configure university departments and colleges"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Department Management</span>
-            <div className="quick-access-icon">🏛️</div>
+            <div className="quick-access-icon">
+              <Building2 size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div className="quick-access-value">
             {metrics.activeColleges}
           </div>
           <div className="quick-access-link">
-            Colleges &amp; departments →
+            <span>Colleges &amp; departments</span>
+            <ArrowRight size={14} />
           </div>
         </div>
 
@@ -165,13 +174,16 @@ export default function HRDashboard({
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Executive Reports</span>
-            <div className="quick-access-icon">📊</div>
+            <div className="quick-access-icon">
+              <BarChart3 size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div className="quick-access-value text-lg">
             Past MARs &amp; Records
           </div>
           <div className="quick-access-link">
-            Extract records &amp; evaluations →
+            <span>Extract records &amp; evaluations</span>
+            <ArrowRight size={14} />
           </div>
         </div>
       </div>

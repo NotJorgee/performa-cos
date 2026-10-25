@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FileText, Camera, X } from 'lucide-react';
 
 export default function MonthlyReport({
   employeeName = 'Jorge Mikhael Gubantes',
@@ -6,7 +7,7 @@ export default function MonthlyReport({
   onBack = null,
   backLabel = '← Back to Performance Appraisal',
   onDownload = null,
-  downloadLabel = '📄 Download MAR (PDF)',
+  downloadLabel = 'Download MAR (PDF)',
   cyclePeriod = null,
   initialRecords = [
     {
@@ -118,6 +119,7 @@ export default function MonthlyReport({
               onClick={onDownload}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
             >
+              <FileText size={14} />
               {downloadLabel}
             </button>
           )}
@@ -135,7 +137,7 @@ export default function MonthlyReport({
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px' }}>
-                FILTER BY MONTH (FR-04)
+                FILTER BY MONTH
               </label>
               <select
                 className="form-control"
@@ -283,8 +285,13 @@ export default function MonthlyReport({
         >
           <div className="modal-card" style={{ maxWidth: '580px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <div className="card-title" style={{ margin: 0 }}>📷 Verified DAR Task Photo Evidence</div>
-              <button type="button" className="modal-close" onClick={() => setPreviewPhoto(null)}>✕</button>
+              <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Camera size={18} color="var(--brand-700)" />
+                <span>Verified DAR Task Photo Evidence</span>
+              </div>
+              <button type="button" className="modal-close" onClick={() => setPreviewPhoto(null)} aria-label="Close">
+                <X size={18} />
+              </button>
             </div>
             <div style={{ marginTop: '12px' }}>
               <img

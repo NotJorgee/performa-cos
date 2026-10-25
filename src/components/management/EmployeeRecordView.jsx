@@ -1,6 +1,77 @@
 import React, { useState } from 'react';
+import { Check, Archive, FileText, ClipboardCheck, FileDown } from 'lucide-react';
 import MonthlyReport from '../employee/MonthlyReport';
 import DynamicRubric from '../common/DynamicRubric';
+
+export const getScoreInterpretationColor = (interpretation, score) => {
+  const norm = (interpretation || '').toLowerCase().trim();
+  if (norm.includes('unsatisfactory')) {
+    return {
+      className: 'score-bad',
+      color: 'var(--red-600)',
+      bg: 'var(--red-50)',
+      border: '#fecaca',
+      badgeClass: 'badge-delayed',
+    };
+  }
+  if (norm.includes('needs improvement')) {
+    return {
+      className: 'score-mid',
+      color: 'var(--amber-600)',
+      bg: 'var(--amber-50)',
+      border: '#fed7aa',
+      badgeClass: 'badge-pending',
+    };
+  }
+  if (
+    norm.includes('outstanding') ||
+    norm.includes('very satisfactory') ||
+    norm.includes('satisfactory')
+  ) {
+    return {
+      className: 'score-good',
+      color: 'var(--green-600)',
+      bg: 'var(--green-50)',
+      border: '#bfe8cd',
+      badgeClass: 'badge-completed',
+    };
+  }
+  if (score !== undefined && score !== null && score !== '') {
+    const num = Number(score);
+    if (num >= 75) {
+      return {
+        className: 'score-good',
+        color: 'var(--green-600)',
+        bg: 'var(--green-50)',
+        border: '#bfe8cd',
+        badgeClass: 'badge-completed',
+      };
+    }
+    if (num >= 60) {
+      return {
+        className: 'score-mid',
+        color: 'var(--amber-600)',
+        bg: 'var(--amber-50)',
+        border: '#fed7aa',
+        badgeClass: 'badge-pending',
+      };
+    }
+    return {
+      className: 'score-bad',
+      color: 'var(--red-600)',
+      bg: 'var(--red-50)',
+      border: '#fecaca',
+      badgeClass: 'badge-delayed',
+    };
+  }
+  return {
+    className: '',
+    color: 'var(--ink-700)',
+    bg: '#f8fafc',
+    border: 'var(--line)',
+    badgeClass: 'badge-dept',
+  };
+};
 
 export default function EmployeeRecordView({
   employee = {
@@ -56,15 +127,28 @@ export default function EmployeeRecordView({
     {
       id: 3,
       periodDates: 'Jul 01, 2025 – Dec 31, 2025',
-      supervisorScore: 88,
-      peerScore: 85,
-      hrmoScore: 86,
-      finalGrade: 86.8,
-      interpretation: 'Very Satisfactory',
-      marCount: 80,
+      supervisorScore: 80,
+      peerScore: 78,
+      hrmoScore: 76,
+      finalGrade: 78.4,
+      interpretation: 'Satisfactory',
+      marCount: 70,
       strengths:
         'Reliable execution of daily tasks. High integrity in managing university records and office equipment.',
       recommendation: 'Recommended for Renewal',
+    },
+    {
+      id: 4,
+      periodDates: 'Jan 01, 2025 – Jun 30, 2025',
+      supervisorScore: 68,
+      peerScore: 65,
+      hrmoScore: 67,
+      finalGrade: 67.1,
+      interpretation: 'Needs Improvement',
+      marCount: 52,
+      strengths:
+        'Adequate task completion but requires closer monitoring on turnaround times and office documentation protocol compliance.',
+      recommendation: 'Probationary Renewal with Performance Improvement Plan',
     },
   ];
 
@@ -135,7 +219,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
     URL.revokeObjectURL(url);
 
     setToastMsg(
-      `✓ Successfully generated and downloaded ${isMar ? 'MAR' : 'Evaluation'} PDF for ${cycle.periodDates}!`
+      `Successfully generated and downloaded ${isMar ? 'MAR' : 'Evaluation'} PDF for ${cycle.periodDates}!`
     );
     setTimeout(() => setToastMsg(null), 4000);
   };
@@ -151,7 +235,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
           backLabel="← Back to Historical Evaluations"
           onBack={() => setViewingMarCycle(null)}
           onDownload={() => handleDownloadPdf('mar', viewingMarCycle)}
-          downloadLabel="📄 Download MAR (PDF)"
+          downloadLabel="Download MAR (PDF)"
         />
       </div>
     );
@@ -221,7 +305,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
               onClick={() => handleDownloadPdf('eval', viewingEvalCycle)}
               title="Download Triad Evaluation Summary (PDF)"
             >
-              📑 Download Evaluation (PDF)
+              <FileDown size={14} /> Download Evaluation (PDF)
             </button>
             <button
               type="button"
@@ -238,8 +322,8 @@ Generated Timestamp: ${new Date().toLocaleString()}
         </div>
 
         {toastMsg && (
-          <div className="flash flash-success" style={{ marginBottom: '18px' }}>
-            {toastMsg}
+          <div className="flash flash-success" style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Check size={16} /> <span>{toastMsg}</span>
           </div>
         )}
 
@@ -254,8 +338,8 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 <span className="badge badge-dept" style={{ padding: '3px 8px' }}>
                   {employee.cosCategory}
                 </span>
-                <span className="badge badge-completed" style={{ padding: '3px 8px' }}>
-                  ✓ Official Evaluation Archived
+                <span className="badge badge-completed" style={{ padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Check size={12} /> Official Evaluation Archived
                 </span>
               </div>
               <h2 style={{ margin: '0 0 4px', fontSize: '20px' }}>{employee.fullName}</h2>
@@ -329,17 +413,23 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 </div>
               </div>
 
-              <div style={{ textAlign: 'center', background: 'var(--green-50)', padding: '10px 16px', borderRadius: '8px', border: '1px solid #bfe8cd' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--green-800)', textTransform: 'uppercase' }}>
-                  Final Weighted Grade
-                </div>
-                <div style={{ fontSize: '19px', fontWeight: 800, color: 'var(--green-700)', marginTop: '2px' }}>
-                  {viewingEvalCycle.finalGrade.toFixed(2)}
-                </div>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--green-700)' }}>
-                  ✓ {viewingEvalCycle.interpretation}
-                </div>
-              </div>
+              {(() => {
+                const colors = getScoreInterpretationColor(viewingEvalCycle.interpretation, viewingEvalCycle.finalGrade);
+                return (
+                  <div style={{ textAlign: 'center', background: colors.bg, padding: '10px 16px', borderRadius: '8px', border: `1px solid ${colors.border}` }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: colors.color, textTransform: 'uppercase' }}>
+                      Final Weighted Grade
+                    </div>
+                    <div style={{ fontSize: '19px', fontWeight: 800, color: colors.color, marginTop: '2px' }}>
+                      {viewingEvalCycle.finalGrade.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: colors.color, display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}>
+                      <Check size={12} />
+                      <span>{viewingEvalCycle.interpretation}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -516,9 +606,17 @@ Generated Timestamp: ${new Date().toLocaleString()}
                   className={`badge ${
                     employee.status === 'Archived' ? 'badge-delete' : 'badge-active'
                   }`}
-                  style={{ fontWeight: 700 }}
+                  style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
-                  {employee.status === 'Archived' ? '📦 Archived' : '✓ Active'}
+                  {employee.status === 'Archived' ? (
+                    <>
+                      <Archive size={12} /> Archived
+                    </>
+                  ) : (
+                    <>
+                      <Check size={12} /> Active
+                    </>
+                  )}
                 </span>
               </div>
               <h2 style={{ margin: '0 0 2px', fontSize: '20px', color: 'var(--ink-900)' }}>
@@ -555,8 +653,8 @@ Generated Timestamp: ${new Date().toLocaleString()}
               <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>
                 Latest Grade
               </span>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--green-700)', marginTop: '2px' }}>
-                {employee.latestScore !== null ? `${employee.latestScore} (${employee.latestRating})` : 'Unrated'}
+              <div style={{ fontWeight: 800, fontSize: '15px', color: getScoreInterpretationColor(employee.latestRating, employee.latestScore).color, marginTop: '2px' }}>
+                {employee.latestScore !== null && employee.latestScore !== undefined ? `${employee.latestScore} (${employee.latestRating || 'Evaluated'})` : 'Unrated'}
               </div>
             </div>
           </div>
@@ -596,11 +694,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 <td>
                   <span
                     className={`score-pill ${
-                      evalItem.finalGrade >= 80
-                        ? 'score-good'
-                        : evalItem.finalGrade >= 60
-                        ? 'score-mid'
-                        : 'score-bad'
+                      getScoreInterpretationColor(evalItem.interpretation, evalItem.finalGrade).className
                     }`}
                   >
                     {evalItem.finalGrade.toFixed(2)}
@@ -612,13 +706,11 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 <td>
                   <span
                     className={`badge ${
-                      evalItem.interpretation === 'Outstanding'
-                        ? 'badge-completed'
-                        : 'badge-verified'
+                      getScoreInterpretationColor(evalItem.interpretation, evalItem.finalGrade).badgeClass
                     }`}
-                    style={{ fontWeight: 700, padding: '4px 10px' }}
+                    style={{ fontWeight: 700, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    ✓ {evalItem.interpretation}
+                    <Check size={12} /> {evalItem.interpretation}
                   </span>
                 </td>
                 <td style={{ textAlign: 'center' }}>
@@ -635,7 +727,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                     onClick={() => setViewingMarCycle(evalItem)}
                     title={`View Compiled MAR for ${evalItem.periodDates}`}
                   >
-                    📄 View MAR
+                    <FileText size={13} /> View MAR
                   </button>
                 </td>
                 <td style={{ textAlign: 'center' }}>
@@ -655,7 +747,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                     }}
                     title={`View Triad Evaluation for ${evalItem.periodDates}`}
                   >
-                    📑 View Evaluation
+                    <ClipboardCheck size={13} /> View Evaluation
                   </button>
                 </td>
               </tr>

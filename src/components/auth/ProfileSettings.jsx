@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Check, AlertTriangle, User, Settings, Key, ArrowRight } from 'lucide-react';
 
 export default function ProfileSettings({
   currentUser = {
@@ -43,7 +44,7 @@ export default function ProfileSettings({
   const handleProfileSubmit = (e) => {
     e.preventDefault();
     onUpdateProfile({ contactNumber, alternateEmail, avatarUrl: avatarPreview });
-    setToastMsg('Personal contact information updated successfully (UC-11).');
+    setToastMsg('Personal contact information updated successfully.');
     setTimeout(() => setToastMsg(null), 3500);
   };
 
@@ -62,7 +63,7 @@ export default function ProfileSettings({
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    setToastMsg('Password securely updated with BCRYPT encryption (UC-11, FR-24).');
+    setToastMsg('Password securely updated with BCRYPT encryption.');
     setTimeout(() => setToastMsg(null), 3500);
   };
 
@@ -77,7 +78,7 @@ export default function ProfileSettings({
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Personal Profile &amp; Security (UC-11)</h1>
+          <h1 style={{ margin: '0 0 6px' }}>Personal Profile &amp; Security</h1>
           <p className="muted" style={{ margin: 0 }}>
             View your institutional profile, manage personal contact details, and update secure credentials.
           </p>
@@ -90,14 +91,16 @@ export default function ProfileSettings({
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {toastMsg}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
+          {toastMsg}
         </div>
       )}
 
       {errorMsg && (
-        <div className="flash flash-danger" style={{ marginBottom: '16px' }}>
-          ⚠️ {errorMsg}
+        <div className="flash flash-danger" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AlertTriangle size={16} />
+          {errorMsg}
         </div>
       )}
 
@@ -107,22 +110,25 @@ export default function ProfileSettings({
           type="button"
           className={`btn ${activeTab === 'profile' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('profile')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          ◉ View Profile
+          <User size={15} /> View Profile
         </button>
         <button
           type="button"
           className={`btn ${activeTab === 'account' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('account')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          ⚙ Account Settings
+          <Settings size={15} /> Account Settings
         </button>
         <button
           type="button"
           className={`btn ${activeTab === 'security' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('security')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          🔑 Change Password
+          <Key size={15} /> Change Password
         </button>
       </div>
 
@@ -208,15 +214,17 @@ export default function ProfileSettings({
               type="button"
               className="btn btn-sm"
               onClick={() => setActiveTab('account')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              ⚙ Edit Account Settings →
+              <Settings size={14} /> Edit Account Settings <ArrowRight size={14} />
             </button>
             <button
               type="button"
               className="btn btn-sm"
               onClick={() => setActiveTab('security')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              🔑 Change Password →
+              <Key size={14} /> Change Password <ArrowRight size={14} />
             </button>
           </div>
         </div>
@@ -253,7 +261,7 @@ export default function ProfileSettings({
               </div>
               <div>
                 <label className="btn btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
-                  Upload Profile Picture (FR-25)
+                  Upload Profile Picture
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
                 </label>
                 {avatarPreview && (
@@ -322,7 +330,7 @@ export default function ProfileSettings({
       {/* 3. CHANGE PASSWORD TAB */}
       {activeTab === 'security' && (
         <div className="card" style={{ maxWidth: '540px' }}>
-          <div className="card-title" style={{ marginBottom: '16px' }}>Change Account Password (FR-24)</div>
+          <div className="card-title" style={{ marginBottom: '16px' }}>Change Account Password</div>
           <form onSubmit={handlePasswordSubmit}>
             <div className="form-group">
               <label>Current Password</label>

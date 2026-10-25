@@ -1,4 +1,5 @@
 import React from 'react';
+import { ClipboardCheck, ArrowRight } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 
@@ -32,28 +33,8 @@ export default function DeptHeadDashboard({
         </div>
       </div>
 
-      {/* QUICK ACCESS Section Header */}
-      <div style={{ marginBottom: '14px' }}>
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 800,
-            letterSpacing: '.06em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-500)',
-          }}
-        >
-          Quick Access
-        </span>
-      </div>
-
-      {/* Quick Access Grid: Kept strictly to Subordinate Evaluations panel */}
-      <div
-        className="quick-access-grid"
-        style={{
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 340px))',
-        }}
-      >
+      {/* Subordinate Evaluations panel */}
+      <div className="quick-access-grid">
         {/* Panel: Subordinate Evaluations */}
         <div
           className="quick-access-card"
@@ -62,7 +43,9 @@ export default function DeptHeadDashboard({
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Subordinate Evaluations</span>
-            <div className="quick-access-icon">📋</div>
+            <div className="quick-access-icon">
+              <ClipboardCheck size={22} color="var(--brand-700)" />
+            </div>
           </div>
           <div
             className="quick-access-value"
@@ -75,7 +58,8 @@ export default function DeptHeadDashboard({
             {pendingCount} {pendingCount === 1 ? 'Pending Evaluation' : 'Pending Evaluations'}
           </div>
           <div className="quick-access-link">
-            View &amp; evaluate subordinates →
+            <span>View &amp; evaluate subordinates</span>
+            <ArrowRight size={14} />
           </div>
         </div>
       </div>

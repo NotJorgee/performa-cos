@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ContractStatus({
   contract = {
@@ -39,7 +40,7 @@ export default function ContractStatus({
       setStatus('Renewal Intent Confirmed');
       setShowActionModal(false);
       setSelectedAction(null);
-      setToastMsg('✓ Contract renewal intent confirmed! Accumulated DARs synthesized and evaluation workflow initiated.');
+      setToastMsg('Contract renewal intent confirmed! Accumulated DARs synthesized and evaluation workflow initiated.');
       onConfirmRenewal({
         action: 'renew',
         department: contract.department,
@@ -81,7 +82,8 @@ export default function ContractStatus({
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
           {toastMsg}
         </div>
       )}
@@ -130,13 +132,9 @@ export default function ContractStatus({
           <div className="card-title" style={{ color: 'var(--brand-700)' }}>
             Contract Renewal Action Required
           </div>
-          <p style={{ fontSize: '13.5px', lineHeight: 1.5, margin: '0 0 14px' }}>
+          <p style={{ fontSize: '13.5px', lineHeight: 1.5, margin: '0 0 16px' }}>
             Your 6-month Contract of Service is approaching its expiration date. Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) and initiate the performance evaluation workflow for your Department Head, peer evaluators, and HRMO.
           </p>
-
-          <div className="flash flash-info" style={{ marginBottom: '18px', fontSize: '13px' }}>
-            ℹ️ In compliance with RA 11032, no manual paper routing is required. Digital confirmation initiates the evaluation workflow.
-          </div>
 
           <div>
             <button
@@ -158,8 +156,9 @@ export default function ContractStatus({
         <div className="card" style={{ border: '1px solid #bfe8cd', background: 'var(--green-50)', marginBottom: '20px' }}>
           <div className="flex-between" style={{ alignItems: 'flex-start' }}>
             <div>
-              <div className="card-title" style={{ color: '#0f6b32', margin: '0 0 6px' }}>
-                ✓ Renewal Intent Confirmed &amp; AI MAR Synthesized
+              <div className="card-title" style={{ color: '#0f6b32', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Check size={20} />
+                Renewal Intent Confirmed &amp; AI MAR Synthesized
               </div>
               <p style={{ margin: '0 0 8px', fontSize: '13.5px' }}>
                 All {contract.totalDarsLogged} DAR logs have been successfully aggregated into your Monthly Accomplishment Report.
@@ -235,7 +234,8 @@ export default function ContractStatus({
           <div className="modal-card" style={{ maxWidth: '520px', width: '92%' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📋 Contract Action</span>
+                <FileCheck size={18} color="var(--brand-700)" />
+                <span>Contract Action</span>
               </div>
               <button
                 type="button"
@@ -247,7 +247,7 @@ export default function ContractStatus({
                 }}
                 aria-label="Close modal"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
@@ -281,11 +281,11 @@ export default function ContractStatus({
                   }}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>✓</span>
+                    <Check size={16} />
                     <span>Renew Contract</span>
                   </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, opacity: 0.9 }}>
-                    {selectedAction === 'renew' ? 'Hide Details ▲' : 'Current Dept ▼'}
+                  <span style={{ display: 'flex', alignItems: 'center', opacity: 0.9 }}>
+                    {selectedAction === 'renew' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </span>
                 </button>
 
@@ -358,11 +358,11 @@ export default function ContractStatus({
                   }}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>✕</span>
+                    <X size={16} />
                     <span>Decline Renewal</span>
                   </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, opacity: 0.9 }}>
-                    {selectedAction === 'decline' ? 'Hide Details ▲' : 'Non-Renewal Intent ▼'}
+                  <span style={{ display: 'flex', alignItems: 'center', opacity: 0.9 }}>
+                    {selectedAction === 'decline' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </span>
                 </button>
 

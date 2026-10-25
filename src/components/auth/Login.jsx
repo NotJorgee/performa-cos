@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings, Lock, MapPin, Zap, Mail, Eye, EyeOff } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function Login({
@@ -32,22 +33,22 @@ export default function Login({
 
         <div className="auth-feature-strip">
           <div>
-            <span className="auth-feature-icon"><i>⚙</i></span>
+            <span className="auth-feature-icon"><Settings size={18} /></span>
             <b>Smart Automation</b>
             <small>Automated Evaluation Cycles</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>🔒</i></span>
+            <span className="auth-feature-icon"><Lock size={18} /></span>
             <b>Secure Access</b>
             <small>Role-Based Authentication</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>📍</i></span>
+            <span className="auth-feature-icon"><MapPin size={18} /></span>
             <b>Geofenced DAR</b>
             <small>Campus Boundary Validated</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>⚡</i></span>
+            <span className="auth-feature-icon"><Zap size={18} /></span>
             <b>AI MAR Summary</b>
             <small>Fast-Track Decision Support</small>
           </div>
@@ -74,7 +75,9 @@ export default function Login({
               <div className="form-group">
                 <label htmlFor="loginEmail">Institutional Email</label>
                 <div className="auth-input-wrap">
-                  <span className="auth-input-icon" aria-hidden="true">✉</span>
+                  <span className="auth-input-icon" aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Mail size={16} />
+                  </span>
                   <input
                     className="form-control"
                     type="email"
@@ -93,7 +96,9 @@ export default function Login({
               <div className="form-group">
                 <label htmlFor="loginPassword">Password</label>
                 <div className="auth-input-wrap">
-                  <span className="auth-input-icon" aria-hidden="true">🔒</span>
+                  <span className="auth-input-icon" aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Lock size={16} />
+                  </span>
                   <input
                     className="form-control"
                     type={showPassword ? 'text' : 'password'}
@@ -111,8 +116,9 @@ export default function Login({
                     id="passwordToggle"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     onClick={() => setShowPassword((prev) => !prev)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    {showPassword ? '👁‍🗨' : '👁'}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>

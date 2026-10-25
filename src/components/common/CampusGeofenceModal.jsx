@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MapPin, Building2, Check, AlertTriangle, Info, X } from 'lucide-react';
 
 export default function CampusGeofenceModal({
   isOpen = false,
@@ -49,20 +50,22 @@ export default function CampusGeofenceModal({
         <div className="modal-header">
           <div>
             <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>📍 University Campus Geofence Configuration</span>
+              <MapPin size={18} color="var(--brand-700)" />
+              <span>University Campus Geofence Configuration</span>
             </div>
             <div className="muted" style={{ fontSize: '12.5px', marginTop: '2px' }}>
               Centralized perimeter enforcement for all university departments &amp; offices
             </div>
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={18} />
           </button>
         </div>
 
         {toastMsg && (
-          <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-            ✓ {toastMsg}
+          <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Check size={16} />
+            {toastMsg}
           </div>
         )}
 
@@ -77,9 +80,15 @@ export default function CampusGeofenceModal({
             fontSize: '13px',
             lineHeight: 1.5,
             color: 'var(--ink-800)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
           }}
         >
-          ℹ️ <b>Universal Campus Scope:</b> All departments and offices (Computer Studies, Technology, Engineering, HRMDO, etc.) share this university-wide geofence perimeter. Daily Accomplishment Reports (DAR) submitted by COS personnel must originate within this boundary.
+          <Info size={16} color="var(--brand-700)" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <b>Universal Campus Scope:</b> All departments and offices (Computer Studies, Technology, Engineering, HRMDO, etc.) share this university-wide geofence perimeter. Daily Accomplishment Reports (DAR) submitted by COS personnel must originate within this boundary.
+          </div>
         </div>
 
         {/* Visual Map / Perimeter Card */}
@@ -125,7 +134,9 @@ export default function CampusGeofenceModal({
           />
 
           <div style={{ position: 'relative', zIndex: 2, textAlign: 'center' }}>
-            <div style={{ fontSize: '30px', marginBottom: '4px' }}>🏛️</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
+              <Building2 size={36} color="#38bdf8" />
+            </div>
             <div style={{ fontWeight: 800, fontSize: '16px', letterSpacing: '0.02em' }}>
               {campusName}
             </div>
@@ -145,7 +156,7 @@ export default function CampusGeofenceModal({
                   fontWeight: 700,
                 }}
               >
-                ⬡ {radiusM}m Active Radius
+                {radiusM}m Active Radius
               </span>
               <span
                 style={{
@@ -156,9 +167,20 @@ export default function CampusGeofenceModal({
                   borderRadius: '999px',
                   fontSize: '12px',
                   fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
                 }}
               >
-                {enforceGeofence ? '✓ GPS Enforcement Enabled' : '⚠ Enforcement Paused'}
+                {enforceGeofence ? (
+                  <>
+                    <Check size={12} /> GPS Enforcement Enabled
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={12} /> Enforcement Paused
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -256,7 +278,7 @@ export default function CampusGeofenceModal({
                 Enforce Geofence on Daily Accomplishment Reports
               </div>
               <div className="muted" style={{ fontSize: '12px' }}>
-                Submissions outside this perimeter will be flagged as Out-of-Bounds (FR-30).
+                Submissions outside this perimeter will be flagged as Out-of-Bounds.
               </div>
             </div>
             <input

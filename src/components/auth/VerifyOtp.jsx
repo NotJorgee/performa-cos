@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Mail, Clock, RefreshCw, ShieldCheck, Hash } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function VerifyOtp({
@@ -29,22 +30,22 @@ export default function VerifyOtp({
         </div>
         <div className="auth-feature-strip">
           <div>
-            <span className="auth-feature-icon"><i>✉</i></span>
+            <span className="auth-feature-icon"><Mail size={18} /></span>
             <b>Check Your Inbox</b>
             <small>OTP sent to {emailHint}</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>⏱</i></span>
+            <span className="auth-feature-icon"><Clock size={18} /></span>
             <b>Time-Limited</b>
             <small>Expires in 10 minutes</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>🔄</i></span>
+            <span className="auth-feature-icon"><RefreshCw size={18} /></span>
             <b>Resend</b>
             <small>Didn't get it? Request new OTP</small>
           </div>
           <div>
-            <span className="auth-feature-icon"><i>🛡</i></span>
+            <span className="auth-feature-icon"><ShieldCheck size={18} /></span>
             <b>One-Time Code</b>
             <small>Single use only</small>
           </div>
@@ -82,7 +83,9 @@ export default function VerifyOtp({
               <div className="form-group">
                 <label htmlFor="otpCode">6-Digit Code</label>
                 <div className="auth-input-wrap">
-                  <span className="auth-input-icon" aria-hidden="true">🔢</span>
+                  <span className="auth-input-icon" aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Hash size={16} />
+                  </span>
                   <input
                     className="form-control"
                     type="text"

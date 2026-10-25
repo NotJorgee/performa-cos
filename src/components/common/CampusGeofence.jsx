@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MapPin, Building2, Check, AlertTriangle, Settings, Save, ArrowLeft, Ruler, Info } from 'lucide-react';
 
 export default function CampusGeofence({
   initialCoordinates = {
@@ -77,7 +78,7 @@ export default function CampusGeofence({
     setTimeout(() => {
       onSave(updated);
       setIsSaving(false);
-      setToastMsg(`✓ University campus geofence perimeter updated successfully (${radiusM}m radius applied across all departments).`);
+      setToastMsg(`University campus geofence perimeter updated successfully (${radiusM}m radius applied across all departments).`);
       setTimeout(() => setToastMsg(null), 4500);
     }, 400);
   };
@@ -89,22 +90,25 @@ export default function CampusGeofence({
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>📍 University Campus Geofence Configuration</h1>
+          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <MapPin size={28} color="var(--brand-700)" /> University Campus Geofence Configuration
+          </h1>
           <p className="muted" style={{ margin: 0 }}>
-            Centralized GPS perimeter enforcement for all university departments &amp; offices (UC-13, FR-29, FR-30).
+            Centralized GPS perimeter enforcement for all university departments &amp; offices.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {onBack && (
-            <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer' }}>
-              ← Back to Dashboard
+            <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <ArrowLeft size={14} /> Back to Dashboard
             </button>
           )}
         </div>
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '18px' }}>
+        <div className="flash flash-success" style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
           {toastMsg}
         </div>
       )}
@@ -125,7 +129,7 @@ export default function CampusGeofence({
           gap: '12px',
         }}
       >
-        <span style={{ fontSize: '20px', lineHeight: 1 }}>ℹ️</span>
+        <Info size={20} color="var(--brand-700)" style={{ flexShrink: 0, marginTop: '2px' }} />
         <div>
           <b>Universal Campus Scope:</b> All departments and colleges (Computer Studies, Technology, Engineering, Education, Library, HRMDO, MESO Maintenance, etc.) operate under this unified EVSU-Ormoc campus boundary. Daily Accomplishment Reports (DAR) submitted by COS personnel must originate within this designated perimeter.
         </div>
@@ -202,7 +206,9 @@ export default function CampusGeofence({
           />
 
           <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ fontSize: '38px', marginBottom: '8px' }}>🏛️</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+              <Building2 size={44} color="#38bdf8" />
+            </div>
             <div style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '0.02em', color: '#fff' }}>
               {campusName}
             </div>
@@ -222,7 +228,7 @@ export default function CampusGeofence({
                   fontWeight: 700,
                 }}
               >
-                ⬡ {radiusM}m Active Radius
+                {radiusM}m Active Radius
               </span>
               <span
                 style={{
@@ -233,9 +239,12 @@ export default function CampusGeofence({
                   borderRadius: '999px',
                   fontSize: '12.5px',
                   fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
                 }}
               >
-                📐 ~{coverageAreaKm2} km² Area
+                <Ruler size={13} /> ~{coverageAreaKm2} km² Area
               </span>
               <span
                 style={{
@@ -246,9 +255,20 @@ export default function CampusGeofence({
                   borderRadius: '999px',
                   fontSize: '12.5px',
                   fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
                 }}
               >
-                {enforceGeofence ? '✓ GPS Enforcement Active' : '⚠ Enforcement Paused'}
+                {enforceGeofence ? (
+                  <>
+                    <Check size={13} /> GPS Enforcement Active
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={13} /> Enforcement Paused
+                  </>
+                )}
               </span>
             </div>
 
@@ -261,7 +281,8 @@ export default function CampusGeofence({
         {/* Configuration Form Card */}
         <div className="card" style={{ padding: '24px' }}>
           <div className="card-title" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>⚙️ Perimeter Parameters</span>
+            <Settings size={18} color="var(--brand-700)" />
+            <span>Perimeter Parameters</span>
           </div>
 
           <form onSubmit={handleSave}>
@@ -372,7 +393,7 @@ export default function CampusGeofence({
                   Enforce Geofence on Daily Accomplishment Reports
                 </div>
                 <div className="muted" style={{ fontSize: '12px' }}>
-                  Submissions outside this perimeter will be flagged as Out-of-Bounds (FR-30).
+                  Submissions outside this perimeter will be flagged as Out-of-Bounds.
                 </div>
               </div>
               <input
@@ -398,7 +419,11 @@ export default function CampusGeofence({
                   padding: '8px 20px',
                 }}
               >
-                {isSaving ? 'Saving Changes...' : '💾 Save Campus Geofence'}
+                {isSaving ? 'Saving Changes...' : (
+                  <>
+                    <Save size={15} /> Save Campus Geofence
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -438,8 +463,8 @@ export default function CampusGeofence({
                 <td style={{ fontSize: '12.5px', fontFamily: 'monospace' }}>{log.coordinates}</td>
                 <td style={{ fontSize: '13px', color: 'var(--ink-800)' }}>{log.distance}</td>
                 <td>
-                  <span className="badge badge-active" style={{ fontSize: '11.5px' }}>
-                    ✓ {log.status}
+                  <span className="badge badge-active" style={{ fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Check size={12} /> {log.status}
                   </span>
                 </td>
               </tr>

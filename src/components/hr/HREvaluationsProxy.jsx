@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, FileSpreadsheet } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 
 export default function HREvaluationsProxy({
@@ -74,7 +75,7 @@ export default function HREvaluationsProxy({
         score: evalData.rawSum,
         details: evalData,
       });
-      setSuccessToast(`Physical ${proxyTargetRole} rating sheet encoded via Proxy Data Entry (UC-05, FR-11)!`);
+      setSuccessToast(`Physical ${proxyTargetRole} rating sheet encoded via Proxy Data Entry!`);
     } else {
       onSubmitHrScore({
         evaluationId: selectedEvalId,
@@ -91,7 +92,7 @@ export default function HREvaluationsProxy({
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Pending HR Evaluations &amp; Proxy Data Entry (UC-05)</h1>
+          <h1 style={{ margin: '0 0 6px' }}>Pending HR Evaluations &amp; Proxy Data Entry</h1>
           <p className="muted" style={{ margin: 0 }}>
             Input the 30% administrative compliance score and proxy-encode physical paper rating sheets for offline maintenance personnel.
           </p>
@@ -111,8 +112,9 @@ export default function HREvaluationsProxy({
       </div>
 
       {successToast && (
-        <div className="flash flash-success" style={{ marginBottom: '16px' }}>
-          ✓ {successToast}
+        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} />
+          {successToast}
         </div>
       )}
 
@@ -121,10 +123,10 @@ export default function HREvaluationsProxy({
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
             <div className="card-title" style={{ margin: 0 }}>
-              Triad Scoring Progress &amp; 50/20/30 Computation Status
+              HR Evaluation Queue &amp; Triad Scoring Progress
             </div>
             <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
-              Final score out of 100 is automatically computed once Supervisor (50%), Peer (20%), and HRMO (30%) scores are logged.
+              Input the 30% HR administrative compliance ratings and monitor supervisor (50%) and peer (20%) evaluation progress for COS personnel.
             </p>
           </div>
 
@@ -136,22 +138,21 @@ export default function HREvaluationsProxy({
                 <th>Supervisor (50%)</th>
                 <th>Peer (20%)</th>
                 <th>HRMO (30%)</th>
-                <th>Final Grade</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {evaluations.map((ev) => {
-                const final = computeFinal(ev.supervisorScore, ev.peerScore, ev.hrmoScore);
                 return (
                   <tr key={ev.id}>
                     <td>
                       <b>{ev.fullName}</b>
                       <div className="muted" style={{ fontSize: '12px' }}>ID: {ev.employeeIdNumber}</div>
                       {ev.isOfflineStaff && (
-                        <div style={{ color: 'var(--amber-600)', fontSize: '11.5px', fontWeight: 600 }}>
-                          📝 Offline Staff (Proxy Entry)
+                        <div style={{ color: 'var(--amber-600)', fontSize: '11.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <FileSpreadsheet size={12} />
+                          <span>Offline Staff (Proxy Entry)</span>
                         </div>
                       )}
                     </td>
@@ -159,16 +160,6 @@ export default function HREvaluationsProxy({
                     <td>{ev.supervisorScore !== null ? `${ev.supervisorScore} / 100` : <span className="muted">—</span>}</td>
                     <td>{ev.peerScore !== null ? `${ev.peerScore} / 100` : <span className="muted">—</span>}</td>
                     <td>{ev.hrmoScore !== null ? `${ev.hrmoScore} / 100` : <span className="muted">—</span>}</td>
-                    <td>
-                      {final ? (
-                        <div>
-                          <b style={{ color: 'var(--brand-700)', fontSize: '14px' }}>{final.score}</b>
-                          <div style={{ fontSize: '11.5px', color: '#0f6b32', fontWeight: 600 }}>{final.label}</div>
-                        </div>
-                      ) : (
-                        <span className="muted">Pending</span>
-                      )}
-                    </td>
                     <td>
                       <span className={`badge badge-${ev.status === 'Completed' ? 'completed' : ev.isOfflineStaff ? 'pending' : 'inprogress'}`}>
                         {ev.status}
@@ -215,15 +206,16 @@ export default function HREvaluationsProxy({
                 checked={proxyMode}
                 onChange={(e) => setProxyMode(e.target.checked)}
               />
-              <b style={{ color: 'var(--brand-700)', fontSize: '13px' }}>Enable Proxy Data Entry Mode (FR-11)</b>
+              <b style={{ color: 'var(--brand-700)', fontSize: '13px' }}>Enable Proxy Data Entry Mode</b>
             </label>
           </div>
 
           {/* Proxy Mode Sub-Config */}
           {proxyMode && (
             <div className="card" style={{ marginBottom: '20px', background: 'var(--amber-50)', border: '1px solid #fed7aa' }}>
-              <div className="card-title" style={{ color: 'var(--amber-600)', margin: '0 0 6px', fontSize: '14px' }}>
-                📝 Proxy Data Entry Settings for Maintenance &amp; Offline Staff (FR-11)
+              <div className="card-title" style={{ color: 'var(--amber-600)', margin: '0 0 6px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileSpreadsheet size={16} />
+                <span>Proxy Data Entry Settings for Maintenance &amp; Offline Staff</span>
               </div>
               <p style={{ margin: '0 0 10px', fontSize: '13px' }}>
                 Select which physical paper-based evaluation form you are encoding on behalf of the personnel:

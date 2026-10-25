@@ -154,7 +154,7 @@ export default function DynamicRubric({
 
       {!hideAlerts && evaluatorRole === 'Peer' && (
         <div className="flash flash-info" style={{ marginBottom: '14px', fontSize: '12.5px', padding: '8px 12px' }}>
-          <b>Anonymous Grading (UC-04, FR-27):</b> Your identity will be permanently stripped when your 20% peer score is recorded.
+          <b>Anonymous Grading:</b> Your identity will be permanently stripped when your 20% peer score is recorded.
         </div>
       )}
 
@@ -296,7 +296,7 @@ export default function DynamicRubric({
               disabled={!isComplete}
               onClick={() => onSubmit({ scores, strengths, recommendation, rawSum })}
             >
-              Submit {evaluatorRole} Evaluation
+              Submit Evaluation
             </button>
           </div>
         </div>
