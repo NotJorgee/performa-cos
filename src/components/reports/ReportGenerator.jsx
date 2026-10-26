@@ -37,6 +37,22 @@ export default function ReportGenerator({
       status: 'Active',
     },
     {
+      id: 7,
+      idNumber: 'A10222026MTR',
+      fullName: 'Mark Anthony Reyes',
+      email: 'mark.reyes@evsu.edu.ph',
+      department: 'Computer Studies Department',
+      college: 'College of Technology',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
+      totalContracts: 2,
+      avgScore: 89.2,
+      latestScore: 89.2,
+      latestRating: 'Very Satisfactory',
+      status: 'Active',
+    },
+    {
       id: 3,
       idNumber: 'P10222026JLP',
       fullName: 'Jeramae Pace',
@@ -109,11 +125,17 @@ export default function ReportGenerator({
     'Library Office',
     'Maintenance/Janitorial (MESO) Office',
   ],
+  departmentName = null,
+  restrictDepartment = null,
+  onNavigate = () => {},
   onBack = null,
 }) {
+  const deptScope = restrictDepartment || departmentName;
+  const isDeptRestricted = Boolean(deptScope);
+
   const [selectedEmp, setSelectedEmp] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDept, setSelectedDept] = useState('All');
+  const [selectedDept, setSelectedDept] = useState(deptScope || 'All');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [toastMsg, setToastMsg] = useState(null);
 
@@ -123,13 +145,18 @@ export default function ReportGenerator({
       <EmployeeRecordView
         employee={selectedEmp}
         onBack={() => setSelectedEmp(null)}
-        backLabel="← Back to Executive Reports"
+        backLabel={isDeptRestricted ? '← Back to Department Records' : '← Back to Executive Reports'}
       />
     );
   }
 
   // Filtered employees
   const filteredEmployees = employees.filter((emp) => {
+    // If restricted to a department, strictly confine to this department
+    if (isDeptRestricted && emp.department !== deptScope) {
+      return false;
+    }
+
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       !searchTerm ||
@@ -137,7 +164,11 @@ export default function ReportGenerator({
       emp.idNumber.toLowerCase().includes(q) ||
       emp.email.toLowerCase().includes(q);
 
-    const matchesDept = selectedDept === 'All' || emp.department === selectedDept;
+    const matchesDept =
+      isDeptRestricted ||
+      selectedDept === 'All' ||
+      emp.department === selectedDept;
+
     const matchesCategory =
       selectedCategory === 'All' ||
       (selectedCategory === 'Maintenance/Janitorial'
@@ -180,26 +211,38 @@ export default function ReportGenerator({
       'data:text/csv;charset=utf-8,' +
       [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
 
+    const fileName = isDeptRestricted
+      ? `EVSU_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`
+      : `EVSU_Executive_Personnel_Records_${new Date().toISOString().slice(0, 10)}.csv`;
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `EVSU_Executive_Personnel_Records_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    setToastMsg('Executive personnel summary report successfully generated and exported as CSV!');
+    setToastMsg(
+      isDeptRestricted
+        ? `Departmental personnel summary report for ${deptScope} successfully exported as CSV!`
+        : 'Executive personnel summary report successfully generated and exported as CSV!'
+    );
     setTimeout(() => setToastMsg(null), 4000);
   };
 
   return (
     <div>
       {/* Top Header */}
-      <div className="flex-between" style={{ marginBottom: '20px' }}>
+      <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Executive Reports &amp; Personnel Records</h1>
+          <h1 style={{ margin: '0 0 6px' }}>
+            {isDeptRestricted ? 'Departmental Employee Records' : 'Executive Reports & Personnel Records'}
+          </h1>
           <p className="muted" style={{ margin: 0 }}>
-            Inspect employee historical evaluation dossiers, extract verified MARs, and download official records for institutional reporting.
+            {isDeptRestricted
+              ? `Inspect historical evaluation dossiers, extract verified MARs, and review performance records for ${deptScope}.`
+              : 'Inspect employee historical evaluation dossiers, extract verified MARs, and download official records for institutional reporting.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -208,7 +251,7 @@ export default function ReportGenerator({
             className="btn btn-sm"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
             onClick={handleExportRosterCsv}
-            title="Download CSV report of current personnel records"
+            title={isDeptRestricted ? `Download CSV report of ${deptScope} records` : 'Download CSV report of current personnel records'}
           >
             <Download size={14} /> Export Roster (CSV)
           </button>
@@ -232,10 +275,14 @@ export default function ReportGenerator({
           <div className="flex-between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <div className="card-title" style={{ margin: 0 }}>
-                COS Personnel Dossiers &amp; Historical Archives
+                {isDeptRestricted
+                  ? `${deptScope} Personnel Dossiers & Records`
+                  : 'COS Personnel Dossiers & Historical Archives'}
               </div>
               <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
-                Select an employee to inspect past evaluation cycles, review verified MARs, or download official evaluation dossiers.
+                {isDeptRestricted
+                  ? 'Select a department employee to inspect past evaluation cycles, review verified MARs, or download official evaluation dossiers.'
+                  : 'Select an employee to inspect past evaluation cycles, review verified MARs, or download official evaluation dossiers.'}
               </p>
             </div>
           </div>
@@ -253,34 +300,52 @@ export default function ReportGenerator({
               />
             </div>
 
-            <div style={{ minWidth: '200px' }}>
-              <select
-                className="form-control"
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                style={{ fontSize: '13.5px' }}
+            {isDeptRestricted ? (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '13.5px',
+                  color: 'var(--ink-900)',
+                  padding: '4px 0',
+                }}
               >
-                <option value="All">All Departments</option>
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <span className="muted" style={{ color: 'var(--ink-600)', fontWeight: 500 }}>Department:</span>
+                <b style={{ color: 'var(--ink-900)' }}>{deptScope}</b>
+              </div>
+            ) : (
+              <div style={{ minWidth: '200px' }}>
+                <select
+                  className="form-control"
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  style={{ fontSize: '13.5px' }}
+                >
+                  <option value="All">All Departments</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-            <div style={{ minWidth: '160px' }}>
-              <select
-                className="form-control"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{ fontSize: '13.5px' }}
-              >
-                <option value="All">All Categories</option>
-                <option value="Administrative">Administrative</option>
-                <option value="Maintenance/Janitorial">Maintenance/Janitorial</option>
-              </select>
-            </div>
+            {!isDeptRestricted && (
+              <div style={{ minWidth: '160px' }}>
+                <select
+                  className="form-control"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  style={{ fontSize: '13.5px' }}
+                >
+                  <option value="All">All Categories</option>
+                  <option value="Administrative">Administrative</option>
+                  <option value="Maintenance/Janitorial">Maintenance/Janitorial</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -289,8 +354,8 @@ export default function ReportGenerator({
             <tr>
               <th>ID Number</th>
               <th>Full Name</th>
-              <th>Department</th>
-              <th>COS Category</th>
+              {!isDeptRestricted && <th>Department</th>}
+              {!isDeptRestricted && <th>COS Category</th>}
               <th>Total Contracts</th>
               <th>Avg Score</th>
               <th>Latest Score</th>
@@ -310,10 +375,12 @@ export default function ReportGenerator({
                     {emp.email}
                   </div>
                 </td>
-                <td>{emp.department}</td>
-                <td>
-                  <span className="badge badge-unassigned">{emp.cosCategory}</span>
-                </td>
+                {!isDeptRestricted && <td>{emp.department}</td>}
+                {!isDeptRestricted && (
+                  <td>
+                    <span className="badge badge-unassigned">{emp.cosCategory}</span>
+                  </td>
+                )}
                 <td>
                   <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
                     {emp.totalContracts || 1}
@@ -393,7 +460,7 @@ export default function ReportGenerator({
             ))}
             {filteredEmployees.length === 0 && (
               <tr>
-                <td colSpan="9" className="muted" style={{ padding: '28px', textAlign: 'center' }}>
+                <td colSpan={isDeptRestricted ? 7 : 9} className="muted" style={{ padding: '28px', textAlign: 'center' }}>
                   No personnel matching search criteria.
                 </td>
               </tr>

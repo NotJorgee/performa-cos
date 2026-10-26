@@ -27,12 +27,14 @@ import {
   ReportGenerator,
   AuditTrail,
   BackupData,
+  NotificationHistory,
 } from './components';
+import { getInitialNotifications } from './utils/notificationsData';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'otp' | 'reset_pw'
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState({
     fullName: 'Jorge Mikhael Gubantes',
     role: 'COS Employee', // 'COS Employee' | 'Department Head' | 'HR Personnel'
@@ -42,33 +44,38 @@ export default function App() {
     avatarUrl: null,
   });
 
-  const handleRoleSwitch = (newRole) => {
-    setCurrentUser((prev) => ({
-      ...prev,
-      role: newRole,
-      fullName:
-        newRole === 'HR Personnel'
-          ? 'Dr. Maria Clara Ramos'
-          : newRole === 'Department Head'
-          ? 'Engr. Roberto Del Rosario'
-          : 'Jorge Mikhael Gubantes',
-      department:
-        newRole === 'HR Personnel'
-          ? 'HRMDO Office'
-          : 'Computer Studies Department',
-      initials:
-        newRole === 'HR Personnel'
-          ? 'MR'
-          : newRole === 'Department Head'
-          ? 'RD'
-          : 'JG',
-      employeeIdNumber:
-        newRole === 'HR Personnel'
-          ? 'R10222026MCR'
-          : newRole === 'Department Head'
-          ? 'D10222026RDR'
-          : 'G10222026JMR',
-    }));
+  // Dynamic role-aware notifications
+  const [notifications, setNotifications] = useState(() =>
+    getInitialNotifications(currentUser.role)
+  );
+
+  const handleMarkAsRead = (id, readState = false) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, unread: readState } : n))
+    );
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  };
+
+  const handleDeleteNotification = (id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const handleLogin = (userAccount) => {
+    if (userAccount) {
+      setCurrentUser({
+        fullName: userAccount.fullName,
+        role: userAccount.roleLabel,
+        department: userAccount.department,
+        initials: userAccount.initials,
+        employeeIdNumber: userAccount.employeeIdNumber,
+        avatarUrl: userAccount.avatarUrl || null,
+      });
+      setNotifications(getInitialNotifications(userAccount.roleLabel));
+    }
+    setIsAuthenticated(true);
     setCurrentView('dashboard');
   };
 
@@ -77,7 +84,7 @@ export default function App() {
     if (authView === 'login') {
       return (
         <Login
-          onLogin={() => setIsAuthenticated(true)}
+          onLogin={handleLogin}
           onForgotPassword={() => setAuthView('forgot')}
         />
       );
@@ -114,55 +121,15 @@ export default function App() {
     <AppLayout
       currentUser={currentUser}
       currentPath={currentView}
+      notifications={notifications}
+      onMarkAsRead={handleMarkAsRead}
+      onMarkAllAsRead={handleMarkAllAsRead}
       onNavigate={(path) => setCurrentView(path)}
       onLogout={() => {
         setIsAuthenticated(false);
         setAuthView('login');
       }}
     >
-      {/* Role Simulator Toolbar for Pair Programming / Capstone Evaluation */}
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid var(--line)',
-          borderRadius: '10px',
-          padding: '8px 14px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '13px',
-        }}
-      >
-        <div>
-          <b>Simulate User Role:</b>{' '}
-          <button
-            className={`btn btn-sm ${currentUser.role === 'COS Employee' ? 'btn-primary' : ''}`}
-            onClick={() => handleRoleSwitch('COS Employee')}
-            style={{ margin: '0 4px' }}
-          >
-            COS Employee
-          </button>
-          <button
-            className={`btn btn-sm ${currentUser.role === 'Department Head' ? 'btn-primary' : ''}`}
-            onClick={() => handleRoleSwitch('Department Head')}
-            style={{ margin: '0 4px' }}
-          >
-            Department Head
-          </button>
-          <button
-            className={`btn btn-sm ${currentUser.role === 'HR Personnel' ? 'btn-primary' : ''}`}
-            onClick={() => handleRoleSwitch('HR Personnel')}
-            style={{ margin: '0 4px' }}
-          >
-            HR Personnel
-          </button>
-        </div>
-        <span className="muted">
-          Active View: <b>{currentView}</b>
-        </span>
-      </div>
-
       {/* ========================================================
           ROLE-SPECIFIC SCREEN ROUTING (SRS Section 8.1)
          ======================================================== */}
@@ -221,6 +188,16 @@ export default function App() {
           {currentView === 'pending_evaluations' && (
             <PendingEvaluations
               departmentName={currentUser.department}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          )}
+          {(currentView === 'employee_records' ||
+            currentView === 'report_generator' ||
+            currentView === 'department_records') && (
+            <ReportGenerator
+              restrictDepartment={currentUser.department}
+              departmentName={currentUser.department}
+              onNavigate={setCurrentView}
               onBack={() => setCurrentView('dashboard')}
             />
           )}
@@ -296,6 +273,19 @@ export default function App() {
         <ProfileSettings
           currentUser={currentUser}
           initialTab={currentView}
+          onBack={() => setCurrentView('dashboard')}
+        />
+      )}
+
+      {/* Universal Notification Center & History (UC-09, SRS Section 8.1) */}
+      {(currentView === 'notifications' || currentView === 'notification_history') && (
+        <NotificationHistory
+          notifications={notifications}
+          currentUser={currentUser}
+          onMarkAsRead={handleMarkAsRead}
+          onMarkAllAsRead={handleMarkAllAsRead}
+          onDeleteNotification={handleDeleteNotification}
+          onNavigate={setCurrentView}
           onBack={() => setCurrentView('dashboard')}
         />
       )}

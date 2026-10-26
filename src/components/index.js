@@ -36,3 +36,6 @@ export { default as DepartmentManagement } from './management/DepartmentManageme
 export { default as ReportGenerator } from './reports/ReportGenerator';
 export { default as AuditTrail } from './reports/AuditTrail';
 export { default as BackupData } from './reports/BackupData';
+
+// Notifications Center (UC-09, SRS Section 8.1)
+export { default as NotificationHistory } from './notifications/NotificationHistory';

@@ -115,8 +115,8 @@ export default function HRDashboard({
               <Users size={22} color="var(--brand-700)" />
             </div>
           </div>
-          <div className="quick-access-value">
-            {metrics.totalEmployees}
+          <div className="quick-access-value text-lg">
+            Manage COS Personnel
           </div>
           <div className="quick-access-link">
             <span>COS directory &amp; accounts</span>
@@ -136,8 +136,8 @@ export default function HRDashboard({
               <ShieldCheck size={22} color="var(--brand-700)" />
             </div>
           </div>
-          <div className="quick-access-value">
-            {metrics.totalAdministrators || 6}
+          <div className="quick-access-value text-lg">
+            Manage Administrators
           </div>
           <div className="quick-access-link">
             <span>Dept Heads &amp; HR accounts</span>
@@ -157,8 +157,8 @@ export default function HRDashboard({
               <Building2 size={22} color="var(--brand-700)" />
             </div>
           </div>
-          <div className="quick-access-value">
-            {metrics.activeColleges}
+          <div className="quick-access-value text-lg">
+            Manage Departments
           </div>
           <div className="quick-access-link">
             <span>Colleges &amp; departments</span>

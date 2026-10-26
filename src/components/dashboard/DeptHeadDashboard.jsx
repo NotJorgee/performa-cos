@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardCheck, ArrowRight } from 'lucide-react';
+import { ClipboardCheck, FileText, ArrowRight } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 
@@ -33,9 +33,9 @@ export default function DeptHeadDashboard({
         </div>
       </div>
 
-      {/* Subordinate Evaluations panel */}
+      {/* Department Head Quick Access Panels */}
       <div className="quick-access-grid">
-        {/* Panel: Subordinate Evaluations */}
+        {/* Panel 1: Subordinate Evaluations */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('pending_evaluations')}
@@ -59,6 +59,27 @@ export default function DeptHeadDashboard({
           </div>
           <div className="quick-access-link">
             <span>View &amp; evaluate subordinates</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        {/* Panel 2: Department Employee Records */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('employee_records')}
+          title="Click to view departmental employee records, past MARs, and evaluation dossiers"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Employee Records</span>
+            <div className="quick-access-icon">
+              <FileText size={22} color="var(--brand-700)" />
+            </div>
+          </div>
+          <div className="quick-access-value text-lg">
+            Past MARs &amp; Records
+          </div>
+          <div className="quick-access-link">
+            <span>Department dossiers &amp; MARs</span>
             <ArrowRight size={14} />
           </div>
         </div>

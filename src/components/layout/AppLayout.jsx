@@ -9,8 +9,10 @@ import {
   LogOut,
   Menu,
   Bell,
+  ArrowRight,
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
+import { getInitialNotifications } from '../../utils/notificationsData';
 
 export default function AppLayout({
   children,
@@ -22,6 +24,9 @@ export default function AppLayout({
     avatarUrl: null,
   },
   currentPath = 'dashboard',
+  notifications: propNotifications = null,
+  onMarkAsRead = null,
+  onMarkAllAsRead = null,
   onNavigate = () => {},
   onLogout = () => {},
 }) {
@@ -29,35 +34,30 @@ export default function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  // In-system notifications
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Evaluation Period Initiated',
-      message: '1st Semester 2026-2027 evaluation period is active. Deadline is Nov 15, 2026.',
-      time: '1 hour ago',
-      unread: true,
-    },
-    {
-      id: 2,
-      title: 'Geofenced DAR Validated',
-      message: 'Your end-of-shift DAR task log was verified within EVSU-Ormoc campus bounds.',
-      time: 'Today, 4:45 PM',
-      unread: true,
-    },
-    {
-      id: 3,
-      title: 'Contract Expiration Alert',
-      message: 'Your 6-month Contract of Service enters the renewal confirmation window in 14 days.',
-      time: 'Yesterday',
-      unread: false,
-    },
-  ]);
+  // In-system notifications state (uses prop if available, otherwise role-based defaults)
+  const [localNotifications, setLocalNotifications] = useState(() =>
+    getInitialNotifications(currentUser.role)
+  );
 
+  const notifications = propNotifications || localNotifications;
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const handleMarkAsRead = (id) => {
+    if (onMarkAsRead) {
+      onMarkAsRead(id);
+    } else {
+      setLocalNotifications((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, unread: false } : item))
+      );
+    }
+  };
+
+  const handleMarkAllAsRead = () => {
+    if (onMarkAllAsRead) {
+      onMarkAllAsRead();
+    } else {
+      setLocalNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    }
   };
 
   const toggleSidebar = () => {
@@ -131,6 +131,23 @@ export default function AppLayout({
             className={`nav-item ${currentPath === 'dashboard' ? 'active' : ''}`}
           >
             <span className="icon"><LayoutDashboard size={17} /></span> Dashboard
+          </a>
+
+          {/* Notifications Center Page */}
+          <a
+            href="#notifications"
+            onClick={(e) => { e.preventDefault(); handleNavClick('notifications'); }}
+            className={`nav-item ${currentPath === 'notifications' || currentPath === 'notification_history' ? 'active' : ''}`}
+          >
+            <span className="icon"><Bell size={17} /></span> Notifications
+            {unreadCount > 0 && (
+              <span
+                className="badge badge-delayed"
+                style={{ marginLeft: 'auto', fontSize: '11px', padding: '2px 7px', fontWeight: 700 }}
+              >
+                {unreadCount}
+              </span>
+            )}
           </a>
 
           {/* Institutional Campus Geofence Page (HR Only) */}
@@ -246,15 +263,17 @@ export default function AppLayout({
                     )}
                   </div>
 
-                  <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                     {notifications.map((n) => (
                       <div
                         key={n.id}
                         className={`notification-row ${n.unread ? 'unread' : ''}`}
                         onClick={() => {
-                          setNotifications((prev) =>
-                            prev.map((item) => (item.id === n.id ? { ...item, unread: false } : item))
-                          );
+                          handleMarkAsRead(n.id);
+                          if (n.actionView) {
+                            setNotifOpen(false);
+                            onNavigate(n.actionView);
+                          }
                         }}
                       >
                         <div className={`notification-dot ${n.unread ? 'unread' : ''}`} />
@@ -265,26 +284,46 @@ export default function AppLayout({
                           <p className="muted" style={{ margin: '2px 0 0', fontSize: '12px', lineHeight: 1.4 }}>
                             {n.message}
                           </p>
-                          <div className="muted" style={{ fontSize: '11px', marginTop: '4px' }}>
-                            {n.time}
+                          <div className="flex-between" style={{ marginTop: '4px' }}>
+                            <span className="muted" style={{ fontSize: '11px' }}>
+                              {n.time}
+                            </span>
+                            {n.actionLabel && (
+                              <span style={{ fontSize: '11.5px', color: 'var(--brand-700)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                {n.actionLabel} <ArrowRight size={11} />
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {unreadCount > 0 && (
-                    <div style={{ padding: '8px 12px', textAlign: 'center', borderTop: '1px solid var(--line)', background: '#fafbfc' }}>
+                  <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line)', background: '#fafbfc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {unreadCount > 0 ? (
                       <button
                         type="button"
                         className="btn btn-sm"
-                        style={{ width: '100%', fontSize: '12px', border: 'none', background: 'transparent', color: 'var(--brand-700)', fontWeight: 600 }}
-                        onClick={markAllAsRead}
+                        style={{ fontSize: '12px', border: 'none', background: 'transparent', color: 'var(--brand-700)', fontWeight: 600, padding: '4px 6px', cursor: 'pointer' }}
+                        onClick={handleMarkAllAsRead}
                       >
                         Mark all as read
                       </button>
-                    </div>
-                  )}
+                    ) : (
+                      <span className="muted" style={{ fontSize: '11px' }}>All caught up</span>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ fontSize: '12px', border: 'none', background: 'transparent', color: 'var(--ink-700)', fontWeight: 600, padding: '4px 6px', cursor: 'pointer', marginLeft: 'auto' }}
+                      onClick={() => {
+                        setNotifOpen(false);
+                        onNavigate('notifications');
+                      }}
+                    >
+                      View all history →
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

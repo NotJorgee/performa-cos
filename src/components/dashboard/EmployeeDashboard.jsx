@@ -13,7 +13,7 @@ export default function EmployeeDashboard({
   metrics = {
     contractEndDate: 'December 31, 2026',
     daysUntilExpiration: 74,
-    darTasksToday: 2,
+    darTasksToday: 0,
     totalDarsLogged: 84,
     renewalIntentStatus: 'Open for Intent Confirmation',
     pendingPeerReviews: 1,
@@ -77,7 +77,7 @@ export default function EmployeeDashboard({
             className="stat-value"
             style={{
               fontSize: '20px',
-              color: (metrics.darTasksToday ?? 0) === 0 ? 'var(--red-600)' : 'var(--ink-900)',
+              color: (metrics.darTasksToday ?? 0) === 0 ? 'var(--amber-600)' : 'var(--ink-900)',
             }}
           >
             {metrics.darTasksToday ?? 0} Task(s) Logged
@@ -88,26 +88,7 @@ export default function EmployeeDashboard({
           </div>
         </div>
 
-        {/* Panel 3: Accumulated MAR Logs */}
-        <div
-          className="card stat-card stat-card-clickable"
-          onClick={() => onNavigate('monthly_report')}
-          title="Click to view Compiled MAR"
-        >
-          <div className="stat-top">
-            <span className="stat-label">Accumulated MAR Logs</span>
-            <span className="stat-icon"><FileText size={18} /></span>
-          </div>
-          <div className="stat-value" style={{ fontSize: '26px' }}>
-            {metrics.totalDarsLogged}
-          </div>
-          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>View Compiled MAR</span>
-            <ArrowRight size={14} />
-          </div>
-        </div>
-
-        {/* Panel 4: Peer Reviews Assigned */}
+        {/* Panel 3: Peer Reviews Assigned */}
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('peer_evaluations')}
@@ -128,6 +109,25 @@ export default function EmployeeDashboard({
           </div>
           <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>Evaluate Peers</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        {/* Panel 4: Accumulated MAR Logs */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('monthly_report')}
+          title="Click to view Compiled MAR"
+        >
+          <div className="stat-top">
+            <span className="stat-label">Accumulated MAR Logs</span>
+            <span className="stat-icon"><FileText size={18} /></span>
+          </div>
+          <div className="stat-value" style={{ fontSize: '26px' }}>
+            {metrics.totalDarsLogged}
+          </div>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>View Compiled MAR</span>
             <ArrowRight size={14} />
           </div>
         </div>
