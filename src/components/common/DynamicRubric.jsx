@@ -108,6 +108,106 @@ export const MAINTENANCE_CRITERIA = [
   },
 ];
 
+// Official University HR Rating Scale (1 – 5)
+export const RATING_SCALE_DEFINITIONS = [
+  { rating: 5, label: 'Outstanding', desc: 'Performance consistently exceeds expectations', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+  { rating: 4, label: 'Very Satisfactory', desc: 'Frequently exceeds expectations', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  { rating: 3, label: 'Satisfactory', desc: 'Meets expectations', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
+  { rating: 2, label: 'Needs Improvement', desc: 'Sometimes fails to meet expectations', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+  { rating: 1, label: 'Unsatisfactory', desc: 'Frequently fails to meet expectations', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+];
+
+// Official University HR Performance Interpretation & System Recommendation (Score 20 – 100)
+export const getPerformanceInterpretation = (score) => {
+  const num = Number(score) || 0;
+  if (num >= 90) {
+    return {
+      scoreRange: '90 – 100',
+      interpretation: 'Outstanding',
+      recommendation: 'Strongly Recommended for Renewal',
+      color: '#16a34a',
+      bg: '#f0fdf4',
+      border: '#bbf7d0',
+      badgeClass: 'badge-completed',
+    };
+  }
+  if (num >= 80) {
+    return {
+      scoreRange: '80 – 89',
+      interpretation: 'Very Satisfactory',
+      recommendation: 'Recommended for Renewal',
+      color: '#2563eb',
+      bg: '#eff6ff',
+      border: '#bfdbfe',
+      badgeClass: 'badge-completed',
+    };
+  }
+  if (num >= 70) {
+    return {
+      scoreRange: '70 – 79',
+      interpretation: 'Satisfactory',
+      recommendation: 'Renewal with Monitoring',
+      color: '#0284c7',
+      bg: '#f0f9ff',
+      border: '#bae6fd',
+      badgeClass: 'badge-completed',
+    };
+  }
+  if (num >= 60) {
+    return {
+      scoreRange: '60 – 69',
+      interpretation: 'Needs Improvement',
+      recommendation: 'Renewal Subject to Evaluation',
+      color: '#d97706',
+      bg: '#fffbeb',
+      border: '#fde68a',
+      badgeClass: 'badge-pending',
+    };
+  }
+  return {
+    scoreRange: 'Below 60',
+    interpretation: 'Unsatisfactory',
+    recommendation: 'Not Recommended for Renewal',
+    color: '#dc2626',
+    bg: '#fef2f2',
+    border: '#fecaca',
+    badgeClass: 'badge-delayed',
+  };
+};
+
+export const OFFICIAL_RECOMMENDATIONS = [
+  {
+    value: 'Strongly Recommended for Renewal',
+    label: 'Strongly Recommended for Renewal',
+    bracket: '90 – 100 Outstanding',
+    color: '#16a34a',
+  },
+  {
+    value: 'Recommended for Renewal',
+    label: 'Recommended for Renewal',
+    bracket: '80 – 89 Very Satisfactory',
+    color: '#2563eb',
+  },
+  {
+    value: 'Renewal with Monitoring',
+    label: 'Renewal with Monitoring',
+    bracket: '70 – 79 Satisfactory',
+    color: '#0284c7',
+  },
+  {
+    value: 'Renewal Subject to Evaluation',
+    label: 'Renewal Subject to Evaluation',
+    bracket: '60 – 69 Needs Improvement',
+    color: '#d97706',
+  },
+  {
+    value: 'Not Recommended for Renewal',
+    label: 'Not Recommended for Renewal',
+    bracket: 'Below 60 Unsatisfactory',
+    color: '#dc2626',
+  },
+];
+
 export default function DynamicRubric({
   cosCategory = 'Administrative', // 'Administrative' | 'Maintenance/Janitorial'
   evaluatorRole = 'Immediate Supervisor', // 'Immediate Supervisor' | 'Peer' | 'HRMO'
@@ -116,7 +216,6 @@ export default function DynamicRubric({
   initialRecommendation = 'Recommended for Renewal',
   onSaveDraft = () => {},
   onSubmit = () => {},
-  onFastTrackReject = null, // Callback if supervisor wants to trigger Fast-Track Rejection (UC-06)
   readOnly = false,
   hideAlerts = false,
 }) {
@@ -137,13 +236,112 @@ export default function DynamicRubric({
   const scoredCount = Object.keys(scores).length;
   const rawSum = Object.values(scores).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
   // Total raw score scaled to 100 points (each item 1-5, 20 items = 100 max points)
+  const currentInterpretation = scoredCount > 0 ? getPerformanceInterpretation(rawSum) : null;
   const isComplete = scoredCount === totalItems && strengths.trim().length > 0 && !!recommendation;
 
   return (
     <div className="dynamic-rubric">
-      {/* Questionnaire Header */}
-      <div style={{ textAlign: 'right', fontSize: '13px', marginBottom: '12px' }}>
-        <b>{scoredCount} / {totalItems}</b> Scored · Raw Sum: <b>{rawSum} / 100</b>
+      {/* Questionnaire Header & Live Scaled Performance Score */}
+      <div
+        className="flex-between"
+        style={{
+          marginBottom: '14px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px',
+          padding: '10px 14px',
+          background: '#f8fafc',
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+        }}
+      >
+        <div style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
+          <b>{categoryLabel}</b> · 20 Specific Items (Max 100 pts)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', flexWrap: 'wrap' }}>
+          <span><b>{scoredCount} / {totalItems}</b> Scored</span>
+          <span className="muted">·</span>
+          <span>Raw Score: <b>{rawSum} / 100</b></span>
+          {currentInterpretation && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                color: currentInterpretation.color,
+                background: currentInterpretation.bg,
+                border: `1px solid ${currentInterpretation.border}`,
+                padding: '2px 8px',
+                borderRadius: '999px',
+              }}
+            >
+              {currentInterpretation.interpretation} ({currentInterpretation.scoreRange})
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Official University HR Rating Scale Reference Bar (1 – 5) */}
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '12px 14px',
+          background: '#ffffff',
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Official Rating Scale (1 – 5)
+          </span>
+          <span className="muted" style={{ fontSize: '11.5px' }}>
+            Eastern Visayas State University COS Performance Standard
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
+          {RATING_SCALE_DEFINITIONS.map((def) => (
+            <div
+              key={def.rating}
+              style={{
+                padding: '6px 10px',
+                background: def.bg,
+                border: `1px solid ${def.border}`,
+                borderRadius: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: def.color,
+                    color: '#fff',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {def.rating}
+                </span>
+                <span style={{ fontWeight: 700, fontSize: '12px', color: def.color }}>
+                  {def.label}
+                </span>
+              </div>
+              <span className="muted" style={{ fontSize: '11px', lineHeight: 1.3 }}>
+                {def.desc}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {!hideAlerts && readOnly && (
@@ -182,18 +380,21 @@ export default function DynamicRubric({
                     </td>
                     <td className="rubric-score-cell" style={{ textAlign: 'center' }}>
                       <div className="score-buttons score-buttons-inline" style={{ justifyContent: 'center' }}>
-                        {[1, 2, 3, 4, 5].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            disabled={readOnly}
-                            className={`score-btn score-btn-sm ${scores[item.id] === val ? 'selected' : ''}`}
-                            onClick={() => handleScoreClick(item.id, val)}
-                            title={`Score ${val}`}
-                          >
-                            <span className="num">{val}</span>
-                          </button>
-                        ))}
+                        {[1, 2, 3, 4, 5].map((val) => {
+                          const def = RATING_SCALE_DEFINITIONS.find((d) => d.rating === val);
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              disabled={readOnly}
+                              className={`score-btn score-btn-sm ${scores[item.id] === val ? 'selected' : ''}`}
+                              onClick={() => handleScoreClick(item.id, val)}
+                              title={`${val} – ${def?.label}: ${def?.desc}`}
+                            >
+                              <span className="num">{val}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </td>
                   </tr>
@@ -211,7 +412,7 @@ export default function DynamicRubric({
             Strengths / Areas for Improvement <span style={{ color: 'var(--red-600)' }}>*</span>
           </label>
           <p className="muted" style={{ margin: '0 0 6px', fontSize: '12.5px' }}>
-            Required qualitative comments on performance, attendance, diligence, or areas requiring development.
+            Required qualitative comments on performance deliverables, task efficiency, diligence, or areas requiring development.
           </p>
           <textarea
             id="strengthsField"
@@ -224,45 +425,75 @@ export default function DynamicRubric({
           />
         </div>
 
-        {/* Final Recommendation Radio Group (FR-10, US-03, Section 2.2) */}
+        {/* Final Recommendation Radio Group (FR-10, US-03, Official HR Scale) */}
         <div className="form-group" style={{ margin: 0 }}>
-          <label style={{ fontWeight: 700, fontSize: '13.5px', display: 'block', marginBottom: '8px' }}>
-            Final Recommendation <span style={{ color: 'var(--red-600)' }}>*</span>
-          </label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="finalRecommendation"
-                value="Recommended for Renewal"
-                disabled={readOnly}
-                checked={recommendation === 'Recommended for Renewal'}
-                onChange={(e) => setRecommendation(e.target.value)}
-              />
-              <span style={{ color: '#0f6b32', fontWeight: 600 }}>Recommended for Renewal</span>
+          <div className="flex-between" style={{ alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <label style={{ fontWeight: 700, fontSize: '13.5px', margin: 0 }}>
+              Final Recommendation <span style={{ color: 'var(--red-600)' }}>*</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="finalRecommendation"
-                value="Recommended with Conditions"
-                disabled={readOnly}
-                checked={recommendation === 'Recommended with Conditions'}
-                onChange={(e) => setRecommendation(e.target.value)}
-              />
-              <span style={{ color: '#b45309', fontWeight: 600 }}>Recommended with Conditions</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="finalRecommendation"
-                value="Not Recommended"
-                disabled={readOnly}
-                checked={recommendation === 'Not Recommended'}
-                onChange={(e) => setRecommendation(e.target.value)}
-              />
-              <span style={{ color: '#dc2626', fontWeight: 600 }}>Not Recommended</span>
-            </label>
+            {currentInterpretation && (
+              <span className="muted" style={{ fontSize: '12px' }}>
+                HR Guidance for {rawSum} pts: <b style={{ color: currentInterpretation.color }}>{currentInterpretation.recommendation}</b>
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {OFFICIAL_RECOMMENDATIONS.map((opt) => (
+              <label
+                key={opt.value}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '13.5px',
+                  cursor: readOnly ? 'default' : 'pointer',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: recommendation === opt.value ? '#ffffff' : 'transparent',
+                  border: recommendation === opt.value ? `1px solid ${opt.color}` : '1px solid transparent',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="finalRecommendation"
+                  value={opt.value}
+                  disabled={readOnly}
+                  checked={recommendation === opt.value}
+                  onChange={(e) => setRecommendation(e.target.value)}
+                />
+                <span style={{ color: opt.color, fontWeight: 700 }}>{opt.label}</span>
+                <span className="muted" style={{ fontSize: '12px' }}>({opt.bracket})</span>
+              </label>
+            ))}
+
+            {/* Backward-compatible fallback for legacy values */}
+            {recommendation &&
+              !OFFICIAL_RECOMMENDATIONS.some((r) => r.value === recommendation) && (
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13.5px',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    background: '#fff',
+                    border: '1px solid var(--line)',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="finalRecommendation"
+                    value={recommendation}
+                    disabled={readOnly}
+                    checked
+                    readOnly
+                  />
+                  <span style={{ color: 'var(--ink-800)', fontWeight: 600 }}>{recommendation}</span>
+                  <span className="muted" style={{ fontSize: '11px' }}>(Recorded Value)</span>
+                </label>
+              )}
           </div>
         </div>
       </div>
@@ -279,17 +510,6 @@ export default function DynamicRubric({
           </button>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            {onFastTrackReject && (
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={{ color: 'var(--red-600)', borderColor: 'var(--red-600)', background: 'transparent' }}
-                onClick={onFastTrackReject}
-              >
-                Fast-Track Rejection
-              </button>
-            )}
-
             <button
               type="button"
               className="btn btn-primary"

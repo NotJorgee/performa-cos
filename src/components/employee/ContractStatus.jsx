@@ -133,7 +133,7 @@ export default function ContractStatus({
             Contract Renewal Action Required
           </div>
           <p style={{ fontSize: '13.5px', lineHeight: 1.5, margin: '0 0 16px' }}>
-            Your 6-month Contract of Service is approaching its expiration date. Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) and initiate the performance evaluation workflow for your Department Head, peer evaluators, and HRMO.
+            Your 6-month Contract of Service is approaching its expiration date. Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) for AI performance synthesis and forward your intent to your Department Head for endorsement review.
           </p>
 
           <div>
@@ -252,7 +252,7 @@ export default function ContractStatus({
             </div>
 
             <p className="muted" style={{ margin: '0 0 16px', fontSize: '13.5px', lineHeight: 1.5 }}>
-              Choose your intended contract lifecycle action for the upcoming semester. A final confirmation is required before submitting your decision to the evaluation workflow.
+              Choose your intended contract lifecycle action for your upcoming contract period. A final confirmation is required before submitting your decision to the evaluation workflow.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -303,7 +303,7 @@ export default function ContractStatus({
                       Confirmation: Standard Contract Renewal
                     </div>
                     <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--ink-800)', lineHeight: 1.5 }}>
-                      You are confirming your intent to renew your Contract of Service under <b>{contract.department}</b>. This will aggregate your <b>{contract.totalDarsLogged} Daily Accomplishment Reports (DAR)</b> into an AI-synthesized MAR and initiate concurrent evaluation routing for your Department Head (50%), Peers (20%), and HRMO (30%).
+                      You are confirming your intent to renew your Contract of Service under <b>{contract.department}</b>. This will aggregate your <b>{contract.totalDarsLogged} Daily Accomplishment Reports (DAR)</b> into an AI-synthesized performance analysis and forward your renewal intent to your Department Head for endorsement.
                     </p>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                       <button
@@ -380,7 +380,7 @@ export default function ContractStatus({
                       Confirmation: Non-Renewal Decision
                     </div>
                     <p className="muted" style={{ margin: '0 0 12px', fontSize: '13px', lineHeight: 1.5 }}>
-                      Are you sure you do not wish to renew your Contract of Service? This will halt all evaluation routing and schedule contract closure with HRMO at the end of the semester.
+                      Are you sure you do not wish to renew your Contract of Service? This will halt all evaluation routing and schedule contract closure with HRMO at the end of your contract period.
                     </p>
 
                     <div className="form-group" style={{ marginBottom: '14px' }}>

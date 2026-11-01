@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Check, Archive, X, UserPlus, RotateCcw } from 'lucide-react';
+import { Settings, Check, Archive, X, UserPlus, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 
 export default function EmployeeManagement({
@@ -60,6 +60,20 @@ export default function EmployeeManagement({
       latestRating: 'Very Satisfactory',
       status: 'Active',
     },
+    {
+      id: 5,
+      idNumber: 'E10222025ABC',
+      fullName: 'Elena Santos',
+      email: 'elena.santos@evsu.edu.ph',
+      department: 'Engineering Department',
+      college: 'College of Engineering',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2025',
+      contractEndDate: 'Apr 22, 2026',
+      latestScore: 78,
+      latestRating: 'Satisfactory',
+      status: 'Archived',
+    },
   ],
   departments = [
     'Computer Studies Department',
@@ -72,16 +86,23 @@ export default function EmployeeManagement({
   onSelectEmployee = () => {},
   onAddEmployee = () => {},
   onSendTokenInvite = () => {},
+  onUpdateEmployee = () => {},
   onBack = null,
 }) {
   const [employeeList, setEmployeeList] = useState(employees);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Archived'
   const [deptFilter, setDeptFilter] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [settingsEmp, setSettingsEmp] = useState(null);
   const [modalMode, setModalMode] = useState('invite'); // 'invite' | 'manual'
   const [toastMsg, setToastMsg] = useState(null);
+
+  // Official Institutional Identity editor fields
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editIdNumber, setEditIdNumber] = useState('');
+  const [identitySuccessMsg, setIdentitySuccessMsg] = useState(null);
 
   // Department Transfer in Account Settings modal (HR Administrative Action)
   const [transferDept, setTransferDept] = useState('');
@@ -149,20 +170,18 @@ export default function EmployeeManagement({
     return dateStr;
   };
 
-  const filtered = employeeList.filter((e) => {
+  const baseFiltered = employeeList.filter((e) => {
     const matchesSearch =
+      !searchTerm ||
       e.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.idNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDept = !deptFilter || e.department === deptFilter;
-    const matchesStatus =
-      statusFilter === 'All'
-        ? true
-        : statusFilter === 'Archived'
-        ? e.status === 'Archived'
-        : e.status !== 'Archived';
-    return matchesSearch && matchesDept && matchesStatus;
+    return matchesSearch && matchesDept;
   });
+
+  const activeEmployees = baseFiltered.filter((e) => e.status !== 'Archived');
+  const archivedEmployees = baseFiltered.filter((e) => e.status === 'Archived');
 
   const handleArchiveEmployee = (empId) => {
     setEmployeeList((prev) =>
@@ -186,9 +205,37 @@ export default function EmployeeManagement({
 
   const handleOpenSettings = (emp) => {
     setSettingsEmp(emp);
+    setEditFullName(emp.fullName || '');
+    setEditEmail(emp.email || '');
+    setEditIdNumber(emp.idNumber || '');
+    setIdentitySuccessMsg(null);
     const availableDepts = departments.filter((d) => d !== emp.department);
     setTransferDept(availableDepts[0] || departments[0] || '');
     setTransferSuccessMsg('');
+  };
+
+  const handleSaveIdentity = (e) => {
+    e.preventDefault();
+    if (!settingsEmp || !editFullName.trim() || !editEmail.trim() || !editIdNumber.trim()) return;
+
+    const updated = {
+      ...settingsEmp,
+      fullName: editFullName.trim(),
+      email: editEmail.trim(),
+      idNumber: editIdNumber.trim(),
+    };
+
+    setEmployeeList((prev) =>
+      prev.map((emp) => (emp.id === settingsEmp.id ? updated : emp))
+    );
+    setSettingsEmp(updated);
+    onUpdateEmployee(updated);
+    setIdentitySuccessMsg(`Official institutional identity updated for "${updated.fullName}".`);
+    setToastMsg(`Official identity updated for "${updated.fullName}".`);
+    setTimeout(() => {
+      setIdentitySuccessMsg(null);
+      setToastMsg(null);
+    }, 4000);
   };
 
   const handleTransferDepartment = (e) => {
@@ -299,16 +346,6 @@ export default function EmployeeManagement({
               ← Back to Dashboard
             </button>
           )}
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => {
-              setShowAddModal(true);
-              setModalMode('invite');
-            }}
-          >
-            + Add Employee
-          </button>
         </div>
       </div>
 
@@ -318,8 +355,8 @@ export default function EmployeeManagement({
         </div>
       )}
 
-      {/* Filter Row */}
-      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+      {/* Filter Row with Add Employee on Same Level */}
+      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
         <input
           className="form-control"
           type="text"
@@ -328,16 +365,6 @@ export default function EmployeeManagement({
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ flex: 2 }}
         />
-        <select
-          className="form-control"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ flex: 1 }}
-        >
-          <option value="All">All Statuses ({employeeList.length})</option>
-          <option value="Active">Active ({employeeList.filter((e) => e.status !== 'Archived').length})</option>
-          <option value="Archived">Archived ({employeeList.filter((e) => e.status === 'Archived').length})</option>
-        </select>
         <select
           className="form-control"
           value={deptFilter}
@@ -351,9 +378,20 @@ export default function EmployeeManagement({
             </option>
           ))}
         </select>
+        <button
+          className="btn btn-primary"
+          type="button"
+          style={{ whiteSpace: 'nowrap' }}
+          onClick={() => {
+            setShowAddModal(true);
+            setModalMode('invite');
+          }}
+        >
+          + Add Employee
+        </button>
       </div>
 
-      {/* Employees Table */}
+      {/* Primary Table: Active Employees Only */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
@@ -364,12 +402,11 @@ export default function EmployeeManagement({
               <th>COS Category</th>
               <th>Created</th>
               <th>Contract End</th>
-              <th>Status</th>
               <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((emp) => (
+            {activeEmployees.map((emp) => (
               <tr key={emp.id}>
                 <td>
                   <span className="emp-id-chip">{emp.idNumber}</span>
@@ -390,24 +427,6 @@ export default function EmployeeManagement({
                   </span>
                 </td>
                 <td>{emp.contractEndDate}</td>
-                <td>
-                  <span
-                    className={`badge ${
-                      emp.status === 'Archived' ? 'badge-delete' : 'badge-active'
-                    }`}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    {emp.status === 'Archived' ? (
-                      <>
-                        <Archive size={12} /> Archived
-                      </>
-                    ) : (
-                      <>
-                        <Check size={12} /> Active
-                      </>
-                    )}
-                  </span>
-                </td>
                 <td style={{ textAlign: 'right' }}>
                   <button
                     className="btn btn-sm"
@@ -426,16 +445,128 @@ export default function EmployeeManagement({
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {activeEmployees.length === 0 && (
               <tr>
-                <td colSpan="8" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
-                  No personnel matching search criteria.
+                <td colSpan="7" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
+                  No active personnel matching search criteria.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Toggle Button for Archived Employees */}
+      <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => setShowArchived((prev) => !prev)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 18px',
+            fontSize: '13px',
+            fontWeight: 600,
+            background: showArchived ? '#f1f5f9' : '#fff',
+            border: '1px solid var(--line)',
+            color: 'var(--ink-700)',
+            cursor: 'pointer',
+            borderRadius: '8px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}
+        >
+          <Archive size={15} color="var(--ink-600)" />
+          <span>
+            {showArchived
+              ? 'Hide Archived Employees'
+              : `View Archived Employees (${archivedEmployees.length})`}
+          </span>
+          {showArchived ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+      </div>
+
+      {/* Separate Archived Employees Table Card Below */}
+      {showArchived && (
+        <div className="card" style={{ marginTop: '18px', padding: 0, overflow: 'hidden', border: '1px solid var(--line)', background: '#fff' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fafbfc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Archive size={18} color="var(--ink-600)" />
+              <div className="card-title" style={{ margin: 0, fontSize: '15px' }}>
+                Archived COS Employees
+              </div>
+            </div>
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: '12.5px' }}>
+              Archived personnel records retained for institutional audit trails. Click Settings to review records or restore portal access.
+            </p>
+          </div>
+
+          {archivedEmployees.length === 0 ? (
+            <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+              <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
+                No archived personnel records found.
+              </p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID Number</th>
+                  <th>Full Name</th>
+                  <th>Department</th>
+                  <th>COS Category</th>
+                  <th>Created</th>
+                  <th>Contract End</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {archivedEmployees.map((emp) => (
+                  <tr key={emp.id} style={{ opacity: 0.9 }}>
+                    <td>
+                      <span className="emp-id-chip">{emp.idNumber}</span>
+                    </td>
+                    <td>
+                      <b>{emp.fullName}</b>
+                      <div className="muted" style={{ fontSize: '12px' }}>
+                        {emp.email}
+                      </div>
+                    </td>
+                    <td>{emp.department}</td>
+                    <td>
+                      <span className="badge badge-unassigned">{emp.cosCategory}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
+                        {emp.dateAppointed || 'Oct 22, 2026'}
+                      </span>
+                    </td>
+                    <td>{emp.contractEndDate}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-sm"
+                        type="button"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          background: '#fff',
+                        }}
+                        onClick={() => handleOpenSettings(emp)}
+                        title={`Account Settings - ${emp.fullName}`}
+                      >
+                        <Settings size={14} /> Settings
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* Add Employee Modal (Tokenized Sign-Up default with nested Manual Add option) */}
       {showAddModal && (
@@ -504,10 +635,10 @@ export default function EmployeeManagement({
                   >
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-800)' }}>
-                        Registering an offline employee?
+                        Register an employee directly?
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--ink-500)' }}>
-                        Directly input employee details and set temporary password.
+                        Directly input personnel details and set initial login credentials.
                       </div>
                     </div>
                     <button
@@ -542,7 +673,7 @@ export default function EmployeeManagement({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
-                    Manually encode employee information for staff without online access.
+                    Directly input employee details and set initial login credentials.
                   </p>
                   <button
                     type="button"
@@ -744,8 +875,90 @@ export default function EmployeeManagement({
               </div>
             </div>
 
-            {/* Section 1: Department Transfer & Reassignment (HR Administrative Action) */}
+            {/* Section 1: Official Institutional Identity */}
             <div style={{ marginBottom: '20px' }}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '6px', color: 'var(--ink)' }}>
+                Official Institutional Identity
+              </div>
+              <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.45 }}>
+                Update official personnel records, legal name, institutional email, and employee ID number as maintained by HRMDO.
+              </p>
+
+              {identitySuccessMsg && (
+                <div className="flash flash-success" style={{ marginBottom: '12px', fontSize: '12.5px', padding: '8px 12px' }}>
+                  {identitySuccessMsg}
+                </div>
+              )}
+
+              <form
+                onSubmit={handleSaveIdentity}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Full Legal Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      style={{ fontSize: '13px' }}
+                      placeholder="e.g. Juan Dela Cruz"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Employee ID Number <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      value={editIdNumber}
+                      onChange={(e) => setEditIdNumber(e.target.value)}
+                      style={{ fontSize: '13px' }}
+                      placeholder="e.g. G10222026JMR"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <input
+                    className="form-control"
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    style={{ fontSize: '13px' }}
+                    placeholder="name@evsu.edu.ph"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary"
+                    style={{ fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Save Identity Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Section 2: Department Transfer & Reassignment (HR Administrative Action) */}
+            <div style={{ marginBottom: '20px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
               <div className="section-label" style={{ marginTop: 0, marginBottom: '6px', color: 'var(--ink)' }}>
                 Department Transfer &amp; Reassignment
               </div>
@@ -818,7 +1031,7 @@ export default function EmployeeManagement({
               </form>
             </div>
 
-            {/* Section 2: Account Lifecycle & Status */}
+            {/* Section 3: Account Lifecycle & Status */}
             <div style={{ marginBottom: '20px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
               <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
                 Account Lifecycle &amp; Status
@@ -874,57 +1087,8 @@ export default function EmployeeManagement({
               )}
             </div>
 
-            {/* Section 3: Future Administrative Controls (Placeholders) */}
-            <div
-              style={{
-                background: '#fdfdfe',
-                border: '1px dashed #cbd5e1',
-                borderRadius: '8px',
-                padding: '14px 16px',
-                marginBottom: '20px',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '10px',
-                }}
-              >
-                <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>
-                  Administrative Controls (Upcoming)
-                </span>
-                <span className="badge badge-unassigned" style={{ fontSize: '11px' }}>
-                  Future Release
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600 }}>Reset Password Credentials</div>
-                    <div className="muted" style={{ fontSize: '11px' }}>Dispatches a 24-hr secure password reset link to institutional email</div>
-                  </div>
-                  <button type="button" className="btn btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
-                    Send Reset Link
-                  </button>
-                </div>
-
-                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600 }}>Institutional Email Update</div>
-                    <div className="muted" style={{ fontSize: '11px' }}>Requires HR Master Administrator identity verification token</div>
-                  </div>
-                  <button type="button" className="btn btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
-                    Edit Email
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* Modal Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
               <button
                 type="button"
                 className="btn btn-primary"

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
-const REJECTION_CATEGORIES = [
-  'Habitual Absenteeism / Tardiness',
+export const NON_RENEWAL_GROUNDS = [
   'Gross Incompetence / Poor Performance',
+  'Non-Fulfillment of Contracted Deliverables / Abandonment of Duties',
   'Insubordination / Attitude Issue',
   'Skills Mismatch',
   'Breach of Code of Conduct',
@@ -15,8 +15,10 @@ export default function FastTrackModal({
   employeeName,
   onClose,
   onSubmitRejection,
+  title = 'Recommend Non-Renewal',
+  submitButtonText = 'Submit Non-Renewal Recommendation',
 }) {
-  const [category, setCategory] = useState(REJECTION_CATEGORIES[0]);
+  const [category, setCategory] = useState(NON_RENEWAL_GROUNDS[0]);
   const [justification, setJustification] = useState('');
   const [memoFile, setMemoFile] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -49,7 +51,7 @@ export default function FastTrackModal({
         <div className="modal-header">
           <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={18} color="var(--red-600)" />
-            <span>Process Fast-Track Rejection</span>
+            <span>{title}</span>
           </div>
           <button
             type="button"
@@ -61,9 +63,8 @@ export default function FastTrackModal({
           </button>
         </div>
 
-        <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px' }}>
-          Issuing a Fast-Track Rejection will immediately <b>halt all pending peer and HR evaluations</b> for{' '}
-          <b>{employeeName}</b>, mark the contract status as <b>"Not Recommended"</b>, and route the formal documentation to HRMO for administrative meeting action.
+        <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
+          Submitting a non-renewal recommendation for <b>{employeeName}</b> will mark their renewal intent as <b>"Not Recommended"</b>. This formal documentation will be routed directly to the HRMO for administrative review and mediation.
         </p>
 
         {errorMsg && (
@@ -75,7 +76,7 @@ export default function FastTrackModal({
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="rejectionCategory">
-              Standardized Rejection Category <span style={{ color: 'var(--red-600)' }}>*</span>
+              Institutional Non-Renewal Grounds <span style={{ color: 'var(--red-600)' }}>*</span>
             </label>
             <select
               id="rejectionCategory"
@@ -84,7 +85,7 @@ export default function FastTrackModal({
               onChange={(e) => setCategory(e.target.value)}
               required
             >
-              {REJECTION_CATEGORIES.map((c) => (
+              {NON_RENEWAL_GROUNDS.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -92,14 +93,14 @@ export default function FastTrackModal({
 
           <div className="form-group">
             <label htmlFor="justificationText">
-              Substantive Justification / Grounds <span style={{ color: 'var(--red-600)' }}>*</span>
+              Substantive Supervisory Justification <span style={{ color: 'var(--red-600)' }}>*</span>
             </label>
             <textarea
               id="justificationText"
               className="form-control"
               rows="4"
               required
-              placeholder="State the specific institutional grounds, incidents, or performance deficiencies..."
+              placeholder="State the specific performance deficiencies, incident records, or institutional justifications..."
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
             />
@@ -107,17 +108,17 @@ export default function FastTrackModal({
 
           <div className="form-group">
             <label htmlFor="memoAttachment">
-              Formal Memo / Incident Report PDF <span className="muted" style={{ fontWeight: 'normal' }}>(Optional)</span>
+              Formal Supervisory Memo / Documentation <span className="muted" style={{ fontWeight: 'normal' }}>(Optional)</span>
             </label>
             <input
               id="memoAttachment"
               type="file"
-              accept=".pdf"
+              accept=".pdf,.docx,.doc"
               className="form-control"
               onChange={(e) => setMemoFile(e.target.files[0] || null)}
             />
             <small className="muted" style={{ display: 'block', marginTop: '4px' }}>
-              Upload signed supervisory memo, notice to explain, or supporting incident evidence.
+              Attach signed supervisory endorsement, notice to explain, or incident documentation.
             </small>
           </div>
 
@@ -128,9 +129,9 @@ export default function FastTrackModal({
             <button
               type="submit"
               className="btn btn-danger"
-              style={{ background: 'var(--red-600)', color: '#fff', borderColor: 'var(--red-600)' }}
+              style={{ background: 'var(--red-600)', color: '#fff', borderColor: 'var(--red-600)', fontWeight: 600 }}
             >
-              Authorize Fast-Track Rejection
+              {submitButtonText}
             </button>
           </div>
         </form>

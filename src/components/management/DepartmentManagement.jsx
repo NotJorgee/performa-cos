@@ -85,6 +85,10 @@ export default function DepartmentManagement({
   const [toastMsg, setToastMsg] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [collegeFilter, setCollegeFilter] = useState('');
+
   // Add form fields
   const [newDeptName, setNewDeptName] = useState('');
   const [newCollege, setNewCollege] = useState('College of Technology');
@@ -162,6 +166,18 @@ export default function DepartmentManagement({
     }
   };
 
+  const colleges = Array.from(new Set(deptList.map((d) => d.college).filter(Boolean)));
+
+  const filteredDepts = deptList.filter((d) => {
+    const matchesSearch =
+      !searchTerm ||
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.college.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.collegeCode && d.collegeCode.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCollege = !collegeFilter || d.college === collegeFilter;
+    return matchesSearch && matchesCollege;
+  });
+
   return (
     <div>
       {/* Page Header */}
@@ -178,13 +194,6 @@ export default function DepartmentManagement({
               ← Back to Dashboard
             </button>
           )}
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => setShowAddModal(true)}
-          >
-            + Add Department
-          </button>
         </div>
       </div>
 
@@ -201,6 +210,39 @@ export default function DepartmentManagement({
         </div>
       )}
 
+      {/* Filter Row with Add Department on Same Level */}
+      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
+        <input
+          className="form-control"
+          type="text"
+          placeholder="Search by department name, college, or code..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ flex: 2 }}
+        />
+        <select
+          className="form-control"
+          value={collegeFilter}
+          onChange={(e) => setCollegeFilter(e.target.value)}
+          style={{ flex: 1.2 }}
+        >
+          <option value="">All Colleges / Scopes</option>
+          {colleges.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <button
+          className="btn btn-primary"
+          type="button"
+          style={{ whiteSpace: 'nowrap' }}
+          onClick={() => setShowAddModal(true)}
+        >
+          + Add Department
+        </button>
+      </div>
+
       {/* Departments Roster Table without Geofence Boundary Column */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
@@ -209,12 +251,12 @@ export default function DepartmentManagement({
               <th>Department Name</th>
               <th>College / Scope</th>
               <th>Personnel</th>
-              <th>Active Cycles</th>
+              <th>Ongoing Evaluations</th>
               <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {deptList.map((d) => (
+            {filteredDepts.map((d) => (
               <tr key={d.id}>
                 <td>
                   <b>{d.name}</b>
@@ -225,7 +267,7 @@ export default function DepartmentManagement({
                 <td>{d.employeeCount} employees</td>
                 <td>
                   {d.activeEvaluations > 0 ? (
-                    <span className="badge badge-inprogress">{d.activeEvaluations} Active</span>
+                    <span className="badge badge-inprogress">{d.activeEvaluations} Ongoing</span>
                   ) : (
                     <span className="muted">None</span>
                   )}
@@ -248,10 +290,12 @@ export default function DepartmentManagement({
                 </td>
               </tr>
             ))}
-            {deptList.length === 0 && (
+            {filteredDepts.length === 0 && (
               <tr>
                 <td colSpan="5" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
-                  No departments configured. Click "+ Add Department" to add one.
+                  {deptList.length === 0
+                    ? 'No departments configured. Click "+ Add Department" to add one.'
+                    : 'No departments matching search criteria.'}
                 </td>
               </tr>
             )}
@@ -312,7 +356,7 @@ export default function DepartmentManagement({
                   {settingsDept.employeeCount} Personnel
                 </span>
                 <span className={`badge ${settingsDept.activeEvaluations > 0 ? 'badge-inprogress' : 'badge-completed'}`}>
-                  {settingsDept.activeEvaluations} Active Evals
+                  {settingsDept.activeEvaluations} Ongoing Evals
                 </span>
               </div>
             </div>

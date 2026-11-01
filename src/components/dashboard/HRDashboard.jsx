@@ -5,7 +5,8 @@ import {
   Users,
   ShieldCheck,
   Building2,
-  BarChart3,
+  FileText,
+  TrendingUp,
   ArrowRight,
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
@@ -75,14 +76,14 @@ export default function HRDashboard({
           </div>
         </div>
 
-        {/* Panel 2: HR & Proxy Evaluations */}
+        {/* Panel 2: HR Evaluations */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('hr_evaluations_proxy')}
-          title="Click to input 30% HR Score and offline proxy ratings"
+          title="Click to input 30% HR administrative compliance ratings"
         >
           <div className="quick-access-top">
-            <span className="quick-access-label">HR &amp; Proxy Evaluations</span>
+            <span className="quick-access-label">HR Evaluations</span>
             <div className="quick-access-icon">
               <FileSpreadsheet size={22} color="var(--brand-700)" />
             </div>
@@ -103,7 +104,49 @@ export default function HRDashboard({
           </div>
         </div>
 
-        {/* Panel 3: Employee Management */}
+        {/* Panel 3: Executive Analytics (HR Only) */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('executive_analytics')}
+          title="Click to view high-level institutional performance trends and executive analytics"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Executive Analytics</span>
+            <div className="quick-access-icon">
+              <TrendingUp size={22} color="var(--brand-700)" />
+            </div>
+          </div>
+          <div className="quick-access-value text-lg">
+            Performance Overview
+          </div>
+          <div className="quick-access-link">
+            <span>Institutional trends &amp; insights</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        {/* Panel 4: Employee Records */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('report_generator')}
+          title="Click to view personnel records, past MARs, and evaluation dossiers"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Employee Records</span>
+            <div className="quick-access-icon">
+              <FileText size={22} color="var(--brand-700)" />
+            </div>
+          </div>
+          <div className="quick-access-value text-lg">
+            Past MARs &amp; Records
+          </div>
+          <div className="quick-access-link">
+            <span>COS dossiers &amp; records</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        {/* Panel 5: Employee Management */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('employee_management')}
@@ -124,7 +167,7 @@ export default function HRDashboard({
           </div>
         </div>
 
-        {/* Panel 4: Administrator Management */}
+        {/* Panel 6: Administrator Management */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('administrator_management')}
@@ -145,7 +188,7 @@ export default function HRDashboard({
           </div>
         </div>
 
-        {/* Panel 5: Department Management */}
+        {/* Panel 7: Department Management */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('department_management')}
@@ -162,27 +205,6 @@ export default function HRDashboard({
           </div>
           <div className="quick-access-link">
             <span>Colleges &amp; departments</span>
-            <ArrowRight size={14} />
-          </div>
-        </div>
-
-        {/* Panel 6: Executive Reports */}
-        <div
-          className="quick-access-card"
-          onClick={() => onNavigate('report_generator')}
-          title="Click to view personnel records, past MARs, and evaluation dossiers"
-        >
-          <div className="quick-access-top">
-            <span className="quick-access-label">Executive Reports</span>
-            <div className="quick-access-icon">
-              <BarChart3 size={22} color="var(--brand-700)" />
-            </div>
-          </div>
-          <div className="quick-access-value text-lg">
-            Past MARs &amp; Records
-          </div>
-          <div className="quick-access-link">
-            <span>Extract records &amp; evaluations</span>
             <ArrowRight size={14} />
           </div>
         </div>

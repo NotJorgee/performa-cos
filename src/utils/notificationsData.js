@@ -4,7 +4,7 @@ export const ROLE_NOTIFICATIONS = {
     {
       id: 1,
       title: 'Campus DAR Submission Reminder',
-      message: 'You currently have 0 tasks logged for today. Ensure your campus Daily Accomplishment Report is submitted within the EVSU geofence before 5:00 PM.',
+      message: 'You currently have 0 tasks logged for today. Submit your campus Daily Accomplishment Report (DAR) upon completing your daily activities.',
       time: '25 mins ago',
       category: 'dar',
       unread: true,
@@ -55,13 +55,13 @@ export const ROLE_NOTIFICATIONS = {
   'Department Head': [
     {
       id: 101,
-      title: 'Subordinate Evaluations Awaiting Review',
-      message: '3 COS personnel in Computer Studies Department (Jorge Mikhael Gubantes, Ian Joseph Ranoco, Mark Anthony Reyes) are pending supervisory evaluation.',
+      title: 'Staff Renewal Intents Awaiting Review',
+      message: 'COS personnel in Computer Studies Department have submitted renewal intents. Review AI-synthesized DAR performance summaries to endorse renewal or non-renewal.',
       time: '15 mins ago',
-      category: 'evaluation',
+      category: 'contract',
       unread: true,
-      actionView: 'pending_evaluations',
-      actionLabel: 'Evaluate Subordinates',
+      actionView: 'intent_review',
+      actionLabel: 'Review Intents',
     },
     {
       id: 102,
@@ -85,7 +85,7 @@ export const ROLE_NOTIFICATIONS = {
     },
     {
       id: 104,
-      title: '1st Semester 2026-2027 Triad Cycle Active',
+      title: 'Annual Triad Evaluation Cycle Active',
       message: 'Supervisor 50% rating rubric is active for all eligible department COS staff under College of Technology.',
       time: '3 days ago',
       category: 'evaluation',
@@ -118,12 +118,12 @@ export const ROLE_NOTIFICATIONS = {
     {
       id: 202,
       title: '9 Pending HR Evaluations',
-      message: '9 COS staff members require 30% HR administrative compliance scoring and proxy paper rating encoding.',
+      message: '9 COS staff members require 30% HR administrative compliance scoring.',
       time: '45 mins ago',
       category: 'evaluation',
       unread: true,
       actionView: 'hr_evaluations_proxy',
-      actionLabel: 'Encode HR Scores',
+      actionLabel: 'Input HR Scores',
     },
     {
       id: 203,

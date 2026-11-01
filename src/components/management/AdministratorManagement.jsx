@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw } from 'lucide-react';
+import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 
 export default function AdministratorManagement({
@@ -64,6 +64,16 @@ export default function AdministratorManagement({
       status: 'Active',
       contactNumber: '+63 922 667 7889',
     },
+    {
+      id: 7,
+      idNumber: 'F10222025FCB',
+      fullName: 'Engr. Fernando Cruz',
+      email: 'fernando.cruz@evsu.edu.ph',
+      role: 'Department Head',
+      department: 'Engineering Department',
+      status: 'Archived',
+      contactNumber: '+63 923 778 8990',
+    },
   ],
   departments = [
     'Computer Studies Department',
@@ -75,20 +85,26 @@ export default function AdministratorManagement({
   ],
   onBack = null,
   onSendTokenInvite = () => {},
+  onUpdateAdministrator = () => {},
 }) {
   const [adminList, setAdminList] = useState(administrators);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Archived'
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [settingsAdmin, setSettingsAdmin] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
 
-  // Edit settings form fields
-  const [editRole, setEditRole] = useState('Department Head');
-  const [editDept, setEditDept] = useState(departments[0]);
-  const [editContact, setEditContact] = useState('');
+  // Official Institutional Identity editor fields
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editIdNumber, setEditIdNumber] = useState('');
+  const [identitySuccessMsg, setIdentitySuccessMsg] = useState(null);
+
+  // Department transfer fields (Department Heads only)
+  const [transferDept, setTransferDept] = useState('');
+  const [transferSuccessMsg, setTransferSuccessMsg] = useState(null);
 
   // Tokenized invite form fields
   const [inviteEmail, setInviteEmail] = useState('');
@@ -97,46 +113,75 @@ export default function AdministratorManagement({
 
   const openAdminSettings = (adm) => {
     setSettingsAdmin(adm);
-    setEditRole(adm.role);
-    setEditDept(adm.department);
-    setEditContact(adm.contactNumber || '');
+    setEditFullName(adm.fullName || '');
+    setEditEmail(adm.email || '');
+    setEditIdNumber(adm.idNumber || '');
+    setIdentitySuccessMsg(null);
+    const availableDepts = departments.filter(
+      (d) => d !== 'HRMDO Office' && d !== adm.department
+    );
+    setTransferDept(availableDepts[0] || '');
+    setTransferSuccessMsg(null);
   };
 
-  const handleSaveAdminSettings = (e) => {
+  const handleSaveIdentity = (e) => {
     e.preventDefault();
-    if (!settingsAdmin) return;
+    if (!settingsAdmin || !editFullName.trim() || !editEmail.trim() || !editIdNumber.trim()) return;
+
+    const updated = {
+      ...settingsAdmin,
+      fullName: editFullName.trim(),
+      email: editEmail.trim(),
+      idNumber: editIdNumber.trim(),
+    };
+
+    setAdminList((prev) =>
+      prev.map((a) => (a.id === settingsAdmin.id ? updated : a))
+    );
+    setSettingsAdmin(updated);
+    onUpdateAdministrator(updated);
+    setIdentitySuccessMsg(`Official institutional identity updated for "${updated.fullName}".`);
+    setToastMsg(`Official identity updated for "${updated.fullName}".`);
+    setTimeout(() => {
+      setIdentitySuccessMsg(null);
+      setToastMsg(null);
+    }, 4000);
+  };
+
+  const handleExecuteTransfer = (e) => {
+    e.preventDefault();
+    if (!settingsAdmin || !transferDept) return;
     setAdminList((prev) =>
       prev.map((a) =>
         a.id === settingsAdmin.id
           ? {
               ...a,
-              role: editRole,
-              department: editDept,
-              contactNumber: editContact.trim(),
+              department: transferDept,
             }
           : a
       )
     );
-    setToastMsg(`Settings updated successfully for "${settingsAdmin.fullName}".`);
-    setSettingsAdmin(null);
-    setTimeout(() => setToastMsg(null), 4500);
+    setSettingsAdmin((prev) => ({
+      ...prev,
+      department: transferDept,
+    }));
+    setTransferSuccessMsg(`Department Head reassigned to "${transferDept}".`);
+    setTimeout(() => setTransferSuccessMsg(null), 3500);
   };
 
-  const filtered = adminList.filter((a) => {
+  const baseFiltered = adminList.filter((a) => {
     const matchesSearch =
+      !searchTerm ||
       a.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.idNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = !roleFilter || a.role === roleFilter;
     const matchesDept = !deptFilter || a.department === deptFilter;
-    const matchesStatus =
-      statusFilter === 'All'
-        ? true
-        : statusFilter === 'Archived'
-        ? a.status === 'Archived'
-        : a.status !== 'Archived';
-    return matchesSearch && matchesRole && matchesDept && matchesStatus;
+    return matchesSearch && matchesRole && matchesDept;
   });
+
+  const activeAdmins = baseFiltered.filter((a) => a.status !== 'Archived');
+  const archivedAdmins = baseFiltered.filter((a) => a.status === 'Archived');
 
   const handleArchiveAdmin = (adminId) => {
     setAdminList((prev) =>
@@ -212,14 +257,6 @@ export default function AdministratorManagement({
               ← Back to Dashboard
             </button>
           )}
-          {/* Keep button name strictly as + Add Employee */}
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => setShowInviteModal(true)}
-          >
-            + Add Employee
-          </button>
         </div>
       </div>
 
@@ -230,8 +267,8 @@ export default function AdministratorManagement({
         </div>
       )}
 
-      {/* Filter Row */}
-      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+      {/* Filter Row with Add Employee on Same Level */}
+      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
         <input
           className="form-control"
           type="text"
@@ -240,16 +277,6 @@ export default function AdministratorManagement({
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ flex: 2 }}
         />
-        <select
-          className="form-control"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ flex: 1 }}
-        >
-          <option value="All">All Statuses ({adminList.length})</option>
-          <option value="Active">Active ({adminList.filter((a) => a.status !== 'Archived').length})</option>
-          <option value="Archived">Archived ({adminList.filter((a) => a.status === 'Archived').length})</option>
-        </select>
         <select
           className="form-control"
           value={roleFilter}
@@ -273,9 +300,17 @@ export default function AdministratorManagement({
             </option>
           ))}
         </select>
+        <button
+          className="btn btn-primary"
+          type="button"
+          style={{ whiteSpace: 'nowrap' }}
+          onClick={() => setShowInviteModal(true)}
+        >
+          + Add Employee
+        </button>
       </div>
 
-      {/* Administrator Roster Table */}
+      {/* Primary Table: Active Administrators Only */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
@@ -284,12 +319,11 @@ export default function AdministratorManagement({
               <th>Administrator Name</th>
               <th>System Role</th>
               <th>Department / Office</th>
-              <th>Status</th>
               <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((adm) => (
+            {activeAdmins.map((adm) => (
               <tr key={adm.id}>
                 <td>
                   <span className="emp-id-chip">{adm.idNumber}</span>
@@ -314,24 +348,6 @@ export default function AdministratorManagement({
                   </b>
                 </td>
                 <td>{adm.department}</td>
-                <td>
-                  <span
-                    className={`badge ${
-                      adm.status === 'Archived' ? 'badge-delete' : 'badge-active'
-                    }`}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    {adm.status === 'Archived' ? (
-                      <>
-                        <Archive size={12} /> Archived
-                      </>
-                    ) : (
-                      <>
-                        <Check size={12} /> Active
-                      </>
-                    )}
-                  </span>
-                </td>
                 <td style={{ textAlign: 'right' }}>
                   <button
                     className="btn btn-sm"
@@ -350,16 +366,130 @@ export default function AdministratorManagement({
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {activeAdmins.length === 0 && (
               <tr>
-                <td colSpan="6" className="muted" style={{ padding: '28px', textAlign: 'center' }}>
-                  No permanent administrators matching search criteria.
+                <td colSpan="5" className="muted" style={{ padding: '28px', textAlign: 'center' }}>
+                  No active permanent administrators matching search criteria.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Toggle Button for Archived Administrators */}
+      <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => setShowArchived((prev) => !prev)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 18px',
+            fontSize: '13px',
+            fontWeight: 600,
+            background: showArchived ? '#f1f5f9' : '#fff',
+            border: '1px solid var(--line)',
+            color: 'var(--ink-700)',
+            cursor: 'pointer',
+            borderRadius: '8px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}
+        >
+          <Archive size={15} color="var(--ink-600)" />
+          <span>
+            {showArchived
+              ? 'Hide Archived Administrators'
+              : `View Archived Administrators (${archivedAdmins.length})`}
+          </span>
+          {showArchived ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+      </div>
+
+      {/* Separate Archived Administrators Table Card Below */}
+      {showArchived && (
+        <div className="card" style={{ marginTop: '18px', padding: 0, overflow: 'hidden', border: '1px solid var(--line)', background: '#fff' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fafbfc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Archive size={18} color="var(--ink-600)" />
+              <div className="card-title" style={{ margin: 0, fontSize: '15px' }}>
+                Archived Administrator Accounts
+              </div>
+            </div>
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: '12.5px' }}>
+              Archived administrative and departmental head accounts retained for institutional audit trails. Click Settings to review records or restore privileges.
+            </p>
+          </div>
+
+          {archivedAdmins.length === 0 ? (
+            <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+              <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
+                No archived administrator accounts found.
+              </p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID Number</th>
+                  <th>Administrator Name</th>
+                  <th>System Role</th>
+                  <th>Department / Office</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {archivedAdmins.map((adm) => (
+                  <tr key={adm.id} style={{ opacity: 0.9 }}>
+                    <td>
+                      <span className="emp-id-chip">{adm.idNumber}</span>
+                    </td>
+                    <td>
+                      <b>{adm.fullName}</b>
+                      <div className="muted" style={{ fontSize: '12px' }}>
+                        {adm.email}
+                      </div>
+                    </td>
+                    <td>
+                      <b style={{ fontSize: '13px', color: 'var(--ink-900)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        {adm.role === 'Department Head' ? (
+                          <>
+                            <Building2 size={13} /> Department Head
+                          </>
+                        ) : (
+                          <>
+                            <ClipboardList size={13} /> HR Personnel
+                          </>
+                        )}
+                      </b>
+                    </td>
+                    <td>{adm.department}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-sm"
+                        type="button"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          background: '#fff',
+                        }}
+                        onClick={() => openAdminSettings(adm)}
+                        title={`Edit Settings - ${adm.fullName}`}
+                      >
+                        <Settings size={14} /> Settings
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* 1. ADMINISTRATOR SETTINGS MODAL */}
       {settingsAdmin && (
@@ -373,7 +503,7 @@ export default function AdministratorManagement({
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Settings size={18} />
-                <span>Administrator Settings</span>
+                <span>Account Settings</span>
               </div>
               <button
                 type="button"
@@ -426,84 +556,184 @@ export default function AdministratorManagement({
                     </>
                   )}
                 </span>
-                <span
-                  style={{ fontWeight: 700, padding: '2px 8px', fontSize: '11.5px', color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                >
-                  {settingsAdmin.role === 'Department Head' ? (
-                    <>
-                      <Building2 size={12} /> Dept Head
-                    </>
-                  ) : (
-                    <>
-                      <ClipboardList size={12} /> HRMO
-                    </>
-                  )}
-                </span>
+                <div>
+                  <span
+                    style={{ fontWeight: 700, padding: '2px 8px', fontSize: '11.5px', color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    {settingsAdmin.role === 'Department Head' ? (
+                      <>
+                        <Building2 size={12} /> Dept Head
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardList size={12} /> HRMO
+                      </>
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Edit Administrator Form */}
-            <form onSubmit={handleSaveAdminSettings}>
-              <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
-                Account Assignments &amp; Privileges
+            {/* Section 1: Official Institutional Identity */}
+            <div style={{ marginBottom: '20px' }}>
+              <div className="section-label" style={{ marginTop: 0, marginBottom: '6px', color: 'var(--ink)' }}>
+                Official Institutional Identity
               </div>
+              <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.45 }}>
+                Update official personnel records, legal name, institutional email, and administrator ID number as maintained by HRMDO.
+              </p>
 
-              <div className="form-group">
-                <label htmlFor="editAdminRole">
-                  System Role &amp; Evaluation Authority <span style={{ color: 'var(--red-600)' }}>*</span>
-                </label>
-                <select
-                  id="editAdminRole"
-                  className="form-control"
-                  required
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value)}
+              {identitySuccessMsg && (
+                <div className="flash flash-success" style={{ marginBottom: '12px', fontSize: '12.5px', padding: '8px 12px' }}>
+                  {identitySuccessMsg}
+                </div>
+              )}
+
+              <form
+                onSubmit={handleSaveIdentity}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Full Legal Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      style={{ fontSize: '13px' }}
+                      placeholder="e.g. Dr. Maria Clara Ramos"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Administrator ID Number <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      value={editIdNumber}
+                      onChange={(e) => setEditIdNumber(e.target.value)}
+                      style={{ fontSize: '13px' }}
+                      placeholder="e.g. R10222026MCR"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <input
+                    className="form-control"
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    style={{ fontSize: '13px' }}
+                    placeholder="name@evsu.edu.ph"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary"
+                    style={{ fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Save Identity Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Department Transfer & Reassignment (Department Heads Only) */}
+            {settingsAdmin.role === 'Department Head' && (
+              <div style={{ marginBottom: '20px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+                <div className="section-label" style={{ marginTop: 0, marginBottom: '6px', color: 'var(--ink)' }}>
+                  Department Transfer &amp; Reassignment
+                </div>
+                <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.45 }}>
+                  Reassign this Department Head to oversee another academic or operational department. Executing this transfer immediately updates subordinate evaluation routing.
+                </p>
+
+                {transferSuccessMsg && (
+                  <div className="flash flash-success" style={{ marginBottom: '12px', fontSize: '12.5px', padding: '8px 12px' }}>
+                    {transferSuccessMsg}
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handleExecuteTransfer}
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid var(--line)',
+                    borderRadius: '8px',
+                    padding: '14px',
+                  }}
                 >
-                  <option value="Department Head">Department Head (50% Subordinate Appraisals & Fast-Track Rejection)</option>
-                  <option value="HR Personnel">HR Personnel (30% Institutional Scoring & Contract Lifecycles)</option>
-                </select>
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                    <div>
+                      <label className="muted" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                        Current Department
+                      </label>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', padding: '6px 0' }}>
+                        {settingsAdmin.department}
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="settingsTransferDeptSelect" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                        Target Department <span style={{ color: 'var(--red-600)' }}>*</span>
+                      </label>
+                      <select
+                        id="settingsTransferDeptSelect"
+                        className="form-control"
+                        style={{ fontSize: '13px', padding: '6px 10px' }}
+                        value={transferDept}
+                        onChange={(e) => setTransferDept(e.target.value)}
+                      >
+                        {departments
+                          .filter((d) => d !== 'HRMDO Office' && d !== settingsAdmin.department)
+                          .map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="editAdminDept">
-                  Department / Office Assignment <span style={{ color: 'var(--red-600)' }}>*</span>
-                </label>
-                <select
-                  id="editAdminDept"
-                  className="form-control"
-                  required
-                  value={editDept}
-                  onChange={(e) => setEditDept(e.target.value)}
-                >
-                  {departments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="submit"
+                      className="btn btn-sm"
+                      disabled={!transferDept || transferDept === settingsAdmin.department}
+                      style={{
+                        background: '#d97706',
+                        color: '#fff',
+                        borderColor: '#d97706',
+                        fontWeight: 700,
+                        cursor: !transferDept || transferDept === settingsAdmin.department ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      ⇄ Execute Department Transfer
+                    </button>
+                  </div>
+                </form>
               </div>
+            )}
 
-              <div className="form-group">
-                <label htmlFor="editAdminContact">Contact Number</label>
-                <input
-                  id="editAdminContact"
-                  className="form-control"
-                  type="text"
-                  placeholder="+63 9XX XXX XXXX"
-                  value={editContact}
-                  onChange={(e) => setEditContact(e.target.value)}
-                />
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <button type="submit" className="btn btn-primary" style={{ cursor: 'pointer' }}>
-                  Save Administrator Settings
-                </button>
-              </div>
-            </form>
-
-            {/* Section 2: Account Lifecycle & Archival */}
-            <div style={{ marginBottom: '18px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+            {/* Account Lifecycle & Status */}
+            <div style={{ marginBottom: '20px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
               <div className="section-label" style={{ marginTop: 0, marginBottom: '8px', color: 'var(--ink)' }}>
                 Account Lifecycle &amp; Status
               </div>
@@ -560,14 +790,11 @@ export default function AdministratorManagement({
               )}
             </div>
 
-            <div className="flex-between">
-              <span className="muted" style={{ fontSize: '12px' }}>
-                Institutional SSO &amp; MFA Protected
-              </span>
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
               <button
                 type="button"
-                className="btn"
-                style={{ cursor: 'pointer' }}
+                className="btn btn-primary"
                 onClick={() => setSettingsAdmin(null)}
               >
                 Close

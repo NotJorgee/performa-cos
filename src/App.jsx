@@ -17,8 +17,10 @@ import {
   // Department Head GUI Modules (SRS Section 8.1)
   DeptHeadDashboard,
   PendingEvaluations,
+  IntentReview,
   // HR Personnel GUI Modules (SRS Section 8.1)
   HRDashboard,
+  ExecutiveAnalytics,
   EvaluationManagement,
   HREvaluationsProxy,
   EmployeeManagement,
@@ -191,6 +193,12 @@ export default function App() {
               onBack={() => setCurrentView('dashboard')}
             />
           )}
+          {currentView === 'intent_review' && (
+            <IntentReview
+              departmentName={currentUser.department}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          )}
           {(currentView === 'employee_records' ||
             currentView === 'report_generator' ||
             currentView === 'department_records') && (
@@ -237,7 +245,13 @@ export default function App() {
               onBack={() => setCurrentView('dashboard')}
             />
           )}
-          {currentView === 'report_generator' && (
+          {currentView === 'executive_analytics' && (
+            <ExecutiveAnalytics
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          )}
+          {(currentView === 'report_generator' || currentView === 'employee_records') && (
             <ReportGenerator
               onNavigate={setCurrentView}
               onBack={() => setCurrentView('dashboard')}

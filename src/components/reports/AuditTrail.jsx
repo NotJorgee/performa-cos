@@ -21,7 +21,7 @@ export default function AuditTrail({
       user: 'Dr. Maria Clara Ramos',
       role: 'HR Personnel',
       action: 'EVALUATION_PERIOD_INITIATED',
-      targetScope: '1st Semester 2026-2027 Midterm Review',
+      targetScope: 'Annual Performance Review 2026',
       ipAddress: '192.168.1.5',
       operationDetails: 'Published evaluation criteria rubric and enabled HR triad grading window.',
     },

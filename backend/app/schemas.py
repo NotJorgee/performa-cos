@@ -93,7 +93,6 @@ class EvaluationScoreSubmit(BaseModel):
     dimension_scores: Optional[dict] = None
     strengths: Optional[str] = None
     recommendations: Optional[str] = None
-    is_proxy_entry: bool = False
 
 class FastTrackRejectionSubmit(BaseModel):
     category: str

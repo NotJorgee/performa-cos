@@ -1,7 +1,26 @@
 import React, { useState } from 'react';
-import { Check, Archive, FileText, ClipboardCheck, FileDown } from 'lucide-react';
+import {
+  Check,
+  Archive,
+  FileText,
+  ClipboardCheck,
+  FileDown,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Layers,
+  Phone,
+  MapPin,
+  Mail,
+  ShieldAlert,
+} from 'lucide-react';
 import MonthlyReport from '../employee/MonthlyReport';
 import DynamicRubric from '../common/DynamicRubric';
+import {
+  getComparativeTrajectory,
+  getTriadComparativeDeltas,
+  ComparativeTrajectoryBadge,
+} from '../../utils/comparativeAnalytics';
 
 export const getScoreInterpretationColor = (interpretation, score) => {
   const norm = (interpretation || '').toLowerCase().trim();
@@ -17,42 +36,74 @@ export const getScoreInterpretationColor = (interpretation, score) => {
   if (norm.includes('needs improvement')) {
     return {
       className: 'score-mid',
-      color: 'var(--amber-600)',
-      bg: 'var(--amber-50)',
-      border: '#fed7aa',
+      color: '#d97706',
+      bg: '#fffbeb',
+      border: '#fde68a',
       badgeClass: 'badge-pending',
     };
   }
-  if (
-    norm.includes('outstanding') ||
-    norm.includes('very satisfactory') ||
-    norm.includes('satisfactory')
-  ) {
+  if (norm.includes('outstanding')) {
     return {
       className: 'score-good',
-      color: 'var(--green-600)',
-      bg: 'var(--green-50)',
-      border: '#bfe8cd',
+      color: '#15803d',
+      bg: '#f0fdf4',
+      border: '#bbf7d0',
+      badgeClass: 'badge-completed',
+    };
+  }
+  if (norm.includes('very satisfactory')) {
+    return {
+      className: 'score-good',
+      color: '#1d4ed8',
+      bg: '#eff6ff',
+      border: '#bfdbfe',
+      badgeClass: 'badge-completed',
+    };
+  }
+  if (norm.includes('satisfactory')) {
+    return {
+      className: 'score-good',
+      color: '#0284c7',
+      bg: '#f0f9ff',
+      border: '#bae6fd',
       badgeClass: 'badge-completed',
     };
   }
   if (score !== undefined && score !== null && score !== '') {
     const num = Number(score);
-    if (num >= 75) {
+    if (num >= 90) {
       return {
         className: 'score-good',
-        color: 'var(--green-600)',
-        bg: 'var(--green-50)',
-        border: '#bfe8cd',
+        color: '#15803d',
+        bg: '#f0fdf4',
+        border: '#bbf7d0',
+        badgeClass: 'badge-completed',
+      };
+    }
+    if (num >= 80) {
+      return {
+        className: 'score-good',
+        color: '#1d4ed8',
+        bg: '#eff6ff',
+        border: '#bfdbfe',
+        badgeClass: 'badge-completed',
+      };
+    }
+    if (num >= 70) {
+      return {
+        className: 'score-good',
+        color: '#0284c7',
+        bg: '#f0f9ff',
+        border: '#bae6fd',
         badgeClass: 'badge-completed',
       };
     }
     if (num >= 60) {
       return {
         className: 'score-mid',
-        color: 'var(--amber-600)',
-        bg: 'var(--amber-50)',
-        border: '#fed7aa',
+        color: '#d97706',
+        bg: '#fffbeb',
+        border: '#fde68a',
         badgeClass: 'badge-pending',
       };
     }
@@ -73,6 +124,44 @@ export const getScoreInterpretationColor = (interpretation, score) => {
   };
 };
 
+// Official EVSU HR Performance Interpretation & Recommendation Mapping
+export const getScoreInterpretationAndRecommendation = (score) => {
+  const num = Number(score) || 0;
+  if (num >= 90) {
+    return {
+      scoreRange: '90 – 100',
+      interpretation: 'Outstanding',
+      recommendation: 'Strongly Recommended for Renewal',
+    };
+  }
+  if (num >= 80) {
+    return {
+      scoreRange: '80 – 89',
+      interpretation: 'Very Satisfactory',
+      recommendation: 'Recommended for Renewal',
+    };
+  }
+  if (num >= 70) {
+    return {
+      scoreRange: '70 – 79',
+      interpretation: 'Satisfactory',
+      recommendation: 'Renewal with Monitoring',
+    };
+  }
+  if (num >= 60) {
+    return {
+      scoreRange: '60 – 69',
+      interpretation: 'Needs Improvement',
+      recommendation: 'Renewal Subject to Evaluation',
+    };
+  }
+  return {
+    scoreRange: 'Below 60',
+    interpretation: 'Unsatisfactory',
+    recommendation: 'Not Recommended for Renewal',
+  };
+};
+
 export default function EmployeeRecordView({
   employee = {
     id: 1,
@@ -87,16 +176,20 @@ export default function EmployeeRecordView({
     latestScore: 92.4,
     latestRating: 'Outstanding',
     status: 'Active',
+    contactNumber: '+63 912 345 6789',
+    officeLocation: 'Technology Bldg, Room 204',
+    alternateEmail: 'jorge.gubantes@gmail.com',
+    emergencyContact: 'Maria Clara Ramos (+63 917 111 2233)',
   },
   onBack = () => {},
-  backLabel = '← Back to Executive Reports',
+  backLabel = '← Back to Employee Records',
 }) {
   const [toastMsg, setToastMsg] = useState(null);
   const [viewingMarCycle, setViewingMarCycle] = useState(null);
   const [viewingEvalCycle, setViewingEvalCycle] = useState(null);
   const [activeEvaluatorTab, setActiveEvaluatorTab] = useState('depthead'); // 'depthead' | 'cos' | 'hr'
 
-  // Mock historical evaluations for the employee
+  // Mock historical evaluations for the employee (Aligned with Official HR Criteria)
   const historicalEvaluations = [
     {
       id: 1,
@@ -109,7 +202,7 @@ export default function EmployeeRecordView({
       marCount: 84,
       strengths:
         'Consistently produces exceptional quality administrative outputs with zero defect. Spearheaded student query backlog clearance and automated laboratory terminal logs.',
-      recommendation: 'Recommended for Renewal (Unanimous Endorsement)',
+      recommendation: 'Strongly Recommended for Renewal',
     },
     {
       id: 2,
@@ -135,7 +228,7 @@ export default function EmployeeRecordView({
       marCount: 70,
       strengths:
         'Reliable execution of daily tasks. High integrity in managing university records and office equipment.',
-      recommendation: 'Recommended for Renewal',
+      recommendation: 'Renewal with Monitoring',
     },
     {
       id: 4,
@@ -148,9 +241,15 @@ export default function EmployeeRecordView({
       marCount: 52,
       strengths:
         'Adequate task completion but requires closer monitoring on turnaround times and office documentation protocol compliance.',
-      recommendation: 'Probationary Renewal with Performance Improvement Plan',
+      recommendation: 'Renewal Subject to Evaluation',
     },
   ];
+
+  // Cycle-over-cycle comparative calculation between most recent and prior cycle
+  const comparativeData =
+    historicalEvaluations.length >= 2
+      ? getTriadComparativeDeltas(historicalEvaluations[0], historicalEvaluations[1])
+      : null;
 
   // Distinct scores for each Triad component
   const mockSupervisorScores = {
@@ -267,7 +366,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
             score: viewingEvalCycle.hrmoScore,
             scores: mockHrScores,
             strengths:
-              '100% compliance with university attendance and campus geofencing rules. Fully verified monthly accomplishments submitted within deadline with zero compliance infractions.',
+              'Consistently fulfilled contracted task deliverables and verified monthly accomplishment reports with high documentation accuracy.',
             recommendation: 'Recommended for Renewal',
           };
         case 'depthead':
@@ -486,9 +585,9 @@ Generated Timestamp: ${new Date().toLocaleString()}
                   Executive Performance Highlights:
                 </b>
                 <ul style={{ margin: 0, paddingLeft: '18px' }}>
-                  <li>Maintained 100% verified geofenced DAR compliance within EVSU-Ormoc campus bounds.</li>
+                  <li>All accomplishment logs verified with valid documentation, attachments, and deliverable records.</li>
                   <li>Efficiently handled student enrollment records, credential validations, and laboratory maintenance schedules.</li>
-                  <li>Zero attendance infractions or safety violations logged across the 6-month cycle.</li>
+                  <li>Zero deliverable defects or contractual non-compliance logged across the 6-month cycle.</li>
                 </ul>
               </div>
             </div>
@@ -653,13 +752,250 @@ Generated Timestamp: ${new Date().toLocaleString()}
               <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>
                 Latest Grade
               </span>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: getScoreInterpretationColor(employee.latestRating, employee.latestScore).color, marginTop: '2px' }}>
-                {employee.latestScore !== null && employee.latestScore !== undefined ? `${employee.latestScore} (${employee.latestRating || 'Evaluated'})` : 'Unrated'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 800, fontSize: '15px', color: getScoreInterpretationColor(employee.latestRating, employee.latestScore).color }}>
+                  {employee.latestScore !== null && employee.latestScore !== undefined ? `${employee.latestScore} (${employee.latestRating || 'Evaluated'})` : 'Unrated'}
+                </span>
+                {comparativeData && (
+                  <ComparativeTrajectoryBadge
+                    currentScore={comparativeData.currentScore}
+                    previousScore={comparativeData.previousScore}
+                    compact
+                  />
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* Operational & Personal Contact Information Strip */}
+        <div
+          style={{
+            marginTop: '16px',
+            paddingTop: '14px',
+            borderTop: '1px solid var(--line)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--brand-700)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+              <Phone size={14} />
+            </span>
+            <div style={{ overflow: 'hidden' }}>
+              <span className="muted" style={{ fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>
+                Mobile Contact
+              </span>
+              <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap' }}>
+                {employee.contactNumber || '+63 912 345 6789'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--brand-700)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+              <MapPin size={14} />
+            </span>
+            <div style={{ overflow: 'hidden' }}>
+              <span className="muted" style={{ fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>
+                Station / Room Location
+              </span>
+              <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
+                {employee.officeLocation || 'Technology Bldg, Room 204'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--brand-700)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+              <Mail size={14} />
+            </span>
+            <div style={{ overflow: 'hidden' }}>
+              <span className="muted" style={{ fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>
+                Alternate Recovery Email
+              </span>
+              <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
+                {employee.alternateEmail || `${(employee.email || 'personal').split('@')[0]}@gmail.com`}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--red-600)', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+              <ShieldAlert size={14} />
+            </span>
+            <div style={{ overflow: 'hidden' }}>
+              <span className="muted" style={{ fontSize: '10.5px', display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>
+                Emergency Contact
+              </span>
+              <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
+                {employee.emergencyContact || 'Maria Clara Ramos (+63 917 111 2233)'}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Comparative Performance Analysis (Cycle-over-Cycle Deep Dive) */}
+      {comparativeData ? (
+        <div className="card" style={{ marginBottom: '22px', padding: '20px 24px', border: '1px solid var(--line)', background: '#fff' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                <span className="badge badge-dept" style={{ textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
+                  Cycle-over-Cycle Analytics
+                </span>
+                <ComparativeTrajectoryBadge
+                  currentScore={comparativeData.currentScore}
+                  previousScore={comparativeData.previousScore}
+                />
+              </div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: 'var(--ink-900)' }}>
+                Comparative Performance Analysis
+              </h3>
+              <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
+                Comparing Current Cycle (<b>{comparativeData.currentPeriod}</b>) against Preceding Cycle (<b>{comparativeData.previousPeriod}</b>).
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#f8fafc', padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <div>
+                <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>Composite Delta</span>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: comparativeData.trajectory.color }}>
+                  {comparativeData.finalDeltaFormatted} pts
+                </div>
+              </div>
+              <div style={{ borderLeft: '1px solid var(--line)', paddingLeft: '14px' }}>
+                <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>Classification</span>
+                <div style={{ fontSize: '13.5px', fontWeight: 700, color: comparativeData.trajectory.color }}>
+                  {comparativeData.trajectory.status}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Triad & MAR Metrics Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+            {/* Immediate Supervisor */}
+            <div style={{ background: '#fafbfc', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-700)' }}>
+                  Supervisor Appraisal (50%)
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: comparativeData.triad.supervisor.delta >= 0 ? 'var(--green-700)' : 'var(--red-600)' }}>
+                  {comparativeData.triad.supervisor.deltaFormatted}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                  {comparativeData.triad.supervisor.current}%
+                </span>
+                <span className="muted" style={{ fontSize: '12px' }}>
+                  vs {comparativeData.triad.supervisor.previous}% prior
+                </span>
+              </div>
+              <div className="muted" style={{ fontSize: '11.5px', marginTop: '4px' }}>
+                Weighted: {(comparativeData.triad.supervisor.current * 0.5).toFixed(1)} pts
+              </div>
+            </div>
+
+            {/* Peer Review */}
+            <div style={{ background: '#fafbfc', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-700)' }}>
+                  Peer Evaluation (20%)
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: comparativeData.triad.peer.delta >= 0 ? 'var(--green-700)' : 'var(--red-600)' }}>
+                  {comparativeData.triad.peer.deltaFormatted}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                  {comparativeData.triad.peer.current}%
+                </span>
+                <span className="muted" style={{ fontSize: '12px' }}>
+                  vs {comparativeData.triad.peer.previous}% prior
+                </span>
+              </div>
+              <div className="muted" style={{ fontSize: '11.5px', marginTop: '4px' }}>
+                Weighted: {(comparativeData.triad.peer.current * 0.2).toFixed(1)} pts
+              </div>
+            </div>
+
+            {/* HRMO Compliance */}
+            <div style={{ background: '#fafbfc', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-700)' }}>
+                  HRMO Compliance (30%)
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: comparativeData.triad.hrmo.delta >= 0 ? 'var(--green-700)' : 'var(--red-600)' }}>
+                  {comparativeData.triad.hrmo.deltaFormatted}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                  {comparativeData.triad.hrmo.current}%
+                </span>
+                <span className="muted" style={{ fontSize: '12px' }}>
+                  vs {comparativeData.triad.hrmo.previous}% prior
+                </span>
+              </div>
+              <div className="muted" style={{ fontSize: '11.5px', marginTop: '4px' }}>
+                Weighted: {(comparativeData.triad.hrmo.current * 0.3).toFixed(1)} pts
+              </div>
+            </div>
+
+            {/* Deliverable Task Volume (MAR) */}
+            <div style={{ background: '#fafbfc', border: '1px solid var(--line)', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-700)' }}>
+                  MAR Task Output
+                </span>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: comparativeData.mar.delta >= 0 ? 'var(--green-700)' : 'var(--red-600)' }}>
+                  {comparativeData.mar.deltaFormatted} tasks ({comparativeData.mar.growthPct})
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                  {comparativeData.mar.current}
+                </span>
+                <span className="muted" style={{ fontSize: '12px' }}>
+                  vs {comparativeData.mar.previous} tasks prior
+                </span>
+              </div>
+              <div className="muted" style={{ fontSize: '11.5px', marginTop: '4px' }}>
+                Verified Deliverables Completed
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Summary Note */}
+          <div style={{ background: comparativeData.trajectory.bg, border: `1px solid ${comparativeData.trajectory.border}`, borderRadius: '8px', padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <span style={{ fontSize: '15px', lineHeight: 1.2 }}>{comparativeData.trajectory.icon}</span>
+            <div style={{ fontSize: '13px', color: comparativeData.trajectory.color, lineHeight: 1.5 }}>
+              <b>Performance Summary: </b>
+              {comparativeData.trajectory.type === 'improvement'
+                ? `The employee improved their overall score by +${comparativeData.finalDelta} points compared to the last contract period. Ratings increased across all evaluators (Supervisor +${comparativeData.triad.supervisor.delta}%, Peer +${comparativeData.triad.peer.delta}%, HRMO +${comparativeData.triad.hrmo.delta}%), with higher task output (${comparativeData.mar.current} vs ${comparativeData.mar.previous} completed tasks). Recommended for contract renewal.`
+                : comparativeData.trajectory.type === 'decline'
+                ? `The employee's overall score decreased by -${Math.abs(comparativeData.finalDelta)} points compared to the last contract period. Closer guidance and performance monitoring are recommended for the next term.`
+                : `The employee maintained steady and consistent performance (within ±1.0 point), reliably completing all assigned tasks and duties.`}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ marginBottom: '22px', padding: '18px 22px', background: '#fafbfc', border: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '16px' }}>★</span>
+            <div>
+              <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>Performance Baseline Cycle</b>
+              <p className="muted" style={{ margin: '2px 0 0', fontSize: '12.5px' }}>
+                This is the employee's first recorded contract evaluation. These results set the starting benchmark for future renewals.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Historical Evaluations Data Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -676,14 +1012,14 @@ Generated Timestamp: ${new Date().toLocaleString()}
           <thead>
             <tr>
               <th>Contract Cycle</th>
-              <th>Final Grade</th>
+              <th>Final Grade & Trajectory</th>
               <th>Interpretation</th>
               <th style={{ textAlign: 'center' }}>MARs Document</th>
               <th style={{ textAlign: 'center' }}>Evaluation Dossier</th>
             </tr>
           </thead>
           <tbody>
-            {historicalEvaluations.map((evalItem) => (
+            {historicalEvaluations.map((evalItem, index) => (
               <tr key={evalItem.id}>
                 {/* Contract Cycle: ONLY starting and ending dates */}
                 <td>
@@ -692,13 +1028,20 @@ Generated Timestamp: ${new Date().toLocaleString()}
                   </b>
                 </td>
                 <td>
-                  <span
-                    className={`score-pill ${
-                      getScoreInterpretationColor(evalItem.interpretation, evalItem.finalGrade).className
-                    }`}
-                  >
-                    {evalItem.finalGrade.toFixed(2)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span
+                      className={`score-pill ${
+                        getScoreInterpretationColor(evalItem.interpretation, evalItem.finalGrade).className
+                      }`}
+                    >
+                      {evalItem.finalGrade.toFixed(2)}
+                    </span>
+                    <ComparativeTrajectoryBadge
+                      currentScore={evalItem.finalGrade}
+                      previousScore={historicalEvaluations[index + 1]?.finalGrade}
+                      compact
+                    />
+                  </div>
                   <div className="muted" style={{ fontSize: '11px', marginTop: '3px' }}>
                     Sup: {evalItem.supervisorScore} | Peer: {evalItem.peerScore} | HR: {evalItem.hrmoScore}
                   </div>

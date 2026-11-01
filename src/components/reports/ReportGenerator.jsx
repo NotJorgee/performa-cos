@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Download, Check, Archive, FileText } from 'lucide-react';
+import { Download, Check, Archive, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
+import { getComparativeTrajectory, ComparativeTrajectoryBadge } from '../../utils/comparativeAnalytics';
 
 export default function ReportGenerator({
   employees = [
@@ -17,6 +18,7 @@ export default function ReportGenerator({
       totalContracts: 3,
       avgScore: 90.8,
       latestScore: 92.4,
+      previousScore: 88.6,
       latestRating: 'Outstanding',
       status: 'Active',
     },
@@ -33,6 +35,7 @@ export default function ReportGenerator({
       totalContracts: 3,
       avgScore: 87.2,
       latestScore: 88.6,
+      previousScore: 88.2,
       latestRating: 'Very Satisfactory',
       status: 'Active',
     },
@@ -49,6 +52,7 @@ export default function ReportGenerator({
       totalContracts: 2,
       avgScore: 89.2,
       latestScore: 89.2,
+      previousScore: 89.2,
       latestRating: 'Very Satisfactory',
       status: 'Active',
     },
@@ -65,6 +69,7 @@ export default function ReportGenerator({
       totalContracts: 2,
       avgScore: 78.5,
       latestScore: 78.5,
+      previousScore: 81.2,
       latestRating: 'Satisfactory',
       status: 'Active',
     },
@@ -81,6 +86,7 @@ export default function ReportGenerator({
       totalContracts: 4,
       avgScore: 68.0,
       latestScore: 68.0,
+      previousScore: 71.5,
       latestRating: 'Needs Improvement',
       status: 'Active',
     },
@@ -97,6 +103,7 @@ export default function ReportGenerator({
       totalContracts: 2,
       avgScore: 54.0,
       latestScore: 54.0,
+      previousScore: 58.0,
       latestRating: 'Unsatisfactory',
       status: 'Active',
     },
@@ -113,8 +120,43 @@ export default function ReportGenerator({
       totalContracts: 3,
       avgScore: 84.0,
       latestScore: 84.0,
+      previousScore: 82.5,
       latestRating: 'Very Satisfactory',
       status: 'Active',
+    },
+    {
+      id: 8,
+      idNumber: 'C10222025ABC',
+      fullName: 'Clarisse Villamor',
+      email: 'clarisse.villamor@evsu.edu.ph',
+      department: 'Computer Studies Department',
+      college: 'College of Technology',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2025',
+      contractEndDate: 'Apr 22, 2026',
+      totalContracts: 1,
+      avgScore: 82.0,
+      latestScore: 82.0,
+      previousScore: null,
+      latestRating: 'Satisfactory',
+      status: 'Archived',
+    },
+    {
+      id: 9,
+      idNumber: 'R10222025XYZ',
+      fullName: 'Ramon Bautista',
+      email: 'ramon.bautista@evsu.edu.ph',
+      department: 'Engineering Department',
+      college: 'College of Engineering',
+      cosCategory: 'Maintenance/Janitorial',
+      dateAppointed: 'Oct 22, 2025',
+      contractEndDate: 'Apr 22, 2026',
+      totalContracts: 2,
+      avgScore: 76.5,
+      latestScore: 76.5,
+      previousScore: 75.0,
+      latestRating: 'Satisfactory',
+      status: 'Archived',
     },
   ],
   departments = [
@@ -137,6 +179,7 @@ export default function ReportGenerator({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState(deptScope || 'All');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [showArchived, setShowArchived] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
 
   // If viewing an employee's historical records
@@ -145,7 +188,7 @@ export default function ReportGenerator({
       <EmployeeRecordView
         employee={selectedEmp}
         onBack={() => setSelectedEmp(null)}
-        backLabel={isDeptRestricted ? '← Back to Department Records' : '← Back to Executive Reports'}
+        backLabel={isDeptRestricted ? '← Back to Department Records' : '← Back to Employee Records'}
       />
     );
   }
@@ -178,6 +221,10 @@ export default function ReportGenerator({
     return matchesSearch && matchesDept && matchesCategory;
   });
 
+  // Separate active employees (for primary table) and archived employees (for revealed table below)
+  const activeEmployees = filteredEmployees.filter((emp) => emp.status !== 'Archived');
+  const archivedEmployees = filteredEmployees.filter((emp) => emp.status === 'Archived');
+
   const handleExportRosterCsv = () => {
     const headers = [
       'Employee ID',
@@ -190,22 +237,27 @@ export default function ReportGenerator({
       'Avg Score',
       'Latest Score',
       'Adjectival Rating',
+      'Comparative Trajectory',
       'Status',
     ];
 
-    const rows = filteredEmployees.map((emp) => [
-      `"${emp.idNumber}"`,
-      `"${emp.fullName}"`,
-      `"${emp.email}"`,
-      `"${emp.department}"`,
-      `"${emp.college || ''}"`,
-      `"${emp.cosCategory}"`,
-      emp.totalContracts || 1,
-      emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
-      emp.latestScore || 'N/A',
-      `"${emp.latestRating || 'Unrated'}"`,
-      `"${emp.status}"`,
-    ]);
+    const rows = filteredEmployees.map((emp) => {
+      const traj = getComparativeTrajectory(emp.latestScore, emp.previousScore);
+      return [
+        `"${emp.idNumber}"`,
+        `"${emp.fullName}"`,
+        `"${emp.email}"`,
+        `"${emp.department}"`,
+        `"${emp.college || ''}"`,
+        `"${emp.cosCategory}"`,
+        emp.totalContracts || 1,
+        emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
+        emp.latestScore || 'N/A',
+        `"${emp.latestRating || 'Unrated'}"`,
+        `"${traj.badgeText}"`,
+        `"${emp.status}"`,
+      ];
+    });
 
     const csvContent =
       'data:text/csv;charset=utf-8,' +
@@ -237,7 +289,7 @@ export default function ReportGenerator({
       <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h1 style={{ margin: '0 0 6px' }}>
-            {isDeptRestricted ? 'Departmental Employee Records' : 'Executive Reports & Personnel Records'}
+            {isDeptRestricted ? 'Departmental Employee Records' : 'COS Employee Records & Dossiers'}
           </h1>
           <p className="muted" style={{ margin: 0 }}>
             {isDeptRestricted
@@ -349,6 +401,7 @@ export default function ReportGenerator({
           </div>
         </div>
 
+        {/* Primary Table: Active Employees Only */}
         <table className="data-table">
           <thead>
             <tr>
@@ -358,13 +411,12 @@ export default function ReportGenerator({
               {!isDeptRestricted && <th>COS Category</th>}
               <th>Total Contracts</th>
               <th>Avg Score</th>
-              <th>Latest Score</th>
-              <th>Status</th>
+              <th>Latest Score & Trajectory</th>
               <th style={{ textAlign: 'right' }}>Records Action</th>
             </tr>
           </thead>
           <tbody>
-            {filteredEmployees.map((emp) => (
+            {activeEmployees.map((emp) => (
               <tr key={emp.id}>
                 <td>
                   <span className="emp-id-chip">{emp.idNumber}</span>
@@ -406,38 +458,26 @@ export default function ReportGenerator({
                 <td>
                   {emp.latestScore !== null && emp.latestScore !== undefined ? (
                     <div>
-                      <span
-                        className={`score-pill ${
-                          getScoreInterpretationColor(emp.latestRating, emp.latestScore).className
-                        }`}
-                      >
-                        {emp.latestScore}
-                      </span>
-                      <div className="muted" style={{ fontSize: '11px', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span
+                          className={`score-pill ${
+                            getScoreInterpretationColor(emp.latestRating, emp.latestScore).className
+                          }`}
+                        >
+                          {emp.latestScore}
+                        </span>
+                        <ComparativeTrajectoryBadge
+                          currentScore={emp.latestScore}
+                          previousScore={emp.previousScore}
+                        />
+                      </div>
+                      <div className="muted" style={{ fontSize: '11px', marginTop: '3px' }}>
                         {emp.latestRating || 'Evaluated'}
                       </div>
                     </div>
                   ) : (
                     <span className="muted">—</span>
                   )}
-                </td>
-                <td>
-                  <span
-                    className={`badge ${
-                      emp.status === 'Archived' ? 'badge-delete' : 'badge-active'
-                    }`}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    {emp.status === 'Archived' ? (
-                      <>
-                        <Archive size={12} /> Archived
-                      </>
-                    ) : (
-                      <>
-                        <Check size={12} /> Active
-                      </>
-                    )}
-                  </span>
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <button
@@ -458,16 +498,171 @@ export default function ReportGenerator({
                 </td>
               </tr>
             ))}
-            {filteredEmployees.length === 0 && (
+            {activeEmployees.length === 0 && (
               <tr>
-                <td colSpan={isDeptRestricted ? 7 : 9} className="muted" style={{ padding: '28px', textAlign: 'center' }}>
-                  No personnel matching search criteria.
+                <td colSpan={isDeptRestricted ? 6 : 8} className="muted" style={{ padding: '28px', textAlign: 'center' }}>
+                  No active personnel records matching search criteria.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Toggle Button for Archived Employees */}
+      <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => setShowArchived((prev) => !prev)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 18px',
+            fontSize: '13px',
+            fontWeight: 600,
+            background: showArchived ? '#f1f5f9' : '#fff',
+            border: '1px solid var(--line)',
+            color: 'var(--ink-700)',
+            cursor: 'pointer',
+            borderRadius: '8px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}
+        >
+          <Archive size={15} color="var(--ink-600)" />
+          <span>
+            {showArchived
+              ? 'Hide Archived Records'
+              : `View Archived Records (${archivedEmployees.length})`}
+          </span>
+          {showArchived ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+      </div>
+
+      {/* Separate Archived Employees Table Card Below */}
+      {showArchived && (
+        <div className="card" style={{ marginTop: '18px', padding: 0, overflow: 'hidden', border: '1px solid var(--line)', background: '#fff' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fafbfc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Archive size={18} color="var(--ink-600)" />
+              <div className="card-title" style={{ margin: 0, fontSize: '15px' }}>
+                {isDeptRestricted
+                  ? `${deptScope} Archived Dossiers & Records`
+                  : 'Archived COS Personnel Dossiers'}
+              </div>
+            </div>
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: '12.5px' }}>
+              Historical personnel records and completed contracts retained for institutional audit trails.
+            </p>
+          </div>
+
+          {archivedEmployees.length === 0 ? (
+            <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+              <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
+                No archived personnel records found for {isDeptRestricted ? deptScope : 'selected filters'}.
+              </p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID Number</th>
+                  <th>Full Name</th>
+                  {!isDeptRestricted && <th>Department</th>}
+                  {!isDeptRestricted && <th>COS Category</th>}
+                  <th>Total Contracts</th>
+                  <th>Avg Score</th>
+                  <th>Latest Score & Trajectory</th>
+                  <th style={{ textAlign: 'right' }}>Records Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {archivedEmployees.map((emp) => (
+                  <tr key={emp.id} style={{ opacity: 0.9 }}>
+                    <td>
+                      <span className="emp-id-chip">{emp.idNumber}</span>
+                    </td>
+                    <td>
+                      <b>{emp.fullName}</b>
+                      <div className="muted" style={{ fontSize: '12px' }}>{emp.email}</div>
+                    </td>
+                    {!isDeptRestricted && <td>{emp.department}</td>}
+                    {!isDeptRestricted && (
+                      <td>
+                        <span className="badge badge-unassigned">{emp.cosCategory}</span>
+                      </td>
+                    )}
+                    <td>
+                      <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
+                        {emp.totalContracts || 1}
+                      </span>
+                      <span className="muted" style={{ fontSize: '11.5px', marginLeft: '4px' }}>
+                        {(emp.totalContracts || 1) === 1 ? 'Cycle' : 'Cycles'}
+                      </span>
+                    </td>
+                    <td>
+                      {emp.avgScore !== null && emp.avgScore !== undefined ? (
+                        <div>
+                          <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--ink-900)' }}>
+                            {Number(emp.avgScore).toFixed(1)}
+                          </span>
+                          <span className="muted" style={{ fontSize: '11px', marginLeft: '3px' }}>
+                            / 100
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {emp.latestScore !== null && emp.latestScore !== undefined ? (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span
+                              className={`score-pill ${
+                                getScoreInterpretationColor(emp.latestRating, emp.latestScore).className
+                              }`}
+                            >
+                              {emp.latestScore}
+                            </span>
+                            <ComparativeTrajectoryBadge
+                              currentScore={emp.latestScore}
+                              previousScore={emp.previousScore}
+                            />
+                          </div>
+                          <div className="muted" style={{ fontSize: '11px', marginTop: '3px' }}>
+                            {emp.latestRating || 'Evaluated'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          cursor: 'pointer',
+                          background: '#fff',
+                        }}
+                        onClick={() => setSelectedEmp(emp)}
+                        title={`View historical evaluation records for ${emp.fullName}`}
+                      >
+                        <FileText size={14} /> View Records
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }

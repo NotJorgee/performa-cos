@@ -13,6 +13,7 @@ export { default as DynamicRubric } from './common/DynamicRubric';
 export { default as FastTrackModal } from './common/FastTrackModal';
 export { default as CampusGeofenceModal } from './common/CampusGeofenceModal';
 export { default as CampusGeofence } from './common/CampusGeofence';
+export { default as AiPerformanceAnalysis } from './common/AiPerformanceAnalysis';
 
 // 1. COS Employee GUI Modules (SRS Section 8.1)
 export { default as EmployeeDashboard } from './dashboard/EmployeeDashboard';
@@ -24,9 +25,11 @@ export { default as PeerEvaluations } from './employee/PeerEvaluations';
 // 2. Department Head GUI Modules (SRS Section 8.1)
 export { default as DeptHeadDashboard } from './dashboard/DeptHeadDashboard';
 export { default as PendingEvaluations } from './depthead/PendingEvaluations';
+export { default as IntentReview } from './depthead/IntentReview';
 
 // 3. HR Personnel GUI Modules (SRS Section 8.1)
 export { default as HRDashboard } from './dashboard/HRDashboard';
+export { default as ExecutiveAnalytics } from './analytics/ExecutiveAnalytics';
 export { default as EvaluationManagement } from './hr/EvaluationManagement';
 export { default as HREvaluationsProxy } from './hr/HREvaluationsProxy';
 export { default as EmployeeManagement } from './management/EmployeeManagement';

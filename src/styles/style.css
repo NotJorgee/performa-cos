@@ -1017,14 +1017,6 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 .modal-close { background: none; border: none; font-size: 18px; line-height: 1; color: var(--ink-500); cursor: pointer; padding: 4px; }
 .modal-close:hover { color: var(--ink-900); }
 
-/* ---------- Attendance ---------- */
-.attendance-clock { text-align: center; padding: 10px 0 20px; }
-.attendance-clock-time { font-size: 36px; font-weight: 800; color: var(--brand-600); font-variant-numeric: tabular-nums; }
-.attendance-punch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
-.attendance-punch { border: 1px solid var(--line); border-radius: 10px; padding: 14px; text-align: center; }
-.attendance-punch-value { font-size: 20px; font-weight: 800; color: var(--ink-900); padding: 8px 0; }
-.attendance-punch form .form-control { margin-bottom: 8px; }
-
 /* ---------- Notifications ---------- */
 .notification-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .15s ease; }
 .notification-row:hover { background: #f8fafc; }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardCheck, FileText, ArrowRight } from 'lucide-react';
+import { ClipboardCheck, UserCheck, FileText, ArrowRight } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 
@@ -11,13 +11,15 @@ export default function DeptHeadDashboard({
   },
   metrics = {
     totalSubordinates: 12,
-    pendingReviews: 3,
+    pendingReviews: 2,
+    pendingIntents: 3,
     avgScore: 88.5,
     ratingLabel: 'Very Satisfactory',
   },
   onNavigate = () => {},
 }) {
-  const pendingCount = metrics?.pendingReviews ?? 3;
+  const pendingCount = metrics?.pendingReviews ?? 2;
+  const pendingIntentsCount = metrics?.pendingIntents ?? 3;
   const fullFirstName = getFullFirstName(currentUser.fullName || 'Roberto');
 
   return (
@@ -35,7 +37,35 @@ export default function DeptHeadDashboard({
 
       {/* Department Head Quick Access Panels */}
       <div className="quick-access-grid">
-        {/* Panel 1: Subordinate Evaluations */}
+        {/* Panel 1: Intent Review */}
+        <div
+          className="quick-access-card"
+          onClick={() => onNavigate('intent_review')}
+          title="Click to review staff renewal intents and AI-synthesized DAR performance analysis"
+        >
+          <div className="quick-access-top">
+            <span className="quick-access-label">Intent Review</span>
+            <div className="quick-access-icon">
+              <UserCheck size={22} color="var(--brand-700)" />
+            </div>
+          </div>
+          <div
+            className="quick-access-value"
+            style={{
+              color: pendingIntentsCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
+              fontSize: '24px',
+              fontWeight: 800,
+            }}
+          >
+            {pendingIntentsCount} {pendingIntentsCount === 1 ? 'Pending Review' : 'Pending Reviews'}
+          </div>
+          <div className="quick-access-link">
+            <span>Review intents &amp; AI summaries</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        {/* Panel 2: Subordinate Evaluations */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('pending_evaluations')}
@@ -63,7 +93,7 @@ export default function DeptHeadDashboard({
           </div>
         </div>
 
-        {/* Panel 2: Department Employee Records */}
+        {/* Panel 3: Department Employee Records */}
         <div
           className="quick-access-card"
           onClick={() => onNavigate('employee_records')}

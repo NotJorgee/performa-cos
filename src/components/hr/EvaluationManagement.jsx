@@ -11,7 +11,8 @@ export default function EvaluationManagement({
       cosCategory: 'Administrative',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Confirmed',
-      routingStatus: 'Pending Initiation', // 'Pending Initiation' | 'Routing Active' | 'Supervisor Veto' | 'Completed' | etc.
+      deptHeadEndorsement: 'Recommended',
+      routingStatus: 'Pending Initiation', // 'Pending Initiation' | 'Routing Active' | 'Non-Renewal Endorsed' | 'Completed' | etc.
     },
     {
       id: 102,
@@ -21,6 +22,7 @@ export default function EvaluationManagement({
       cosCategory: 'Administrative',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Confirmed',
+      deptHeadEndorsement: 'Recommended',
       routingStatus: 'Routing Active',
     },
     {
@@ -31,7 +33,8 @@ export default function EvaluationManagement({
       cosCategory: 'Maintenance/Janitorial',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Confirmed',
-      routingStatus: 'Pending Initiation',
+      deptHeadEndorsement: 'Pending Review',
+      routingStatus: 'Awaiting Dept Head Endorsement',
     },
     {
       id: 104,
@@ -41,6 +44,7 @@ export default function EvaluationManagement({
       cosCategory: 'Administrative',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Awaiting Intent',
+      deptHeadEndorsement: 'Awaiting Intent',
       routingStatus: 'Awaiting Employee Intent',
     },
     {
@@ -51,6 +55,7 @@ export default function EvaluationManagement({
       cosCategory: 'Administrative',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Declined',
+      deptHeadEndorsement: 'N/A (Declined)',
       declineReason: 'Pursuing full-time graduate degree program.',
       routingStatus: 'Contract Closure Pending',
     },
@@ -62,9 +67,10 @@ export default function EvaluationManagement({
       cosCategory: 'Administrative',
       contractEndDate: 'Dec 31, 2026',
       intentStatus: 'Confirmed',
-      routingStatus: 'Supervisor Veto',
-      vetoCategory: 'Gross Incompetence / Poor Performance',
-      vetoJustification: 'Repeated non-compliance with laboratory equipment calibration standards and unattended safety violations.',
+      deptHeadEndorsement: 'Not Recommended',
+      routingStatus: 'Non-Renewal Endorsed',
+      rejectionCategory: 'Gross Incompetence / Poor Performance',
+      rejectionJustification: 'Repeated non-compliance with laboratory equipment calibration standards and unattended safety violations.',
     },
   ],
   departments = [
@@ -145,6 +151,25 @@ export default function EvaluationManagement({
       setToastMsg(
         `HR Mediation resolved: Intervention transfer scheduled for "${mediateEmp.fullName}" to ${transferTargetDept} for the next cycle.`
       );
+    } else if (actionType === 'authorize_eval') {
+      setEmployees(
+        employees.map((e) =>
+          e.id === mediateEmp.id
+            ? {
+                ...e,
+                deptHeadEndorsement: 'Recommended (Overruled by HR)',
+                routingStatus: 'Pending Initiation',
+              }
+            : e
+        )
+      );
+      onMediateRejection({
+        employeeId: mediateEmp.id,
+        resolution: 'authorize_eval',
+      });
+      setToastMsg(
+        `HR Mediation resolved: Non-renewal overruled. "${mediateEmp.fullName}" cleared for evaluation initiation.`
+      );
     }
     setMediateEmp(null);
     setTimeout(() => setToastMsg(null), 4500);
@@ -189,7 +214,8 @@ export default function EvaluationManagement({
             <tr>
               <th>Employee Name</th>
               <th>Department</th>
-              <th>Assignment</th>
+              <th>Employee Intent</th>
+              <th>Dept Head Endorsement</th>
               <th>Contract End</th>
               <th>Status</th>
               <th style={{ textAlign: 'right' }}>Workflow Action</th>
@@ -204,13 +230,40 @@ export default function EvaluationManagement({
                 </td>
                 <td>{emp.department}</td>
                 <td>
-                  <span className="badge badge-dept">{emp.cosCategory}</span>
+                  {emp.intentStatus === 'Confirmed' ? (
+                    <span className="badge badge-completed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={11} /> Confirmed
+                    </span>
+                  ) : emp.intentStatus === 'Declined' ? (
+                    <span className="badge badge-delete" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <X size={11} /> Declined
+                    </span>
+                  ) : (
+                    <span className="badge badge-pending">Awaiting Intent</span>
+                  )}
+                </td>
+                <td>
+                  {emp.deptHeadEndorsement === 'Recommended' || emp.deptHeadEndorsement === 'Recommended (Overruled by HR)' ? (
+                    <span className="badge badge-completed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={11} /> {emp.deptHeadEndorsement}
+                    </span>
+                  ) : emp.deptHeadEndorsement === 'Not Recommended' ? (
+                    <span className="badge badge-delete" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <AlertTriangle size={11} /> Not Recommended
+                    </span>
+                  ) : emp.deptHeadEndorsement === 'N/A (Declined)' ? (
+                    <span className="muted" style={{ fontSize: '12px' }}>N/A (Declined)</span>
+                  ) : emp.intentStatus === 'Awaiting Intent' ? (
+                    <span className="muted" style={{ fontSize: '12px' }}>Awaiting Intent</span>
+                  ) : (
+                    <span className="badge badge-pending">Pending Review</span>
+                  )}
                 </td>
                 <td>{emp.contractEndDate}</td>
                 <td>
-                  {emp.routingStatus === 'Supervisor Veto' ? (
+                  {emp.routingStatus === 'Non-Renewal Endorsed' || emp.routingStatus === 'Supervisor Veto' ? (
                     <span className="badge badge-delete" style={{ whiteSpace: 'nowrap' }}>
-                      Supervisor Veto
+                      Non-Renewal Endorsed
                     </span>
                   ) : emp.routingStatus === 'Offboarded / Archived' ? (
                     <span className="badge badge-delete" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -234,7 +287,11 @@ export default function EvaluationManagement({
                     </span>
                   ) : emp.routingStatus === 'Pending Initiation' ? (
                     <span className="badge badge-inprogress" style={{ whiteSpace: 'nowrap' }}>
-                      Pending Initiation
+                      Ready for Evaluation
+                    </span>
+                  ) : emp.routingStatus === 'Awaiting Dept Head Endorsement' ? (
+                    <span className="badge badge-pending" style={{ whiteSpace: 'nowrap' }}>
+                      Awaiting Dept Head
                     </span>
                   ) : emp.routingStatus === 'Awaiting Employee Intent' || emp.intentStatus === 'Awaiting Intent' ? (
                     <span className="badge badge-pending" style={{ whiteSpace: 'nowrap' }}>
@@ -247,7 +304,7 @@ export default function EvaluationManagement({
                   )}
                 </td>
                 <td style={{ textAlign: 'right' }}>
-                  {emp.routingStatus === 'Supervisor Veto' ? (
+                  {emp.routingStatus === 'Non-Renewal Endorsed' || emp.routingStatus === 'Supervisor Veto' || emp.deptHeadEndorsement === 'Not Recommended' ? (
                     <button
                       type="button"
                       className="btn btn-sm"
@@ -257,10 +314,14 @@ export default function EvaluationManagement({
                         borderColor: 'var(--red-600)',
                         fontWeight: 700,
                         cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
                       }}
                       onClick={() => setMediateEmp(emp)}
                     >
-                      Mediate Rejection
+                      <AlertTriangle size={13} />
+                      Mediate Non-Renewal
                     </button>
                   ) : emp.intentStatus === 'Declined' || emp.intent === 'Declined' ? (
                     <button
@@ -272,24 +333,29 @@ export default function EvaluationManagement({
                         borderColor: 'var(--red-600)',
                         fontWeight: 700,
                         cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
                       }}
                       onClick={() => setOffboardEmp(emp)}
                     >
+                      <Archive size={13} />
                       Process Offboarding
                     </button>
-                  ) : emp.routingStatus === 'Pending Initiation' ? (
+                  ) : emp.routingStatus === 'Pending Initiation' && (emp.deptHeadEndorsement === 'Recommended' || emp.deptHeadEndorsement === 'Recommended (Overruled by HR)') ? (
                     <button
                       type="button"
-                      className="btn btn-sm"
+                      className="btn btn-sm btn-primary"
                       style={{
-                        background: 'var(--green-600)',
-                        color: '#fff',
-                        borderColor: 'var(--green-600)',
                         fontWeight: 600,
                         cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
                       }}
                       onClick={() => handleStartRouting(emp.id)}
                     >
+                      <Check size={13} />
                       Start Evaluation
                     </button>
                   ) : emp.routingStatus === 'Routing Active' ? (
@@ -304,6 +370,10 @@ export default function EvaluationManagement({
                     <span className="muted" style={{ fontSize: '12px', color: 'var(--amber-600)', fontWeight: 600 }}>
                       Pending Next Cycle
                     </span>
+                  ) : emp.routingStatus === 'Awaiting Dept Head Endorsement' ? (
+                    <span className="muted" style={{ fontSize: '12px', color: 'var(--amber-600)', fontWeight: 600 }}>
+                      Awaiting Dept Head Intent Review
+                    </span>
                   ) : (
                     <span className="muted" style={{ fontSize: '12px' }}>
                       Requires Employee Intent
@@ -316,7 +386,7 @@ export default function EvaluationManagement({
         </table>
       </div>
 
-      {/* HR Mediation Modal for Supervisor Veto */}
+      {/* HR Mediation Modal for Dept Head Non-Renewal Recommendation */}
       {mediateEmp && (
         <div
           className="modal-overlay open"
@@ -328,7 +398,7 @@ export default function EvaluationManagement({
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle size={18} color="var(--red-600)" />
-                <span>HR Administrative Mediation — Supervisor Rejection</span>
+                <span>HR Administrative Mediation — Dept Head Non-Renewal</span>
               </div>
               <button
                 type="button"
@@ -341,7 +411,7 @@ export default function EvaluationManagement({
             </div>
 
             <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
-              The Department Head for <b>{mediateEmp.department}</b> has issued a definitive <b>Supervisor Veto (Fast-Track Rejection)</b> for this employee. Peer evaluations have been bypassed. Review supervisory grounds and select a binding HR mediation resolution:
+              The Department Head for <b>{mediateEmp.department}</b> has formally submitted a <b>Non-Renewal Recommendation</b> following the employee's intent confirmation. Review the supervisory grounds and determine the appropriate administrative resolution:
             </p>
 
             {/* Personnel & Grounds Summary */}
@@ -359,18 +429,18 @@ export default function EvaluationManagement({
                   <span className="emp-id-chip" style={{ marginRight: '8px' }}>{mediateEmp.idNumber}</span>
                   <b>{mediateEmp.fullName}</b>
                 </div>
-                <span className="badge badge-delete" style={{ fontWeight: 700 }}>Supervisor Veto</span>
+                <span className="badge badge-delete" style={{ fontWeight: 700 }}>Not Recommended</span>
               </div>
 
               <div style={{ fontSize: '12.5px', marginTop: '6px' }}>
-                <span className="muted">Category: </span>
-                <b>{mediateEmp.vetoCategory || 'Habitual Absenteeism / Tardiness'}</b>
+                <span className="muted">Grounds Category: </span>
+                <b>{mediateEmp.rejectionCategory || mediateEmp.vetoCategory || 'Gross Incompetence / Poor Performance'}</b>
               </div>
 
               <div style={{ fontSize: '12.5px', marginTop: '6px', color: 'var(--ink)' }}>
-                <span className="muted">Supervisor Justification: </span>
+                <span className="muted">Supervisory Justification: </span>
                 <p style={{ margin: '4px 0 0', fontStyle: 'italic', background: '#fff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #fecaca' }}>
-                  "{mediateEmp.vetoJustification || 'Substantive performance deficiency reported by Department Head.'}"
+                  "{mediateEmp.rejectionJustification || mediateEmp.vetoJustification || 'Substantive performance deficiency reported by Department Head.'}"
                 </p>
               </div>
             </div>
@@ -381,9 +451,9 @@ export default function EvaluationManagement({
               <div style={{ border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 14px', background: '#fff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <b style={{ color: 'var(--red-600)', fontSize: '13.5px' }}>Resolution A: Uphold Veto &amp; Offboard</b>
+                    <b style={{ color: 'var(--red-600)', fontSize: '13.5px' }}>Resolution A: Uphold Non-Renewal &amp; Offboard</b>
                     <p className="muted" style={{ margin: '2px 0 0', fontSize: '12px' }}>
-                      Accepts supervisory non-renewal. Disables portal access and moves personnel to archived directory.
+                      Accepts supervisory non-renewal recommendation. Disables portal access and moves personnel to archived directory.
                     </p>
                   </div>
                   <button
@@ -423,6 +493,26 @@ export default function EvaluationManagement({
                     onClick={() => handleMediationDecision('transfer')}
                   >
                     Execute Transfer
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 3: Overrule and Authorize Evaluation */}
+              <div style={{ border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 14px', background: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <b style={{ color: 'var(--green-700)', fontSize: '13.5px' }}>Resolution C: Overrule &amp; Authorize Evaluation</b>
+                    <p className="muted" style={{ margin: '2px 0 0', fontSize: '12px' }}>
+                      Disputes or resolves the non-renewal in administrative conference. Clears employee for standard 50/20/30 triad evaluation.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    style={{ fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                    onClick={() => handleMediationDecision('authorize_eval')}
+                  >
+                    Authorize Evaluation
                   </button>
                 </div>
               </div>
