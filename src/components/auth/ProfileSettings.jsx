@@ -27,7 +27,7 @@ export default function ProfileSettings({
     email: 'jorge.gubantes@evsu.edu.ph',
     role: 'COS Employee',
     department: 'Computer Studies Department',
-    position: 'College Office Staff',
+    jobTitle: 'Admin Aide',
     cosCategory: 'Administrative',
     employeeIdNumber: 'G10222026JMR',
     contactNumber: '+63 912 345 6789',
@@ -316,6 +316,8 @@ export default function ProfileSettings({
                   {currentUser.fullName}
                 </h2>
                 <div className="muted" style={{ fontSize: '13px', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                  <span>{currentUser.jobTitle || (currentUser.role === 'COS Employee' ? 'Admin Aide' : currentUser.role)}</span>
+                  <span>•</span>
                   <span>{currentUser.department}</span>
                   <span>•</span>
                   <span>EVSU — Ormoc Campus</span>
@@ -378,6 +380,18 @@ export default function ProfileSettings({
                 </div>
                 <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px', color: 'var(--ink-900)' }}>
                   {currentUser.employeeIdNumber || 'G10222026JMR'}
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>
+                    Employee Job Title
+                  </span>
+                  <Lock size={12} color="var(--ink-400)" />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px', color: 'var(--ink-900)' }}>
+                  {currentUser.jobTitle || (currentUser.role === 'COS Employee' ? 'Admin Aide' : currentUser.role)}
                 </div>
               </div>
 

@@ -8,13 +8,14 @@ export default function EmployeeManagement({
       id: 1,
       idNumber: 'G10222026JMR',
       fullName: 'Jorge Mikhael Gubantes',
+      jobTitle: 'Admin Aide',
       email: 'jorge.gubantes@evsu.edu.ph',
       department: 'Computer Studies Department',
       college: 'College of Technology',
       cosCategory: 'Administrative',
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
-      latestScore: 92,
+      latestScore: 92.4,
       latestRating: 'Outstanding',
       status: 'Active',
     },
@@ -22,13 +23,14 @@ export default function EmployeeManagement({
       id: 2,
       idNumber: 'R10222026IJM',
       fullName: 'Ian Joseph Ranoco',
+      jobTitle: 'Admin Aide',
       email: 'ian.ranoco@evsu.edu.ph',
       department: 'Computer Studies Department',
       college: 'College of Technology',
       cosCategory: 'Administrative',
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
-      latestScore: 86,
+      latestScore: 88.6,
       latestRating: 'Very Satisfactory',
       status: 'Active',
     },
@@ -36,43 +38,121 @@ export default function EmployeeManagement({
       id: 3,
       idNumber: 'P10222026JLP',
       fullName: 'Jeramae Pace',
+      jobTitle: 'Records Custodian',
       email: 'jeramae.pace@evsu.edu.ph',
       department: 'Library Office',
       college: 'Administrative and Support Services',
       cosCategory: 'Administrative',
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
-      latestScore: null,
-      latestRating: 'Unrated',
+      latestScore: 78.5,
+      latestRating: 'Satisfactory',
       status: 'Active',
     },
     {
       id: 4,
       idNumber: 'M10222026CBM',
       fullName: 'Carlos Mendoza',
+      jobTitle: 'Utility Worker',
       email: 'carlos.mendoza@evsu.edu.ph',
       department: 'Maintenance/Janitorial (MESO) Office',
       college: 'Physical Plant and General Services',
       cosCategory: 'Maintenance/Janitorial',
       dateAppointed: 'Oct 22, 2026',
       contractEndDate: 'Apr 22, 2027',
-      latestScore: 88,
-      latestRating: 'Very Satisfactory',
+      latestScore: 68.0,
+      latestRating: 'Needs Improvement',
       status: 'Active',
     },
     {
       id: 5,
       idNumber: 'E10222025ABC',
       fullName: 'Elena Santos',
+      jobTitle: 'Laboratory Custodian',
       email: 'elena.santos@evsu.edu.ph',
       department: 'Engineering Department',
       college: 'College of Engineering',
       cosCategory: 'Administrative',
       dateAppointed: 'Oct 22, 2025',
       contractEndDate: 'Apr 22, 2026',
-      latestScore: 78,
+      latestScore: 54.0,
+      latestRating: 'Unsatisfactory',
+      status: 'Archived',
+    },
+    {
+      id: 6,
+      idNumber: 'D10222026XYZ',
+      fullName: 'Danilo Cruz',
+      jobTitle: 'Technical Aide',
+      email: 'danilo.cruz@evsu.edu.ph',
+      department: 'Technology Department',
+      college: 'College of Technology',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
+      latestScore: 84.0,
+      latestRating: 'Very Satisfactory',
+      status: 'Active',
+    },
+    {
+      id: 7,
+      idNumber: 'A10222026MTR',
+      fullName: 'Mark Anthony Reyes',
+      jobTitle: 'Laboratory Custodian',
+      email: 'mark.reyes@evsu.edu.ph',
+      department: 'Computer Studies Department',
+      college: 'College of Technology',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
+      latestScore: 89.2,
+      latestRating: 'Very Satisfactory',
+      status: 'Active',
+    },
+    {
+      id: 8,
+      idNumber: 'C10222025ABC',
+      fullName: 'Clarisse Villamor',
+      jobTitle: 'Admin Aide',
+      email: 'clarisse.villamor@evsu.edu.ph',
+      department: 'Computer Studies Department',
+      college: 'College of Technology',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2025',
+      contractEndDate: 'Apr 22, 2026',
+      latestScore: 82.0,
       latestRating: 'Satisfactory',
       status: 'Archived',
+    },
+    {
+      id: 9,
+      idNumber: 'R10222025XYZ',
+      fullName: 'Ramon Bautista',
+      jobTitle: 'Sanitation Aide',
+      email: 'ramon.bautista@evsu.edu.ph',
+      department: 'Engineering Department',
+      college: 'College of Engineering',
+      cosCategory: 'Maintenance/Janitorial',
+      dateAppointed: 'Oct 22, 2025',
+      contractEndDate: 'Apr 22, 2026',
+      latestScore: 76.5,
+      latestRating: 'Satisfactory',
+      status: 'Archived',
+    },
+    {
+      id: 10,
+      idNumber: 'S10222026MGA',
+      fullName: 'Maria Santos',
+      jobTitle: 'Clerical Assistant',
+      email: 'maria.santos@evsu.edu.ph',
+      department: 'Education Department',
+      college: 'College of Education',
+      cosCategory: 'Administrative',
+      dateAppointed: 'Oct 22, 2026',
+      contractEndDate: 'Apr 22, 2027',
+      latestScore: 84.5,
+      latestRating: 'Very Satisfactory',
+      status: 'Active',
     },
   ],
   departments = [
@@ -102,6 +182,7 @@ export default function EmployeeManagement({
   const [editFullName, setEditFullName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editIdNumber, setEditIdNumber] = useState('');
+  const [editJobTitle, setEditJobTitle] = useState('');
   const [identitySuccessMsg, setIdentitySuccessMsg] = useState(null);
 
   // Department Transfer in Account Settings modal (HR Administrative Action)
@@ -110,6 +191,7 @@ export default function EmployeeManagement({
 
   // New employee state (manual mode)
   const [fullName, setFullName] = useState('');
+  const [jobTitle, setJobTitle] = useState('Admin Aide');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedDept, setSelectedDept] = useState(departments[0]);
@@ -208,6 +290,7 @@ export default function EmployeeManagement({
     setEditFullName(emp.fullName || '');
     setEditEmail(emp.email || '');
     setEditIdNumber(emp.idNumber || '');
+    setEditJobTitle(emp.jobTitle || 'Admin Aide');
     setIdentitySuccessMsg(null);
     const availableDepts = departments.filter((d) => d !== emp.department);
     setTransferDept(availableDepts[0] || departments[0] || '');
@@ -223,6 +306,7 @@ export default function EmployeeManagement({
       fullName: editFullName.trim(),
       email: editEmail.trim(),
       idNumber: editIdNumber.trim(),
+      jobTitle: editJobTitle.trim() || 'Admin Aide',
     };
 
     setEmployeeList((prev) =>
@@ -296,6 +380,7 @@ export default function EmployeeManagement({
       id: Date.now(),
       idNumber: generatedIdNumber,
       fullName,
+      jobTitle: jobTitle.trim() || 'Admin Aide',
       email,
       department: selectedDept,
       college: isMaintenanceDept(selectedDept)
@@ -314,6 +399,7 @@ export default function EmployeeManagement({
     setShowAddModal(false);
     setModalMode('invite');
     setFullName('');
+    setJobTitle('Admin Aide');
     setEmail('');
     setPassword('');
     setDateAppointed('');
@@ -414,7 +500,7 @@ export default function EmployeeManagement({
                 <td>
                   <b>{emp.fullName}</b>
                   <div className="muted" style={{ fontSize: '12px' }}>
-                    {emp.email}
+                    {emp.jobTitle ? `${emp.jobTitle} • ` : ''}{emp.email}
                   </div>
                 </td>
                 <td>{emp.department}</td>
@@ -530,7 +616,7 @@ export default function EmployeeManagement({
                     <td>
                       <b>{emp.fullName}</b>
                       <div className="muted" style={{ fontSize: '12px' }}>
-                        {emp.email}
+                        {emp.jobTitle ? `${emp.jobTitle} • ` : ''}{emp.email}
                       </div>
                     </td>
                     <td>{emp.department}</td>
@@ -696,6 +782,20 @@ export default function EmployeeManagement({
                       placeholder="e.g. Juan Dela Cruz"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      Employee Job Title <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      placeholder="e.g. Admin Aide, Laboratory Custodian, Utility Worker"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
                     />
                   </div>
 
@@ -942,6 +1042,21 @@ export default function EmployeeManagement({
                     onChange={(e) => setEditEmail(e.target.value)}
                     style={{ fontSize: '13px' }}
                     placeholder="name@evsu.edu.ph"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Employee Job Title <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    required
+                    value={editJobTitle}
+                    onChange={(e) => setEditJobTitle(e.target.value)}
+                    style={{ fontSize: '13px' }}
+                    placeholder="e.g. Admin Aide, Laboratory Custodian, Utility Worker"
                   />
                 </div>
 

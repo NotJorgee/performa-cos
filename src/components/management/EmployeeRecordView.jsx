@@ -13,14 +13,29 @@ import {
   MapPin,
   Mail,
   ShieldAlert,
+  Printer,
+  X,
 } from 'lucide-react';
 import MonthlyReport from '../employee/MonthlyReport';
 import DynamicRubric from '../common/DynamicRubric';
+import OfficialRatingSheetModal from '../common/OfficialRatingSheetModal';
 import {
   getComparativeTrajectory,
   getTriadComparativeDeltas,
   ComparativeTrajectoryBadge,
 } from '../../utils/comparativeAnalytics';
+
+// Department Head (Immediate Supervisor) Mapping Helper
+export const getDepartmentSupervisor = (department) => {
+  const norm = (department || '').toLowerCase();
+  if (norm.includes('computer studies')) return 'Dr. Roberto Santos';
+  if (norm.includes('technology')) return 'Engr. Juan Perez';
+  if (norm.includes('mechanical') || norm.includes('civil') || norm.includes('engineering')) return 'Engr. David Lim';
+  if (norm.includes('library')) return 'Mrs. Rosalina Gomez';
+  if (norm.includes('maintenance') || norm.includes('janitorial') || norm.includes('meso')) return 'Engr. Mario Delgado';
+  if (norm.includes('education')) return 'Dr. Alicia Tan';
+  return 'Immediate Supervisor (Dept Head)';
+};
 
 export const getScoreInterpretationColor = (interpretation, score) => {
   const norm = (interpretation || '').toLowerCase().trim();
@@ -162,6 +177,464 @@ export const getScoreInterpretationAndRecommendation = (score) => {
   };
 };
 
+// Helper to distribute a percentage score (0-100) across 6 rubric criteria (0-10 scale each, totaling max 60 pts)
+export const generateCriteriaScores = (scorePercent) => {
+  const scaled = Math.min(60, Math.max(0, Math.round(((Number(scorePercent) || 85) / 100) * 60)));
+  const base = Math.min(10, Math.floor(scaled / 6));
+  let rem = scaled - base * 6;
+  const res = {
+    job_knowledge: base,
+    work_quality: base,
+    attendance: base,
+    work_attitude: base,
+    initiative: base,
+    dependability: base,
+  };
+  const keys = ['job_knowledge', 'work_quality', 'attendance', 'work_attitude', 'initiative', 'dependability'];
+  for (let i = 0; i < keys.length && rem > 0; i++) {
+    if (res[keys[i]] < 10) {
+      res[keys[i]] += 1;
+      rem -= 1;
+    }
+  }
+  return res;
+};
+
+// Demo Historical Evaluations mapped to each personnel in the university roster
+export const getEmployeeHistoricalEvaluations = (emp) => {
+  if (!emp) return [];
+
+  // 1. If explicit historicalEvaluations exists on employee prop, use it
+  if (Array.isArray(emp.historicalEvaluations) && emp.historicalEvaluations.length > 0) {
+    return emp.historicalEvaluations;
+  }
+
+  const normId = (emp.idNumber || '').toUpperCase().trim();
+  const normName = (emp.fullName || '').toLowerCase().trim();
+
+  // A. Jorge Mikhael Gubantes (ID: G10222026JMR) - Outstanding (+3.8 pts Improvement)
+  if (normId.includes('G10222026JMR') || normName.includes('gubantes')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 93.3,
+        peerScore: 90.0,
+        hrmoScore: 93.3,
+        finalGrade: 92.4,
+        interpretation: 'Outstanding',
+        marCount: 84,
+        strengths:
+          'Consistently produces exceptional quality administrative outputs with zero defect. Spearheaded student query backlog clearance and automated laboratory terminal logs.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 88.0,
+        peerScore: 86.7,
+        hrmoScore: 90.0,
+        finalGrade: 88.6,
+        interpretation: 'Very Satisfactory',
+        marCount: 78,
+        strengths:
+          'Demonstrates strong organizational skills and dependable support during university accreditation cycles.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 3,
+        periodDates: 'Jul 01, 2025 – Dec 31, 2025',
+        supervisorScore: 84.0,
+        peerScore: 83.3,
+        hrmoScore: 86.7,
+        finalGrade: 84.7,
+        interpretation: 'Very Satisfactory',
+        marCount: 70,
+        strengths:
+          'Reliable execution of daily tasks. High integrity in managing university records and office equipment.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // B. Ian Joseph Ranoco (ID: R10222026IJM) - Very Satisfactory (+0.4 pts Consistent)
+  if (normId.includes('R10222026IJM') || normName.includes('ranoco')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 90.0,
+        peerScore: 86.7,
+        hrmoScore: 88.0,
+        finalGrade: 88.6,
+        interpretation: 'Very Satisfactory',
+        marCount: 76,
+        strengths:
+          'Demonstrates strong organizational skills and dependable support during university accreditation cycles.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 88.0,
+        peerScore: 86.7,
+        hrmoScore: 89.3,
+        finalGrade: 88.2,
+        interpretation: 'Very Satisfactory',
+        marCount: 74,
+        strengths:
+          'Consistent support in student advising desk coordination and administrative record maintenance.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 3,
+        periodDates: 'Jul 01, 2025 – Dec 31, 2025',
+        supervisorScore: 86.0,
+        peerScore: 85.0,
+        hrmoScore: 86.7,
+        finalGrade: 86.0,
+        interpretation: 'Very Satisfactory',
+        marCount: 68,
+        strengths:
+          'Diligent execution of assigned tasks with good interpersonal relations across department colleagues.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // C. Mark Anthony Reyes (ID: A10222026MTR) - Very Satisfactory (0.0 pts Consistent)
+  if (normId.includes('A10222026MTR') || normName.includes('mark anthony') || normName.includes('reyes')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 90.0,
+        peerScore: 86.7,
+        hrmoScore: 90.0,
+        finalGrade: 89.2,
+        interpretation: 'Very Satisfactory',
+        marCount: 80,
+        strengths:
+          'Punctual and reliable handling of computer laboratory terminals and faculty requisition sheets.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 90.0,
+        peerScore: 86.7,
+        hrmoScore: 90.0,
+        finalGrade: 89.2,
+        interpretation: 'Very Satisfactory',
+        marCount: 80,
+        strengths:
+          'Consistent performance across all monthly deliverables. Stable laboratory setup turnaround.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // D. Jeramae Pace (ID: P10222026JLP) - Satisfactory (-2.7 pts Decline)
+  if (normId.includes('P10222026JLP') || normName.includes('pace')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 76.7,
+        peerScore: 80.0,
+        hrmoScore: 80.0,
+        finalGrade: 78.5,
+        interpretation: 'Satisfactory',
+        marCount: 64,
+        strengths:
+          'Good library cataloging assistance and student desk support, though turnaround on reserve shelving dipped during finals.',
+        recommendation: 'Renewal with Monitoring',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 80.0,
+        peerScore: 83.3,
+        hrmoScore: 82.0,
+        finalGrade: 81.2,
+        interpretation: 'Very Satisfactory',
+        marCount: 72,
+        strengths:
+          'Systematic handling of catalog cards and friendly assistance to campus researchers.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // E. Carlos Mendoza (ID: M10222026CBM) - Needs Improvement (-3.5 pts Decline)
+  if (normId.includes('M10222026CBM') || normName.includes('mendoza')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 66.7,
+        peerScore: 70.0,
+        hrmoScore: 68.0,
+        finalGrade: 68.0,
+        interpretation: 'Needs Improvement',
+        marCount: 52,
+        strengths:
+          'Reliable physical campus sanitation and waste handling. Requires closer monitoring on emergency facility repair response times.',
+        recommendation: 'Renewal Subject to Evaluation',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 70.0,
+        peerScore: 73.3,
+        hrmoScore: 72.0,
+        finalGrade: 71.5,
+        interpretation: 'Satisfactory',
+        marCount: 65,
+        strengths:
+          'Satisfactory completion of scheduled routine campus cleaning and maintenance rounds.',
+        recommendation: 'Renewal with Monitoring',
+      },
+      {
+        id: 3,
+        periodDates: 'Jul 01, 2025 – Dec 31, 2025',
+        supervisorScore: 73.3,
+        peerScore: 76.7,
+        hrmoScore: 72.0,
+        finalGrade: 73.7,
+        interpretation: 'Satisfactory',
+        marCount: 68,
+        strengths:
+          'Diligent execution of general physical plant assignments.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 4,
+        periodDates: 'Jan 01, 2025 – Jun 30, 2025',
+        supervisorScore: 76.7,
+        peerScore: 76.7,
+        hrmoScore: 74.0,
+        finalGrade: 75.8,
+        interpretation: 'Satisfactory',
+        marCount: 70,
+        strengths:
+          'Dependable attendance and thorough performance of maintenance work orders.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // F. Elena Santos (ID: E10222026ABC / E10222025ABC) - Unsatisfactory (-4.0 pts Decline)
+  if (normId.includes('E10222026ABC') || normId.includes('E10222025ABC') || normName.includes('elena')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 53.3,
+        peerScore: 56.7,
+        hrmoScore: 53.3,
+        finalGrade: 54.0,
+        interpretation: 'Unsatisfactory',
+        marCount: 38,
+        strengths:
+          'Basic laboratory maintenance completed. Safety protocol compliance and equipment calibration logs require significant overhaul.',
+        recommendation: 'Not Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 56.7,
+        peerScore: 60.0,
+        hrmoScore: 58.0,
+        finalGrade: 58.0,
+        interpretation: 'Needs Improvement',
+        marCount: 46,
+        strengths:
+          'Requires closer supervision on hazardous chemical disposal and chemical storage inventory.',
+        recommendation: 'Renewal Subject to Evaluation',
+      },
+    ];
+  }
+
+  // G. Danilo Cruz (ID: D10222026XYZ) - Very Satisfactory (+1.5 pts Improvement)
+  if (normId.includes('D10222026XYZ') || normName.includes('danilo')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 83.3,
+        peerScore: 86.7,
+        hrmoScore: 83.3,
+        finalGrade: 84.0,
+        interpretation: 'Very Satisfactory',
+        marCount: 72,
+        strengths:
+          'Proactive calibration of mechanical shop tooling and consistent workshop safety compliance.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 80.0,
+        peerScore: 86.7,
+        hrmoScore: 84.0,
+        finalGrade: 82.5,
+        interpretation: 'Very Satisfactory',
+        marCount: 68,
+        strengths:
+          'Reliable technical assistance to student shop sessions and equipment maintenance.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 3,
+        periodDates: 'Jul 01, 2025 – Dec 31, 2025',
+        supervisorScore: 78.0,
+        peerScore: 83.3,
+        hrmoScore: 80.0,
+        finalGrade: 79.7,
+        interpretation: 'Satisfactory',
+        marCount: 64,
+        strengths:
+          'General workshop support and inventory tracking.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // H. Clarisse Villamor (ID: C10222025ABC) - Baseline (1st Contract)
+  if (normId.includes('C10222025ABC') || normName.includes('clarisse')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Oct 22, 2025 – Apr 22, 2026',
+        supervisorScore: 83.3,
+        peerScore: 80.0,
+        hrmoScore: 81.3,
+        finalGrade: 82.0,
+        interpretation: 'Satisfactory',
+        marCount: 58,
+        strengths:
+          'Solid initial contract performance. Prompt assistance with departmental communications and filing.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // I. Ramon Bautista (ID: R10222025XYZ) - Satisfactory (+1.5 pts Improvement)
+  if (normId.includes('R10222025XYZ') || normName.includes('bautista')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Oct 22, 2025 – Apr 22, 2026',
+        supervisorScore: 76.7,
+        peerScore: 76.7,
+        hrmoScore: 76.0,
+        finalGrade: 76.5,
+        interpretation: 'Satisfactory',
+        marCount: 66,
+        strengths:
+          'Dependable sanitation and campus building upkeep across Engineering laboratories.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Apr 22, 2025 – Oct 21, 2025',
+        supervisorScore: 73.3,
+        peerScore: 76.7,
+        hrmoScore: 76.0,
+        finalGrade: 75.0,
+        interpretation: 'Satisfactory',
+        marCount: 62,
+        strengths:
+          'Steady daily task fulfillment with reliable team cooperation.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // J. Maria Santos (ID: S10222026MGA) - Very Satisfactory (+1.5 pts Improvement)
+  if (normId.includes('S10222026MGA') || normName.includes('maria santos')) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: 85.0,
+        peerScore: 82.5,
+        hrmoScore: 85.0,
+        finalGrade: 84.5,
+        interpretation: 'Very Satisfactory',
+        marCount: 74,
+        strengths:
+          'Consistently ensures timely record coordination and organized departmental files.',
+        recommendation: 'Recommended for Renewal',
+      },
+      {
+        id: 2,
+        periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+        supervisorScore: 83.3,
+        peerScore: 82.0,
+        hrmoScore: 83.0,
+        finalGrade: 83.0,
+        interpretation: 'Very Satisfactory',
+        marCount: 70,
+        strengths:
+          'Effective document handling and student front-desk support.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  // 3. Fallback for any other employee: dynamically derive 1 or 2 cycles from employee.latestScore and previousScore
+  const latestScore = Number(emp.latestScore) || 85.0;
+  const previousScore = emp.previousScore !== null && emp.previousScore !== undefined ? Number(emp.previousScore) : null;
+  const latestInterp = emp.latestRating || getScoreInterpretationAndRecommendation(latestScore).interpretation;
+
+  if (previousScore === null || emp.totalContracts === 1) {
+    return [
+      {
+        id: 1,
+        periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+        supervisorScore: latestScore,
+        peerScore: Math.max(60, latestScore - 2),
+        hrmoScore: latestScore,
+        finalGrade: latestScore,
+        interpretation: latestInterp,
+        marCount: Math.round(latestScore * 0.8),
+        strengths: 'Initial contract period successfully completed in good standing.',
+        recommendation: 'Recommended for Renewal',
+      },
+    ];
+  }
+
+  const prevInterp = getScoreInterpretationAndRecommendation(previousScore).interpretation;
+  return [
+    {
+      id: 1,
+      periodDates: 'Jul 01, 2026 – Dec 31, 2026',
+      supervisorScore: Math.round(latestScore * 10) / 10,
+      peerScore: Math.round((latestScore - 1.5) * 10) / 10,
+      hrmoScore: Math.round((latestScore + 1.0) * 10) / 10,
+      finalGrade: latestScore,
+      interpretation: latestInterp,
+      marCount: Math.round(latestScore * 0.85),
+      strengths: 'Fulfills duties with consistent diligence and reliable university service.',
+      recommendation: latestScore >= 80 ? 'Recommended for Renewal' : 'Renewal with Monitoring',
+    },
+    {
+      id: 2,
+      periodDates: 'Jan 01, 2026 – Jun 30, 2026',
+      supervisorScore: Math.round(previousScore * 10) / 10,
+      peerScore: Math.round((previousScore - 1.0) * 10) / 10,
+      hrmoScore: Math.round((previousScore + 0.5) * 10) / 10,
+      finalGrade: previousScore,
+      interpretation: prevInterp,
+      marCount: Math.round(previousScore * 0.82),
+      strengths: 'Previous term completed according to institutional performance targets.',
+      recommendation: previousScore >= 80 ? 'Recommended for Renewal' : 'Renewal with Monitoring',
+    },
+  ];
+};
+
 export default function EmployeeRecordView({
   employee = {
     id: 1,
@@ -174,6 +647,7 @@ export default function EmployeeRecordView({
     dateAppointed: 'Oct 22, 2026',
     contractEndDate: 'Apr 22, 2027',
     latestScore: 92.4,
+    previousScore: 88.6,
     latestRating: 'Outstanding',
     status: 'Active',
     contactNumber: '+63 912 345 6789',
@@ -188,93 +662,23 @@ export default function EmployeeRecordView({
   const [viewingMarCycle, setViewingMarCycle] = useState(null);
   const [viewingEvalCycle, setViewingEvalCycle] = useState(null);
   const [activeEvaluatorTab, setActiveEvaluatorTab] = useState('depthead'); // 'depthead' | 'cos' | 'hr'
+  const [officialSheetData, setOfficialSheetData] = useState(null);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [printSelectionMode, setPrintSelectionMode] = useState('all'); // 'all' | 'custom'
+  const [selectedPrintPages, setSelectedPrintPages] = useState({
+    supervisor: true,
+    peer: true,
+    hrmo: true,
+  });
 
-  // Mock historical evaluations for the employee (Aligned with Official HR Criteria)
-  const historicalEvaluations = [
-    {
-      id: 1,
-      periodDates: 'Jul 01, 2026 – Dec 31, 2026',
-      supervisorScore: 94,
-      peerScore: 90,
-      hrmoScore: 91,
-      finalGrade: 92.4,
-      interpretation: 'Outstanding',
-      marCount: 84,
-      strengths:
-        'Consistently produces exceptional quality administrative outputs with zero defect. Spearheaded student query backlog clearance and automated laboratory terminal logs.',
-      recommendation: 'Strongly Recommended for Renewal',
-    },
-    {
-      id: 2,
-      periodDates: 'Jan 01, 2026 – Jun 30, 2026',
-      supervisorScore: 90,
-      peerScore: 86,
-      hrmoScore: 88,
-      finalGrade: 88.6,
-      interpretation: 'Very Satisfactory',
-      marCount: 78,
-      strengths:
-        'Demonstrates strong organizational skills and dependable support during university accreditation cycles.',
-      recommendation: 'Recommended for Renewal',
-    },
-    {
-      id: 3,
-      periodDates: 'Jul 01, 2025 – Dec 31, 2025',
-      supervisorScore: 80,
-      peerScore: 78,
-      hrmoScore: 76,
-      finalGrade: 78.4,
-      interpretation: 'Satisfactory',
-      marCount: 70,
-      strengths:
-        'Reliable execution of daily tasks. High integrity in managing university records and office equipment.',
-      recommendation: 'Renewal with Monitoring',
-    },
-    {
-      id: 4,
-      periodDates: 'Jan 01, 2025 – Jun 30, 2025',
-      supervisorScore: 68,
-      peerScore: 65,
-      hrmoScore: 67,
-      finalGrade: 67.1,
-      interpretation: 'Needs Improvement',
-      marCount: 52,
-      strengths:
-        'Adequate task completion but requires closer monitoring on turnaround times and office documentation protocol compliance.',
-      recommendation: 'Renewal Subject to Evaluation',
-    },
-  ];
+  // Dynamically resolve the employee's historical evaluations matching their actual demo scoring
+  const historicalEvaluations = getEmployeeHistoricalEvaluations(employee);
 
   // Cycle-over-cycle comparative calculation between most recent and prior cycle
   const comparativeData =
     historicalEvaluations.length >= 2
       ? getTriadComparativeDeltas(historicalEvaluations[0], historicalEvaluations[1])
       : null;
-
-  // Distinct scores for each Triad component
-  const mockSupervisorScores = {
-    adm_1: 5, adm_2: 5, adm_3: 4, adm_4: 5,
-    adm_5: 5, adm_6: 4, adm_7: 5, adm_8: 4,
-    adm_9: 5, adm_10: 5, adm_11: 5, adm_12: 5,
-    adm_13: 4, adm_14: 5, adm_15: 5, adm_16: 4,
-    adm_17: 5, adm_18: 4, adm_19: 5, adm_20: 5,
-  };
-
-  const mockPeerScores = {
-    adm_1: 4, adm_2: 5, adm_3: 4, adm_4: 5,
-    adm_5: 4, adm_6: 4, adm_7: 5, adm_8: 4,
-    adm_9: 5, adm_10: 5, adm_11: 5, adm_12: 4,
-    adm_13: 5, adm_14: 4, adm_15: 5, adm_16: 4,
-    adm_17: 4, adm_18: 4, adm_19: 5, adm_20: 5,
-  };
-
-  const mockHrScores = {
-    adm_1: 5, adm_2: 4, adm_3: 5, adm_4: 4,
-    adm_5: 5, adm_6: 5, adm_7: 4, adm_8: 5,
-    adm_9: 5, adm_10: 4, adm_11: 5, adm_12: 5,
-    adm_13: 4, adm_14: 5, adm_15: 4, adm_16: 5,
-    adm_17: 4, adm_18: 4, adm_19: 4, adm_20: 5,
-  };
 
   const handleDownloadPdf = (docType, cycle) => {
     const isMar = docType === 'mar';
@@ -323,6 +727,70 @@ Generated Timestamp: ${new Date().toLocaleString()}
     setTimeout(() => setToastMsg(null), 4000);
   };
 
+  const handleProceedToPrint = () => {
+    if (!viewingEvalCycle) return;
+    const chosenSheets = [];
+
+    if (printSelectionMode === 'all' || selectedPrintPages.supervisor) {
+      chosenSheets.push({
+        pageNumber: 1,
+        weightLabel: '50% Triad Weight',
+        evaluatorRole: 'Immediate Supervisor',
+        evaluatorName: getDepartmentSupervisor(employee.department),
+        evaluatorPosition: 'Department Head',
+        evaluationDate: 'Dec 18, 2026',
+        scores: generateCriteriaScores(viewingEvalCycle.supervisorScore),
+        strengths: viewingEvalCycle.strengths,
+        recommendation: viewingEvalCycle.recommendation,
+        rawScore: Math.round((viewingEvalCycle.supervisorScore / 100) * 60),
+        scaledScore: viewingEvalCycle.supervisorScore,
+      });
+    }
+
+    if (printSelectionMode === 'all' || selectedPrintPages.peer) {
+      chosenSheets.push({
+        pageNumber: 2,
+        weightLabel: '20% Triad Weight',
+        evaluatorRole: 'Peer',
+        evaluatorName: 'COS Colleague',
+        evaluatorPosition: 'Peer Evaluator',
+        evaluationDate: 'Dec 18, 2026',
+        scores: generateCriteriaScores(viewingEvalCycle.peerScore),
+        strengths:
+          'Excellent team collaboration. Actively assists colleagues during peak enrollment periods and maintains positive, respectful communication across all tasks.',
+        recommendation: 'Recommended for Renewal',
+        rawScore: Math.round((viewingEvalCycle.peerScore / 100) * 60),
+        scaledScore: viewingEvalCycle.peerScore,
+      });
+    }
+
+    if (printSelectionMode === 'all' || selectedPrintPages.hrmo) {
+      chosenSheets.push({
+        pageNumber: 3,
+        weightLabel: '30% Triad Weight',
+        evaluatorRole: 'HRMO',
+        evaluatorName: 'Dr. Maria Clara Ramos',
+        evaluatorPosition: 'HRMO Officer',
+        evaluationDate: 'Dec 18, 2026',
+        scores: generateCriteriaScores(viewingEvalCycle.hrmoScore),
+        strengths:
+          'Consistently fulfilled contracted task deliverables and verified monthly accomplishment reports with high documentation accuracy.',
+        recommendation: 'Recommended for Renewal',
+        rawScore: Math.round((viewingEvalCycle.hrmoScore / 100) * 60),
+        scaledScore: viewingEvalCycle.hrmoScore,
+      });
+    }
+
+    setOfficialSheetData({
+      employee,
+      supervisorName: getDepartmentSupervisor(employee.department),
+      contractPeriod: viewingEvalCycle.periodDates,
+      sheets: chosenSheets,
+    });
+
+    setIsDownloadModalOpen(false);
+  };
+
   // 1. VIEW MAR PAGE
   if (viewingMarCycle) {
     return (
@@ -349,10 +817,12 @@ Generated Timestamp: ${new Date().toLocaleString()}
           return {
             title: 'COS Peer Evaluation',
             weight: '20% Triad Weight',
-            evaluator: 'Engr. Maricar Solis (COS Faculty Peer Reviewer — Computer Studies Department)',
+            evaluator: 'Peer Evaluator (Anonymized)',
+            position: 'COS Colleague',
             role: 'Peer',
             score: viewingEvalCycle.peerScore,
-            scores: mockPeerScores,
+            rawScore: Math.round((viewingEvalCycle.peerScore / 100) * 60),
+            scores: generateCriteriaScores(viewingEvalCycle.peerScore),
             strengths:
               'Excellent team collaboration. Actively assists colleagues during peak enrollment periods and maintains positive, respectful communication across all tasks.',
             recommendation: 'Recommended for Renewal',
@@ -361,10 +831,12 @@ Generated Timestamp: ${new Date().toLocaleString()}
           return {
             title: 'HRMO Institutional Evaluation',
             weight: '30% Triad Weight',
-            evaluator: 'Dr. Maria Clara Ramos (HRMDO Compliance Officer)',
-            role: 'HR Personnel',
+            evaluator: 'Dr. Maria Clara Ramos',
+            position: 'HRMO Officer',
+            role: 'HRMO',
             score: viewingEvalCycle.hrmoScore,
-            scores: mockHrScores,
+            rawScore: Math.round((viewingEvalCycle.hrmoScore / 100) * 60),
+            scores: generateCriteriaScores(viewingEvalCycle.hrmoScore),
             strengths:
               'Consistently fulfilled contracted task deliverables and verified monthly accomplishment reports with high documentation accuracy.',
             recommendation: 'Recommended for Renewal',
@@ -374,10 +846,12 @@ Generated Timestamp: ${new Date().toLocaleString()}
           return {
             title: 'Department Head Appraisal',
             weight: '50% Triad Weight',
-            evaluator: 'Engr. Roberto Del Rosario (Department Head — Immediate Supervisor)',
+            evaluator: getDepartmentSupervisor(employee.department),
+            position: 'Department Head',
             role: 'Immediate Supervisor',
             score: viewingEvalCycle.supervisorScore,
-            scores: mockSupervisorScores,
+            rawScore: Math.round((viewingEvalCycle.supervisorScore / 100) * 60),
+            scores: generateCriteriaScores(viewingEvalCycle.supervisorScore),
             strengths: viewingEvalCycle.strengths,
             recommendation: viewingEvalCycle.recommendation,
           };
@@ -401,8 +875,12 @@ Generated Timestamp: ${new Date().toLocaleString()}
               type="button"
               className="btn btn-primary btn-sm"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-              onClick={() => handleDownloadPdf('eval', viewingEvalCycle)}
-              title="Download Triad Evaluation Summary (PDF)"
+              onClick={() => {
+                setPrintSelectionMode('all');
+                setSelectedPrintPages({ supervisor: true, peer: true, hrmo: true });
+                setIsDownloadModalOpen(true);
+              }}
+              title="Download or Print Triad Evaluation Sheets (PDF)"
             >
               <FileDown size={14} /> Download Evaluation (PDF)
             </button>
@@ -537,7 +1015,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
         <div className="two-col" style={{ alignItems: 'flex-start', gap: '20px' }}>
           {/* LEFT PANEL: Dynamic Grading Rubric */}
           <div className="card">
-            {/* Active Evaluator Header Info with clean HRMO score text badge */}
+            {/* Active Evaluator Header Info with Print Official Sheet button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--line)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
                 <b style={{ fontSize: '15px', color: 'var(--ink-900)' }}>
@@ -547,15 +1025,18 @@ Generated Timestamp: ${new Date().toLocaleString()}
                   <b>Evaluator:</b> {currentEval.evaluator}
                 </div>
               </div>
-              <span className="badge badge-dept" style={{ fontSize: '12.5px', fontWeight: 700, padding: '4px 10px' }}>
-                Score: {currentEval.score}% ({currentEval.weight})
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <span className="badge badge-dept" style={{ fontSize: '12.5px', fontWeight: 700, padding: '4px 10px' }}>
+                  Score: {currentEval.score}% ({currentEval.weight})
+                </span>
+              </div>
             </div>
 
             {/* Rubric View without red alert panels */}
             <DynamicRubric
               key={`${viewingEvalCycle.id}_${activeEvaluatorTab}`}
               cosCategory={employee.cosCategory || 'Administrative'}
+              employeeJobTitle={employee.jobTitle || 'Admin Aide'}
               evaluatorRole={currentEval.role}
               readOnly={true}
               hideAlerts={true}
@@ -645,6 +1126,337 @@ Generated Timestamp: ${new Date().toLocaleString()}
             </div>
           </div>
         </div>
+
+        {/* Download & Print Selection Modal */}
+        {isDownloadModalOpen && viewingEvalCycle && (
+          <div
+            className="modal-overlay open"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.75)',
+              zIndex: 9990,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsDownloadModalOpen(false);
+            }}
+          >
+            <div
+              className="modal-card"
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                borderRadius: '12px',
+                background: '#fff',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                className="modal-header"
+                style={{
+                  padding: '16px 20px',
+                  borderBottom: '1px solid var(--line)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileDown size={20} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink-900)' }}>
+                    Download / Print Evaluation Sheets
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() => setIsDownloadModalOpen(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--ink-600)',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: '20px' }}>
+                {/* Employee / Cycle Context Card */}
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: '#f8fafc',
+                    border: '1px solid var(--line)',
+                    borderRadius: '8px',
+                    marginBottom: '18px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <b style={{ fontSize: '14.5px', color: 'var(--ink-900)' }}>{employee.fullName}</b>
+                      <span className="muted" style={{ fontSize: '13px', marginLeft: '8px' }}>
+                        ({employee.jobTitle || 'Admin Aide'})
+                      </span>
+                      <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+                        Department: <b>{employee.department}</b> · Cycle: <b>{viewingEvalCycle.periodDates}</b>
+                      </div>
+                    </div>
+                    <span className="badge badge-dept" style={{ fontWeight: 700, fontSize: '12.5px' }}>
+                      Triad Grade: {viewingEvalCycle.finalGrade}% ({viewingEvalCycle.interpretation})
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '14px', fontSize: '13.5px', fontWeight: 600, color: 'var(--ink-800)' }}>
+                  Select rating sheets to include:
+                </div>
+
+                {/* Selection Cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                  {/* Card 1: All 3 Pages */}
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '14px',
+                      border: printSelectionMode === 'all' ? '2px solid var(--primary)' : '1px solid var(--line)',
+                      borderRadius: '8px',
+                      background: printSelectionMode === 'all' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="print_selection_mode"
+                      checked={printSelectionMode === 'all'}
+                      onChange={() => setPrintSelectionMode('all')}
+                      style={{ marginTop: '3px', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
+                          All 3 Rating Sheets (Complete Triad Dossier)
+                        </b>
+                        <span className="badge badge-dept" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                          3 Pages
+                        </span>
+                      </div>
+                      <p className="muted" style={{ margin: '4px 0 0', fontSize: '12.5px', lineHeight: 1.4 }}>
+                        Exports the entire official 3-page evaluation package: Immediate Supervisor (50%), COS Peer (20%), and HRMO Officer (30%) official rating sheets.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Card 2: Custom / Specific Pages */}
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '14px',
+                      border: printSelectionMode === 'custom' ? '2px solid var(--primary)' : '1px solid var(--line)',
+                      borderRadius: '8px',
+                      background: printSelectionMode === 'custom' ? '#f8fafc' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="print_selection_mode"
+                      checked={printSelectionMode === 'custom'}
+                      onChange={() => setPrintSelectionMode('custom')}
+                      style={{ marginTop: '3px', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
+                          Select Specific Page(s)
+                        </b>
+                        <span
+                          className="badge"
+                          style={{ fontSize: '11px', padding: '2px 8px', background: '#e2e8f0', color: '#334155' }}
+                        >
+                          Custom
+                        </span>
+                      </div>
+                      <p className="muted" style={{ margin: '4px 0 8px', fontSize: '12.5px' }}>
+                        Choose specific rating sheet(s) to view and print:
+                      </p>
+
+                      {/* Checkboxes */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={printSelectionMode === 'all' || selectedPrintPages.supervisor}
+                            disabled={printSelectionMode === 'all'}
+                            onChange={(e) =>
+                              setSelectedPrintPages((prev) => ({ ...prev, supervisor: e.target.checked }))
+                            }
+                          />
+                          <span>
+                            <b>Page 1: Immediate Supervisor (50%)</b> — {getDepartmentSupervisor(employee.department)} ({viewingEvalCycle.supervisorScore}%)
+                          </span>
+                        </label>
+
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={printSelectionMode === 'all' || selectedPrintPages.peer}
+                            disabled={printSelectionMode === 'all'}
+                            onChange={(e) =>
+                              setSelectedPrintPages((prev) => ({ ...prev, peer: e.target.checked }))
+                            }
+                          />
+                          <span>
+                            <b>Page 2: COS Peer Evaluation (20%)</b> — Anonymized Peer ({viewingEvalCycle.peerScore}%)
+                          </span>
+                        </label>
+
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={printSelectionMode === 'all' || selectedPrintPages.hrmo}
+                            disabled={printSelectionMode === 'all'}
+                            onChange={(e) =>
+                              setSelectedPrintPages((prev) => ({ ...prev, hrmo: e.target.checked }))
+                            }
+                          />
+                          <span>
+                            <b>Page 3: HRMO Institutional (30%)</b> — Dr. Maria Clara Ramos ({viewingEvalCycle.hrmoScore}%)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Footer Controls */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderTop: '1px solid var(--line)',
+                    paddingTop: '16px',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      handleDownloadPdf('eval', viewingEvalCycle);
+                      setIsDownloadModalOpen(false);
+                    }}
+                    title="Download plain-text performance summary record"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <FileText size={14} /> Download Summary (.txt)
+                  </button>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setIsDownloadModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                      onClick={handleProceedToPrint}
+                      disabled={
+                        printSelectionMode === 'custom' &&
+                        !selectedPrintPages.supervisor &&
+                        !selectedPrintPages.peer &&
+                        !selectedPrintPages.hrmo
+                      }
+                    >
+                      <Printer size={15} /> Proceed to Print / PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Official Rating Sheet Modal (1:1 EVSU Ormoc Campus Printable Format) */}
+        <OfficialRatingSheetModal
+          isOpen={!!officialSheetData}
+          onClose={() => setOfficialSheetData(null)}
+          employee={officialSheetData?.employee || employee}
+          supervisorName={
+            officialSheetData?.supervisorName ||
+            getDepartmentSupervisor(employee.department)
+          }
+          contractPeriod={
+            officialSheetData?.contractPeriod || viewingEvalCycle?.periodDates
+          }
+          sheets={officialSheetData?.sheets || null}
+          evaluatorRole={officialSheetData?.evaluatorRole || 'Immediate Supervisor'}
+          evaluatorName={
+            officialSheetData?.evaluatorName ||
+            getDepartmentSupervisor(employee.department)
+          }
+          evaluatorPosition={
+            officialSheetData?.evaluatorPosition || 'Department Head'
+          }
+          scores={
+            officialSheetData?.scores ||
+            generateCriteriaScores(viewingEvalCycle?.supervisorScore || employee?.latestScore || 85)
+          }
+          strengths={officialSheetData?.strengths || ''}
+          recommendation={
+            officialSheetData?.recommendation || 'Recommended for Renewal'
+          }
+          rawScore={officialSheetData?.rawScore}
+          scaledScore={officialSheetData?.scaledScore}
+        />
       </div>
     );
   }
@@ -722,7 +1534,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 {employee.fullName}
               </h2>
               <div className="muted" style={{ fontSize: '13px' }}>
-                {employee.email} | {employee.department}
+                <b>{employee.jobTitle || 'Admin Aide'}</b> • {employee.email} • {employee.department}
               </div>
             </div>
           </div>
@@ -1059,7 +1871,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 <td style={{ textAlign: 'center' }}>
                   <button
                     type="button"
-                    className="btn btn-sm"
+                    className="btn btn-sm btn-primary"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1098,6 +1910,39 @@ Generated Timestamp: ${new Date().toLocaleString()}
           </tbody>
         </table>
       </div>
+
+      {/* Official Rating Sheet Modal (1:1 EVSU Ormoc Campus Printable Format) */}
+      <OfficialRatingSheetModal
+        isOpen={!!officialSheetData}
+        onClose={() => setOfficialSheetData(null)}
+        employee={officialSheetData?.employee || employee}
+        supervisorName={
+          officialSheetData?.supervisorName ||
+          getDepartmentSupervisor(employee.department)
+        }
+        contractPeriod={
+          officialSheetData?.contractPeriod || viewingEvalCycle?.periodDates
+        }
+        sheets={officialSheetData?.sheets || null}
+        evaluatorRole={officialSheetData?.evaluatorRole || 'Immediate Supervisor'}
+        evaluatorName={
+          officialSheetData?.evaluatorName ||
+          getDepartmentSupervisor(employee.department)
+        }
+        evaluatorPosition={
+          officialSheetData?.evaluatorPosition || 'Department Head'
+        }
+        scores={
+          officialSheetData?.scores ||
+          generateCriteriaScores(viewingEvalCycle?.supervisorScore || employee?.latestScore || 85)
+        }
+        strengths={officialSheetData?.strengths || ''}
+        recommendation={
+          officialSheetData?.recommendation || 'Recommended for Renewal'
+        }
+        rawScore={officialSheetData?.rawScore}
+        scaledScore={officialSheetData?.scaledScore}
+      />
     </div>
   );
 }

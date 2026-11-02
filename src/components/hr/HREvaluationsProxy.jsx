@@ -35,8 +35,8 @@ export default function HREvaluationsProxy({
       fullName: 'Carlos Mendoza',
       department: 'Maintenance/Janitorial (MESO) Office',
       cosCategory: 'Maintenance/Janitorial',
-      supervisorScore: 84,
-      peerScore: 80,
+      supervisorScore: 66.7,
+      peerScore: 70.0,
       hrmoScore: null,
       status: 'Pending HR Review',
     },
@@ -52,7 +52,7 @@ export default function HREvaluationsProxy({
   const handleRubricSubmit = (evalData) => {
     onSubmitHrScore({
       evaluationId: selectedEvalId,
-      hrmoScore: evalData.rawSum,
+      hrmoScore: evalData.scaledScore !== undefined ? evalData.scaledScore : evalData.rawSum,
       details: evalData,
     });
     setSuccessToast(`30% HR Administrative compliance score recorded! Final 50/20/30 grade computed.`);

@@ -26,7 +26,16 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
     
-    # Campus Coordinates for Geofencing (EVSU Campus)
+    # Campus Coordinates for Geofencing (EVSU Ormoc Main & Luna Campuses)
+    EVSU_MAIN_LATITUDE: float = 11.0065
+    EVSU_MAIN_LONGITUDE: float = 124.6075
+    EVSU_MAIN_RADIUS_METERS: float = 500.0
+
+    EVSU_LUNA_LATITUDE: float = 11.0607
+    EVSU_LUNA_LONGITUDE: float = 124.6137
+    EVSU_LUNA_RADIUS_METERS: float = 500.0
+
+    # Backwards compatibility
     EVSU_LATITUDE: float = 11.0065
     EVSU_LONGITUDE: float = 124.6075
     GEOFENCE_RADIUS_METERS: float = 500.0

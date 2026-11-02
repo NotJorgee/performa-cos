@@ -10,6 +10,7 @@ export { default as ProfileSettings } from './auth/ProfileSettings';
 
 // Common Rubrics & Modals
 export { default as DynamicRubric } from './common/DynamicRubric';
+export { default as OfficialRatingSheetModal } from './common/OfficialRatingSheetModal';
 export { default as FastTrackModal } from './common/FastTrackModal';
 export { default as CampusGeofenceModal } from './common/CampusGeofenceModal';
 export { default as CampusGeofence } from './common/CampusGeofence';

@@ -246,7 +246,7 @@ export default function AuditTrail({
             onClick={() => setShowExportModal(true)}
             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
           >
-            <FileDown size={16} /> Export Security Logs
+            <Download size={16} /> Export Logs
           </button>
         </div>
       </div>
@@ -642,7 +642,7 @@ export default function AuditTrail({
                   cursor: getExportFilteredLogs().length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
-                ⬇️ Download Filtered CSV ({getExportFilteredLogs().length})
+                <Download size={15} /> Export CSV
               </button>
             </div>
           </div>

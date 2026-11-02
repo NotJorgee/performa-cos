@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, AlertTriangle, Lightbulb, Camera, MapPin } from 'lucide-react';
+import { verifyCoordinatesAgainstCampuses } from '../../utils/campusGeofence';
 
 const AUTOCOMPLETE_SUGGESTIONS = [
   'Assisted students with enrollment queries and clearance routing',
@@ -59,22 +60,22 @@ export default function DailyReporting({
       (pos) => {
         const { latitude, longitude } = pos.coords;
 
-        // EVSU-Ormoc campus center: ~11.0065° N, 124.6075° E (~500m geofence radius)
-        const evsuLat = 11.0065;
-        const evsuLng = 124.6075;
-        const distanceM = Math.hypot(
-          (latitude - evsuLat) * 111000,
-          (longitude - evsuLng) * 111000 * Math.cos((evsuLat * Math.PI) / 180)
-        );
+        // Multi-Campus Geofence verification (EVSU Ormoc Main Campus or EVSU Luna Campus)
+        const verification = verifyCoordinatesAgainstCampuses(latitude, longitude);
 
-        const isInsideCampus = distanceM <= 500;
-
-        if (!isInsideCampus) {
-          // Alternative flow 8a
-          setGeoError('Out of Bounds: Submissions must be made within EVSU campus premises.');
+        if (!verification.isValid) {
+          const nearestKm = (verification.nearestDistanceM / 1000).toFixed(1);
+          const nearestName = verification.nearestCampus ? verification.nearestCampus.shortName : 'campus';
+          setGeoError(
+            `Out of Bounds: Daily Accomplishment Reports must be submitted while physically present at either EVSU Ormoc Main Campus or EVSU Luna Campus. (Nearest: ${nearestName} is ~${nearestKm} km away).`
+          );
           setIsSubmitting(false);
           return;
         }
+
+        const campusLabel = verification.verifiedCampus
+          ? verification.verifiedCampus.name
+          : 'EVSU Ormoc Campus';
 
         const newEntry = {
           dateSubmitted: new Date().toLocaleString(),
@@ -84,6 +85,7 @@ export default function DailyReporting({
           remarks,
           photoEvidenceUrl: photoPreview,
           isGeofenceValid: true,
+          campusSite: campusLabel,
           coordinates: `${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`,
         };
 
@@ -94,12 +96,14 @@ export default function DailyReporting({
         setQuantity('');
         setRemarks('');
         setPhotoPreview(null);
-        setSuccessToast('Daily Accomplishment Report verified on-campus and submitted successfully!');
+        setSuccessToast(
+          `Daily Accomplishment Report verified at ${verification.verifiedCampus ? verification.verifiedCampus.shortName : 'EVSU Campus'} and submitted successfully!`
+        );
         setTimeout(() => setSuccessToast(null), 4000);
       },
       (err) => {
         setIsSubmitting(false);
-        setGeoError(`Location access error: ${err.message}. Please enable GPS on your device.`);
+        setGeoError(`Location access error: ${err.message}. Please enable GPS permissions on your browser/device.`);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );

@@ -5,16 +5,12 @@ import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
 import MonthlyReport from '../employee/MonthlyReport';
 
 const DEFAULT_SUBMITTED_SCORES = {
-  adm_1: 5, adm_2: 5, adm_3: 4, adm_4: 5,
-  adm_5: 5, adm_6: 5, adm_7: 4, adm_8: 5,
-  adm_9: 5, adm_10: 5, adm_11: 5, adm_12: 5,
-  adm_13: 4, adm_14: 5, adm_15: 5, adm_16: 4,
-  adm_17: 5, adm_18: 5, adm_19: 5, adm_20: 5,
-  mnt_1: 5, mnt_2: 5, mnt_3: 4, mnt_4: 5,
-  mnt_5: 5, mnt_6: 5, mnt_7: 4, mnt_8: 5,
-  mnt_9: 5, mnt_10: 5, mnt_11: 5, mnt_12: 5,
-  mnt_13: 4, mnt_14: 5, mnt_15: 5, mnt_16: 4,
-  mnt_17: 5, mnt_18: 5, mnt_19: 5, mnt_20: 5,
+  job_knowledge: 10,
+  work_quality: 10,
+  attendance: 10,
+  initiative: 8,
+  work_attitude: 10,
+  dependability: 10,
 };
 
 export default function PendingEvaluations({
@@ -124,14 +120,15 @@ export default function PendingEvaluations({
         contractEndDate: 'Dec 31, 2026',
         totalDarEntries: 78,
         submittedScores: {
-          adm_1: 5, adm_2: 5, adm_3: 4, adm_4: 5,
-          adm_5: 5, adm_6: 5, adm_7: 4, adm_8: 5,
-          adm_9: 5, adm_10: 5, adm_11: 5, adm_12: 5,
-          adm_13: 4, adm_14: 5, adm_15: 5, adm_16: 4,
-          adm_17: 5, adm_18: 5, adm_19: 5, adm_20: 5,
+          job_knowledge: 10,
+          work_quality: 10,
+          attendance: 10,
+          initiative: 8,
+          work_attitude: 10,
+          dependability: 10,
         },
         submittedStrengths: 'Consistently completes administrative assignments with high accuracy. Handled laboratory inventory updates with commendable dedication.',
-        submittedRecommendation: 'Strongly Recommended for Renewal',
+        submittedRecommendation: 'Recommended for Renewal',
         marRecords: [
           {
             id: 21,

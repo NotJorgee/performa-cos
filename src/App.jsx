@@ -43,6 +43,7 @@ export default function App() {
     department: 'Computer Studies Department',
     initials: 'JG',
     employeeIdNumber: 'G10222026JMR',
+    jobTitle: 'Admin Aide',
     avatarUrl: null,
   });
 
@@ -73,6 +74,13 @@ export default function App() {
         department: userAccount.department,
         initials: userAccount.initials,
         employeeIdNumber: userAccount.employeeIdNumber,
+        jobTitle:
+          userAccount.jobTitle ||
+          (userAccount.roleLabel === 'COS Employee'
+            ? 'Admin Aide'
+            : userAccount.roleLabel === 'Department Head'
+            ? 'Department Head'
+            : 'HRMO Officer'),
         avatarUrl: userAccount.avatarUrl || null,
       });
       setNotifications(getInitialNotifications(userAccount.roleLabel));

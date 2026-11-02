@@ -179,14 +179,24 @@ def calculate_haversine_distance_meters(lat1, lon1, lat2, lon2):
 
 @app.post("/api/dar", response_model=schemas.DailyReportOut, status_code=status.HTTP_201_CREATED)
 def submit_dar(report: schemas.DailyReportCreate, user_id: int = 1, db: Session = Depends(get_db)):
-    # Geofence Campus Verification (UC-13, FR-29)
+    # Multi-Campus Geofence Verification (UC-13, FR-29): EVSU Ormoc Main Campus or EVSU Luna Campus
     is_valid_geofence = False
+    verified_campus = None
     if report.latitude and report.longitude:
-        distance = calculate_haversine_distance_meters(
+        dist_main = calculate_haversine_distance_meters(
             report.latitude, report.longitude,
-            settings.EVSU_LATITUDE, settings.EVSU_LONGITUDE
+            settings.EVSU_MAIN_LATITUDE, settings.EVSU_MAIN_LONGITUDE
         )
-        is_valid_geofence = distance <= settings.GEOFENCE_RADIUS_METERS
+        dist_luna = calculate_haversine_distance_meters(
+            report.latitude, report.longitude,
+            settings.EVSU_LUNA_LATITUDE, settings.EVSU_LUNA_LONGITUDE
+        )
+        if dist_main <= settings.EVSU_MAIN_RADIUS_METERS:
+            is_valid_geofence = True
+            verified_campus = "EVSU Ormoc — Main Campus"
+        elif dist_luna <= settings.EVSU_LUNA_RADIUS_METERS:
+            is_valid_geofence = True
+            verified_campus = "EVSU Ormoc — Luna Campus"
 
     new_dar = models.DailyAccomplishmentReport(
         user_id=user_id,
@@ -195,7 +205,7 @@ def submit_dar(report: schemas.DailyReportCreate, user_id: int = 1, db: Session 
         is_geofence_verified=is_valid_geofence,
         latitude=report.latitude,
         longitude=report.longitude,
-        remarks=report.remarks,
+        remarks=f"[{verified_campus}] {report.remarks}" if verified_campus and report.remarks else (verified_campus or report.remarks),
         tasks=[t.model_dump() for t in report.tasks],
     )
     db.add(new_dar)
