@@ -412,7 +412,7 @@ export default function EmployeeManagement({
     if (!inviteEmail) return;
     onSendTokenInvite({ email: inviteEmail, department: selectedDept });
     setShowAddModal(false);
-    setToastMsg(`Tokenized sign-up URL dispatched to ${inviteEmail}! Token valid for 72 hours.`);
+    setToastMsg(`Invitation link sent to ${inviteEmail}! The link will expire in 72 hours.`);
     setInviteEmail('');
     setTimeout(() => setToastMsg(null), 4500);
   };
@@ -423,7 +423,7 @@ export default function EmployeeManagement({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Employee Management</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Personnel directory, appraisal setup, and tokenized invitations for EVSU Contract of Service staff.
+            Personnel directory, evaluation records, and account invitations for EVSU Contract of Service staff.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -686,7 +686,7 @@ export default function EmployeeManagement({
               /* TOKENIZED SIGN-UP (Default Add Employee - UC-07) */
               <div>
                 <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
-                  Dispatches a secure, single-use registration URL to the new hire. Upon registration, the system autonomously generates their official EVSU Employee ID and invalidates the token.
+                  Send an email invitation link to the new employee. When they register, the system will automatically assign their official EVSU Employee ID.
                 </p>
 
                 <form onSubmit={handleInviteSubmit}>

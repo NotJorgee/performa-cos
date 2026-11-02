@@ -149,7 +149,7 @@ export default function ProfileSettings({
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    setToastMsg('Password securely updated with BCRYPT encryption.');
+    setToastMsg('Password successfully updated.');
     setTimeout(() => setToastMsg(null), 3500);
   };
 
@@ -523,7 +523,7 @@ export default function ProfileSettings({
               Change Account Password
             </h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: '12.5px' }}>
-              Ensure your new password satisfies institutional security criteria before updating. Passwords are saved with BCRYPT cryptographic salting.
+              Ensure your new password meets the security requirements below. Your password is encrypted and stored securely.
             </p>
 
             <form onSubmit={handlePasswordSubmit}>

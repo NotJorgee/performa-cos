@@ -129,7 +129,7 @@ export default function HRDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('report_generator')}
-          title="Click to view personnel records, past MARs, and evaluation dossiers"
+          title="Click to view personnel records, past MARs, and evaluation reports"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Employee Records</span>
@@ -141,7 +141,7 @@ export default function HRDashboard({
             Past MARs &amp; Records
           </div>
           <div className="quick-access-link">
-            <span>COS dossiers &amp; records</span>
+            <span>COS records &amp; evaluations</span>
             <ArrowRight size={14} />
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function HRDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('employee_management')}
-          title="Click to manage COS Personnel accounts & tokenized invites"
+          title="Click to manage COS personnel directory and account invitations"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Employee Management</span>

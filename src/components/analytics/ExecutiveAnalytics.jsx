@@ -330,7 +330,7 @@ export default function ExecutiveAnalytics({
             className="btn btn-sm"
             onClick={handleExportCsv}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-            title="Download institutional executive metrics CSV dossier"
+            title="Download institutional executive metrics (CSV)"
           >
             <Download size={15} />
             <span>Export CSV</span>

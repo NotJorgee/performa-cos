@@ -882,7 +882,7 @@ export default function EvaluationManagement({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Evaluation Management Module</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Continuous individualized contract lifecycle tracking and concurrent evaluation routing for eligible COS personnel nearing 6-month contract expiration.
+            Track 6-month contract expiration dates, review supervisor recommendations, and finalize renewal decisions for Contract of Service personnel.
           </p>
         </div>
         {onBack && (
@@ -1490,7 +1490,7 @@ export default function EvaluationManagement({
                         Yes — Renew Contract
                       </b>
                       <p className="muted" style={{ margin: '3px 0 0', fontSize: '12px', lineHeight: 1.4 }}>
-                        Authorize 6-month contract renewal for Jan 01, 2027 – Jun 30, 2027. Forward endorsed dossier for appointment.
+                        Authorize 6-month contract renewal for Jan 01, 2027 – Jun 30, 2027. Forward endorsed recommendation for appointment.
                       </p>
                     </div>
                   </label>

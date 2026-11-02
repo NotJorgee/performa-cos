@@ -236,7 +236,7 @@ export default function AdministratorManagement({
     setInviteEmail('');
     setSelectedRole('Department Head');
     setToastMsg(
-      `Tokenized administrator sign-up link dispatched to ${inviteEmail} as ${selectedRole}!`
+      `Administrator invitation link sent to ${inviteEmail} as ${selectedRole}!`
     );
     setTimeout(() => setToastMsg(null), 4500);
   };
@@ -248,7 +248,7 @@ export default function AdministratorManagement({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Administrator Management</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Dedicated roster, access permissions, and tokenized invitations for permanent university staff (Department Heads &amp; HRMO).
+            Dedicated roster, access permissions, and account invitations for permanent university staff (Department Heads &amp; HRMO).
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -306,7 +306,7 @@ export default function AdministratorManagement({
           style={{ whiteSpace: 'nowrap' }}
           onClick={() => setShowInviteModal(true)}
         >
-          + Add Employee
+          + Invite Administrator
         </button>
       </div>
 
@@ -663,7 +663,7 @@ export default function AdministratorManagement({
                   Department Transfer &amp; Reassignment
                 </div>
                 <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.45 }}>
-                  Reassign this Department Head to oversee another academic or operational department. Executing this transfer immediately updates subordinate evaluation routing.
+                  Transfer this Department Head to oversee another department. Once transferred, their new department staff will immediately appear under their evaluation list.
                 </p>
 
                 {transferSuccessMsg && (
@@ -725,7 +725,7 @@ export default function AdministratorManagement({
                         cursor: !transferDept || transferDept === settingsAdmin.department ? 'not-allowed' : 'pointer',
                       }}
                     >
-                      ⇄ Execute Department Transfer
+                      Confirm Department Transfer
                     </button>
                   </div>
                 </form>
@@ -815,7 +815,7 @@ export default function AdministratorManagement({
           <div className="modal-card" style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <div className="card-title" style={{ margin: 0 }}>
-                Add Administrator (Tokenized Sign-Up)
+                Invite Administrator
               </div>
               <button
                 type="button"
@@ -827,7 +827,7 @@ export default function AdministratorManagement({
             </div>
 
             <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
-              Dispatches a secure, single-use tokenized sign-up URL to the permanent staff member. Upon completion, their official EVSU Administrator Account is activated.
+              Send an email invitation link to the staff member so they can set up their official EVSU administrator account.
             </p>
 
             <form onSubmit={handleInviteSubmit}>

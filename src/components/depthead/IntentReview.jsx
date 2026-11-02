@@ -301,7 +301,7 @@ export default function IntentReview({
             Contract Renewal Intent Reviews
           </h1>
           <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-            Review subordinate renewal intents and vertical AI DAR performance analyses. Authorize recommendation for evaluation or endorse non-renewal for <b>{departmentName}</b>.
+            Review staff renewal intentions and daily accomplishment summaries. Submit your recommendation on whether to renew their contract for <b>{departmentName}</b>.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -456,6 +456,30 @@ export default function IntentReview({
                       aiSummary={candidate.aiSummary}
                       totalDarEntries={candidate.totalDarEntries}
                       employeeName={candidate.fullName}
+                      action={
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            padding: '5px 12px',
+                            boxShadow: '0 2px 4px rgba(122, 12, 46, 0.15)',
+                            cursor: 'pointer',
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingMarEmp(candidate);
+                          }}
+                          title="Inspect full monthly accomplishment report logs"
+                        >
+                          <FileText size={14} />
+                          <span>View Compiled MAR ({candidate.totalDarEntries} tasks) →</span>
+                        </button>
+                      }
                     />
                   </div>
 
@@ -473,10 +497,25 @@ export default function IntentReview({
                     <button
                       type="button"
                       className="btn btn-sm"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: '#eff6ff',
+                        border: '1.5px solid #93c5fd',
+                        color: '#1d4ed8',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 3px rgba(37, 99, 235, 0.1)',
+                        cursor: 'pointer',
+                      }}
                       onClick={() => setViewingMarEmp(candidate)}
+                      title="Inspect full monthly accomplishment report logs"
                     >
-                      <FileText size={14} /> View Compiled MAR ({candidate.totalDarEntries} logs)
+                      <FileText size={16} color="#1d4ed8" />
+                      <span>View Compiled MAR ({candidate.totalDarEntries} tasks)</span>
                     </button>
 
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>

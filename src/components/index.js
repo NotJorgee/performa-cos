@@ -3,6 +3,7 @@ export { default as AppLayout } from './layout/AppLayout';
 
 // Authentication & Account Recovery (UC-08, UC-11)
 export { default as Login } from './auth/Login';
+export { default as TokenizedSignUp } from './auth/TokenizedSignUp';
 export { default as ForgotPassword } from './auth/ForgotPassword';
 export { default as VerifyOtp } from './auth/VerifyOtp';
 export { default as ResetNewPassword } from './auth/ResetNewPassword';

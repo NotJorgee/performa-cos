@@ -244,7 +244,7 @@ export default function CampusGeofence({
             <MapPin size={28} color="var(--brand-700)" /> Multi-Campus Geofence Configuration
           </h1>
           <p className="muted" style={{ margin: 0 }}>
-            Centralized GPS perimeter management for EVSU Ormoc satellite campus and external facility sites.
+            Manage the campus locations where Contract of Service personnel are allowed to submit daily reports.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -302,7 +302,7 @@ export default function CampusGeofence({
         >
           <div>
             <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink-900)' }}>
-              Authorized University Campus Perimeters ({campuses.length} Sites Configured)
+              Approved Campus Locations ({campuses.length} Sites Configured)
             </div>
             <p className="muted" style={{ margin: '2px 0 0', fontSize: '12.5px' }}>
               COS personnel may upload Daily Accomplishment Reports (DAR) when physically present at any active site.

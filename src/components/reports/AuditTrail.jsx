@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
 import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check } from 'lucide-react';
 
+export const formatAuditAction = (action) => {
+  switch (action) {
+    case 'DAR_SUBMITTED':
+      return 'Daily Report Submitted';
+    case 'EVALUATION_PERIOD_INITIATED':
+      return 'Evaluation Period Started';
+    case 'EVALUATION_DRAFT_SAVED':
+      return 'Draft Saved';
+    case 'PASSWORD_RESET_COMPLETED':
+      return 'Password Reset';
+    case 'FAST_TRACK_REJECTION':
+      return 'Non-Renewal Endorsed';
+    default:
+      return (action || '').replace(/_/g, ' ');
+  }
+};
+
 export default function AuditTrail({
   logs = [
     {
@@ -56,7 +73,7 @@ export default function AuditTrail({
       action: 'PASSWORD_RESET_COMPLETED',
       targetScope: 'User Account #102',
       ipAddress: '192.168.1.60',
-      operationDetails: 'Verified email OTP and securely updated password with BCRYPT hash.',
+      operationDetails: 'Verified email OTP code and securely updated account password.',
     },
     {
       id: 6,
@@ -200,7 +217,7 @@ export default function AuditTrail({
 
     const rows = candidateLogs.map((log) => {
       return exportColumns.map((colKey) => {
-        const val = log[colKey] || '';
+        const val = colKey === 'action' ? formatAuditAction(log.action) : (log[colKey] || '');
         return `"${String(val).replace(/"/g, '""')}"`;
       });
     });
@@ -231,7 +248,7 @@ export default function AuditTrail({
             <ShieldAlert size={28} color="var(--brand-700)" /> Security Logs &amp; Audit Trail
           </h1>
           <p className="muted" style={{ margin: 0 }}>
-            Read-only timestamped record of grading actions, account changes, geofenced DAR submissions, and administrative transactions.
+            Activity log of all evaluation actions, daily report submissions, and account updates across the system.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -392,8 +409,8 @@ export default function AuditTrail({
                   </div>
                 </td>
                 <td>
-                  <span className={`badge badge-${log.action.toLowerCase().replace(/_/g, '')}`}>
-                    {log.action}
+                  <span className={`badge badge-${log.action.toLowerCase().replace(/_/g, '')}`} style={{ fontSize: '11.5px', padding: '3px 8px', fontWeight: 600 }}>
+                    {formatAuditAction(log.action)}
                   </span>
                 </td>
                 <td style={{ fontSize: '13px' }}>{log.targetScope}</td>

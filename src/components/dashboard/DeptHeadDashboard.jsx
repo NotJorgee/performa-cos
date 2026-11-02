@@ -97,7 +97,7 @@ export default function DeptHeadDashboard({
         <div
           className="quick-access-card"
           onClick={() => onNavigate('employee_records')}
-          title="Click to view departmental employee records, past MARs, and evaluation dossiers"
+          title="Click to view departmental employee records, past MARs, and evaluation reports"
         >
           <div className="quick-access-top">
             <span className="quick-access-label">Employee Records</span>
@@ -109,7 +109,7 @@ export default function DeptHeadDashboard({
             Past MARs &amp; Records
           </div>
           <div className="quick-access-link">
-            <span>Department dossiers &amp; MARs</span>
+            <span>Department records &amp; MARs</span>
             <ArrowRight size={14} />
           </div>
         </div>

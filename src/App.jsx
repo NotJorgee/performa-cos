@@ -3,6 +3,7 @@ import './styles/style.css';
 import {
   AppLayout,
   Login,
+  TokenizedSignUp,
   ForgotPassword,
   VerifyOtp,
   ResetNewPassword,
@@ -35,7 +36,7 @@ import { getInitialNotifications } from './utils/notificationsData';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'otp' | 'reset_pw'
+  const [authView, setAuthView] = useState('login'); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState({
     fullName: 'Jorge Mikhael Gubantes',
@@ -89,13 +90,24 @@ export default function App() {
     setCurrentView('dashboard');
   };
 
-  // 1. Unauthenticated Login & Recovery Flows (UC-08)
+  // 1. Unauthenticated Login & Recovery Flows (UC-08, UC-07)
   if (!isAuthenticated) {
     if (authView === 'login') {
       return (
         <Login
           onLogin={handleLogin}
           onForgotPassword={() => setAuthView('forgot')}
+          onGoToSignUp={() => setAuthView('signup')}
+        />
+      );
+    }
+    if (authView === 'signup') {
+      return (
+        <TokenizedSignUp
+          onBackToLogin={() => setAuthView('login')}
+          onLoginAsNewUser={(newUser) => {
+            handleLogin(newUser);
+          }}
         />
       );
     }

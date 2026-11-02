@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Check, Eye, EyeOff, AlertCircle, UserPlus } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import loginBg from '../../assets/images/login-bg.png';
 
@@ -45,6 +45,7 @@ export const DEMO_CREDENTIALS = [
 export default function Login({
   onLogin = () => {},
   onForgotPassword = () => {},
+  onGoToSignUp = () => {},
   externalErrorMessage = null,
 }) {
   const [email, setEmail] = useState('');
@@ -251,6 +252,45 @@ export default function Login({
                       {demo.roleName}
                     </button>
                   ))}
+                </div>
+
+                {/* Tokenized Sign-Up Navigation Button */}
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed rgba(255,255,255,0.22)' }}>
+                  <button
+                    type="button"
+                    onClick={onGoToSignUp}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid rgba(255,255,255,0.3)',
+                      background: 'rgba(255,255,255,0.15)',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '7px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#ffffff';
+                      e.currentTarget.style.color = '#7a0c2e';
+                      e.currentTarget.style.borderColor = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                      e.currentTarget.style.color = '#ffffff';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                    }}
+                    title="View tokenized invitation onboarding page for COS staff and Administrators"
+                  >
+                    <UserPlus size={14} />
+                    <span>View Tokenized Sign-Up (COS / Admin)</span>
+                  </button>
                 </div>
               </div>
             </form>

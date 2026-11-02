@@ -39,7 +39,7 @@ export default function BackupData({ onBack = null }) {
       const isSql = format === 'sql';
       const ext = isSql ? 'sql' : 'csv';
       const fileName = `evsu_performa_${isSql ? 'database_dump' : 'records_archive'}_${dateStr}.${ext}`;
-      const typeLabel = isSql ? 'SQL Database Dump' : 'CSV Spreadsheet Archive';
+      const typeLabel = isSql ? 'SQL Database Backup' : 'CSV Spreadsheet Archive';
 
       // Sample mock content
       let content = '';
@@ -222,13 +222,13 @@ export default function BackupData({ onBack = null }) {
                 <Database size={24} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>SQL Database Dump</h3>
-                <span className="muted" style={{ fontSize: '12.5px' }}>Raw database script (.sql)</span>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>Complete Database Backup (.sql)</h3>
+                <span className="muted" style={{ fontSize: '12.5px' }}>Full database backup script (.sql)</span>
               </div>
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--ink-700)', lineHeight: 1.5, margin: '0 0 16px' }}>
-              Downloads a technical SQL database dump containing all database schemas and tables. Ideal for database migrations, developers, or disaster recovery restores.
+              Downloads a complete database backup file for technical archiving or full system recovery.
             </p>
           </div>
 
@@ -248,9 +248,9 @@ export default function BackupData({ onBack = null }) {
               cursor: downloadingFormat === 'sql' ? 'not-allowed' : 'pointer',
             }}
           >
-            {downloadingFormat === 'sql' ? 'Generating SQL Dump...' : (
+            {downloadingFormat === 'sql' ? 'Generating Database Backup...' : (
               <>
-                <Download size={15} /> Download SQL Dump
+                <Download size={15} /> Download Database Backup (.sql)
               </>
             )}
           </button>

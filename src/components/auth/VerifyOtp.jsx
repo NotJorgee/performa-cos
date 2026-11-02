@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Clock, RefreshCw, ShieldCheck, Hash } from 'lucide-react';
+import { Mail, RefreshCw, Hash } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function VerifyOtp({
@@ -20,54 +20,27 @@ export default function VerifyOtp({
 
   return (
     <div className="auth-split">
-      <div className="auth-hero">
-        <div className="auth-hero-bg" aria-hidden="true"></div>
-        <div className="auth-hero-rings" aria-hidden="true"></div>
-        <div className="auth-hero-inner">
-          <div className="auth-hero-brand">
-            <img src={evsuSeal} alt="EVSU Seal" className="auth-hero-seal" />
-          </div>
+      <div className="auth-container">
+        {/* Centered University Brand Header */}
+        <div className="auth-header-center">
+          <img src={evsuSeal} alt="EVSU Seal" className="auth-header-seal" />
+          <h1 className="auth-header-title">PerformaCOS</h1>
+          <p className="auth-header-sub">Eastern Visayas State University</p>
         </div>
-        <div className="auth-feature-strip">
-          <div>
-            <span className="auth-feature-icon"><Mail size={18} /></span>
-            <b>Check Your Inbox</b>
-            <small>OTP sent to {emailHint}</small>
-          </div>
-          <div>
-            <span className="auth-feature-icon"><Clock size={18} /></span>
-            <b>Time-Limited</b>
-            <small>Expires in 10 minutes</small>
-          </div>
-          <div>
-            <span className="auth-feature-icon"><RefreshCw size={18} /></span>
-            <b>Resend</b>
-            <small>Didn't get it? Request new OTP</small>
-          </div>
-          <div>
-            <span className="auth-feature-icon"><ShieldCheck size={18} /></span>
-            <b>One-Time Code</b>
-            <small>Single use only</small>
-          </div>
-        </div>
-      </div>
 
-      <div className="auth-form-panel">
-        <div className="auth-form-panel-inner">
-          <div className="auth-card">
-            <div className="auth-card-brand">
-              <span className="auth-card-brand-title">Enter your code</span>
-              <span className="auth-card-brand-sub">PerformaCOS — Performance Management System</span>
-              <span className="auth-card-brand-org">Eastern Visayas State University</span>
-            </div>
-            <img src={evsuSeal} alt="EVSU Seal" className="auth-mark-mobile" />
+        {/* Centered Auth Card */}
+        <div className="auth-card">
+          <div className="auth-card-brand">
+            <span className="auth-card-brand-title">Enter Verification Code</span>
+            <span className="auth-card-brand-sub">Performance Management System &bull; Step 2 of 3</span>
+          </div>
 
-            <div className="auth-steps" aria-label="Step 2 of 3">
-              Step 2 of 3
-              <span className="dot"></span>
-              <span className="dot on"></span>
-              <span className="dot"></span>
-            </div>
+          <div className="auth-steps" aria-label="Step 2 of 3">
+            Step 2 of 3
+            <span className="dot"></span>
+            <span className="dot on"></span>
+            <span className="dot"></span>
+          </div>
 
             {errorMessage && (
               <div className="flash-stack">
@@ -134,6 +107,5 @@ export default function VerifyOtp({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

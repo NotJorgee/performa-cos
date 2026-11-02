@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Eye, EyeOff, Check, Lock, Circle } from 'lucide-react';
+import { Eye, EyeOff, Check, Lock, Circle } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
 export default function ResetNewPassword({
@@ -29,54 +29,27 @@ export default function ResetNewPassword({
 
   return (
     <div className="auth-split">
-      <div className="auth-hero">
-        <div className="auth-hero-bg" aria-hidden="true"></div>
-        <div className="auth-hero-rings" aria-hidden="true"></div>
-        <div className="auth-hero-inner">
-          <div className="auth-hero-brand">
-            <img src={evsuSeal} alt="EVSU Seal" className="auth-hero-seal" />
-          </div>
+      <div className="auth-container">
+        {/* Centered University Brand Header */}
+        <div className="auth-header-center">
+          <img src={evsuSeal} alt="EVSU Seal" className="auth-header-seal" />
+          <h1 className="auth-header-title">PerformaCOS</h1>
+          <p className="auth-header-sub">Eastern Visayas State University</p>
         </div>
-        <div className="auth-feature-strip">
-          <div>
-            <span className="auth-feature-icon"><ShieldCheck size={18} /></span>
-            <b>Strong Password</b>
-            <small>12+ chars, mixed symbols</small>
-          </div>
-          <div>
-            <span className="auth-feature-icon"><Eye size={18} /></span>
-            <b>Show / Hide</b>
-            <small>Verify before submitting</small>
-          </div>
-          <div>
-            <span className="auth-feature-icon"><Check size={18} /></span>
-            <b>Live Checklist</b>
-            <small>Real-time requirements validation</small>
-          </div>
-          <div>
-            <span className="auth-feature-icon"><Lock size={18} /></span>
-            <b>BCRYPT Hashed</b>
-            <small>Irreversible secure storage</small>
-          </div>
-        </div>
-      </div>
 
-      <div className="auth-form-panel">
-        <div className="auth-form-panel-inner">
-          <div className="auth-card">
-            <div className="auth-card-brand">
-              <span className="auth-card-brand-title">Create a new password</span>
-              <span className="auth-card-brand-sub">PerformaCOS — Performance Management System</span>
-              <span className="auth-card-brand-org">Eastern Visayas State University</span>
-            </div>
-            <img src={evsuSeal} alt="EVSU Seal" className="auth-mark-mobile" />
+        {/* Centered Auth Card */}
+        <div className="auth-card">
+          <div className="auth-card-brand">
+            <span className="auth-card-brand-title">Create New Password</span>
+            <span className="auth-card-brand-sub">Performance Management System &bull; Step 3 of 3</span>
+          </div>
 
-            <div className="auth-steps" aria-label="Step 3 of 3">
-              Step 3 of 3
-              <span className="dot"></span>
-              <span className="dot"></span>
-              <span className="dot on"></span>
-            </div>
+          <div className="auth-steps" aria-label="Step 3 of 3">
+            Step 3 of 3
+            <span className="dot"></span>
+            <span className="dot"></span>
+            <span className="dot on"></span>
+          </div>
 
             {errorMessage && (
               <div className="flash-stack">
@@ -170,10 +143,9 @@ export default function ResetNewPassword({
               </button>
             </form>
 
-            <div className="auth-footer">Secured with EVSU Authentication &amp; BCRYPT</div>
+            <div className="auth-footer">Secured by EVSU Authentication Portal</div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

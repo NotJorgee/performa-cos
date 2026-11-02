@@ -289,12 +289,12 @@ export default function ReportGenerator({
       <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h1 style={{ margin: '0 0 6px' }}>
-            {isDeptRestricted ? 'Departmental Employee Records' : 'COS Employee Records & Dossiers'}
+            {isDeptRestricted ? 'Departmental Employee Records' : 'COS Employee Records & Evaluations'}
           </h1>
           <p className="muted" style={{ margin: 0 }}>
             {isDeptRestricted
-              ? `Inspect historical evaluation dossiers, extract verified MARs, and review performance records for ${deptScope}.`
-              : 'Inspect employee historical evaluation dossiers, extract verified MARs, and download official records for institutional reporting.'}
+              ? `Inspect historical evaluation records, view verified MARs, and review performance reports for ${deptScope}.`
+              : 'Inspect employee historical evaluation records, view verified MARs, and download official performance reports for institutional records.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -328,13 +328,13 @@ export default function ReportGenerator({
             <div>
               <div className="card-title" style={{ margin: 0 }}>
                 {isDeptRestricted
-                  ? `${deptScope} Personnel Dossiers & Records`
-                  : 'COS Personnel Dossiers & Historical Archives'}
+                  ? `${deptScope} Personnel Records & Evaluations`
+                  : 'COS Personnel Records & Historical Archives'}
               </div>
               <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
                 {isDeptRestricted
-                  ? 'Select a department employee to inspect past evaluation cycles, review verified MARs, or download official evaluation dossiers.'
-                  : 'Select an employee to inspect past evaluation cycles, review verified MARs, or download official evaluation dossiers.'}
+                  ? 'Select a department employee to inspect past evaluation cycles, review verified MARs, or download official evaluation reports.'
+                  : 'Select an employee to inspect past evaluation cycles, review verified MARs, or download official evaluation reports.'}
               </p>
             </div>
           </div>
@@ -548,8 +548,8 @@ export default function ReportGenerator({
               <Archive size={18} color="var(--ink-600)" />
               <div className="card-title" style={{ margin: 0, fontSize: '15px' }}>
                 {isDeptRestricted
-                  ? `${deptScope} Archived Dossiers & Records`
-                  : 'Archived COS Personnel Dossiers'}
+                  ? `${deptScope} Archived Records & Evaluations`
+                  : 'Archived COS Personnel Records'}
               </div>
             </div>
             <p className="muted" style={{ margin: '4px 0 0', fontSize: '12.5px' }}>

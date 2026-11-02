@@ -5,6 +5,7 @@ export default function AiPerformanceAnalysis({
   aiSummary = null,
   totalDarEntries = 84,
   employeeName = '',
+  action = null,
 }) {
   if (!aiSummary) return null;
 
@@ -17,9 +18,9 @@ export default function AiPerformanceAnalysis({
       'Spearheaded student query backlog clearance and automated laboratory terminal inventory logs.',
     ],
     workTrends = [
-      'Consistent daily task velocity averaging 2.1 accomplishment entries per operational day.',
+      'Consistent daily output averaging 2.1 tasks completed per working day.',
       'Workload peaked during midterm examination weeks (Oct 12–16) with 38 student clearance validations resolved.',
-      'Task turnaround time improved by 28% from month 1 to month 3 with zero defect rates.',
+      'Task turnaround time improved by 28% from month 1 to month 3 with zero errors or revisions required.',
       'Consistent task delivery across all verified accomplishment entries.',
     ],
     frequentActivities = [
@@ -33,7 +34,7 @@ export default function AiPerformanceAnalysis({
       dailyAverage: '2.1 tasks/day',
       completionRate: '100%',
       reliabilityIndex: 'High Reliability',
-      qualityAssessment: 'Zero error backlog; high accuracy documentation output',
+      qualityAssessment: 'Zero error backlog; high-quality output on all tasks',
     },
   } = aiSummary;
 
@@ -74,21 +75,22 @@ export default function AiPerformanceAnalysis({
           </div>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-900)' }}>
-              AI-Synthesized DAR Performance Analysis
+              AI Performance Summary (Daily Reports)
             </div>
             <div className="muted" style={{ fontSize: '12px' }}>
-              Synthesized from {totalDarEntries} verified DAR logs for {employeeName || 'staff'}
+              Generated from {totalDarEntries} verified daily accomplishment reports for {employeeName || 'staff'}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span
             className="badge badge-completed"
             style={{ fontSize: '11.5px', fontWeight: 700, padding: '3px 10px' }}
           >
             Confidence: {confidenceScore}%
           </span>
+          {action}
         </div>
       </div>
 
@@ -240,45 +242,25 @@ export default function AiPerformanceAnalysis({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-              gap: '10px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
               marginBottom: '10px',
             }}
           >
-            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
+            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 14px' }}>
               <div className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>Total DARs</div>
               <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
                 {productivitySummary.totalTasks} tasks
               </div>
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
+            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 14px' }}>
               <div className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>Daily Output</div>
               <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
                 {productivitySummary.dailyAverage}
               </div>
             </div>
-
-            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
-              <div className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>Completion</div>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--green-600)', marginTop: '2px' }}>
-                {productivitySummary.completionRate}
-              </div>
-            </div>
-
-            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
-              <div className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>Reliability</div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--brand-700)', marginTop: '4px' }}>
-                {productivitySummary.reliabilityIndex}
-              </div>
-            </div>
           </div>
-
-          {productivitySummary.qualityAssessment && (
-            <div className="muted" style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '6px' }}>
-              Quality Note: {productivitySummary.qualityAssessment}
-            </div>
-          )}
         </div>
       </div>
     </div>

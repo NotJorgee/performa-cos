@@ -688,7 +688,7 @@ export default function EmployeeRecordView({
     const content = `EASTERN VISAYAS STATE UNIVERSITY - ORMOC CAMPUS
 OFFICIAL INSTITUTIONAL PERFORMANCE RECORD
 ============================================================
-Document Type: ${isMar ? 'Compiled Monthly Accomplishment Report (MAR)' : '50/20/30 Performance Appraisal Dossier'}
+Document Type: ${isMar ? 'Compiled Monthly Accomplishment Report (MAR)' : '50/20/30 Performance Evaluation Report'}
 Employee ID: ${employee.idNumber}
 Full Name: ${employee.fullName}
 Institutional Email: ${employee.email}
@@ -865,7 +865,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
         {/* Top Header with Back Navigation & PDF Download */}
         <div className="flex-between" style={{ marginBottom: '18px' }}>
           <div>
-            <h1 style={{ margin: '0 0 6px' }}>Performance Appraisal Dossier: {employee.fullName}</h1>
+            <h1 style={{ margin: '0 0 6px' }}>Performance Evaluation Record: {employee.fullName}</h1>
             <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
               Contract Cycle: <b>{viewingEvalCycle.periodDates}</b> • Department: <b>{employee.department}</b>
             </p>
@@ -1250,7 +1250,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
-                          All 3 Rating Sheets (Complete Triad Dossier)
+                          All 3 Rating Sheets (Supervisor, Peer, HRMO)
                         </b>
                         <span className="badge badge-dept" style={{ fontSize: '11px', padding: '2px 8px' }}>
                           3 Pages
@@ -1827,7 +1827,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
               <th>Final Grade & Trajectory</th>
               <th>Interpretation</th>
               <th style={{ textAlign: 'center' }}>MARs Document</th>
-              <th style={{ textAlign: 'center' }}>Evaluation Dossier</th>
+              <th style={{ textAlign: 'center' }}>Evaluation Record</th>
             </tr>
           </thead>
           <tbody>
