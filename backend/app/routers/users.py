@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 def list_users(
     role: Optional[str] = None,
     department_id: Optional[int] = None,
-    is_archived: Optional[bool] = False,
+    is_archived: Optional[bool] = None,
     is_active: Optional[bool] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),

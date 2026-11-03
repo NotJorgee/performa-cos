@@ -42,7 +42,7 @@ export default function EmployeeManagement({
     let isMounted = true;
     setIsLoading(true);
     api.users
-      .list({ is_archived: null })
+      .list({ role: 'COS Employee' })
       .then((users) => {
         if (!isMounted) return;
         if (Array.isArray(users)) {

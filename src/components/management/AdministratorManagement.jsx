@@ -40,7 +40,7 @@ export default function AdministratorManagement({
     let isMounted = true;
     setIsLoading(true);
     api.users
-      .list({ is_archived: null })
+      .list()
       .then((users) => {
         if (!isMounted) return;
         if (Array.isArray(users)) {

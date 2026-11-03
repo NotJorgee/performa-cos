@@ -116,8 +116,12 @@ export const api = {
       const query = new URLSearchParams();
       if (params.role) query.append('role', params.role);
       if (params.department_id) query.append('department_id', params.department_id);
-      if (params.is_active !== undefined) query.append('is_active', params.is_active);
-      if (params.is_archived !== undefined) query.append('is_archived', params.is_archived);
+      if (params.is_active !== undefined && params.is_active !== null && params.is_active !== '') {
+        query.append('is_active', params.is_active);
+      }
+      if (params.is_archived !== undefined && params.is_archived !== null && params.is_archived !== '') {
+        query.append('is_archived', params.is_archived);
+      }
       if (params.search) query.append('search', params.search);
       const qs = query.toString();
       return request(`/users${qs ? `?${qs}` : ''}`);
