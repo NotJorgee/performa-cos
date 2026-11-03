@@ -32,6 +32,7 @@ import {
   CircleDot,
   Hexagon,
   LocateFixed,
+  FileText,
 } from 'lucide-react';
 import {
   getCampusGeofences,
@@ -282,7 +283,7 @@ export default function CampusGeofence({
           }
         }
       } catch (err) {
-        console.warn('Using local baseline verification logs:', err.message);
+        console.warn('Failed to load geofence verification logs:', err.message);
       } finally {
         if (isMounted) setIsLoadingVerifications(false);
       }
@@ -2197,8 +2198,20 @@ export default function CampusGeofence({
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
-                    No geofence verification submissions matched your search criteria.
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 20px', color: '#64748b' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <FileText size={32} color="#94a3b8" />
+                      <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--ink-700)' }}>
+                        {complianceLogs.length === 0
+                          ? 'No DAR Geofence Verification Records'
+                          : 'No Submissions Matched Search Criteria'}
+                      </div>
+                      <div style={{ fontSize: '12.5px', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.5 }}>
+                        {complianceLogs.length === 0
+                          ? 'When COS personnel submit Daily Accomplishment Reports with GPS telemetry, their spatial verification logs will appear here in real time.'
+                          : 'Try clearing your search query or selecting "All Campuses" and "All Statuses".'}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
