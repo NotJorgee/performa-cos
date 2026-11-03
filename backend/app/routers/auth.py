@@ -21,7 +21,18 @@ from .audit import log_audit
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
+def _add_six_months(d: datetime.date) -> datetime.date:
+    month = d.month + 6
+    year = d.year + (month - 1) // 12
+    month = ((month - 1) % 12) + 1
+    is_leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_in_month = [31, 29 if is_leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    day = min(d.day, days_in_month[month - 1])
+    return datetime.date(year, month, day)
+
+
 def _build_user_response(user: models.UserAccount) -> dict:
+    start_date = user.contract_start_date or user.date_appointed
     return {
         "id": user.id,
         "fullName": user.full_name,
@@ -35,6 +46,9 @@ def _build_user_response(user: models.UserAccount) -> dict:
         "avatarUrl": user.avatar_url,
         "isActive": user.is_active,
         "totalContracts": user.total_contracts,
+        "dateAppointed": user.date_appointed.isoformat() if user.date_appointed else None,
+        "contractStartDate": start_date.isoformat() if start_date else None,
+        "contractEndDate": user.contract_end_date.isoformat() if user.contract_end_date else None,
     }
 
 
@@ -120,12 +134,12 @@ def register(
 
     # 4. Starting date & contract expiration logic
     starting_date = payload.starting_date or datetime.date.today()
+    contract_start_date = payload.contract_start_date or starting_date
     contract_end_date = payload.contract_end_date
 
     if role == "COS Employee":
-        active_contract_start = payload.contract_start_date or starting_date
         if not contract_end_date:
-            contract_end_date = active_contract_start + datetime.timedelta(days=182)  # standard 6-month contract cycle
+            contract_end_date = _add_six_months(contract_start_date)
 
     # 5. Generate employee ID using campus starting date
     emp_id = generate_evsu_employee_id(
@@ -149,6 +163,7 @@ def register(
         job_title=payload.job_title,
         contact_number=payload.contact_number,
         date_appointed=starting_date,
+        contract_start_date=contract_start_date if role == "COS Employee" else None,
         contract_end_date=contract_end_date,
         is_active=True,
         is_archived=False,

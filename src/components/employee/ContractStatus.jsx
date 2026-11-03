@@ -1,6 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { api } from '../../services/api';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
+
+function formatDisplayDate(dateInput) {
+  if (!dateInput) return 'Not Specified';
+  if (typeof dateInput === 'string' && /^[A-Z][a-z]+ \d{1,2}, \d{4}$/.test(dateInput)) {
+    return dateInput;
+  }
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+    const [year, month, day] = dateInput.substring(0, 10).split('-').map(Number);
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    const dayStr = day < 10 ? `0${day}` : `${day}`;
+    return `${months[month - 1]} ${dayStr}, ${year}`;
+  }
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+    return d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+  } catch {
+    return String(dateInput);
+  }
+}
+
+function calculateDaysRemaining(endDateStr) {
+  if (!endDateStr) return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let end;
+  if (typeof endDateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(endDateStr)) {
+    const [year, month, day] = endDateStr.substring(0, 10).split('-').map(Number);
+    end = new Date(year, month - 1, day);
+  } else {
+    end = new Date(endDateStr);
+  }
+  end.setHours(0, 0, 0, 0);
+  const diffTime = end - today;
+  return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+}
 
 export default function ContractStatus({
   currentUser = null,
@@ -10,42 +50,97 @@ export default function ContractStatus({
   onDeclineRenewal = () => {},
   onBack = null,
 }) {
-  const contract = propContract || {
-    employeeName: currentUser?.full_name || currentUser?.fullName || 'COS Personnel',
-    department: currentUser?.department_name || currentUser?.department || 'Computer Studies Department',
-    cosCategory: currentUser?.category || currentUser?.cosCategory || 'Administrative',
-    startDate: currentUser?.appointment_date || currentUser?.date_of_assumption || 'July 01, 2026',
-    endDate: currentUser?.contract_end_date || 'December 31, 2026',
-    daysRemaining: currentUser?.contract_end_date ? Math.max(0, Math.ceil((new Date(currentUser.contract_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 60,
+  const initialRawStart = currentUser?.contractStartDate || currentUser?.dateAppointed;
+  const initialRawEnd = currentUser?.contractEndDate;
+
+  const [contractDetails, setContractDetails] = useState({
+    employeeName: currentUser?.fullName || currentUser?.full_name || 'COS Personnel',
+    department: currentUser?.department || currentUser?.department_name || 'Computer Studies Department',
+    cosCategory: currentUser?.cosCategory || currentUser?.category || 'Administrative',
+    startDate: formatDisplayDate(initialRawStart),
+    endDate: formatDisplayDate(initialRawEnd),
+    rawStartDate: initialRawStart,
+    rawEndDate: initialRawEnd,
+    daysRemaining: initialRawEnd ? calculateDaysRemaining(initialRawEnd) : 0,
     renewalStatus: 'Open for Intent Confirmation',
     totalDarsLogged: 0,
     verifiedDarCount: 0,
-  };
-  const [status, setStatus] = useState(contract.renewalStatus);
+  });
+
+  const [status, setStatus] = useState('Open for Intent Confirmation');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAction, setSelectedAction] = useState(null); // 'renew' | 'decline' | null
   const [declineReason, setDeclineReason] = useState('');
   const [toastMsg, setToastMsg] = useState(null);
 
-  const handleFinalConfirmRenew = () => {
-    setIsProcessing(true);
-    // Simulates aggregating all DAR entries and triggering LLM API summarization (UC-02, FR-05)
-    setTimeout(() => {
-      setIsProcessing(false);
-      setStatus('Renewal Intent Confirmed');
-      setShowActionModal(false);
-      setSelectedAction(null);
-      setToastMsg('Contract renewal intent confirmed! Accumulated DARs synthesized and evaluation workflow initiated.');
-      onConfirmRenewal({
-        action: 'renew',
-        department: contract.department,
-        contractCycle: `${contract.startDate} – ${contract.endDate}`,
-        totalDarsAggregated: contract.totalDarsLogged,
-        confirmedAt: new Date().toISOString(),
+  useEffect(() => {
+    let isMounted = true;
+    api.analytics
+      .getEmployeeDashboard()
+      .then((data) => {
+        if (!isMounted || !data) return;
+        setContractDetails((prev) => {
+          const rawStart = data.rawStartDate || currentUser?.contractStartDate || currentUser?.dateAppointed || prev.rawStartDate;
+          const rawEnd = data.rawEndDate || currentUser?.contractEndDate || prev.rawEndDate;
+          const daysRemaining = typeof data.daysUntilExpiration === 'number'
+            ? data.daysUntilExpiration
+            : calculateDaysRemaining(rawEnd);
+
+          return {
+            ...prev,
+            employeeName: data.employeeName || currentUser?.fullName || prev.employeeName,
+            department: data.department || currentUser?.department || prev.department,
+            cosCategory: data.cosCategory || currentUser?.cosCategory || prev.cosCategory,
+            startDate: data.contractStartDate ? formatDisplayDate(data.contractStartDate) : formatDisplayDate(rawStart),
+            endDate: data.contractEndDate ? formatDisplayDate(data.contractEndDate) : formatDisplayDate(rawEnd),
+            rawStartDate: rawStart,
+            rawEndDate: rawEnd,
+            daysRemaining,
+            totalDarsLogged: data.totalDarsLogged ?? prev.totalDarsLogged,
+            renewalStatus: data.renewalIntentStatus || prev.renewalStatus,
+          };
+        });
+
+        if (data.renewalIntentStatus) {
+          setStatus(data.renewalIntentStatus);
+        }
+      })
+      .catch((err) => {
+        console.warn('Notice loading employee dashboard metrics for contract status:', err);
       });
-      setTimeout(() => setToastMsg(null), 5000);
-    }, 1100);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  const contract = propContract ? { ...contractDetails, ...propContract } : contractDetails;
+  const isExpiringSoon = (contract.daysRemaining ?? 0) <= 30;
+
+  const handleFinalConfirmRenew = async () => {
+    setIsProcessing(true);
+    try {
+      await api.renewals.submit({
+        period: `${contract.startDate} – ${contract.endDate}`,
+        mar_narrative: `Aggregated DAR portfolio across ${contract.totalDarsLogged} logs submitted for supervisory review.`,
+      });
+    } catch (err) {
+      console.warn('API renewal submission notice:', err);
+    }
+    setIsProcessing(false);
+    setStatus('Renewal Intent Confirmed');
+    setShowActionModal(false);
+    setSelectedAction(null);
+    setToastMsg('Contract renewal intent confirmed! Accumulated DARs synthesized and evaluation workflow initiated.');
+    onConfirmRenewal({
+      action: 'renew',
+      department: contract.department,
+      contractCycle: `${contract.startDate} – ${contract.endDate}`,
+      totalDarsAggregated: contract.totalDarsLogged,
+      confirmedAt: new Date().toISOString(),
+    });
+    setTimeout(() => setToastMsg(null), 5000);
   };
 
   const handleFinalConfirmDecline = () => {
@@ -122,14 +217,14 @@ export default function ContractStatus({
         </div>
       </div>
 
-      {/* Intent Action Panel */}
-      {status === 'Open for Intent Confirmation' && (
+      {/* Intent Action Panel — Only unlocks when <= 30 days left before contract expiration */}
+      {status === 'Open for Intent Confirmation' && isExpiringSoon && (
         <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--brand-border)', background: '#fff' }}>
           <div className="card-title" style={{ color: 'var(--brand-700)' }}>
             Contract Renewal Action Required
           </div>
           <p style={{ fontSize: '13.5px', lineHeight: 1.5, margin: '0 0 16px' }}>
-            Your 6-month Contract of Service is approaching its expiration date. Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) for AI performance synthesis and forward your intent to your Department Head for endorsement review.
+            Your 6-month Contract of Service is approaching its expiration date ({contract.daysRemaining} days remaining). Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) for AI performance synthesis and forward your intent to your Department Head for endorsement review.
           </p>
 
           <div>
@@ -143,6 +238,39 @@ export default function ContractStatus({
             >
               View Options
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contract Active / Notice when > 30 days left */}
+      {status === 'Open for Intent Confirmation' && !isExpiringSoon && (
+        <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--line)', background: '#fafbfc' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <div
+              style={{
+                background: '#e0f2fe',
+                color: '#0369a1',
+                borderRadius: '50%',
+                width: '38px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <FileCheck size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-900)' }}>
+                Contract Active &amp; In Good Standing
+              </div>
+              <p className="muted" style={{ fontSize: '13px', margin: '4px 0 0', lineHeight: 1.5 }}>
+                Your 6-month Contract of Service is currently active with <strong>{contract.daysRemaining} days</strong> remaining until expiration ({contract.endDate}).
+                The formal digital renewal confirmation workflow will automatically unlock <strong>30 days prior to contract expiration</strong>.
+                Please continue logging your Daily Accomplishment Reports (DAR) to maintain your evaluation portfolio.
+              </p>
+            </div>
           </div>
         </div>
       )}

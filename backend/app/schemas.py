@@ -94,6 +94,7 @@ class UserAccountBase(BaseModel):
     office_location: Optional[str] = None
     avatar_url: Optional[str] = None
     date_appointed: Optional[datetime.date] = None
+    contract_start_date: Optional[datetime.date] = None
     contract_end_date: Optional[datetime.date] = None
     is_active: bool = True
     is_archived: bool = False

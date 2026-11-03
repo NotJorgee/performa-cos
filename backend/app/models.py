@@ -41,6 +41,7 @@ class UserAccount(Base):
     department_id = Column(Integer, ForeignKey("department.id"), nullable=True)
     cos_category = Column(String(100), default="Administrative")  # 'Administrative' | 'Technical' | 'Faculty'
     date_appointed = Column(Date, nullable=True)
+    contract_start_date = Column(Date, nullable=True)
     contract_end_date = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

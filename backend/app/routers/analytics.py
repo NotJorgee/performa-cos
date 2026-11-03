@@ -184,6 +184,7 @@ def get_employee_dashboard_metrics(
     )
 
     # 3. Contract expiration calculations
+    contract_start = current_user.contract_start_date or current_user.date_appointed
     contract_end = current_user.contract_end_date
     days_until_expiration = 0
     if contract_end:
@@ -199,10 +200,16 @@ def get_employee_dashboard_metrics(
     intent_status = latest_renewal.status if latest_renewal else "Open for Intent Confirmation"
 
     return {
+        "contractStartDate": contract_start.strftime("%B %d, %Y") if contract_start else "Not Specified",
         "contractEndDate": contract_end.strftime("%B %d, %Y") if contract_end else "Not Specified",
+        "rawStartDate": contract_start.isoformat() if contract_start else None,
+        "rawEndDate": contract_end.isoformat() if contract_end else None,
         "daysUntilExpiration": days_until_expiration,
         "darTasksToday": dar_today,
         "totalDarsLogged": total_dars,
         "renewalIntentStatus": intent_status,
         "pendingPeerReviews": 0,
+        "department": current_user.department.name if current_user.department else "Computer Studies Department",
+        "employeeName": current_user.full_name,
+        "cosCategory": current_user.cos_category or "Administrative",
     }

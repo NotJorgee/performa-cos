@@ -80,6 +80,9 @@ export default function App() {
         employeeIdNumber: storedUser.employeeIdNumber || '',
         jobTitle: storedUser.jobTitle || storedUser.role,
         avatarUrl: storedUser.avatarUrl || null,
+        dateAppointed: storedUser.dateAppointed || null,
+        contractStartDate: storedUser.contractStartDate || null,
+        contractEndDate: storedUser.contractEndDate || null,
       };
     }
     return {
@@ -170,6 +173,9 @@ export default function App() {
             ? 'Department Head'
             : 'HRMO Officer'),
         avatarUrl: userAccount.avatarUrl || null,
+        dateAppointed: userAccount.dateAppointed || null,
+        contractStartDate: userAccount.contractStartDate || null,
+        contractEndDate: userAccount.contractEndDate || null,
       });
       setNotifications(getInitialNotifications(roleStr));
     }

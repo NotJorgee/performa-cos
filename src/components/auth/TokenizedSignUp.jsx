@@ -66,7 +66,7 @@ export default function TokenizedSignUp({
   const [cosStartingDate, setCosStartingDate] = useState(getTodayStr());
   const [cosContractStartDate, setCosContractStartDate] = useState(getTodayStr());
   const [cosDept, setCosDept] = useState('Computer Studies Department');
-  const [cosJobPosition, setCosJobPosition] = useState('Administrative Aide VI');
+  const [cosJobPosition, setCosJobPosition] = useState('');
   const [cosPhone, setCosPhone] = useState('');
   const [cosPassword, setCosPassword] = useState('');
   const [cosConfirm, setCosConfirm] = useState('');
@@ -81,7 +81,7 @@ export default function TokenizedSignUp({
   const [adminStartingDate, setAdminStartingDate] = useState(getTodayStr());
   const [adminRole, setAdminRole] = useState('Department Head'); // 'Department Head' | 'HR Personnel'
   const [adminDept, setAdminDept] = useState('Computer Studies Department');
-  const [adminJobPosition, setAdminJobPosition] = useState('Department Head');
+  const [adminJobPosition, setAdminJobPosition] = useState('');
   const [adminPhone, setAdminPhone] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminConfirm, setAdminConfirm] = useState('');
@@ -133,11 +133,6 @@ export default function TokenizedSignUp({
 
         if (!isCos && data.role) {
           setAdminRole(data.role);
-          if (data.role === 'Department Head') {
-            setAdminJobPosition('Department Head');
-          } else if (data.role === 'HR Personnel') {
-            setAdminJobPosition('HRMO Officer');
-          }
         }
       })
       .catch((err) => {
@@ -260,6 +255,9 @@ export default function TokenizedSignUp({
         jobTitle: user.jobTitle,
         employeeIdNumber: user.employeeIdNumber,
         email: user.email,
+        dateAppointed: user.dateAppointed || startingDate,
+        contractStartDate: user.contractStartDate || contractStartDate,
+        contractEndDate: user.contractEndDate,
         initials: user.fullName
           ? user.fullName
               .replace(/^(Dr\.|Engr\.|Prof\.|Mr\.|Ms\.|Mrs\.|Atty\.|Arch\.)\s*/i, '')
