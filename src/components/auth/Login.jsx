@@ -12,7 +12,6 @@ export default function Login({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [errorMessage, setErrorMessage] = useState(externalErrorMessage);
   const [isLoading, setIsLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -124,11 +123,7 @@ export default function Login({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} id="loginForm" autoComplete="off">
-              {/* Disarm aggressive browser credential prefilling */}
-              <input type="text" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
-              <input type="password" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
-
+            <form onSubmit={handleSubmit} id="loginForm">
               {/* Email Field */}
               <div className="lv2-field">
                 <label htmlFor="loginEmail">Institutional Email</label>
@@ -139,8 +134,7 @@ export default function Login({
                     id="loginEmail"
                     name="email"
                     placeholder="name@evsu.edu.ph"
-                    autoComplete="off"
-                    data-lpignore="true"
+                    autoComplete="username"
                     required
                     value={email}
                     onChange={(e) => {
@@ -164,8 +158,7 @@ export default function Login({
                     id="loginPassword"
                     name="password"
                     placeholder="••••••••••"
-                    autoComplete="new-password"
-                    data-lpignore="true"
+                    autoComplete="current-password"
                     required
                     value={password}
                     onChange={(e) => {
@@ -189,22 +182,14 @@ export default function Login({
               </div>
 
               {/* Options */}
-              <div className="lv2-options">
-                <label className="lv2-remember">
-                  <input
-                    type="checkbox"
-                    name="remember"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                  />
-                  Remember me
-                </label>
+              <div className="lv2-options" style={{ justifyContent: 'flex-end', marginTop: '2px', marginBottom: '22px' }}>
                 <a
                   href="#forgot-password"
                   onClick={(e) => {
                     e.preventDefault();
                     onForgotPassword();
                   }}
+                  style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '13px', fontWeight: 600 }}
                 >
                   Forgot password?
                 </a>
