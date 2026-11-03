@@ -19,9 +19,6 @@ import { api } from '../../services/api';
 
 export const UNIVERSITY_TITLES = [
   'None',
-  'Mr.',
-  'Ms.',
-  'Mrs.',
   'Engr.',
   'Dr.',
   'Prof.',
@@ -92,6 +89,7 @@ export default function TokenizedSignUp({
 
   // UI state
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredUser, setRegisteredUser] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -171,6 +169,17 @@ export default function TokenizedSignUp({
     startingDate: currentStartingDate,
   });
 
+  // Active password values and institutional complexity verification
+  const currentPassword = roleMode === 'cos' ? cosPassword : adminPassword;
+  const currentConfirm = roleMode === 'cos' ? cosConfirm : adminConfirm;
+
+  const hasMinLength = currentPassword.length >= 8;
+  const hasUpper = /[A-Z]/.test(currentPassword);
+  const hasLower = /[a-z]/.test(currentPassword);
+  const hasNumber = /[0-9]/.test(currentPassword);
+  const hasSpecial = /[^A-Za-z0-9]/.test(currentPassword);
+  const isPasswordComplex = hasMinLength && hasUpper && hasLower && hasNumber && hasSpecial;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError(null);
@@ -198,8 +207,10 @@ export default function TokenizedSignUp({
       return;
     }
 
-    if (!agreed) {
-      setFormError('Please confirm the institutional acknowledgement before completing registration.');
+    if (!isPasswordComplex) {
+      setFormError(
+        'Password does not meet institutional requirements. It must have at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special character.'
+      );
       return;
     }
 
@@ -208,8 +219,8 @@ export default function TokenizedSignUp({
       return;
     }
 
-    if (pwd.length < 8) {
-      setFormError('Password must be at least 8 characters long.');
+    if (!agreed) {
+      setFormError('Please confirm the institutional acknowledgement before completing registration.');
       return;
     }
 
@@ -730,30 +741,12 @@ export default function TokenizedSignUp({
                         value={cosPassword}
                         onChange={(e) => setCosPassword(e.target.value)}
                         placeholder="Min. 8 characters"
-                        style={{ paddingLeft: '34px' }}
+                        style={{ paddingLeft: '34px', paddingRight: '36px' }}
                       />
                       <Lock
                         size={15}
                         color="var(--ink-400)"
                         style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
-                      Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        value={cosConfirm}
-                        onChange={(e) => setCosConfirm(e.target.value)}
-                        placeholder="Re-type password"
-                        style={{ paddingLeft: '34px' }}
                       />
                       <button
                         type="button"
@@ -769,12 +762,140 @@ export default function TokenizedSignUp({
                           cursor: 'pointer',
                         }}
                         tabIndex={-1}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
                   </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
+                      Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required
+                        value={cosConfirm}
+                        onChange={(e) => setCosConfirm(e.target.value)}
+                        placeholder="Re-type password"
+                        style={{ paddingLeft: '34px', paddingRight: '36px' }}
+                      />
+                      <Lock
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-500)',
+                          cursor: 'pointer',
+                        }}
+                        tabIndex={-1}
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Real-time Password Complexity Badges */}
+                {cosPassword.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasMinLength ? '#dcfce7' : '#f1f5f9',
+                        color: hasMinLength ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasMinLength ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasMinLength ? '✓' : '•'} 8+ Characters
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasUpper ? '#dcfce7' : '#f1f5f9',
+                        color: hasUpper ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasUpper ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasUpper ? '✓' : '•'} Uppercase (A-Z)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasLower ? '#dcfce7' : '#f1f5f9',
+                        color: hasLower ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasLower ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasLower ? '✓' : '•'} Lowercase (a-z)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasNumber ? '#dcfce7' : '#f1f5f9',
+                        color: hasNumber ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasNumber ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasNumber ? '✓' : '•'} Number (0-9)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasSpecial ? '#dcfce7' : '#f1f5f9',
+                        color: hasSpecial ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasSpecial ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasSpecial ? '✓' : '•'} Symbol (!@#$)
+                    </span>
+                  </div>
+                )}
 
                 {/* Agreement Checkbox */}
                 <label
@@ -1054,30 +1175,12 @@ export default function TokenizedSignUp({
                         value={adminPassword}
                         onChange={(e) => setAdminPassword(e.target.value)}
                         placeholder="Min. 8 characters"
-                        style={{ paddingLeft: '34px' }}
+                        style={{ paddingLeft: '34px', paddingRight: '36px' }}
                       />
                       <Lock
                         size={15}
                         color="var(--ink-400)"
                         style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
-                      Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        value={adminConfirm}
-                        onChange={(e) => setAdminConfirm(e.target.value)}
-                        placeholder="Re-type password"
-                        style={{ paddingLeft: '34px' }}
                       />
                       <button
                         type="button"
@@ -1093,12 +1196,140 @@ export default function TokenizedSignUp({
                           cursor: 'pointer',
                         }}
                         tabIndex={-1}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
                   </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
+                      Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required
+                        value={adminConfirm}
+                        onChange={(e) => setAdminConfirm(e.target.value)}
+                        placeholder="Re-type password"
+                        style={{ paddingLeft: '34px', paddingRight: '36px' }}
+                      />
+                      <Lock
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-500)',
+                          cursor: 'pointer',
+                        }}
+                        tabIndex={-1}
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Real-time Password Complexity Badges */}
+                {adminPassword.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasMinLength ? '#dcfce7' : '#f1f5f9',
+                        color: hasMinLength ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasMinLength ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasMinLength ? '✓' : '•'} 8+ Characters
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasUpper ? '#dcfce7' : '#f1f5f9',
+                        color: hasUpper ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasUpper ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasUpper ? '✓' : '•'} Uppercase (A-Z)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasLower ? '#dcfce7' : '#f1f5f9',
+                        color: hasLower ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasLower ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasLower ? '✓' : '•'} Lowercase (a-z)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasNumber ? '#dcfce7' : '#f1f5f9',
+                        color: hasNumber ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasNumber ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasNumber ? '✓' : '•'} Number (0-9)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: hasSpecial ? '#dcfce7' : '#f1f5f9',
+                        color: hasSpecial ? '#15803d' : '#64748b',
+                        border: `1px solid ${hasSpecial ? '#86efac' : '#e2e8f0'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}
+                    >
+                      {hasSpecial ? '✓' : '•'} Symbol (!@#$)
+                    </span>
+                  </div>
+                )}
 
                 {/* Admin Confidentiality Agreement */}
                 <label

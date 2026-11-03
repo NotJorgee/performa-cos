@@ -101,7 +101,19 @@ def register(
     if db.query(models.UserAccount).filter(models.UserAccount.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email is already registered.")
 
-    # 3. Determine role and department strictly bound to HR invite
+    # 3. Institutional password complexity validation
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
+    if not re.search(r'[A-Z]', payload.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter (A-Z).")
+    if not re.search(r'[a-z]', payload.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter (a-z).")
+    if not re.search(r'[0-9]', payload.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one number (0-9).")
+    if not re.search(r'[^A-Za-z0-9]', payload.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one special symbol.")
+
+    # 4. Determine role and department strictly bound to HR invite
     role = invite.role or payload.role or "COS Employee"
     dept_id = invite.department_id or payload.department_id
 
