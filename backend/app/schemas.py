@@ -237,6 +237,18 @@ class RenewalApplicationCreate(BaseModel):
     mar_narrative: Optional[str] = None
 
 
+class RenewalEndorsementSubmit(BaseModel):
+    status: str  # 'Recommended' | 'Not Recommended'
+    notes: Optional[str] = None
+    category: Optional[str] = None
+    justification: Optional[str] = None
+
+
+class RenewalFinalizeSubmit(BaseModel):
+    decision: str  # 'Yes' | 'No'
+    remarks: Optional[str] = None
+
+
 class RenewalApplicationOut(BaseModel):
     id: int
     employee_id: int

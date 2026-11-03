@@ -124,3 +124,136 @@ def send_welcome_email(to: str, name: str, role: str) -> bool:
     </div>
     """
     return _dispatch_smtp(to=to, subject="Welcome to PerformaCOS", html=html)
+
+
+def send_renewal_intent_submitted_email(to: str, emp_name: str, dept_name: str, period: str) -> bool:
+    """Dispatches notice to Department Head when a subordinate files renewal intent."""
+    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <h3 style="color:#0f172a;margin:0 0 12px;font-size:16px;font-weight:700;">Subordinate Renewal Intent Filed</h3>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Greetings Department Head,
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        COS Personnel <strong>{emp_name}</strong> from <strong>{dept_name}</strong> has submitted their formal Contract Renewal Intent for the period of <strong>{period}</strong>.
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Their accumulated Daily Accomplishment Reports (DAR) and Monthly Accomplishment Report (MAR) are now ready for supervisory review and endorsement.
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{portal_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;font-size:14px;">Review Intent in Portal</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject=f"PerformaCOS — Subordinate Renewal Intent: {emp_name}", html=html)
+
+
+def send_endorsement_decision_email(to: str, emp_name: str, dept_name: str, status: str, notes_or_grounds: str, dept_head_name: str) -> bool:
+    """Dispatches supervisory endorsement notice to HR Personnel."""
+    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    is_recommended = "Recommend" in status and "Not" not in status
+    status_color = "#15803d" if is_recommended else "#b91c1c"
+    status_bg = "#f0fdf4" if is_recommended else "#fef2f2"
+    status_border = "#bbf7d0" if is_recommended else "#fecaca"
+    status_label = "RECOMMENDED FOR RENEWAL" if is_recommended else "NOT RECOMMENDED FOR RENEWAL"
+
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <h3 style="color:#0f172a;margin:0 0 12px;font-size:16px;font-weight:700;">Supervisory Renewal Endorsement Filed</h3>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Greetings HRMO Team,
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Department Head <strong>{dept_head_name}</strong> has submitted a formal renewal endorsement review for <strong>{emp_name}</strong> ({dept_name}).
+      </p>
+      <div style="background:{status_bg};border:1px solid {status_border};border-radius:8px;padding:14px;text-align:center;margin:18px 0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Supervisor Recommendation</div>
+        <b style="font-size:14px;color:{status_color};">{status_label}</b>
+      </div>
+      {f'<p style="font-size:13px;line-height:1.5;color:#475569;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;"><strong>Notes / Grounds:</strong> {notes_or_grounds}</p>' if notes_or_grounds else ''}
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{portal_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;font-size:14px;">Open HR Evaluation Portal</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject=f"PerformaCOS — Renewal Endorsement: {emp_name} ({status})", html=html)
+
+
+def send_contract_resolution_email(to: str, emp_name: str, decision: str, remarks: str, period: str) -> bool:
+    """Dispatches final contract resolution decision from HR to Employee or Department Head."""
+    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    is_approved = "Yes" in decision or "Renew" in decision or "Approve" in decision
+    decision_color = "#15803d" if is_approved else "#b91c1c"
+    decision_bg = "#f0fdf4" if is_approved else "#fef2f2"
+    decision_border = "#bbf7d0" if is_approved else "#fecaca"
+    decision_title = "CONTRACT RENEWED" if is_approved else "NON-RENEWAL FINALIZED"
+
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <h3 style="color:#0f172a;margin:0 0 12px;font-size:16px;font-weight:700;">Official Contract Disposition Notice</h3>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Dear <strong>{emp_name}</strong>,
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        The Human Resource Management Office (HRMO) has officially finalized the institutional disposition for your Contract of Service covering the term <strong>{period}</strong>.
+      </p>
+      <div style="background:{decision_bg};border:1px solid {decision_border};border-radius:8px;padding:14px;text-align:center;margin:18px 0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Final Determination</div>
+        <b style="font-size:15px;color:{decision_color};">{decision_title}</b>
+      </div>
+      {f'<p style="font-size:13px;line-height:1.5;color:#475569;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;"><strong>Official Remarks:</strong> {remarks}</p>' if remarks else ''}
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{portal_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;font-size:14px;">Sign in to PerformaCOS</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · Human Resource Management Office</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject=f"PerformaCOS Notice — Official Contract Disposition: {decision_title}", html=html)
+
+
+def send_contract_window_alert_email(to: str, emp_name: str, days_left: int, end_date: str) -> bool:
+    """Dispatches proactive contract expiration and renewal intent window reminder to employee."""
+    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    urgency_subject = "Action Required" if days_left <= 14 else "Notice"
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <h3 style="color:#0f172a;margin:0 0 12px;font-size:16px;font-weight:700;">Contract Renewal Window Open</h3>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Dear <strong>{emp_name}</strong>,
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        Your current Contract of Service term is concluding on <strong>{end_date}</strong> (<strong>{days_left} days remaining</strong>).
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        In accordance with institutional guidelines, please log in to the PerformaCOS portal to formally confirm or decline your contract renewal intent for the upcoming term.
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{portal_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;font-size:14px;">Submit Renewal Declaration</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject=f"PerformaCOS {urgency_subject} — Contract Renewal Window Open ({days_left} Days Remaining)", html=html)

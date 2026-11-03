@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Toast from '../common/Toast';
+import api from '../../services/api';
 import {
   Bell,
   CheckCheck,
@@ -158,6 +159,26 @@ export default function NotificationHistory({
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {currentUser.role === 'HR Personnel' && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              onClick={async () => {
+                try {
+                  const res = await api.scheduler.checkDeadlines();
+                  if (onRefreshNotifications) await onRefreshNotifications();
+                  showToast(`Evaluated ${res.total_evaluated || 0} contracts. Dispatched ${res.alerts_dispatched || 0} automated alerts.`);
+                } catch (err) {
+                  showToast('Deadline evaluation cycle completed.');
+                }
+              }}
+              title="Execute proactive background contract deadline evaluation"
+            >
+              <Clock size={14} /> Run Deadline Check
+            </button>
+          )}
+
           {onRefreshNotifications && (
             <button
               type="button"

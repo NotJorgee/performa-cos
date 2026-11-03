@@ -1,5 +1,6 @@
+import asyncio
 import datetime
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
@@ -9,6 +10,12 @@ from .database import get_db, engine, Base
 from . import models, schemas
 from .auth import get_current_user
 from .storage_service import ensure_buckets_exist
+from .email_service import (
+    send_renewal_intent_submitted_email,
+    send_endorsement_decision_email,
+    send_contract_resolution_email,
+)
+from .scheduler import evaluate_contract_deadlines, start_deadline_scheduler
 
 # Routers
 from .routers.auth import router as auth_router
@@ -60,6 +67,10 @@ async def startup_event():
         ensure_buckets_exist()
     except Exception as e:
         print(f"[startup] Storage bucket check failed: {e}")
+    try:
+        asyncio.create_task(start_deadline_scheduler())
+    except Exception as e:
+        print(f"[startup] Failed to launch deadline scheduler: {e}")
 
 
 @app.get("/")
@@ -321,6 +332,7 @@ def list_renewals(
 @app.post("/api/renewals", response_model=schemas.RenewalApplicationOut, status_code=status.HTTP_201_CREATED)
 def submit_renewal(
     payload: schemas.RenewalApplicationCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
@@ -480,4 +492,251 @@ def submit_renewal(
         user=current_user,
     )
 
+    # 6. Automatic SMTP Email to Department Head
+    if dept_head and dept_head.email:
+        background_tasks.add_task(
+            send_renewal_intent_submitted_email,
+            dept_head.email,
+            current_user.full_name,
+            dept_name,
+            payload.period,
+        )
+
     return renewal
+
+
+@app.post("/api/renewals/{renewal_id}/endorse")
+def endorse_renewal(
+    renewal_id: int,
+    payload: schemas.RenewalEndorsementSubmit,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Department Head submits endorsement review for subordinate renewal intent.
+    Automatically generates in-app notifications and dispatches official email to HR Personnel.
+    """
+    if current_user.role not in ["Department Head", "HR Personnel"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Department Heads or HR Personnel can submit renewal endorsements.",
+        )
+
+    renewal = db.query(models.RenewalApplication).filter(models.RenewalApplication.id == renewal_id).first()
+    if not renewal:
+        raise HTTPException(status_code=404, detail="Renewal application not found.")
+
+    emp = db.query(models.UserAccount).filter(models.UserAccount.id == renewal.employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    is_rec = payload.status == "Recommended"
+    renewal.department_head_endorsement = "Endorsed" if is_rec else "Disapproved"
+    renewal.status = "Pending HRMO" if is_rec else "Pending HR Mediation"
+
+    notes_or_grounds = payload.notes if is_rec else f"Grounds: {payload.category or 'Performance'}. Justification: {payload.justification or 'None provided'}"
+    if renewal.mar_narrative:
+        renewal.mar_narrative += f"\n[Dept Head Endorsement]: {payload.status}. {notes_or_grounds}"
+    else:
+        renewal.mar_narrative = f"[Dept Head Endorsement]: {payload.status}. {notes_or_grounds}"
+
+    now = datetime.datetime.utcnow()
+    dept_name = emp.department.name if emp.department else "Department"
+
+    # In-App Notification for HR Personnel
+    hr_title = f"Renewal Endorsement: {emp.full_name} ({payload.status})"
+    hr_msg = f"Department Head {current_user.full_name} ({dept_name}) has filed a renewal endorsement for {emp.full_name}: {payload.status}. {notes_or_grounds}"
+    db.add(
+        models.Notification(
+            target_role="HR Personnel",
+            title=hr_title,
+            message=hr_msg,
+            category="contract",
+            is_read=False,
+            action_view="evaluation_management",
+            created_at=now,
+        )
+    )
+
+    # In-App Notification for Employee
+    emp_title = "Renewal Endorsement Update"
+    emp_msg = f"Your Department Head has reviewed your contract renewal application: {payload.status}. It has been forwarded to HRMO."
+    db.add(
+        models.Notification(
+            user_id=emp.id,
+            title=emp_title,
+            message=emp_msg,
+            category="contract",
+            is_read=False,
+            action_view="contract_status",
+            created_at=now,
+        )
+    )
+
+    db.commit()
+    db.refresh(renewal)
+
+    # Dispatches email to all active HR Personnel
+    hr_users = db.query(models.UserAccount).filter(
+        models.UserAccount.role == "HR Personnel",
+        models.UserAccount.is_archived == False,
+    ).all()
+
+    for h in hr_users:
+        if h.email:
+            background_tasks.add_task(
+                send_endorsement_decision_email,
+                h.email,
+                emp.full_name,
+                dept_name,
+                payload.status,
+                notes_or_grounds,
+                current_user.full_name,
+            )
+
+    log_audit(
+        db=db,
+        action="RENEWAL_ENDORSEMENT_FILED",
+        target_scope=f"Renewal #{renewal.id} ({emp.full_name})",
+        operation_details=f"Department Head {current_user.full_name} endorsed renewal: {payload.status}. {notes_or_grounds}",
+        user=current_user,
+    )
+
+    return {
+        "message": f"Renewal endorsement filed as {payload.status}",
+        "renewal_id": renewal.id,
+        "status": renewal.status,
+        "department_head_endorsement": renewal.department_head_endorsement,
+    }
+
+
+@app.post("/api/renewals/{renewal_id}/finalize-contract")
+def finalize_contract_renewal(
+    renewal_id: int,
+    payload: schemas.RenewalFinalizeSubmit,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    HR Personnel finalizes contract renewal disposition (Renewed / Non-Renewal).
+    Dispatches in-app notifications and official resolution emails to Employee and Dept Head.
+    """
+    if current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only HR Personnel can finalize contract renewal determinations.",
+        )
+
+    renewal = db.query(models.RenewalApplication).filter(models.RenewalApplication.id == renewal_id).first()
+    if not renewal:
+        raise HTTPException(status_code=404, detail="Renewal application not found.")
+
+    emp = db.query(models.UserAccount).filter(models.UserAccount.id == renewal.employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    is_renewed = payload.decision == "Yes"
+    renewal.hrmo_approval = "Approved" if is_renewed else "Declined"
+    renewal.status = "Approved" if is_renewed else "Declined"
+
+    now = datetime.datetime.utcnow()
+    decision_label = "RENEWED (6-Month Term Extension)" if is_renewed else "DO NOT RENEW (Contract Conclusion)"
+    remarks = payload.remarks or ("Approved for standard 6-month contract renewal." if is_renewed else "Non-renewal finalized.")
+
+    # In-App Notification for Employee
+    db.add(
+        models.Notification(
+            user_id=emp.id,
+            title="Official Contract Resolution Finalized",
+            message=f"HRMO has finalized your contract disposition: {decision_label}. Remarks: {remarks}",
+            category="contract",
+            is_read=False,
+            action_view="contract_status",
+            created_at=now,
+        )
+    )
+
+    # In-App Notification for Department Head
+    dept_head = (
+        db.query(models.UserAccount)
+        .filter(
+            models.UserAccount.role == "Department Head",
+            models.UserAccount.department_id == emp.department_id,
+            models.UserAccount.is_archived == False,
+        )
+        .first()
+    )
+    if dept_head:
+        db.add(
+            models.Notification(
+                user_id=dept_head.id,
+                title=f"Contract Resolution: {emp.full_name}",
+                message=f"Official determination finalized for {emp.full_name}: {decision_label}. Remarks: {remarks}",
+                category="contract",
+                is_read=False,
+                action_view="department_records",
+                created_at=now,
+            )
+        )
+
+    db.commit()
+    db.refresh(renewal)
+
+    # Dispatches email to Employee
+    if emp.email:
+        background_tasks.add_task(
+            send_contract_resolution_email,
+            emp.email,
+            emp.full_name,
+            payload.decision,
+            remarks,
+            renewal.period,
+        )
+
+    # Dispatches email to Department Head
+    if dept_head and dept_head.email:
+        background_tasks.add_task(
+            send_contract_resolution_email,
+            dept_head.email,
+            f"{emp.full_name} ({dept_head.department.name if dept_head.department else 'Dept'})",
+            payload.decision,
+            remarks,
+            renewal.period,
+        )
+
+    log_audit(
+        db=db,
+        action="CONTRACT_DISPOSITION_FINALIZED",
+        target_scope=f"User #{emp.id} ({emp.full_name})",
+        operation_details=f"HRMO finalized contract disposition as {decision_label}. Remarks: {remarks}",
+        user=current_user,
+    )
+
+    return {
+        "message": f"Contract disposition finalized as {decision_label}",
+        "renewal_id": renewal.id,
+        "hrmo_approval": renewal.hrmo_approval,
+        "status": renewal.status,
+    }
+
+
+@app.post("/api/scheduler/check-deadlines")
+def trigger_deadline_check(
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Manually triggers the automated contract expiration & renewal window evaluation.
+    Evaluates all active COS Employee contracts and dispatches due alerts.
+    """
+    result = evaluate_contract_deadlines(db)
+    log_audit(
+        db=db,
+        action="DEADLINE_EVALUATION_TRIGGERED",
+        target_scope="System Scheduler",
+        operation_details=f"Evaluated {result['total_evaluated']} contracts. Dispatched {result['alerts_dispatched']} deadline alerts.",
+        user=current_user,
+    )
+    return result

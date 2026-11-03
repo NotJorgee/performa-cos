@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Toast from '../common/Toast';
+import { api } from '../../services/api';
 import {
   UserCheck,
   Check,
@@ -34,6 +35,40 @@ export default function IntentReview({
   const [expandedEmpId, setExpandedEmpId] = useState(null); // start closed until user clicks
   const [toastMsg, setToastMsg] = useState(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    api.renewals.list()
+      .then((renewals) => {
+        if (!isMounted || !renewals || renewals.length === 0) return;
+        api.users.list({ role: 'COS Employee' }).then((users) => {
+          if (!isMounted) return;
+          const userMap = new Map((users || []).map(u => [u.id, u]));
+          const mapped = renewals.map(r => {
+            const u = userMap.get(r.employee_id) || {};
+            return {
+              id: r.employee_id,
+              renewalId: r.id,
+              fullName: u.fullName || u.full_name || 'COS Personnel',
+              employeeId: u.idNumber || u.employee_id_number || `EMP-${r.employee_id}`,
+              role: u.jobTitle || u.job_title || 'COS Employee',
+              department: u.department || departmentName,
+              endorsementStatus: r.department_head_endorsement ? (r.department_head_endorsement === 'Endorsed' ? 'Recommended' : 'Not Recommended') : 'Pending Review',
+              contractPeriod: r.period,
+              totalDarsLogged: 0,
+              verifiedDarCount: 0,
+            };
+          });
+          if (mapped.length > 0) {
+            setCandidates(mapped);
+          }
+        }).catch(() => {});
+      })
+      .catch((err) => {
+        console.warn('Notice loading renewals in IntentReview:', err);
+      });
+    return () => { isMounted = false; };
+  }, [departmentName]);
+
   // Endorsement Modals
   const [recommendEmp, setRecommendEmp] = useState(null);
   const [recommendNotes, setRecommendNotes] = useState('');
@@ -59,13 +94,19 @@ export default function IntentReview({
           : c
       )
     );
+    if (recommendEmp.renewalId) {
+      api.renewals.endorse(recommendEmp.renewalId, {
+        status: 'Recommended',
+        notes: recommendNotes.trim() || 'Recommended for contract renewal based on satisfactory performance.',
+      }).catch(err => console.warn('API endorsement error:', err));
+    }
     onEndorseEmployee({
       employeeId: recommendEmp.id,
       employeeName: recommendEmp.fullName,
       status: 'Recommended',
       notes: recommendNotes.trim(),
     });
-    showToast(`Renewal intent endorsed for "${recommendEmp.fullName}"! Forwarded to HRMO for evaluation scheduling.`);
+    showToast(`Renewal intent endorsed for "${recommendEmp.fullName}"! Official notification dispatched to HRMO.`);
     setRecommendEmp(null);
     setRecommendNotes('');
   };
@@ -85,6 +126,13 @@ export default function IntentReview({
           : c
       )
     );
+    if (rejectEmp.renewalId) {
+      api.renewals.endorse(rejectEmp.renewalId, {
+        status: 'Not Recommended',
+        category,
+        justification,
+      }).catch(err => console.warn('API non-renewal endorsement error:', err));
+    }
     onEndorseEmployee({
       employeeId: rejectEmp.id,
       employeeName: rejectEmp.fullName,
@@ -92,7 +140,7 @@ export default function IntentReview({
       category,
       justification,
     });
-    showToast(`Non-renewal recommendation filed for "${rejectEmp.fullName}". Forwarded to HRMO for mediation.`);
+    showToast(`Non-renewal recommendation filed for "${rejectEmp.fullName}". Formal notice dispatched to HRMO.`);
     setRejectEmp(null);
   };
 

@@ -261,6 +261,24 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    endorse: (id, data) =>
+      request(`/renewals/${id}/endorse`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    finalizeContract: (id, data) =>
+      request(`/renewals/${id}/finalize-contract`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Automated Deadline Scheduler (Phase 5)
+  scheduler: {
+    checkDeadlines: () =>
+      request('/scheduler/check-deadlines', {
+        method: 'POST',
+      }),
   },
 
   // Audit Logs & Security Trail (Phase 4)

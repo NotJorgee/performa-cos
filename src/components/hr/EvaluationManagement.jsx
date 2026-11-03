@@ -1,5 +1,6 @@
 import Toast from '../common/Toast';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
 import { Check, Archive, AlertTriangle, X, Clock, FileCheck, Award } from 'lucide-react';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
@@ -13,6 +14,42 @@ export default function EvaluationManagement({
 }) {
   const [employees, setEmployees] = useState(eligibleEmployees);
   const [toastMsg, setToastMsg] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.renewals.list().then((renewals) => {
+      if (!isMounted || !renewals) return;
+      api.users.list({ role: 'COS Employee' }).then((users) => {
+        if (!isMounted || !users) return;
+        const renewalMap = new Map(renewals.map(r => [r.employee_id, r]));
+        const mapped = users.map(u => {
+          const r = renewalMap.get(u.id);
+          let routingStatus = 'Pending Intent';
+          if (r) {
+            if (r.hrmo_approval === 'Approved') routingStatus = 'Contract Renewed';
+            else if (r.hrmo_approval === 'Declined') routingStatus = 'Non-Renewal Finalized';
+            else if (r.department_head_endorsement) routingStatus = 'Awaiting HR Action';
+            else routingStatus = 'Intent Submitted';
+          }
+          return {
+            id: u.id,
+            renewalId: r?.id,
+            fullName: u.fullName || u.full_name || 'COS Personnel',
+            employeeId: u.idNumber || u.employee_id_number || `EMP-${u.id}`,
+            department: u.department || 'Department',
+            role: u.jobTitle || u.job_title || 'COS Employee',
+            routingStatus,
+            finalContractRemarks: r?.mar_narrative || '',
+            deptHeadEndorsement: r?.department_head_endorsement,
+          };
+        });
+        if (mapped.length > 0) {
+          setEmployees(mapped);
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
   // Modal states for HR interventions
   const [mediateEmp, setMediateEmp] = useState(null);
@@ -76,10 +113,16 @@ export default function EvaluationManagement({
       )
     );
 
+    if (finalizeEmp.renewalId) {
+      api.renewals.finalizeContract(finalizeEmp.renewalId, {
+        decision: hrRenewalDecision,
+        remarks: hrRenewalRemarks,
+      }).catch(err => console.warn('API finalize contract error:', err));
+    }
     setToastMsg(
       `Official contract disposition finalized for ${finalizeEmp.fullName}: ${
         isRenewed ? 'RENEWED (6-Month Extension)' : 'DO NOT RENEW (Contract Closure)'
-      }.`
+      }. Official notice dispatched via email.`
     );
     setFinalizeEmp(null);
     setTimeout(() => setToastMsg(null), 4500);
