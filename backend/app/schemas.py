@@ -73,6 +73,8 @@ class DepartmentUpdate(BaseModel):
 
 class DepartmentOut(DepartmentBase):
     id: int
+    employee_count: int = 0
+    active_evaluations: int = 0
     created_at: Optional[datetime.datetime] = None
 
     class Config:

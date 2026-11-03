@@ -31,8 +31,8 @@ export default function DepartmentManagement({
             name: d.name,
             college: d.college || 'Academic Services',
             collegeCode: d.college_code || 'EVSU',
-            employeeCount: 0,
-            activeEvaluations: 0,
+            employeeCount: d.employee_count ?? d.employeeCount ?? 0,
+            activeEvaluations: d.active_evaluations ?? d.activeEvaluations ?? 0,
           }));
           const sorted = [...mapped].sort((a, b) => a.name.localeCompare(b.name));
           setDeptList(sorted);
@@ -259,7 +259,14 @@ export default function DepartmentManagement({
                 <td>
                   {d.college} ({d.collegeCode})
                 </td>
-                <td>{d.employeeCount} employees</td>
+                <td>
+                  <span style={{ fontWeight: 700, color: d.employeeCount > 0 ? 'var(--ink-900)' : 'var(--ink-500)' }}>
+                    {d.employeeCount}
+                  </span>{' '}
+                  <span className="muted" style={{ fontSize: '12px' }}>
+                    {d.employeeCount === 1 ? 'personnel' : 'personnel'}
+                  </span>
+                </td>
                 <td>
                   {d.activeEvaluations > 0 ? (
                     <span className="badge badge-inprogress">{d.activeEvaluations} Ongoing</span>

@@ -2,7 +2,7 @@ import datetime
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 
 from .config import settings
 from .database import get_db, engine, Base
@@ -96,8 +96,37 @@ def list_departments(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    """List all official university departments/offices."""
-    return db.query(models.Department).order_by(models.Department.name.asc()).all()
+    """List all official university departments/offices with live employee counts."""
+    departments = db.query(models.Department).order_by(models.Department.name.asc()).all()
+
+    # Pre-aggregate non-archived user counts per department
+    user_counts = dict(
+        db.query(models.UserAccount.department_id, func.count(models.UserAccount.id))
+        .filter(models.UserAccount.is_archived == False)
+        .group_by(models.UserAccount.department_id)
+        .all()
+    )
+
+    # Pre-aggregate active evaluations per department
+    active_eval_counts = dict(
+        db.query(models.UserAccount.department_id, func.count(models.EvaluationRecord.id))
+        .join(models.EvaluationRecord, models.EvaluationRecord.employee_id == models.UserAccount.id)
+        .filter(
+            models.UserAccount.is_archived == False,
+            models.EvaluationRecord.status.notin_(["Completed", "Rejected"]),
+        )
+        .group_by(models.UserAccount.department_id)
+        .all()
+    )
+
+    results = []
+    for d in departments:
+        d_out = schemas.DepartmentOut.model_validate(d)
+        d_out.employee_count = user_counts.get(d.id, 0)
+        d_out.active_evaluations = active_eval_counts.get(d.id, 0)
+        results.append(d_out)
+
+    return results
 
 
 @app.post("/api/departments", response_model=schemas.DepartmentOut, status_code=status.HTTP_201_CREATED)
