@@ -388,6 +388,19 @@ export default function CampusGeofence({
       setPolygonBufferM(0);
       setPolygonCoords(poly);
       setEnforceGeofence(selectedCampus.enforceGeofence !== false);
+
+      // Pan smoothly to the freshly selected campus site
+      if (lastCampusIdRef.current !== selectedCampusId) {
+        lastCampusIdRef.current = selectedCampusId;
+        const map = mapInstanceRef.current;
+        if (map && selectedCampus.latitude && selectedCampus.longitude) {
+          map.flyTo(
+            [parseFloat(selectedCampus.latitude), parseFloat(selectedCampus.longitude)],
+            map.getZoom() || 16,
+            { duration: 0.8 }
+          );
+        }
+      }
     }
   }, [selectedCampusId, campuses]);
 
@@ -472,12 +485,6 @@ export default function CampusGeofence({
     const numRadius = parseFloat(radiusM) || 500;
 
     if (isNaN(numLat) || isNaN(numLng)) return;
-
-    // Only pan if switching to a different campus site entirely; never auto-zoom out during editing
-    if (lastCampusIdRef.current !== selectedCampusId) {
-      lastCampusIdRef.current = selectedCampusId;
-      map.flyTo([numLat, numLng], map.getZoom() || 16, { duration: 0.8 });
-    }
 
     // Clean up previous circle, polygon, and vertex handles
     if (perimeterCircleRef.current) {
