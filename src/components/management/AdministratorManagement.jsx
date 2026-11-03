@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Copy, Shield } from 'lucide-react';
 import { api } from '../../services/api';
+import Toast from '../common/Toast';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
 export default function AdministratorManagement({
@@ -256,11 +257,7 @@ export default function AdministratorManagement({
       </div>
 
       {/* Success Notification */}
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} /> <span>{toastMsg}</span>
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Filter Row with Add Employee on Same Level */}
       <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>

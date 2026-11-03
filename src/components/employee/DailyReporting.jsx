@@ -7,6 +7,7 @@ import {
   DEFAULT_MAIN_POLYGON,
 } from '../../utils/campusGeofence';
 import { api } from '../../services/api';
+import Toast from '../common/Toast';
 
 export default function DailyReporting({
   onBack = null,
@@ -190,12 +191,7 @@ export default function DailyReporting({
         )}
       </div>
 
-      {successToast && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {successToast}
-        </div>
-      )}
+      <Toast message={successToast} onClose={() => setSuccessToast(null)} />
 
       {geoError && (
         <div className="flash flash-danger" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>

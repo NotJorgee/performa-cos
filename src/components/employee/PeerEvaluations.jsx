@@ -1,3 +1,4 @@
+import Toast from '../common/Toast';
 import React, { useState } from 'react';
 import { Check, Lock } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
@@ -46,12 +47,7 @@ export default function PeerEvaluations({
         </div>
       </div>
 
-      {successMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {successMsg}
-        </div>
-      )}
+      <Toast message={successMsg} onClose={() => setSuccessMsg(null)} />
 
       {/* Peer Roster List */}
       {!selectedPeerId && (

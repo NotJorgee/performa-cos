@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Toast from '../common/Toast';
 import {
   UserCheck,
   Check,
@@ -131,11 +132,7 @@ export default function IntentReview({
         </div>
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} /> <span>{toastMsg}</span>
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Pending Candidates List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

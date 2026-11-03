@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Toast from '../common/Toast';
 import {
   Bell,
   CheckCheck,
@@ -199,14 +200,7 @@ export default function NotificationHistory({
         </div>
       </div>
 
-      {toastMsg && (
-        <div
-          className="flash flash-success"
-          style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Check size={16} /> <span>{toastMsg}</span>
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Main Card with Filter Bar & Notification Rows */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { api } from '../../services/api';
+import Toast from '../common/Toast';
 
 export default function BackupData({ onBack = null }) {
   const [toastMsg, setToastMsg] = useState(null);
@@ -144,25 +145,14 @@ export default function BackupData({ onBack = null }) {
         </div>
       </div>
 
-      {toastMsg && (
-        <div
-          className="flash flash-success"
-          style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Check size={16} />
-          {toastMsg}
-        </div>
-      )}
-
-      {errorMsg && (
-        <div
-          className="flash flash-danger"
-          style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <AlertTriangle size={16} />
-          {errorMsg}
-        </div>
-      )}
+      <Toast
+        message={errorMsg || toastMsg}
+        type={errorMsg ? 'error' : 'success'}
+        onClose={() => {
+          setToastMsg(null);
+          setErrorMsg(null);
+        }}
+      />
 
       {/* Live System Data Volume Strip */}
       <div

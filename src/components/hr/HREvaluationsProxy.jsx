@@ -1,3 +1,4 @@
+import Toast from '../common/Toast';
 import React, { useState } from 'react';
 import { Check, Clock } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
@@ -46,12 +47,7 @@ export default function HREvaluationsProxy({
         </div>
       </div>
 
-      {successToast && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {successToast}
-        </div>
-      )}
+      <Toast message={successToast} onClose={() => setSuccessToast(null)} />
 
       {/* VIEW 1: Evaluations Queue Table or Standby State */}
       {!selectedEvalId && (

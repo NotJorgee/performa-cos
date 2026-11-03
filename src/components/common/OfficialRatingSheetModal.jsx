@@ -630,8 +630,9 @@ export default function OfficialRatingSheetModal({
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                   }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
-                    📄 Page {index + 1} of {sheetList.length}: {sheet.evaluatorRole || 'Evaluator'} Rating Sheet
+                  <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <FileText size={14} />
+                    Page {index + 1} of {sheetList.length}: {sheet.evaluatorRole || 'Evaluator'} Rating Sheet
                     {sheet.weightLabel ? ` (${sheet.weightLabel})` : ''}
                   </span>
                   <span className="badge badge-dept" style={{ fontSize: '11.5px', fontWeight: 700 }}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check } from 'lucide-react';
+import Toast from '../common/Toast';
 
 export const formatAuditAction = (action) => {
   switch (action) {
@@ -248,12 +249,7 @@ export default function AuditTrail({
         </div>
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Security Logs Data Table Card with Integrated Header Filters */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

@@ -21,6 +21,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import api from '../../services/api';
+import Toast from '../common/Toast';
 
 export default function ProfileSettings({
   currentUser = {
@@ -314,19 +315,14 @@ export default function ProfileSettings({
         )}
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="flash flash-danger" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <AlertTriangle size={16} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
+      <Toast
+        message={errorMsg || toastMsg}
+        type={errorMsg ? 'error' : 'success'}
+        onClose={() => {
+          setToastMsg(null);
+          setErrorMsg(null);
+        }}
+      />
 
       {/* Universal 4-Tab Navigation */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '22px', flexWrap: 'wrap' }}>

@@ -1,3 +1,4 @@
+import Toast from '../common/Toast';
 import React, { useState } from 'react';
 import { Check, Archive, AlertTriangle, X, Clock, FileCheck, Award } from 'lucide-react';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
@@ -753,12 +754,7 @@ export default function EvaluationManagement({
         )}
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* COS Employees Roster & Routing Control */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

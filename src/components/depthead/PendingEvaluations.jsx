@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
 import MonthlyReport from '../employee/MonthlyReport';
+import Toast from '../common/Toast';
 
 const DEFAULT_SUBMITTED_SCORES = {
   job_knowledge: 10,
@@ -106,12 +107,7 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
         </div>
       )}
 
-      {savedDraftToast && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {savedDraftToast}
-        </div>
-      )}
+      <Toast message={savedDraftToast} onClose={() => setSavedDraftToast(null)} />
 
       {/* VIEW 1: Subordinates Roster List */}
       {!selectedEmpId && (

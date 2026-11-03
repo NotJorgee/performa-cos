@@ -42,6 +42,7 @@ import {
   DEFAULT_LUNA_POLYGON,
 } from '../../utils/campusGeofence';
 import { api } from '../../services/api';
+import Toast from './Toast';
 
 export default function CampusGeofence({
   onSave = () => {},
@@ -91,7 +92,6 @@ export default function CampusGeofence({
   // Table filtering and search
   const [searchQuery, setSearchQuery] = useState('');
   const [campusFilter, setCampusFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
   const [activeLocatePing, setActiveLocatePing] = useState(null);
 
   // New Campus Modal form
@@ -983,19 +983,6 @@ export default function CampusGeofence({
     }
   };
 
-  // Calculate distance between the first two campuses
-  const interCampusDistanceKm =
-    campuses.length >= 2
-      ? (
-          calculateHaversineDistanceMeters(
-            campuses[0].latitude,
-            campuses[0].longitude,
-            campuses[1].latitude,
-            campuses[1].longitude
-          ) / 1000
-        ).toFixed(1)
-      : null;
-
   const coverageAreaKm2 = ((Math.PI * Math.pow(radiusM, 2)) / 1000000).toFixed(3);
 
   // Filter compliance logs
@@ -1003,8 +990,6 @@ export default function CampusGeofence({
     if (campusFilter !== 'All' && !log.campusSite.toLowerCase().includes(campusFilter.toLowerCase())) {
       return false;
     }
-    if (statusFilter === 'Verified' && !log.isValid) return false;
-    if (statusFilter === 'Flagged' && log.isValid) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = log.name.toLowerCase().includes(q);
@@ -1052,20 +1037,7 @@ export default function CampusGeofence({
         </div>
       </div>
 
-      {toastMsg && (
-        <div
-          className="flash flash-success"
-          style={{
-            marginBottom: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <Check size={16} />
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Multi-Campus Zone Selector Strip */}
       <div
@@ -1092,11 +1064,6 @@ export default function CampusGeofence({
             </div>
             <p className="muted" style={{ margin: '2px 0 0', fontSize: '12.5px' }}>
               COS personnel may upload Daily Accomplishment Reports (DAR) when physically present within any active site boundary.
-              {interCampusDistanceKm && (
-                <span style={{ marginLeft: '6px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                  (Main &amp; Luna are ~{interCampusDistanceKm} km apart)
-                </span>
-              )}
             </p>
           </div>
 
@@ -2122,18 +2089,6 @@ export default function CampusGeofence({
               <option value="Luna">Luna Campus</option>
             </select>
 
-            {/* Status filter dropdown */}
-            <select
-              className="form-control"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ fontSize: '12.5px', width: '130px', height: '34px', padding: '4px 8px' }}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Verified">Verified Only</option>
-              <option value="Flagged">Flagged / Out of Bounds</option>
-            </select>
-
             {/* Live refresh button */}
             <button
               type="button"
@@ -2191,14 +2146,13 @@ export default function CampusGeofence({
                 <th>Submission Time</th>
                 <th>GPS Telemetry</th>
                 <th>Proximity to Centroid</th>
-                <th>Validation Status</th>
                 <th style={{ textAlign: 'center' }}>Map Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 20px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 20px', color: '#64748b' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <FileText size={32} color="#94a3b8" />
                       <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--ink-700)' }}>
@@ -2209,7 +2163,7 @@ export default function CampusGeofence({
                       <div style={{ fontSize: '12.5px', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.5 }}>
                         {complianceLogs.length === 0
                           ? 'When COS personnel submit Daily Accomplishment Reports with GPS telemetry, their spatial verification logs will appear here in real time.'
-                          : 'Try clearing your search query or selecting "All Campuses" and "All Statuses".'}
+                          : 'Try clearing your search query or selecting "All Campuses".'}
                       </div>
                     </div>
                   </td>
@@ -2295,23 +2249,6 @@ export default function CampusGeofence({
                       </td>
                       <td style={{ fontSize: '13px', color: 'var(--ink-800)', whiteSpace: 'nowrap' }}>
                         <span style={{ fontWeight: 600 }}>{log.distance}</span>
-                      </td>
-                      <td>
-                        <span
-                          className="badge"
-                          style={{
-                            fontSize: '11.5px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            background: log.isValid ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: log.isValid ? '#15803d' : '#b91c1c',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {log.isValid ? <Check size={12} /> : <AlertTriangle size={12} />}
-                          {log.status}
-                        </span>
                       </td>
                       <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                         {isCurrentLocate ? (

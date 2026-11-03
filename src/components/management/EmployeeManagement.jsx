@@ -3,6 +3,7 @@ import { Settings, Check, Archive, X, UserPlus, RotateCcw, ChevronDown, ChevronU
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import Toast from '../common/Toast';
 
 export default function EmployeeManagement({
   employees = [],
@@ -399,11 +400,7 @@ export default function EmployeeManagement({
         </div>
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} /> <span>{toastMsg}</span>
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Filter Row with Add Employee on Same Level */}
       <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>

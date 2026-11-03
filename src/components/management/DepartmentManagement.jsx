@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Check, AlertTriangle, X, Trash2, Lock } from 'lucide-react';
 import { api } from '../../services/api';
+import Toast from '../common/Toast';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
 const EVSU_DEPT_PRESETS = EVSU_DEPARTMENTS;
@@ -193,11 +194,7 @@ export default function DepartmentManagement({
       </div>
 
       {/* Toast Notification */}
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} /> <span>{toastMsg}</span>
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {deleteError && (
         <div className="flash flash-danger flash-shake" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -1,3 +1,4 @@
+import Toast from '../common/Toast';
 import React, { useState, useEffect } from 'react';
 import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../services/api';
@@ -172,12 +173,7 @@ export default function ContractStatus({
         )}
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Check size={16} />
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Contract Lifecycle Overview Card */}
       <div className="card" style={{ marginBottom: '20px' }}>

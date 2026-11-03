@@ -19,6 +19,7 @@ import {
 import MonthlyReport from '../employee/MonthlyReport';
 import DynamicRubric from '../common/DynamicRubric';
 import OfficialRatingSheetModal from '../common/OfficialRatingSheetModal';
+import Toast from '../common/Toast';
 import {
   getComparativeTrajectory,
   getTriadComparativeDeltas,
@@ -898,11 +899,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
           </div>
         </div>
 
-        {toastMsg && (
-          <div className="flash flash-success" style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Check size={16} /> <span>{toastMsg}</span>
-          </div>
-        )}
+        <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
         {/* Subordinate Information & Triad Summary Banner */}
         <div className="card" style={{ marginBottom: '20px', padding: '18px 22px' }}>
@@ -1477,11 +1474,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
         </button>
       </div>
 
-      {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '18px' }}>
-          {toastMsg}
-        </div>
-      )}
+      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
       {/* Employee Header Overview Card */}
       <div className="card" style={{ marginBottom: '22px', padding: '22px 24px' }}>
