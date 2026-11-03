@@ -350,33 +350,61 @@ export default function CampusGeofence({
           <div style="
             background: ${isCurrent ? '#800000' : '#1e293b'};
             color: #ffffff;
-            padding: 5px 12px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-size: 11.5px;
             font-weight: 700;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.45);
             border: 2px solid ${isCurrent ? '#fbbf24' : '#cbd5e1'};
             display: flex;
             align-items: center;
             gap: 6px;
             white-space: nowrap;
             transform: translate(-50%, -100%);
-            cursor: pointer;
+            cursor: ${isCurrent ? 'grab' : 'pointer'};
+            user-select: none;
           ">
             <span>🏛️</span>
             <span>${camp.shortName || camp.name}</span>
+            ${isCurrent ? '<span style="font-size: 10px; background: rgba(251, 191, 36, 0.25); color: #fef08a; padding: 1px 5px; border-radius: 10px;">Drag</span>' : ''}
           </div>
         `,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
 
-      const marker = L.marker([cLat, cLng], { icon: pinIcon }).addTo(map);
-      marker.on('click', () => {
-        if (!isCurrent) {
+      const marker = L.marker([cLat, cLng], {
+        icon: pinIcon,
+        draggable: isCurrent,
+        autoPan: true,
+      }).addTo(map);
+
+      if (isCurrent) {
+        marker.bindTooltip('✋ Drag pin to reposition campus center', {
+          permanent: false,
+          direction: 'top',
+          offset: [0, -32],
+        });
+
+        marker.on('drag', (e) => {
+          const newPos = e.target.getLatLng();
+          if (perimeterCircleRef.current) {
+            perimeterCircleRef.current.setLatLng(newPos);
+          }
+        });
+
+        marker.on('dragend', (e) => {
+          const newPos = e.target.getLatLng();
+          const latVal = parseFloat(newPos.lat.toFixed(6));
+          const lngVal = parseFloat(newPos.lng.toFixed(6));
+          setLatitude(latVal);
+          setLongitude(lngVal);
+        });
+      } else {
+        marker.on('click', () => {
           setSelectedCampusId(camp.id);
-        }
-      });
+        });
+      }
 
       campusMarkersRef.current.push(marker);
     });
@@ -1058,7 +1086,7 @@ export default function CampusGeofence({
                 )}
               </span>
               <span className="muted" style={{ fontSize: '11px' }}>
-                (Click map to reposition center)
+                (💡 Drag the campus pin or click map to reposition center)
               </span>
             </div>
           </div>
