@@ -1020,6 +1020,7 @@ textarea.form-control { resize: vertical; min-height: 90px; }
   width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
   box-shadow: 0 20px 60px rgba(16, 25, 43, .3); transform: translateY(10px);
   transition: transform .15s ease;
+  color: var(--ink-900, #0f172a);
 }
 .modal-overlay.open .modal-card,
 .modal-backdrop .modal-card { transform: translateY(0); }

@@ -1406,7 +1406,7 @@ export default function TokenizedSignUp({
       {/* SUCCESS CONFIRMATION MODAL */}
       {registeredUser && (
         <div className="modal-overlay open" style={{ zIndex: 9999 }}>
-          <div className="modal-card" style={{ maxWidth: '440px', textAlign: 'center', padding: '28px' }}>
+          <div className="modal-card" style={{ maxWidth: '440px', textAlign: 'center', padding: '28px', color: '#0f172a', background: '#ffffff' }}>
             <div
               style={{
                 width: '64px',
@@ -1424,42 +1424,57 @@ export default function TokenizedSignUp({
               <Check size={36} strokeWidth={2.8} />
             </div>
 
-            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--ink-900)' }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
               Account Successfully Activated!
             </h2>
-            <p className="muted" style={{ margin: '0 0 18px', fontSize: '13px' }}>
+            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#475569' }}>
               Your official EVSU user profile is now registered and active in the PerformaCOS system.
             </p>
 
             {/* Profile Overview Card */}
             <div
               style={{
-                background: '#fafbfc',
-                border: '1px solid var(--line)',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
                 borderRadius: '10px',
-                padding: '14px',
+                padding: '16px',
                 textAlign: 'left',
                 marginBottom: '20px',
                 fontSize: '13px',
+                color: '#0f172a',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="muted">Assigned ID:</span>
-                <strong style={{ color: 'var(--brand-700)', fontFamily: 'monospace' }}>{registeredUser.employeeIdNumber}</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>Assigned ID:</span>
+                <strong style={{ color: 'var(--brand-700, #7a1128)', fontFamily: 'monospace', fontSize: '13.5px', letterSpacing: '0.5px' }}>
+                  {registeredUser.employeeIdNumber}
+                </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="muted">Full Name:</span>
-                <strong>{registeredUser.fullName}</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>Full Name:</span>
+                <strong style={{ color: '#0f172a', fontWeight: 700 }}>{registeredUser.fullName}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="muted">System Role:</span>
-                <span className="badge badge-dept" style={{ fontWeight: 700 }}>
-                  {registeredUser.roleLabel}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>System Role:</span>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    background: registeredUser.role === 'COS Employee' ? '#dcfce7' : '#fee2e2',
+                    color: registeredUser.role === 'COS Employee' ? '#166534' : '#991b1b',
+                    border: `1px solid ${registeredUser.role === 'COS Employee' ? '#bbf7d0' : '#fecaca'}`,
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {registeredUser.roleLabel || registeredUser.role}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="muted">Department:</span>
-                <span style={{ fontWeight: 600 }}>{registeredUser.department}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>Department:</span>
+                <strong style={{ color: '#0f172a', fontWeight: 600 }}>{registeredUser.department}</strong>
               </div>
             </div>
 

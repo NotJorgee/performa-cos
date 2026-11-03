@@ -22,17 +22,18 @@ export default function ReportGenerator({
 
   useEffect(() => {
     if (propEmployees && propEmployees.length > 0) {
-      setEmployees(propEmployees);
+      setEmployees(propEmployees.filter((u) => !u.role || u.role === 'COS Employee'));
       return;
     }
     let isMounted = true;
     setIsLoading(true);
     api.users
-      .list()
+      .list({ role: 'COS Employee' })
       .then((users) => {
         if (!isMounted) return;
         if (Array.isArray(users)) {
-          const mapped = users.map((u) => ({
+          const cosUsers = users.filter((u) => u.role === 'COS Employee');
+          const mapped = cosUsers.map((u) => ({
             id: u.id,
             idNumber: u.employee_id_number || 'N/A',
             fullName: u.full_name,
@@ -323,10 +324,10 @@ export default function ReportGenerator({
                 )}
                 <td>
                   <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
-                    {emp.totalContracts || 1}
+                    {emp.totalContracts ?? 0}
                   </span>
                   <span className="muted" style={{ fontSize: '11.5px', marginLeft: '4px' }}>
-                    {(emp.totalContracts || 1) === 1 ? 'Cycle' : 'Cycles'}
+                    {(emp.totalContracts ?? 0) === 1 ? 'Cycle' : 'Cycles'}
                   </span>
                 </td>
                 <td>
@@ -485,10 +486,10 @@ export default function ReportGenerator({
                     )}
                     <td>
                       <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
-                        {emp.totalContracts || 1}
+                        {emp.totalContracts ?? 0}
                       </span>
                       <span className="muted" style={{ fontSize: '11.5px', marginLeft: '4px' }}>
-                        {(emp.totalContracts || 1) === 1 ? 'Cycle' : 'Cycles'}
+                        {(emp.totalContracts ?? 0) === 1 ? 'Cycle' : 'Cycles'}
                       </span>
                     </td>
                     <td>
