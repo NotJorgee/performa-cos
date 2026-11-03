@@ -5,27 +5,41 @@ import {
   Check,
   Eye,
   EyeOff,
-  ArrowLeft,
   Mail,
   AlertCircle,
   Building,
   Briefcase,
   Phone,
   Lock,
+  Calendar,
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
-const DEPARTMENTS = EVSU_DEPARTMENTS;
+export const UNIVERSITY_TITLES = [
+  'None',
+  'Mr.',
+  'Ms.',
+  'Mrs.',
+  'Engr.',
+  'Dr.',
+  'Prof.',
+  'Assoc. Prof.',
+  'Asst. Prof.',
+  'Instr.',
+  'Atty.',
+  'Arch.',
+];
+
+const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 export default function TokenizedSignUp({
   initialToken = '',
   onBackToLogin = () => {},
   onLoginAsNewUser = () => {},
 }) {
-  // Extract token candidate from prop or URL
+  // Extract token candidate from prop or URL (?token=... or ?invite=...)
   const resolvedInitialToken = (() => {
     if (initialToken) return initialToken;
     if (typeof window !== 'undefined') {
@@ -48,9 +62,14 @@ export default function TokenizedSignUp({
 
   // Form State - COS Employee
   const [cosEmail, setCosEmail] = useState('');
-  const [cosName, setCosName] = useState('');
+  const [cosTitlePrefix, setCosTitlePrefix] = useState('None');
+  const [cosFirstName, setCosFirstName] = useState('');
+  const [cosMiddleInitial, setCosMiddleInitial] = useState('');
+  const [cosLastName, setCosLastName] = useState('');
+  const [cosStartingDate, setCosStartingDate] = useState(getTodayStr());
+  const [cosContractStartDate, setCosContractStartDate] = useState(getTodayStr());
   const [cosDept, setCosDept] = useState('Computer Studies Department');
-  const [cosTitle, setCosTitle] = useState('Administrative Aide VI (COS)');
+  const [cosJobPosition, setCosJobPosition] = useState('Administrative Aide VI');
   const [cosPhone, setCosPhone] = useState('');
   const [cosPassword, setCosPassword] = useState('');
   const [cosConfirm, setCosConfirm] = useState('');
@@ -58,10 +77,14 @@ export default function TokenizedSignUp({
 
   // Form State - Administrator / Department Head
   const [adminEmail, setAdminEmail] = useState('');
-  const [adminName, setAdminName] = useState('');
+  const [adminTitlePrefix, setAdminTitlePrefix] = useState('None');
+  const [adminFirstName, setAdminFirstName] = useState('');
+  const [adminMiddleInitial, setAdminMiddleInitial] = useState('');
+  const [adminLastName, setAdminLastName] = useState('');
+  const [adminStartingDate, setAdminStartingDate] = useState(getTodayStr());
   const [adminRole, setAdminRole] = useState('Department Head'); // 'Department Head' | 'HR Personnel'
   const [adminDept, setAdminDept] = useState('Computer Studies Department');
-  const [adminTitle, setAdminTitle] = useState('Department Head');
+  const [adminJobPosition, setAdminJobPosition] = useState('Department Head');
   const [adminPhone, setAdminPhone] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminConfirm, setAdminConfirm] = useState('');
@@ -104,7 +127,7 @@ export default function TokenizedSignUp({
           else setAdminEmail(data.email);
         }
 
-        // Pre-select department if invitation was bound to one
+        // Lock assigned department from token
         if (data.department_name) {
           if (isCos) setCosDept(data.department_name);
           else setAdminDept(data.department_name);
@@ -113,7 +136,9 @@ export default function TokenizedSignUp({
         if (!isCos && data.role) {
           setAdminRole(data.role);
           if (data.role === 'Department Head') {
-            setAdminTitle('Department Head');
+            setAdminJobPosition('Department Head');
+          } else if (data.role === 'HR Personnel') {
+            setAdminJobPosition('HRMO Officer');
           }
         }
       })
@@ -133,12 +158,18 @@ export default function TokenizedSignUp({
     };
   }, [tokenInput]);
 
-  // Dynamic preview of employee ID
-  const currentFullName = roleMode === 'cos' ? cosName : adminName;
-  const currentGeneratedId = generateEvsuEmployeeId(
-    currentFullName || (roleMode === 'cos' ? 'COS Staff' : 'Admin Staff'),
-    new Date()
-  );
+  // Dynamic preview of employee ID with 'X' fallback placeholder
+  const currentFirstName = roleMode === 'cos' ? cosFirstName : adminFirstName;
+  const currentMiddleInitial = roleMode === 'cos' ? cosMiddleInitial : adminMiddleInitial;
+  const currentLastName = roleMode === 'cos' ? cosLastName : adminLastName;
+  const currentStartingDate = roleMode === 'cos' ? cosStartingDate : adminStartingDate;
+
+  const currentGeneratedId = generateEvsuEmployeeId({
+    firstName: currentFirstName,
+    middleInitial: currentMiddleInitial,
+    lastName: currentLastName,
+    startingDate: currentStartingDate,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -150,13 +181,25 @@ export default function TokenizedSignUp({
     const agreed = isCos ? cosAgreed : adminAgreed;
     const tokenToUse = tokenInput.trim();
 
+    const firstName = (isCos ? cosFirstName : adminFirstName).trim();
+    const middleInitial = (isCos ? cosMiddleInitial : adminMiddleInitial).trim();
+    const lastName = (isCos ? cosLastName : adminLastName).trim();
+    const titlePrefix = isCos ? cosTitlePrefix : adminTitlePrefix;
+    const startingDate = isCos ? cosStartingDate : adminStartingDate;
+    const contractStartDate = isCos ? cosContractStartDate : null;
+
     if (!tokenToUse) {
       setFormError('Please provide a valid invitation token.');
       return;
     }
 
+    if (!firstName || !lastName) {
+      setFormError('Please enter both your First Name and Last Name.');
+      return;
+    }
+
     if (!agreed) {
-      setFormError('Please accept the institutional terms to complete account registration.');
+      setFormError('Please confirm the institutional acknowledgement before completing registration.');
       return;
     }
 
@@ -173,15 +216,25 @@ export default function TokenizedSignUp({
     setIsSubmitting(true);
 
     try {
+      const prefix = titlePrefix && titlePrefix !== 'None' ? `${titlePrefix} ` : '';
+      const middle = middleInitial ? `${middleInitial.replace(/\.$/, '')}. ` : '';
+      const fullLegalName = `${prefix}${firstName} ${middle}${lastName}`.trim();
+
       const payload = {
         invitation_token: tokenToUse,
-        email: isCos ? cosEmail.trim() : adminEmail.trim(),
-        full_name: isCos ? cosName.trim() : adminName.trim(),
+        email: (isCos ? cosEmail : adminEmail).trim(),
+        full_name: fullLegalName,
+        first_name: firstName,
+        middle_initial: middleInitial,
+        last_name: lastName,
+        title: titlePrefix !== 'None' ? titlePrefix : null,
+        starting_date: startingDate,
+        contract_start_date: contractStartDate,
         password: pwd,
         role: isCos ? 'COS Employee' : adminRole,
         cos_category: isCos ? 'Administrative' : null,
-        job_title: isCos ? cosTitle.trim() : adminTitle.trim(),
-        contact_number: isCos ? cosPhone.trim() : adminPhone.trim(),
+        job_title: (isCos ? cosJobPosition : adminJobPosition).trim(),
+        contact_number: (isCos ? cosPhone : adminPhone).trim(),
       };
 
       const response = await api.auth.register(payload);
@@ -198,7 +251,7 @@ export default function TokenizedSignUp({
         email: user.email,
         initials: user.fullName
           ? user.fullName
-              .replace(/^(Dr\.|Engr\.|Prof\.)\s*/i, '')
+              .replace(/^(Dr\.|Engr\.|Prof\.|Mr\.|Ms\.|Mrs\.|Atty\.|Arch\.)\s*/i, '')
               .split(' ')
               .map((n) => n[0])
               .filter(Boolean)
@@ -212,7 +265,7 @@ export default function TokenizedSignUp({
     } catch (err) {
       setFormError(
         err.message ||
-          'Registration failed. Please check your invitation token and institutional credentials.'
+          'Registration failed. Please check your invitation link and institutional credentials.'
       );
     } finally {
       setIsSubmitting(false);
@@ -231,33 +284,16 @@ export default function TokenizedSignUp({
 
         {/* Card */}
         <div className="auth-card" style={{ padding: '28px 32px' }}>
-          {/* Top Bar: Back Link */}
+          {/* Top Bar: Official Onboarding Portal Indicator */}
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               alignItems: 'center',
-              marginBottom: '14px',
+              marginBottom: '10px',
             }}
           >
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={onBackToLogin}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                padding: '4px 10px',
-                color: 'var(--ink-700)',
-              }}
-            >
-              <ArrowLeft size={14} /> Back to Sign In
-            </button>
-
-            <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>
+            <span style={{ fontSize: '11.5px', color: 'var(--ink-500)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Official Onboarding Portal
             </span>
           </div>
@@ -291,7 +327,7 @@ export default function TokenizedSignUp({
               }}
             >
               <span className="btn-spinner" style={{ display: 'inline-block', width: '14px', height: '14px', borderWidth: '2px' }} />
-              <span>Verifying your institutional invitation token...</span>
+              <span>Verifying your institutional invitation link...</span>
             </div>
           )}
 
@@ -325,10 +361,10 @@ export default function TokenizedSignUp({
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '13px', fontWeight: 800, color: roleMode === 'cos' ? '#065f46' : '#881337' }}>
-                  {roleMode === 'cos' ? 'Official COS Employee Invitation' : 'Official Administrator Invitation'}
+                  {roleMode === 'cos' ? 'Institutional COS Employee Onboarding' : 'Institutional Administrator Onboarding'}
                 </div>
                 <div style={{ fontSize: '12px', color: roleMode === 'cos' ? '#047857' : '#9f1239' }}>
-                  Token verified &bull; Assigned to {tokenData.department_name || 'Eastern Visayas State University'}
+                  Assigned to <strong>{tokenData.department_name || 'Eastern Visayas State University'}</strong>
                 </div>
               </div>
               <span
@@ -343,7 +379,7 @@ export default function TokenizedSignUp({
                   letterSpacing: '0.4px',
                 }}
               >
-                {tokenData.role || (roleMode === 'cos' ? 'COS Staff' : 'Admin')}
+                {tokenData.role || (roleMode === 'cos' ? 'COS Staff' : 'Department Head')}
               </span>
             </div>
           )}
@@ -371,7 +407,7 @@ export default function TokenizedSignUp({
             </div>
           )}
 
-          {/* Invitation Token Field (Shown if manual verification or adjustment needed) */}
+          {/* Invitation Token Field (Shown if manual verification needed) */}
           {(!tokenData || tokenError) && (
             <div
               style={{
@@ -390,6 +426,7 @@ export default function TokenizedSignUp({
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
                 placeholder="EVSU-INV-COS-..."
+                autoComplete="off"
                 style={{
                   width: '100%',
                   padding: '8px 10px',
@@ -428,7 +465,7 @@ export default function TokenizedSignUp({
           )}
 
           {/* REGISTRATION FORM */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             {roleMode === 'cos' ? (
               /* ====================================================
                  1. REGULAR COS EMPLOYEE SIGN-UP FIELDS
@@ -436,7 +473,7 @@ export default function TokenizedSignUp({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {/* Institutional Email */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
                     Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -444,6 +481,7 @@ export default function TokenizedSignUp({
                       className="form-control"
                       type="email"
                       required
+                      autoComplete="email"
                       value={cosEmail}
                       onChange={(e) => setCosEmail(e.target.value)}
                       placeholder="firstname.lastname@evsu.edu.ph"
@@ -457,47 +495,156 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Full Legal Name */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px' }}>
-                    Full Legal Name <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
+                {/* Separated Name Inputs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '105px 1.5fr 70px 1.5fr', gap: '8px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>Title</label>
+                    <select
+                      className="form-control"
+                      value={cosTitlePrefix}
+                      onChange={(e) => setCosTitlePrefix(e.target.value)}
+                      style={{ padding: '8px 8px', fontSize: '12.5px' }}
+                    >
+                      {UNIVERSITY_TITLES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      First Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
                     <input
                       className="form-control"
                       type="text"
                       required
-                      value={cosName}
-                      onChange={(e) => setCosName(e.target.value)}
-                      placeholder="e.g. Maria Santos Dela Cruz"
-                      style={{ paddingLeft: '34px' }}
+                      autoComplete="given-name"
+                      value={cosFirstName}
+                      onChange={(e) => setCosFirstName(e.target.value)}
+                      placeholder="e.g. Maria"
+                      style={{ padding: '8px 10px', fontSize: '12.5px' }}
                     />
-                    <User
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>M.I.</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      maxLength={2}
+                      autoComplete="additional-name"
+                      value={cosMiddleInitial}
+                      onChange={(e) => setCosMiddleInitial(e.target.value.toUpperCase())}
+                      placeholder="S"
+                      style={{ padding: '8px 8px', fontSize: '12.5px', textAlign: 'center' }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      Last Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      value={cosLastName}
+                      onChange={(e) => setCosLastName(e.target.value)}
+                      placeholder="e.g. Dela Cruz"
+                      style={{ padding: '8px 10px', fontSize: '12.5px' }}
                     />
                   </div>
                 </div>
 
-                {/* Department Selection */}
+                {/* Starting Dates (Original Campus Start vs Current 6-Mo Contract Start) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                      <label style={{ fontSize: '11.5px', fontWeight: 600, margin: 0 }}>
+                        Campus Starting Date <span style={{ color: 'var(--red-600)' }}>*</span>
+                      </label>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type="date"
+                        required
+                        value={cosStartingDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCosStartingDate(val);
+                          if (cosContractStartDate === cosStartingDate) {
+                            setCosContractStartDate(val);
+                          }
+                        }}
+                        style={{ paddingLeft: '34px', fontSize: '12px' }}
+                      />
+                      <Calendar
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
+                      Original hiring date on campus. Formats your official ID.
+                    </span>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                      <label style={{ fontSize: '11.5px', fontWeight: 600, margin: 0 }}>
+                        Current Contract Start <span style={{ color: 'var(--red-600)' }}>*</span>
+                      </label>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type="date"
+                        required
+                        value={cosContractStartDate}
+                        onChange={(e) => setCosContractStartDate(e.target.value)}
+                        style={{ paddingLeft: '34px', fontSize: '12px' }}
+                      />
+                      <Calendar
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
+                      Active 6-month contract evaluation cycle.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Locked Department */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px' }}>
-                    Assigned Department / Academic Unit <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, margin: 0 }}>
+                      Assigned Department / Academic Unit
+                    </label>
+                    <span style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <Lock size={11} /> Pre-assigned by HR
+                    </span>
+                  </div>
                   <div style={{ position: 'relative' }}>
-                    <select
+                    <input
                       className="form-control"
-                      value={cosDept}
-                      onChange={(e) => setCosDept(e.target.value)}
-                      style={{ paddingLeft: '34px' }}
-                    >
-                      {DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
+                      type="text"
+                      readOnly
+                      disabled
+                      value={cosDept || 'Assigned Department'}
+                      style={{
+                        paddingLeft: '34px',
+                        background: '#f8fafc',
+                        color: 'var(--ink-800)',
+                        fontWeight: 600,
+                        cursor: 'not-allowed',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    />
                     <Building
                       size={15}
                       color="var(--ink-400)"
@@ -506,17 +653,17 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Job Title & Contact Number Row */}
+                {/* Job Position & Contact Phone */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>Official Job Title</label>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Position / Designation</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type="text"
-                        value={cosTitle}
-                        onChange={(e) => setCosTitle(e.target.value)}
-                        placeholder="Admin Aide / Faculty"
+                        value={cosJobPosition}
+                        onChange={(e) => setCosJobPosition(e.target.value)}
+                        placeholder="e.g. Administrative Aide VI"
                         style={{ paddingLeft: '34px' }}
                       />
                       <Briefcase
@@ -528,11 +675,12 @@ export default function TokenizedSignUp({
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>Contact Phone</label>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Official Contact Number</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type="tel"
+                        autoComplete="tel"
                         value={cosPhone}
                         onChange={(e) => setCosPhone(e.target.value)}
                         placeholder="+63 9XX XXX XXXX"
@@ -560,9 +708,9 @@ export default function TokenizedSignUp({
                   }}
                 >
                   <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
-                    System Generated EVSU ID:
+                    System Generated Official ID:
                   </span>
-                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.5px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.8px', fontFamily: 'monospace' }}>
                     {currentGeneratedId}
                   </span>
                 </div>
@@ -570,13 +718,14 @@ export default function TokenizedSignUp({
                 {/* Password Fields */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       Password <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         required
                         value={cosPassword}
                         onChange={(e) => setCosPassword(e.target.value)}
@@ -592,13 +741,14 @@ export default function TokenizedSignUp({
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         required
                         value={cosConfirm}
                         onChange={(e) => setCosConfirm(e.target.value)}
@@ -618,6 +768,7 @@ export default function TokenizedSignUp({
                           color: 'var(--ink-500)',
                           cursor: 'pointer',
                         }}
+                        tabIndex={-1}
                       >
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
@@ -634,8 +785,9 @@ export default function TokenizedSignUp({
                     fontSize: '12px',
                     color: 'var(--ink-700)',
                     cursor: 'pointer',
-                    marginTop: '4px',
-                    lineHeight: 1.4,
+                    marginTop: '6px',
+                    lineHeight: 1.45,
+                    userSelect: 'none',
                   }}
                 >
                   <input
@@ -648,6 +800,29 @@ export default function TokenizedSignUp({
                     I affirm that the institutional details provided are true and correct under Eastern Visayas State University guidelines.
                   </span>
                 </label>
+
+                {/* Submit Button */}
+                <div style={{ marginTop: '16px' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting || isValidatingToken || !cosAgreed}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 800,
+                      cursor: cosAgreed ? 'pointer' : 'not-allowed',
+                      opacity: cosAgreed ? 1 : 0.45,
+                      filter: cosAgreed ? 'none' : 'grayscale(0.6)',
+                      background: cosAgreed ? 'var(--brand-700, #7a1128)' : '#6b7280',
+                      transition: 'all 0.2s ease',
+                      boxShadow: cosAgreed ? '0 2px 6px rgba(122, 12, 46, 0.25)' : 'none',
+                    }}
+                  >
+                    {isSubmitting ? 'Registering & Activating...' : 'Complete COS Staff Registration'}
+                  </button>
+                </div>
               </div>
             ) : (
               /* ====================================================
@@ -656,7 +831,7 @@ export default function TokenizedSignUp({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {/* Institutional Email */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
                     Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -664,6 +839,7 @@ export default function TokenizedSignUp({
                       className="form-control"
                       type="email"
                       required
+                      autoComplete="email"
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
                       placeholder="admin.name@evsu.edu.ph"
@@ -677,47 +853,122 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Full Legal Name */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px' }}>
-                    Full Legal Name & Title <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
+                {/* Separated Name Inputs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '105px 1.5fr 70px 1.5fr', gap: '8px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>Title</label>
+                    <select
+                      className="form-control"
+                      value={adminTitlePrefix}
+                      onChange={(e) => setAdminTitlePrefix(e.target.value)}
+                      style={{ padding: '8px 8px', fontSize: '12.5px' }}
+                    >
+                      {UNIVERSITY_TITLES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      First Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
                     <input
                       className="form-control"
                       type="text"
                       required
-                      value={adminName}
-                      onChange={(e) => setAdminName(e.target.value)}
-                      placeholder="e.g. Engr. Roberto Del Rosario"
-                      style={{ paddingLeft: '34px' }}
+                      autoComplete="given-name"
+                      value={adminFirstName}
+                      onChange={(e) => setAdminFirstName(e.target.value)}
+                      placeholder="e.g. Roberto"
+                      style={{ padding: '8px 10px', fontSize: '12.5px' }}
                     />
-                    <User
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>M.I.</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      maxLength={2}
+                      autoComplete="additional-name"
+                      value={adminMiddleInitial}
+                      onChange={(e) => setAdminMiddleInitial(e.target.value.toUpperCase())}
+                      placeholder="D"
+                      style={{ padding: '8px 8px', fontSize: '12.5px', textAlign: 'center' }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
+                      Last Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      value={adminLastName}
+                      onChange={(e) => setAdminLastName(e.target.value)}
+                      placeholder="e.g. Del Rosario"
+                      style={{ padding: '8px 10px', fontSize: '12.5px' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Campus Starting Date (Initial Appointment) */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, margin: 0 }}>
+                      Campus Starting Date (Date of Initial Appointment) <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-control"
+                      type="date"
+                      required
+                      value={adminStartingDate}
+                      onChange={(e) => setAdminStartingDate(e.target.value)}
+                      style={{ paddingLeft: '34px', fontSize: '12.5px' }}
+                    />
+                    <Calendar
                       size={15}
                       color="var(--ink-400)"
                       style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
                     />
                   </div>
+                  <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
+                    The date you initially began your service on campus. Sets the MMDDYYYY code in your official ID.
+                  </span>
                 </div>
 
-                {/* Department Selection */}
+                {/* Locked Department */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px' }}>
-                    Department / Administrative Office <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, margin: 0 }}>
+                      Department / Administrative Office
+                    </label>
+                    <span style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <Lock size={11} /> Pre-assigned by HR
+                    </span>
+                  </div>
                   <div style={{ position: 'relative' }}>
-                    <select
+                    <input
                       className="form-control"
-                      value={adminDept}
-                      onChange={(e) => setAdminDept(e.target.value)}
-                      style={{ paddingLeft: '34px' }}
-                    >
-                      {DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
+                      type="text"
+                      readOnly
+                      disabled
+                      value={adminDept || 'Assigned Department'}
+                      style={{
+                        paddingLeft: '34px',
+                        background: '#f8fafc',
+                        color: 'var(--ink-800)',
+                        fontWeight: 600,
+                        cursor: 'not-allowed',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    />
                     <Building
                       size={15}
                       color="var(--ink-400)"
@@ -726,17 +977,17 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Admin Position & Contact Phone */}
+                {/* Job Position & Contact Phone */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>Administrative Title</label>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Position / Designation</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type="text"
-                        value={adminTitle}
-                        onChange={(e) => setAdminTitle(e.target.value)}
-                        placeholder="Department Head"
+                        value={adminJobPosition}
+                        onChange={(e) => setAdminJobPosition(e.target.value)}
+                        placeholder="e.g. Department Head"
                         style={{ paddingLeft: '34px' }}
                       />
                       <Briefcase
@@ -748,11 +999,12 @@ export default function TokenizedSignUp({
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>Official Contact Number</label>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Official Contact Number</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type="tel"
+                        autoComplete="tel"
                         value={adminPhone}
                         onChange={(e) => setAdminPhone(e.target.value)}
                         placeholder="+63 9XX XXX XXXX"
@@ -782,7 +1034,7 @@ export default function TokenizedSignUp({
                   <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
                     System Generated Official ID:
                   </span>
-                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.5px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.8px', fontFamily: 'monospace' }}>
                     {currentGeneratedId}
                   </span>
                 </div>
@@ -790,13 +1042,14 @@ export default function TokenizedSignUp({
                 {/* Password Fields */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       Password <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         required
                         value={adminPassword}
                         onChange={(e) => setAdminPassword(e.target.value)}
@@ -812,13 +1065,14 @@ export default function TokenizedSignUp({
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         required
                         value={adminConfirm}
                         onChange={(e) => setAdminConfirm(e.target.value)}
@@ -838,6 +1092,7 @@ export default function TokenizedSignUp({
                           color: 'var(--ink-500)',
                           cursor: 'pointer',
                         }}
+                        tabIndex={-1}
                       >
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
@@ -854,8 +1109,9 @@ export default function TokenizedSignUp({
                     fontSize: '12px',
                     color: 'var(--ink-700)',
                     cursor: 'pointer',
-                    marginTop: '4px',
-                    lineHeight: 1.4,
+                    marginTop: '6px',
+                    lineHeight: 1.45,
+                    userSelect: 'none',
                   }}
                 >
                   <input
@@ -865,33 +1121,54 @@ export default function TokenizedSignUp({
                     style={{ marginTop: '2px' }}
                   />
                   <span>
-                    I acknowledge administrative oversight responsibility, data privacy compliance, and strict evaluation confidentiality.
+                    I acknowledge institutional administrative responsibility, data privacy compliance, and strict evaluation confidentiality under Eastern Visayas State University guidelines.
                   </span>
                 </label>
+
+                {/* Submit Button */}
+                <div style={{ marginTop: '16px' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting || isValidatingToken || !adminAgreed}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 800,
+                      cursor: adminAgreed ? 'pointer' : 'not-allowed',
+                      opacity: adminAgreed ? 1 : 0.45,
+                      filter: adminAgreed ? 'none' : 'grayscale(0.6)',
+                      background: adminAgreed ? 'var(--brand-700, #7a1128)' : '#6b7280',
+                      transition: 'all 0.2s ease',
+                      boxShadow: adminAgreed ? '0 2px 6px rgba(122, 12, 46, 0.25)' : 'none',
+                    }}
+                  >
+                    {isSubmitting
+                      ? 'Registering & Activating...'
+                      : `Complete ${roleMode === 'cos' ? 'COS Staff' : 'Administrator'} Registration`}
+                  </button>
+                </div>
               </div>
             )}
-
-            {/* Submit Button */}
-            <div style={{ marginTop: '20px' }}>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isSubmitting || isValidatingToken}
-                style={{
-                  width: '100%',
-                  padding: '11px',
-                  fontSize: '14px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(122, 12, 46, 0.25)',
-                }}
-              >
-                {isSubmitting
-                  ? 'Registering & Activating...'
-                  : `Complete ${roleMode === 'cos' ? 'COS Staff' : 'Administrator'} Registration`}
-              </button>
-            </div>
           </form>
+
+          {/* Department Correction Notice at the Very Bottom */}
+          <div
+            style={{
+              marginTop: '20px',
+              padding: '10px 14px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              color: 'var(--ink-600)',
+              textAlign: 'center',
+              lineHeight: 1.5,
+            }}
+          >
+            If the assigned department above is incorrect, please contact the <strong>Human Resource Management &amp; Development Office (HRMDO)</strong> to issue an updated registration invitation.
+          </div>
         </div>
       </div>
 
@@ -920,7 +1197,7 @@ export default function TokenizedSignUp({
               Account Successfully Activated!
             </h2>
             <p className="muted" style={{ margin: '0 0 18px', fontSize: '13px' }}>
-              Your tokenized invitation has been verified and your official EVSU user profile is now active in the system.
+              Your official EVSU user profile is now registered and active in the PerformaCOS system.
             </p>
 
             {/* Profile Overview Card */}
@@ -937,7 +1214,7 @@ export default function TokenizedSignUp({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span className="muted">Assigned ID:</span>
-                <strong style={{ color: 'var(--brand-700)' }}>{registeredUser.employeeIdNumber}</strong>
+                <strong style={{ color: 'var(--brand-700)', fontFamily: 'monospace' }}>{registeredUser.employeeIdNumber}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span className="muted">Full Name:</span>

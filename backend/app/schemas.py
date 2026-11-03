@@ -25,6 +25,13 @@ class RegisterRequest(BaseModel):
     cos_category: Optional[str] = "Administrative"
     job_title: Optional[str] = None
     contact_number: Optional[str] = None
+    first_name: Optional[str] = None
+    middle_initial: Optional[str] = None
+    last_name: Optional[str] = None
+    title: Optional[str] = None
+    starting_date: Optional[datetime.date] = None
+    contract_start_date: Optional[datetime.date] = None
+    contract_end_date: Optional[datetime.date] = None
 
 
 class ForgotPasswordRequest(BaseModel):

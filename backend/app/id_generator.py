@@ -5,7 +5,7 @@ from . import models
 
 def generate_evsu_employee_id(
     db: Session,
-    full_name: str,
+    full_name: str = "",
     contract_start_date: datetime.date or str = None,
     middle_name: str = None,
     first_name: str = None,
@@ -13,14 +13,14 @@ def generate_evsu_employee_id(
 ) -> str:
     """
     Dynamically generates a unique EVSU Employee ID formatted as:
-    Last Name Initial + MMDDYYYY of the contract start date + First Name Initial(s) + Middle Name Initial.
+    Last Name Initial + MMDDYYYY of the campus starting date + First Name Initial(s) + Middle Name Initial.
     Example: 'G10222026JMR' (Gubantes, Oct 22 2026, Jorge Mikhael, R.)
 
     Collision Rule:
     - The original user receives no numeric suffix (e.g., 'G10222026JMR')
     - Subsequent users with the exact same resulting string receive an incremental suffix (e.g., '-1', '-2')
     """
-    # 1. Parse contract start date to MMDDYYYY
+    # 1. Parse campus starting date to MMDDYYYY
     if contract_start_date is None:
         d = datetime.date.today()
     elif isinstance(contract_start_date, str):
@@ -40,18 +40,19 @@ def generate_evsu_employee_id(
 
     date_str = d.strftime("%m%d%Y")  # MMDDYYYY
 
-    # 2. Parse name initials
-    if last_name and first_name:
-        last_init = last_name.strip()[0].upper()
-        first_inits = "".join(w[0].upper() for w in first_name.strip().split())
+    # 2. Parse name initials with 'X' fallback placeholder
+    if last_name or first_name:
+        last_init = last_name.strip()[0].upper() if last_name and last_name.strip() else "X"
+        first_inits = "".join(w[0].upper() for w in first_name.strip().split()) if first_name and first_name.strip() else "X"
         middle_init = middle_name.strip()[0].upper() if middle_name and middle_name.strip() else ""
     else:
-        clean_name = re.sub(r'^(Dr\.|Engr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s+', '', full_name.strip(), flags=re.I)
+        clean_name = re.sub(r'^(Dr\.|Engr\.|Prof\.|Mr\.|Ms\.|Mrs\.|Atty\.|Arch\.)\s+', '', (full_name or "").strip(), flags=re.I)
         parts = [p.strip('.,') for p in clean_name.split() if p.strip('.,')]
         if not parts:
-            parts = ["Employee"]
-
-        if len(parts) == 1:
+            last_init = "X"
+            first_inits = "X"
+            middle_init = ""
+        elif len(parts) == 1:
             last_init = parts[0][0].upper()
             first_inits = parts[0][0].upper()
             middle_init = ""
@@ -80,7 +81,7 @@ def generate_evsu_employee_id(
                 first_parts = given_parts
                 middle_init = ""
 
-            first_inits = "".join(w[0].upper() for w in first_parts if w)
+            first_inits = "".join(w[0].upper() for w in first_parts if w) if first_parts else "X"
 
     base_id = f"{last_init}{date_str}{first_inits}{middle_init}"
 

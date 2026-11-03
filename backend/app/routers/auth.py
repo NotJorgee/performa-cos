@@ -101,18 +101,30 @@ def register(
     if db.query(models.UserAccount).filter(models.UserAccount.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email is already registered.")
 
-    # 3. Determine role (from token if not provided)
-    role = payload.role or invite.role
-    dept_id = payload.department_id or invite.department_id
+    # 3. Determine role and department strictly bound to HR invite
+    role = invite.role or payload.role or "COS Employee"
+    dept_id = invite.department_id or payload.department_id
 
-    # 4. Generate employee ID
+    # 4. Starting date & contract expiration logic
+    starting_date = payload.starting_date or datetime.date.today()
+    contract_end_date = payload.contract_end_date
+
+    if role == "COS Employee":
+        active_contract_start = payload.contract_start_date or starting_date
+        if not contract_end_date:
+            contract_end_date = active_contract_start + datetime.timedelta(days=182)  # standard 6-month contract cycle
+
+    # 5. Generate employee ID using campus starting date
     emp_id = generate_evsu_employee_id(
         db=db,
         full_name=payload.full_name,
-        contract_start_date=datetime.date.today(),
+        contract_start_date=starting_date,
+        first_name=payload.first_name,
+        middle_name=payload.middle_initial,
+        last_name=payload.last_name,
     )
 
-    # 5. Create user
+    # 6. Create user
     new_user = models.UserAccount(
         employee_id_number=emp_id,
         full_name=payload.full_name,
@@ -123,10 +135,11 @@ def register(
         cos_category=payload.cos_category or "Administrative",
         job_title=payload.job_title,
         contact_number=payload.contact_number,
-        date_appointed=datetime.date.today(),
+        date_appointed=starting_date,
+        contract_end_date=contract_end_date,
         is_active=True,
         is_archived=False,
-        total_contracts=0,
+        total_contracts=1 if role == "COS Employee" else 0,
     )
     db.add(new_user)
     db.flush()  # get new_user.id before commit
