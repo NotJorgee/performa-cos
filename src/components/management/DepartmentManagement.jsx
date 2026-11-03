@@ -1,31 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Check, AlertTriangle, X, Trash2, Lock } from 'lucide-react';
 import { api } from '../../services/api';
+import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
-const EVSU_DEPT_PRESETS = [
-  'Disbursing / Cashier Office',
-  'HRMDO Office',
-  'School Clinic',
-  'IPDO Office',
-  'Research Office',
-  'Sports And Development Office',
-  'Quality Assurance & Accreditation Office',
-  'Technology Department',
-  'Guidance Office',
-  'Extension Service Office',
-  'Education Department',
-  'Procurement Office',
-  'IGP Office',
-  'Campus Director Office',
-  'Computer Studies Department',
-  'SASO Office',
-  'Engineering Department',
-  'Administrative and Finance',
-  'Hospitality & Tourism Management',
-  'Library Office',
-  'Registrar Office',
-  'Maintenance/Janitorial (MESO) Office',
-];
+const EVSU_DEPT_PRESETS = EVSU_DEPARTMENTS;
 
 export default function DepartmentManagement({
   departments = [],
@@ -56,7 +34,8 @@ export default function DepartmentManagement({
             employeeCount: 0,
             activeEvaluations: 0,
           }));
-          setDeptList(mapped);
+          const sorted = [...mapped].sort((a, b) => a.name.localeCompare(b.name));
+          setDeptList(sorted);
         }
       })
       .catch((err) => {

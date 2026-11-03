@@ -4,32 +4,11 @@ import { Download, Check, Archive, FileText, ChevronDown, ChevronUp } from 'luci
 import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
 import { getComparativeTrajectory, ComparativeTrajectoryBadge } from '../../utils/comparativeAnalytics';
 
+import { EVSU_DEPARTMENTS } from '../../utils/departments';
+
 export default function ReportGenerator({
   employees: propEmployees = [],
-  departments = [
-    'Disbursing / Cashier Office',
-    'HRMDO Office',
-    'School Clinic',
-    'IPDO Office',
-    'Research Office',
-    'Sports And Development Office',
-    'Quality Assurance & Accreditation Office',
-    'Technology Department',
-    'Guidance Office',
-    'Extension Service Office',
-    'Education Department',
-    'Procurement Office',
-    'IGP Office',
-    'Campus Director Office',
-    'Computer Studies Department',
-    'SASO Office',
-    'Engineering Department',
-    'Administrative and Finance',
-    'Hospitality & Tourism Management',
-    'Library Office',
-    'Registrar Office',
-    'Maintenance/Janitorial (MESO) Office',
-  ],
+  departments = EVSU_DEPARTMENTS,
   departmentName = null,
   restrictDepartment = null,
   onNavigate = () => {},

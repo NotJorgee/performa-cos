@@ -2,33 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Copy, Shield } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
+import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
 export default function AdministratorManagement({
   administrators = [],
-  departments = [
-    'Disbursing / Cashier Office',
-    'HRMDO Office',
-    'School Clinic',
-    'IPDO Office',
-    'Research Office',
-    'Sports And Development Office',
-    'Quality Assurance & Accreditation Office',
-    'Technology Department',
-    'Guidance Office',
-    'Extension Service Office',
-    'Education Department',
-    'Procurement Office',
-    'IGP Office',
-    'Campus Director Office',
-    'Computer Studies Department',
-    'SASO Office',
-    'Engineering Department',
-    'Administrative and Finance',
-    'Hospitality & Tourism Management',
-    'Library Office',
-    'Registrar Office',
-    'Maintenance/Janitorial (MESO) Office',
-  ],
+  departments = EVSU_DEPARTMENTS,
   onBack = null,
   onSendTokenInvite = () => {},
   onUpdateAdministrator = () => {},

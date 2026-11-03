@@ -16,31 +16,9 @@ import {
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
+import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
-const DEPARTMENTS = [
-  'Disbursing / Cashier Office',
-  'HRMDO Office',
-  'School Clinic',
-  'IPDO Office',
-  'Research Office',
-  'Sports And Development Office',
-  'Quality Assurance & Accreditation Office',
-  'Technology Department',
-  'Guidance Office',
-  'Extension Service Office',
-  'Education Department',
-  'Procurement Office',
-  'IGP Office',
-  'Campus Director Office',
-  'Computer Studies Department',
-  'SASO Office',
-  'Engineering Department',
-  'Administrative and Finance',
-  'Hospitality & Tourism Management',
-  'Library Office',
-  'Registrar Office',
-  'Maintenance/Janitorial (MESO) Office',
-];
+const DEPARTMENTS = EVSU_DEPARTMENTS;
 
 export default function TokenizedSignUp({
   initialToken = '',

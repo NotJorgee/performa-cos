@@ -1,32 +1,10 @@
 import React, { useState } from 'react';
 import { Check, Archive, AlertTriangle, X, Clock, FileCheck, Award } from 'lucide-react';
+import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
 export default function EvaluationManagement({
   eligibleEmployees = [],
-  departments = [
-    'Disbursing / Cashier Office',
-    'HRMDO Office',
-    'School Clinic',
-    'IPDO Office',
-    'Research Office',
-    'Sports And Development Office',
-    'Quality Assurance & Accreditation Office',
-    'Technology Department',
-    'Guidance Office',
-    'Extension Service Office',
-    'Education Department',
-    'Procurement Office',
-    'IGP Office',
-    'Campus Director Office',
-    'Computer Studies Department',
-    'SASO Office',
-    'Engineering Department',
-    'Administrative and Finance',
-    'Hospitality & Tourism Management',
-    'Library Office',
-    'Registrar Office',
-    'Maintenance/Janitorial (MESO) Office',
-  ],
+  departments = EVSU_DEPARTMENTS,
   onStartEmployeeEvaluation = () => {},
   onProcessOffboarding = () => {},
   onMediateRejection = () => {},
