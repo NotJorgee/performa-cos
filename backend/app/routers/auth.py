@@ -1,6 +1,7 @@
 """
 routers/auth.py — Authentication routes for PerformaCOS.
 """
+import re
 import random
 import string
 import datetime
