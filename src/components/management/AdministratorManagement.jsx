@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Copy, Shield } from 'lucide-react';
-import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
 
@@ -173,27 +172,6 @@ export default function AdministratorManagement({
     e.preventDefault();
     if (!inviteEmail) return;
 
-    // Generate a placeholder name and official EVSU ID from email username
-    const username = inviteEmail.split('@')[0].replace(/[._]/g, ' ');
-    const placeholderName = username
-      .split(' ')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-
-    const existingIds = adminList.map((a) => a.idNumber);
-    const newId = generateEvsuEmployeeId(placeholderName || 'Admin Staff', new Date(), existingIds);
-
-    const newAdmin = {
-      id: Date.now(),
-      idNumber: newId,
-      fullName: placeholderName || 'Permanent Administrator',
-      email: inviteEmail,
-      role: selectedRole,
-      department: selectedDept,
-      status: 'Active',
-      contactNumber: '+63 999 000 0000',
-    };
-
     try {
       const res = await api.invitations.create({
         email: inviteEmail.trim(),
@@ -208,7 +186,6 @@ export default function AdministratorManagement({
         department: selectedDept,
         url: fullUrl,
       });
-      setAdminList([newAdmin, ...adminList]);
       onSendTokenInvite({
         email: inviteEmail,
         role: selectedRole,
@@ -228,7 +205,6 @@ export default function AdministratorManagement({
         department: selectedDept,
         url: fullUrl,
       });
-      setAdminList([newAdmin, ...adminList]);
       onSendTokenInvite({
         email: inviteEmail,
         role: selectedRole,
