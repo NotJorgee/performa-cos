@@ -22,12 +22,16 @@ import {
   Eye,
   Crosshair,
   ShieldCheck,
+  ShieldAlert,
   Activity,
   Maximize2,
   Map as MapIcon,
   Globe,
   Radio,
   RotateCcw,
+  CircleDot,
+  Hexagon,
+  LocateFixed,
 } from 'lucide-react';
 import {
   getCampusGeofences,
@@ -62,7 +66,8 @@ export default function CampusGeofence({
     selectedCampus?.boundaryType || 'radius'
   );
   const [polygonCoords, setPolygonCoords] = useState(
-    selectedCampus?.polygon ||
+    selectedCampus?.polygonCoords ||
+      selectedCampus?.polygon ||
       (selectedCampusId.includes('luna') ? DEFAULT_LUNA_POLYGON : DEFAULT_MAIN_POLYGON)
   );
   const [enforceGeofence, setEnforceGeofence] = useState(
@@ -71,6 +76,7 @@ export default function CampusGeofence({
 
   const [toastMsg, setToastMsg] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const [isLoadingVerifications, setIsLoadingVerifications] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [mapLayerType, setMapLayerType] = useState('streets'); // 'streets' | 'satellite'
@@ -192,6 +198,97 @@ export default function CampusGeofence({
     ];
   };
 
+  // Heuristic spatial lookup for Ormoc City Barangays based on coordinates
+  const lookupOrmocBarangay = (lat, lng) => {
+    const nLat = parseFloat(lat);
+    const nLng = parseFloat(lng);
+    if (isNaN(nLat) || isNaN(nLng)) return 'Ormoc City';
+
+    // EVSU Main Campus & City Proper
+    if (nLat >= 11.002 && nLat <= 11.018 && nLng >= 124.600 && nLng <= 124.615) {
+      if (nLat >= 11.012) return 'Brgy. San Pablo, Ormoc City';
+      return 'Brgy. Don Felipe Larrazabal, Ormoc City';
+    }
+
+    // EVSU Luna Campus
+    if (nLat >= 11.045 && nLat <= 11.075 && nLng >= 124.605 && nLng <= 124.625) {
+      return 'Barangay Luna, Ormoc City';
+    }
+
+    // Dolores & Valencia
+    if (nLat >= 11.035 && nLat <= 11.065 && nLng >= 124.625 && nLng <= 124.650) {
+      return 'Brgy. Dolores, Ormoc City';
+    }
+    if (nLat >= 11.050 && nLat <= 11.085 && nLng >= 124.630 && nLng <= 124.665) {
+      return 'Brgy. Valencia, Ormoc City';
+    }
+
+    // Coastal / West (Punta, Alegria, Can-adieng)
+    if (nLat >= 10.995 && nLat <= 11.020 && nLng >= 124.580 && nLng < 124.602) {
+      if (nLat >= 11.008) return 'Brgy. Can-adieng, Ormoc City';
+      if (nLng <= 124.594) return 'Brgy. Punta, Ormoc City';
+      return 'Brgy. Alegria, Ormoc City';
+    }
+
+    // South (Batuan, Ipil)
+    if (nLat < 11.002 && nLng >= 124.595 && nLng <= 124.615) {
+      if (nLng <= 124.604) return 'Brgy. Batuan, Ormoc City';
+      return 'Brgy. Ipil, Ormoc City';
+    }
+
+    // North (Cogon, Tambulilid)
+    if (nLat > 11.018 && nLat < 11.045 && nLng >= 124.595 && nLng <= 124.620) {
+      if (nLat >= 11.030) return 'Brgy. Tambulilid, Ormoc City';
+      return 'Brgy. Cogon, Ormoc City';
+    }
+
+    // Luna annex / Milagro
+    if (nLat >= 11.060 && nLat <= 11.095 && nLng >= 124.595 && nLng <= 124.625) {
+      return 'Brgy. Milagro, Ormoc City';
+    }
+
+    return 'Ormoc City, Leyte';
+  };
+
+  // Async reverse geocoding via OpenStreetMap with fallback to local heuristic
+  const resolveBarangayFromCoordinates = async (lat, lng) => {
+    const fallback = lookupOrmocBarangay(lat, lng);
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        {
+          signal: controller.signal,
+          headers: { 'Accept-Language': 'en' },
+        }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data.address || {};
+        const barangay =
+          addr.suburb ||
+          addr.quarter ||
+          addr.neighbourhood ||
+          addr.village ||
+          addr.city_district ||
+          addr.hamlet;
+        const city = addr.city || addr.town || addr.municipality || 'Ormoc City';
+        if (barangay) {
+          const formattedBgy =
+            barangay.toLowerCase().startsWith('brgy') || barangay.toLowerCase().startsWith('barangay')
+              ? barangay
+              : `Brgy. ${barangay}`;
+          return `${formattedBgy}, ${city}`;
+        }
+      }
+    } catch {
+      // Fallback used below
+    }
+    return fallback;
+  };
+
   // 1. Fetch campuses and verification logs from API on mount
   useEffect(() => {
     let isMounted = true;
@@ -201,8 +298,13 @@ export default function CampusGeofence({
         if (api?.geofences?.list) {
           const remoteCampuses = await api.geofences.list();
           if (isMounted && Array.isArray(remoteCampuses) && remoteCampuses.length > 0) {
-            setCampuses(remoteCampuses);
-            saveCampusGeofences(remoteCampuses);
+            const normalized = remoteCampuses.map((c) => ({
+              ...c,
+              polygon: c.polygonCoords || c.polygon,
+              polygonCoords: c.polygonCoords || c.polygon,
+            }));
+            setCampuses(normalized);
+            saveCampusGeofences(normalized);
           }
         }
       } catch (err) {
@@ -243,7 +345,8 @@ export default function CampusGeofence({
       const defaultPoly = selectedCampus.id.includes('luna')
         ? DEFAULT_LUNA_POLYGON
         : DEFAULT_MAIN_POLYGON;
-      setPolygonCoords(selectedCampus.polygon || defaultPoly);
+      const poly = selectedCampus.polygonCoords || selectedCampus.polygon || defaultPoly;
+      setPolygonCoords(poly);
       setEnforceGeofence(selectedCampus.enforceGeofence !== false);
     }
   }, [selectedCampusId, campuses]);
@@ -424,6 +527,13 @@ export default function CampusGeofence({
           const [cLat, cLng] = calculatePolygonCentroid(updated);
           setLatitude(cLat);
           setLongitude(cLng);
+
+          // Auto-derive Location / Barangay based on new centroid
+          const localBgy = lookupOrmocBarangay(cLat, cLng);
+          setLocationNote(localBgy);
+          resolveBarangayFromCoordinates(cLat, cLng).then((refined) => {
+            if (refined) setLocationNote(refined);
+          });
         });
 
         vertexMarkersRef.current.push(handleMarker);
@@ -529,6 +639,13 @@ export default function CampusGeofence({
             const lngVal = parseFloat(newPos.lng.toFixed(6));
             setLatitude(latVal);
             setLongitude(lngVal);
+
+            // Auto-derive Location / Barangay based on new center
+            const localBgy = lookupOrmocBarangay(latVal, lngVal);
+            setLocationNote(localBgy);
+            resolveBarangayFromCoordinates(latVal, lngVal).then((refined) => {
+              if (refined) setLocationNote(refined);
+            });
           });
         }
       } else {
@@ -590,11 +707,16 @@ export default function CampusGeofence({
     locatePolylineRef.current = line;
 
     // Verification Ping Marker
+    const isOk = log.isValid;
+    const pingIconSvg = isOk
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
     const pingIcon = L.divIcon({
       className: 'evsu-ping-marker',
       html: `
         <div style="
-          background: ${log.isValid ? '#059669' : '#dc2626'};
+          background: ${isOk ? '#059669' : '#dc2626'};
           color: #ffffff;
           padding: 5px 10px;
           border-radius: 14px;
@@ -604,11 +726,11 @@ export default function CampusGeofence({
           border: 2px solid #ffffff;
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           white-space: nowrap;
           transform: translate(-50%, -50%);
         ">
-          <span>${log.isValid ? '📍' : '⚠️'}</span>
+          ${pingIconSvg}
           <span>${log.name}</span>
         </div>
       `,
@@ -620,7 +742,7 @@ export default function CampusGeofence({
     pingMarker
       .bindPopup(
         `<div style="font-family: inherit; font-size: 12px; line-height: 1.5;">
-          <b style="color: ${log.isValid ? '#059669' : '#dc2626'}; font-size: 13px;">${log.isValid ? '✓ Verified Submission' : '⚠️ Out of Bounds'}</b><br/>
+          <b style="color: ${log.isValid ? '#059669' : '#dc2626'}; font-size: 13px;">${log.isValid ? 'Verified Submission' : 'Out of Bounds Submission'}</b><br/>
           <b>Personnel:</b> ${log.name}<br/>
           <b>Department:</b> ${log.department}<br/>
           <b>Timestamp:</b> ${log.time}<br/>
@@ -682,7 +804,7 @@ export default function CampusGeofence({
 
     try {
       if (api?.geofences?.updateSingle) {
-        await api.geofences.updateSingle(selectedCampusId, {
+        const res = await api.geofences.updateSingle(selectedCampusId, {
           name: campusName,
           shortName,
           locationNote,
@@ -694,6 +816,10 @@ export default function CampusGeofence({
           enforceGeofence,
           isPrimary: selectedCampus?.isPrimary || false,
         });
+        if (res && res.polygonCoords) {
+          updatedCampus.polygon = res.polygonCoords;
+          updatedCampus.polygonCoords = res.polygonCoords;
+        }
       }
     } catch (err) {
       console.warn('Backend geofence update warning:', err.message);
@@ -871,18 +997,6 @@ export default function CampusGeofence({
     return true;
   });
 
-  // Table summary metrics
-  const totalLogsCount = complianceLogs.length;
-  const verifiedCount = complianceLogs.filter((l) => l.isValid).length;
-  const complianceRate = totalLogsCount > 0 ? ((verifiedCount / totalLogsCount) * 100).toFixed(1) : 100;
-  const avgDistance =
-    totalLogsCount > 0
-      ? Math.round(
-          complianceLogs.reduce((acc, curr) => acc + (curr.distanceMeters || 60), 0) /
-            totalLogsCount
-        )
-      : 0;
-
   return (
     <div>
       {/* Top Header */}
@@ -1040,8 +1154,14 @@ export default function CampusGeofence({
                       fontSize: '11.5px',
                     }}
                   >
-                    <span className="badge" style={{ background: '#e2e8f0', color: '#1e293b', padding: '2px 8px' }}>
-                      {camp.boundaryType === 'polygon' ? '⬡ Polygon' : `${camp.radiusM || 500}m radius`}
+                    <span className="badge" style={{ background: '#e2e8f0', color: '#1e293b', padding: '2px 8px', display: 'inline-flex', alignItems: 'center' }}>
+                      {camp.boundaryType === 'polygon' ? (
+                        <>
+                          <Hexagon size={11} style={{ marginRight: '3px' }} /> Polygon
+                        </>
+                      ) : (
+                        `${camp.radiusM || 500}m radius`
+                      )}
                     </span>
                     <span
                       className="badge"
@@ -1125,7 +1245,7 @@ export default function CampusGeofence({
                   {campusName} GIS Perimeter
                 </b>
                 <span className="muted" style={{ fontSize: '12px', marginLeft: '6px' }}>
-                  ({boundaryType === 'polygon' ? `⬡ ${polygonCoords.length}-point custom polygon` : `${radiusM}m live radius overlay`})
+                  ({boundaryType === 'polygon' ? `${polygonCoords.length}-point custom polygon` : `${radiusM}m live radius overlay`})
                 </span>
               </div>
             </div>
@@ -1347,20 +1467,59 @@ export default function CampusGeofence({
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label
-                  htmlFor="locationNoteInput"
-                  style={{ fontWeight: 600, fontSize: '13px' }}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '4px',
+                  }}
                 >
-                  Location / Barangay
-                </label>
+                  <label
+                    htmlFor="locationNoteInput"
+                    style={{ fontWeight: 600, fontSize: '13px', margin: 0 }}
+                  >
+                    Location / Barangay
+                  </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsResolvingLocation(true);
+                      const numLat = parseFloat(latitude);
+                      const numLng = parseFloat(longitude);
+                      const resolved = await resolveBarangayFromCoordinates(numLat, numLng);
+                      setLocationNote(resolved);
+                      setIsResolvingLocation(false);
+                    }}
+                    disabled={isResolvingLocation}
+                    className="btn btn-outline btn-sm"
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      borderRadius: '4px',
+                      height: '24px',
+                      cursor: isResolvingLocation ? 'not-allowed' : 'pointer',
+                    }}
+                    title="Auto-detect Barangay from current map pin position"
+                  >
+                    <LocateFixed size={12} className={isResolvingLocation ? 'spin' : ''} />
+                    <span>{isResolvingLocation ? 'Detecting...' : 'Auto-detect'}</span>
+                  </button>
+                </div>
                 <input
                   id="locationNoteInput"
                   className="form-control"
                   type="text"
                   value={locationNote}
                   onChange={(e) => setLocationNote(e.target.value)}
-                  placeholder="e.g. Barangay Luna"
+                  placeholder="e.g. Brgy. Don Felipe Larrazabal, Ormoc City"
                 />
+                <div className="muted" style={{ fontSize: '11px', marginTop: '3px' }}>
+                  Auto-derived from geofence position. You can manually edit or correct it.
+                </div>
               </div>
             </div>
 
@@ -1444,7 +1603,7 @@ export default function CampusGeofence({
                     gap: '6px',
                   }}
                 >
-                  <span>⚪</span> Radial Buffer
+                  <CircleDot size={14} /> Radial Buffer
                 </button>
                 <button
                   type="button"
@@ -1470,7 +1629,7 @@ export default function CampusGeofence({
                     gap: '6px',
                   }}
                 >
-                  <span>⬡</span> Property Polygon
+                  <Hexagon size={14} /> Property Polygon
                 </button>
               </div>
             </div>
@@ -1624,16 +1783,18 @@ export default function CampusGeofence({
               </div>
             )}
 
+            {/* Mandatory On-Site Attendance Verification Switch */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '12px 14px',
+                padding: '14px 16px',
                 background: '#f8fafc',
                 border: '1px solid var(--line)',
                 borderRadius: '8px',
                 marginBottom: '20px',
+                gap: '16px',
               }}
             >
               <div>
@@ -1642,21 +1803,77 @@ export default function CampusGeofence({
                     fontWeight: 700,
                     fontSize: '13px',
                     color: 'var(--ink)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  Enforce Geofence on this Campus
+                  <ShieldCheck size={16} color={enforceGeofence ? 'var(--brand-700)' : '#94a3b8'} />
+                  <span>Mandatory On-Site Attendance Verification</span>
                 </div>
-                <div className="muted" style={{ fontSize: '11.5px' }}>
-                  When active, COS daily accomplishment reports within this boundary are automatically validated.
+                <div className="muted" style={{ fontSize: '11.5px', marginTop: '3px' }}>
+                  When active, Daily Accomplishment Reports (DAR) must originate within this campus boundary to be verified.
                 </div>
               </div>
-              <input
-                type="checkbox"
-                id="enforceToggle"
-                checked={enforceGeofence}
-                onChange={(e) => setEnforceGeofence(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-              />
+
+              <div
+                role="switch"
+                aria-checked={enforceGeofence}
+                tabIndex={0}
+                onClick={() => setEnforceGeofence(!enforceGeofence)}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    setEnforceGeofence(!enforceGeofence);
+                  }
+                }}
+                style={{
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  userSelect: 'none',
+                  flexShrink: 0,
+                }}
+                title={enforceGeofence ? 'Click to pause geofence enforcement' : 'Click to activate geofence enforcement'}
+              >
+                <div
+                  style={{
+                    width: '46px',
+                    height: '24px',
+                    borderRadius: '12px',
+                    background: enforceGeofence ? 'var(--brand-700, #800000)' : '#cbd5e1',
+                    position: 'relative',
+                    transition: 'background 0.2s ease',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      position: 'absolute',
+                      top: '3px',
+                      left: enforceGeofence ? '25px' : '3px',
+                      transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: enforceGeofence ? '#15803d' : '#64748b',
+                    minWidth: '60px',
+                  }}
+                >
+                  {enforceGeofence ? 'Active' : 'Paused'}
+                </span>
+              </div>
             </div>
 
             <div
@@ -1690,64 +1907,6 @@ export default function CampusGeofence({
               </button>
             </div>
           </form>
-        </div>
-      </div>
-
-      {/* Geofence Activity Performance Metrics Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          marginBottom: '20px',
-        }}
-      >
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <div className="muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-            Total Monitored DAR Pings
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: 'var(--ink-900)' }}>
-            {totalLogsCount} Submissions
-          </div>
-          <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-            Across all authorized campus sites
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <div className="muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-            Geofence Compliance Rate
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: '#15803d' }}>
-            {complianceRate}%
-          </div>
-          <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-            {verifiedCount} of {totalLogsCount} confirmed on-site
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <div className="muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-            Average Distance to Center
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: 'var(--brand-700)' }}>
-            ~{avgDistance}m
-          </div>
-          <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-            Well within safe campus perimeter
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '16px 20px' }}>
-          <div className="muted" style={{ fontSize: '12px', fontWeight: 600 }}>
-            Active Enforcement Sites
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: 'var(--ink-900)' }}>
-            {campuses.filter((c) => c.enforceGeofence !== false).length} of {campuses.length} Campuses
-          </div>
-          <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-            Dual-campus automated verification
-          </div>
         </div>
       </div>
 

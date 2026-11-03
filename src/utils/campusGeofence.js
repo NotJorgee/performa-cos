@@ -30,6 +30,7 @@ export const DEFAULT_CAMPUSES = [
     radiusM: 500,
     boundaryType: 'radius', // 'radius' | 'polygon'
     polygon: DEFAULT_MAIN_POLYGON,
+    polygonCoords: DEFAULT_MAIN_POLYGON,
     enforceGeofence: true,
     isPrimary: true,
   },
@@ -43,6 +44,7 @@ export const DEFAULT_CAMPUSES = [
     radiusM: 500,
     boundaryType: 'radius', // 'radius' | 'polygon'
     polygon: DEFAULT_LUNA_POLYGON,
+    polygonCoords: DEFAULT_LUNA_POLYGON,
     enforceGeofence: true,
     isPrimary: false,
   },
@@ -148,8 +150,9 @@ export const verifyCoordinatesAgainstCampuses = (userLat, userLng, customCampuse
       nearestCampus = campus;
     }
 
-    if (campus.boundaryType === 'polygon' && campus.polygon && campus.polygon.length >= 3) {
-      if (isPointInPolygon(userLat, userLng, campus.polygon)) {
+    const poly = campus.polygonCoords || campus.polygon;
+    if (campus.boundaryType === 'polygon' && poly && poly.length >= 3) {
+      if (isPointInPolygon(userLat, userLng, poly)) {
         matchedCampus = campus;
         break;
       }
