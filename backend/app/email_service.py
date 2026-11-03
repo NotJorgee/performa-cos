@@ -1,106 +1,126 @@
 """
-email_service.py — Resend-powered email delivery for PerformaCOS.
+email_service.py — Direct SMTP-powered email delivery for PerformaCOS.
+Uses Python's standard smtplib and email.mime for zero-dependency,
+unrestricted delivery to any email domain (Gmail, EVSU, Outlook, etc.).
 """
-import resend
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formataddr
+
 from .config import settings
 
-resend.api_key = settings.RESEND_API_KEY
 
-
-def _dispatch_resend(payload: dict) -> bool:
+def _dispatch_smtp(to: str, subject: str, html: str) -> bool:
     """
-    Sends email via Resend with graceful fallback to onboarding@resend.dev
-    if the custom domain is not yet verified.
+    Dispatches an HTML email via SMTP using settings configured in .env.
+    Supports TLS (Port 587) and SSL (Port 465) with graceful failure handling.
     """
-    if not resend.api_key:
-        print("[email_service] Warning: RESEND_API_KEY is not set.")
+    if not settings.SMTP_HOST or not settings.SMTP_USER:
+        print(f"[email_service] Warning: SMTP not fully configured (HOST={settings.SMTP_HOST}, USER={settings.SMTP_USER}). Skipped dispatch to {to}.")
         return False
 
-    try:
-        resend.Emails.send(payload)
-        return True
-    except Exception as e:
-        err_msg = str(e)
-        # If unverified domain, fallback to Resend testing sandbox
-        if ("domain is not verified" in err_msg or "not verified" in err_msg) and payload.get("from") != "onboarding@resend.dev":
-            print(f"[email_service] Unverified domain warning ({payload.get('from')}). Falling back to onboarding@resend.dev...")
-            payload["from"] = "onboarding@resend.dev"
-            try:
-                resend.Emails.send(payload)
-                return True
-            except Exception as retry_err:
-                print(f"[email_service] Sandbox fallback notice: {retry_err}")
-                return False
+    sender_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
+    sender_name = settings.SMTP_FROM_NAME or "EVSU PerformaCOS"
+    # Auto-strip spaces if user pasted a formatted Google App Password (e.g. "abcd efgh ijkl mnop")
+    password = (settings.SMTP_PASSWORD or "").replace(" ", "")
 
-        print(f"[email_service] Delivery notice: {e}")
+    msg = MIMEMultipart("alternative")
+    msg["From"] = formataddr((sender_name, sender_email))
+    msg["To"] = to
+    msg["Subject"] = subject
+
+    html_part = MIMEText(html, "html", "utf-8")
+    msg.attach(html_part)
+
+    try:
+        if settings.SMTP_USE_SSL or settings.SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                if settings.SMTP_USER and password:
+                    server.login(settings.SMTP_USER, password)
+                server.sendmail(sender_email, [to], msg.as_string())
+        else:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                if settings.SMTP_USE_TLS or settings.SMTP_PORT == 587:
+                    server.starttls()
+                if settings.SMTP_USER and password:
+                    server.login(settings.SMTP_USER, password)
+                server.sendmail(sender_email, [to], msg.as_string())
+
+        print(f"[email_service] Successfully dispatched '{subject}' to {to} via SMTP ({settings.SMTP_HOST}).")
+        return True
+    except Exception as exc:
+        print(f"[email_service] SMTP delivery failed to {to}: {exc}")
         return False
 
 
 def send_otp_email(to: str, otp_code: str, name: str = "") -> bool:
+    """Sends a 6-digit password reset OTP code."""
     greeting = f"Hello {name}," if name else "Hello,"
-    payload = {
-        "from": settings.RESEND_FROM_EMAIL or "onboarding@resend.dev",
-        "to": [to],
-        "subject": "PerformaCOS — Your OTP Code",
-        "html": f"""
-        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px;">
-          <h2 style="color:#1e3a5f;">PerformaCOS</h2>
-          <p>{greeting}</p>
-          <p>Use the following One-Time Password (OTP) to reset your password. It expires in <strong>10 minutes</strong>.</p>
-          <div style="font-size:36px;font-weight:bold;letter-spacing:10px;text-align:center;padding:24px;background:#f3f4f6;border-radius:8px;margin:24px 0;">{otp_code}</div>
-          <p style="color:#6b7280;font-size:12px;">If you did not request this, please ignore this email. Do not share this code with anyone.</p>
-          <hr style="border:none;border-top:1px solid #e5e7eb;">
-          <p style="color:#6b7280;font-size:11px;">EVSU Ormoc Campus · PerformaCOS System</p>
-        </div>
-        """,
-    }
-    return _dispatch_resend(payload)
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <p style="font-size:14px;line-height:1.6;margin-bottom:12px;">{greeting}</p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">Use the following One-Time Password (OTP) to securely reset your PerformaCOS account credentials. This code expires in <strong>10 minutes</strong>.</p>
+      <div style="font-size:32px;font-weight:800;letter-spacing:8px;text-align:center;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin:24px 0;color:#0f172a;font-family:monospace;">
+        {otp_code}
+      </div>
+      <p style="color:#64748b;font-size:12px;line-height:1.5;">If you did not initiate this password reset request, you can safely disregard this email. Your account credentials will remain unchanged.</p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS Performance Evaluation System</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject="PerformaCOS — Your One-Time Password (OTP)", html=html)
 
 
 def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR Personnel") -> bool:
+    """Sends an official institutional onboarding invitation with tokenized registration link."""
     registration_url = f"{settings.APP_FRONTEND_URL}/?token={token}"
     role_label = "COS Employee" if "COS" in role else "Administrator / Department Head"
-    payload = {
-        "from": settings.RESEND_FROM_EMAIL or "onboarding@resend.dev",
-        "to": [to],
-        "subject": f"PerformaCOS — Invitation to Register as {role_label}",
-        "html": f"""
-        <div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;color:#1e293b;">
-          <div style="text-align:center;margin-bottom:24px;">
-            <h2 style="color:#7a1128;margin:0 0 4px;font-size:24px;font-weight:800;">PerformaCOS</h2>
-            <p style="color:#64748b;font-size:13px;margin:0;">Eastern Visayas State University</p>
-          </div>
-          <p style="font-size:15px;line-height:1.6;">Hello,</p>
-          <p style="font-size:15px;line-height:1.6;">You have been officially invited by <strong>{invited_by}</strong> to join the PerformaCOS platform as an institutional <strong>{role}</strong>.</p>
-          <div style="text-align:center;margin:28px 0;">
-            <a href="{registration_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(122,17,40,0.25);">Complete Your Registration</a>
-          </div>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center;margin-bottom:20px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Your Official Invitation Token</div>
-            <code style="font-size:16px;font-weight:800;color:#0f172a;letter-spacing:1.5px;">{token}</code>
-          </div>
-          <p style="font-size:12px;color:#64748b;line-height:1.5;">This registration token is valid for 30 days. If the button above does not work, copy and paste this address into your browser:<br><a href="{registration_url}" style="color:#7a1128;word-break:break-all;">{registration_url}</a></p>
-          <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
-          <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">Eastern Visayas State University · Performance Management System</p>
-        </div>
-        """,
-    }
-    return _dispatch_resend(payload)
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:24px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <p style="font-size:14px;line-height:1.6;margin-bottom:12px;">Hello,</p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        You have been officially invited by <strong>{invited_by}</strong> to join the PerformaCOS portal as an authorized <strong>{role}</strong>.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="{registration_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(122,17,40,0.25);">Complete Your Registration</a>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Official Invitation Token</div>
+        <code style="font-size:16px;font-weight:800;color:#0f172a;letter-spacing:1.5px;font-family:monospace;">{token}</code>
+      </div>
+      <p style="font-size:12px;color:#64748b;line-height:1.5;">This registration token is valid for 30 days. If the button above does not open directly, copy and paste this address into your browser:<br><a href="{registration_url}" style="color:#7a1128;word-break:break-all;">{registration_url}</a></p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">Eastern Visayas State University · Performance Management System</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject=f"PerformaCOS — Invitation to Register as {role_label}", html=html)
 
 
 def send_welcome_email(to: str, name: str, role: str) -> bool:
-    payload = {
-        "from": settings.RESEND_FROM_EMAIL or "onboarding@resend.dev",
-        "to": [to],
-        "subject": "Welcome to PerformaCOS",
-        "html": f"""
-        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px;">
-          <h2 style="color:#1e3a5f;">Welcome to PerformaCOS, {name}!</h2>
-          <p>Your account has been successfully created as <strong>{role}</strong>.</p>
-          <p>You can now log in to the PerformaCOS system using your institutional email and password.</p>
-          <hr style="border:none;border-top:1px solid #e5e7eb;">
-          <p style="color:#6b7280;font-size:11px;">EVSU Ormoc Campus · PerformaCOS System</p>
-        </div>
-        """,
-    }
-    return _dispatch_resend(payload)
+    """Sends an official account onboarding confirmation upon registration completion."""
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <h3 style="color:#0f172a;margin:0 0 12px;font-size:16px;font-weight:700;">Welcome to PerformaCOS, {name}!</h3>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">Your institutional account has been successfully verified and registered as <strong>{role}</strong>.</p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">You can now sign in to the PerformaCOS portal using your institutional email and password to access your dashboard, submit Daily Accomplishment Reports, and participate in evaluation workflows.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{settings.APP_FRONTEND_URL}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px;">Go to Login Portal</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
+    </div>
+    """
+    return _dispatch_smtp(to=to, subject="Welcome to PerformaCOS", html=html)

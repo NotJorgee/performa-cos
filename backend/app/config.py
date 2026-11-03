@@ -48,9 +48,15 @@ class Settings(BaseSettings):
     EVSU_LONGITUDE: float = 124.6075
     GEOFENCE_RADIUS_METERS: float = 500.0
 
-    # Resend Email
-    RESEND_API_KEY: str = ""
-    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+    # SMTP Email Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_NAME: str = "EVSU PerformaCOS"
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
 
     # Supabase Storage
     SUPABASE_URL: str = ""

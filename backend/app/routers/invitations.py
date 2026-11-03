@@ -26,7 +26,7 @@ def create_invitation(
 ):
     """
     Generate an invitation token for a new COS Employee or Administrator (HR only).
-    Optionally sends an invitation email via Resend if email is provided.
+    Optionally sends an invitation email via SMTP if email is provided.
     """
     if current_user.role != "HR Personnel":
         raise HTTPException(
