@@ -98,11 +98,6 @@ export default function CampusGeofence({
     name: '',
     shortName: '',
     locationNote: '',
-    latitude: 11.0065,
-    longitude: 124.6075,
-    radiusM: 500,
-    boundaryType: 'radius',
-    enforceGeofence: true,
   });
 
   // Verification Activity logs from API (with local fallback)
@@ -926,17 +921,23 @@ export default function CampusGeofence({
   const handleAddCampus = async (e) => {
     e.preventDefault();
     const newId = `campus_${Date.now()}`;
+    const map = mapInstanceRef.current;
+    const center = map ? map.getCenter() : null;
+    const initialLat = center ? parseFloat(center.lat.toFixed(6)) : 11.0065;
+    const initialLng = center ? parseFloat(center.lng.toFixed(6)) : 124.6075;
+
     const newCampus = {
       id: newId,
       name: newCampusData.name || 'New External Campus',
       shortName: newCampusData.shortName || newCampusData.name || 'Campus Site',
-      locationNote: newCampusData.locationNote || 'Ormoc City',
-      latitude: parseFloat(newCampusData.latitude),
-      longitude: parseFloat(newCampusData.longitude),
-      radiusM: parseInt(newCampusData.radiusM, 10),
-      boundaryType: newCampusData.boundaryType || 'radius',
+      locationNote: newCampusData.locationNote || lookupOrmocBarangay(initialLat, initialLng),
+      latitude: initialLat,
+      longitude: initialLng,
+      radiusM: 500,
+      boundaryType: 'radius',
       polygon: DEFAULT_MAIN_POLYGON,
-      enforceGeofence: newCampusData.enforceGeofence,
+      polygonCoords: DEFAULT_MAIN_POLYGON,
+      enforceGeofence: true,
       isPrimary: false,
     };
 
@@ -958,13 +959,8 @@ export default function CampusGeofence({
       name: '',
       shortName: '',
       locationNote: '',
-      latitude: 11.0065,
-      longitude: 124.6075,
-      radiusM: 500,
-      boundaryType: 'radius',
-      enforceGeofence: true,
     });
-    setToastMsg(`Added "${newCampus.name}" to authorized geofence sites.`);
+    setToastMsg(`Added "${newCampus.name}". You can now position its pin and configure perimeter parameters.`);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -2557,88 +2553,23 @@ export default function CampusGeofence({
 
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '12px',
-                  marginBottom: '14px',
+                  background: '#f8fafc',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  fontSize: '12px',
+                  color: 'var(--ink-700)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  marginBottom: '16px',
                 }}
               >
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontWeight: 600, fontSize: '13px' }}>
-                    Latitude (°N)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    className="form-control"
-                    required
-                    value={newCampusData.latitude}
-                    onChange={(e) =>
-                      setNewCampusData({
-                        ...newCampusData,
-                        latitude: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontWeight: 600, fontSize: '13px' }}>
-                    Longitude (°E)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    className="form-control"
-                    required
-                    value={newCampusData.longitude}
-                    onChange={(e) =>
-                      setNewCampusData({
-                        ...newCampusData,
-                        longitude: e.target.value,
-                      })
-                    }
-                  />
+                <Compass size={16} color="var(--brand-700)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                <div>
+                  GPS coordinates and perimeter boundaries (radial circle or custom property polygon) can be positioned and configured directly on the interactive GIS map after adding.
                 </div>
               </div>
-
-              <div className="form-group" style={{ marginBottom: '14px' }}>
-                <label style={{ fontWeight: 600, fontSize: '13px' }}>
-                  Perimeter Geometry Type
-                </label>
-                <select
-                  className="form-control"
-                  value={newCampusData.boundaryType}
-                  onChange={(e) =>
-                    setNewCampusData({ ...newCampusData, boundaryType: e.target.value })
-                  }
-                >
-                  <option value="radius">Radial Buffer (Radius in meters)</option>
-                  <option value="polygon">Custom Property Polygon</option>
-                </select>
-              </div>
-
-              {newCampusData.boundaryType === 'radius' && (
-                <div className="form-group" style={{ marginBottom: '18px' }}>
-                  <label style={{ fontWeight: 600, fontSize: '13px' }}>
-                    Radius (meters)
-                  </label>
-                  <input
-                    type="number"
-                    min="100"
-                    max="5000"
-                    step="25"
-                    className="form-control"
-                    required
-                    value={newCampusData.radiusM}
-                    onChange={(e) =>
-                      setNewCampusData({
-                        ...newCampusData,
-                        radiusM: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              )}
 
               <div
                 style={{
