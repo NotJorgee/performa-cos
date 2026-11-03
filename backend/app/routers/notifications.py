@@ -106,14 +106,21 @@ def update_notification_preferences(
         prefs = models.NotificationPreference(user_id=current_user.id)
         db.add(prefs)
 
-    if payload.deadline_alerts is not None:
-        prefs.deadline_alerts = payload.deadline_alerts
-    if payload.contract_notices is not None:
-        prefs.contract_notices = payload.contract_notices
-    if payload.approval_alerts is not None:
-        prefs.approval_alerts = payload.approval_alerts
-    if payload.sms_alerts is not None:
-        prefs.sms_alerts = payload.sms_alerts
+    if current_user.role == "COS Employee":
+        # Institutional compliance: all alerts remain statutory and mandatory for COS employees
+        prefs.deadline_alerts = True
+        prefs.contract_notices = True
+        prefs.approval_alerts = True
+        prefs.sms_alerts = True
+    else:
+        if payload.deadline_alerts is not None:
+            prefs.deadline_alerts = payload.deadline_alerts
+        if payload.contract_notices is not None:
+            prefs.contract_notices = payload.contract_notices
+        if payload.approval_alerts is not None:
+            prefs.approval_alerts = payload.approval_alerts
+        if payload.sms_alerts is not None:
+            prefs.sms_alerts = payload.sms_alerts
 
     db.commit()
     db.refresh(prefs)
@@ -165,7 +172,7 @@ def list_user_notifications(
         elif n.action_view == "intent_review":
             action_label = "Review Intents"
         elif n.action_view == "evaluation_management":
-            action_label = "Open Mediation"
+            action_label = "Manage Renewals" if "renewal" in (n.category or "") else "Open Mediation"
         elif n.action_view == "hr_evaluations_proxy":
             action_label = "Input HR Scores"
 

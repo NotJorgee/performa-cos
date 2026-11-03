@@ -771,69 +771,193 @@ export default function ProfileSettings({
       {/* TAB 3: NOTIFICATIONS & ALERTS (Universal) */}
       {activeTab === 'notifications' && (
         <div className="card" style={{ padding: '22px 24px' }}>
-          <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 700, color: 'var(--ink-900)' }}>
-            Notification &amp; Communication Preferences
-          </h3>
-          <p className="muted" style={{ margin: '0 0 20px', fontSize: '12.5px' }}>
-            Choose which operational alerts, evaluation milestones, and administrative updates you receive.
-          </p>
+          <div className="flex-between" style={{ marginBottom: '16px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 700, color: 'var(--ink-900)' }}>
+                Notification &amp; Communication Preferences
+              </h3>
+              <p className="muted" style={{ margin: 0, fontSize: '12.5px' }}>
+                {currentUser.role === 'COS Employee'
+                  ? 'Official notification delivery standards enforced under Eastern Visayas State University guidelines.'
+                  : 'Manage operational alert routing and review notification batch preferences.'}
+              </p>
+            </div>
+            {currentUser.role === 'COS Employee' ? (
+              <span className="badge badge-confirmed" style={{ fontSize: '11px', padding: '4px 8px' }}>
+                Policy Enforced
+              </span>
+            ) : (
+              <span className="badge badge-dept" style={{ fontSize: '11px', padding: '4px 8px' }}>
+                Administrator Mode
+              </span>
+            )}
+          </div>
+
+          {/* Role-Specific Institutional Guidance Banner */}
+          {currentUser.role === 'COS Employee' ? (
+            <div
+              style={{
+                marginBottom: '20px',
+                padding: '14px 16px',
+                background: 'var(--brand-50, #fdf2f4)',
+                border: '1px solid var(--brand-200, #fbcfe8)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+              }}
+            >
+              <Shield size={20} color="var(--brand-700)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ fontSize: '12.5px', lineHeight: 1.5, color: 'var(--ink-800)' }}>
+                <b style={{ color: 'var(--brand-800)', display: 'block', marginBottom: '2px' }}>
+                  Mandatory University Compliance Policy
+                </b>
+                In accordance with EVSU HRMO Contract of Service (COS) guidelines, institutional alerts for contract expiration, renewal intent windows, monthly report cut-offs, and evaluation milestones are statutory requirements and cannot be disabled by personnel.
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                marginBottom: '20px',
+                padding: '14px 16px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+              }}
+            >
+              <Bell size={20} color="#15803d" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ fontSize: '12.5px', lineHeight: 1.5, color: '#166534' }}>
+                <b style={{ display: 'block', marginBottom: '2px' }}>
+                  Smart Renewal Rollup Active
+                </b>
+                To prevent notification inbox flooding during end-of-term contract renewal windows, multiple subordinate renewal submissions occurring on the same day are automatically consolidated into single batch notifications.
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleNotificationSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  cursor: currentUser.role === 'COS Employee' ? 'not-allowed' : 'pointer',
+                  opacity: currentUser.role === 'COS Employee' ? 0.9 : 1,
+                }}
+              >
                 <input
                   type="checkbox"
-                  checked={deadlineAlerts}
+                  disabled={currentUser.role === 'COS Employee'}
+                  checked={currentUser.role === 'COS Employee' ? true : deadlineAlerts}
                   onChange={(e) => setDeadlineAlerts(e.target.checked)}
                   style={{ marginTop: '3px', width: '16px', height: '16px' }}
                 />
                 <div>
-                  <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>Evaluation &amp; Monthly Report Deadlines</b>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>Evaluation &amp; Monthly Report Deadlines</b>
+                    {currentUser.role === 'COS Employee' && (
+                      <span className="badge badge-confirmed" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                        Mandatory
+                      </span>
+                    )}
+                  </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
                     Receive email &amp; in-app alerts 72 hours and 24 hours prior to MAR cut-offs and evaluation cycles.
                   </div>
                 </div>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  cursor: currentUser.role === 'COS Employee' ? 'not-allowed' : 'pointer',
+                  opacity: currentUser.role === 'COS Employee' ? 0.9 : 1,
+                }}
+              >
                 <input
                   type="checkbox"
-                  checked={contractNotices}
+                  disabled={currentUser.role === 'COS Employee'}
+                  checked={currentUser.role === 'COS Employee' ? true : contractNotices}
                   onChange={(e) => setContractNotices(e.target.checked)}
                   style={{ marginTop: '3px', width: '16px', height: '16px' }}
                 />
                 <div>
-                  <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>Contract Renewal &amp; Expiration Warnings</b>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>Contract Renewal &amp; Expiration Warnings</b>
+                    {currentUser.role === 'COS Employee' && (
+                      <span className="badge badge-confirmed" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                        Mandatory
+                      </span>
+                    )}
+                  </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
                     Notifications when a 6-month contract enters the 60-day or 30-day renewal intent window.
                   </div>
                 </div>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  cursor: currentUser.role === 'COS Employee' ? 'not-allowed' : 'pointer',
+                  opacity: currentUser.role === 'COS Employee' ? 0.9 : 1,
+                }}
+              >
                 <input
                   type="checkbox"
-                  checked={approvalAlerts}
+                  disabled={currentUser.role === 'COS Employee'}
+                  checked={currentUser.role === 'COS Employee' ? true : approvalAlerts}
                   onChange={(e) => setApprovalAlerts(e.target.checked)}
                   style={{ marginTop: '3px', width: '16px', height: '16px' }}
                 />
                 <div>
-                  <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>Review Confirmations &amp; Feedback Updates</b>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>Review Confirmations &amp; Feedback Updates</b>
+                    {currentUser.role === 'COS Employee' && (
+                      <span className="badge badge-confirmed" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                        Mandatory
+                      </span>
+                    )}
+                  </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
                     Immediate alerts when a supervisor signs a monthly report or releases triad evaluation results.
                   </div>
                 </div>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  cursor: currentUser.role === 'COS Employee' ? 'not-allowed' : 'pointer',
+                  opacity: currentUser.role === 'COS Employee' ? 0.9 : 1,
+                }}
+              >
                 <input
                   type="checkbox"
-                  checked={smsAlerts}
+                  disabled={currentUser.role === 'COS Employee'}
+                  checked={currentUser.role === 'COS Employee' ? true : smsAlerts}
                   onChange={(e) => setSmsAlerts(e.target.checked)}
                   style={{ marginTop: '3px', width: '16px', height: '16px' }}
                 />
                 <div>
-                  <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>SMS Urgent Alerts</b>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>SMS Urgent Alerts</b>
+                    {currentUser.role === 'COS Employee' && (
+                      <span className="badge badge-confirmed" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                        Mandatory
+                      </span>
+                    )}
+                  </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
                     Dispatch critical time-sensitive notices directly to verified phone: {contactNumber}.
                   </div>
@@ -842,14 +966,25 @@ export default function ProfileSettings({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isSavingPrefs || isLoadingPrefs}
-                style={{ cursor: isSavingPrefs ? 'wait' : 'pointer', fontWeight: 700 }}
-              >
-                {isSavingPrefs ? 'Saving Preferences...' : 'Save Notification Preferences'}
-              </button>
+              {currentUser.role === 'COS Employee' ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled
+                  style={{ cursor: 'not-allowed', opacity: 0.7, fontWeight: 700 }}
+                >
+                  Preferences Enforced by University Policy
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSavingPrefs || isLoadingPrefs}
+                  style={{ cursor: isSavingPrefs ? 'wait' : 'pointer', fontWeight: 700 }}
+                >
+                  {isSavingPrefs ? 'Saving Preferences...' : 'Save Notification Preferences'}
+                </button>
+              )}
             </div>
           </form>
         </div>

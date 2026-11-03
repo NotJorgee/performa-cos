@@ -58,6 +58,23 @@ export default function NotificationHistory({
           bg: '#fffbeb',
           border: '#fde68a',
         };
+      case 'renewal_rollup_dept':
+      case 'renewal_rollup_hr':
+        return {
+          label: 'Batch Renewal Rollup',
+          badgeClass: 'badge-confirmed',
+          icon: <Clock size={18} color="var(--brand-700, #7a0c2e)" />,
+          bg: '#fdf2f4',
+          border: '#fbcfe8',
+        };
+      case 'renewal':
+        return {
+          label: 'Contract Renewal',
+          badgeClass: 'badge-pending',
+          icon: <Clock size={18} color="var(--amber-600, #d97706)" />,
+          bg: '#fffbeb',
+          border: '#fde68a',
+        };
       case 'dar':
         return {
           label: 'Campus DAR',

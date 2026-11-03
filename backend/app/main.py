@@ -20,6 +20,7 @@ from .routers.audit import router as audit_router
 from .routers.analytics import router as analytics_router
 from .routers.notifications import router as notifications_router
 from .routers.sessions import router as sessions_router
+from .routers.audit import log_audit
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -319,6 +320,10 @@ def submit_renewal(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
+    now = datetime.datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # 1. Create Renewal Application record
     renewal = models.RenewalApplication(
         employee_id=current_user.id,
         period=payload.period,
@@ -326,9 +331,149 @@ def submit_renewal(
         loi_file_url=payload.loi_file_url,
         loi_original_filename=payload.loi_original_filename,
         mar_narrative=payload.mar_narrative,
-        submitted_at=datetime.datetime.utcnow(),
+        submitted_at=now,
     )
     db.add(renewal)
     db.commit()
     db.refresh(renewal)
+
+    dept_name = (
+        current_user.department.name
+        if current_user.department
+        else "your department"
+    )
+
+    # 2. Personal Confirmation Notification for Employee
+    emp_notif = models.Notification(
+        user_id=current_user.id,
+        title="Contract Renewal Intent Confirmed",
+        message=f"Your 6-month contract renewal application for {payload.period} has been submitted and forwarded to your Department Head for endorsement.",
+        category="contract",
+        is_read=False,
+        action_view="contract_status",
+        created_at=now,
+    )
+    db.add(emp_notif)
+
+    # 3. Smart Rollup Notification for Department Head (Consolidated Batch)
+    dept_head = (
+        db.query(models.UserAccount)
+        .filter(
+            models.UserAccount.role == "Department Head",
+            models.UserAccount.department_id == current_user.department_id,
+            models.UserAccount.is_archived == False,
+        )
+        .first()
+    )
+
+    dept_renewals_today = (
+        db.query(models.RenewalApplication)
+        .join(models.UserAccount, models.RenewalApplication.employee_id == models.UserAccount.id)
+        .filter(
+            models.UserAccount.department_id == current_user.department_id,
+            models.RenewalApplication.submitted_at >= today_start,
+        )
+        .count()
+    )
+
+    existing_dept_rollup = (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.category == "renewal_rollup_dept",
+            models.Notification.is_read == False,
+            models.Notification.created_at >= today_start,
+            (models.Notification.user_id == (dept_head.id if dept_head else None))
+            | (models.Notification.target_role == "Department Head"),
+        )
+        .first()
+    )
+
+    if existing_dept_rollup:
+        # Aggregation: update existing unread notification card
+        existing_dept_rollup.title = f"{dept_renewals_today} Subordinate Renewal Intents Submitted"
+        existing_dept_rollup.message = f"{dept_renewals_today} COS Personnel in {dept_name} have submitted contract renewal applications today for your endorsement review."
+        existing_dept_rollup.action_view = "intent_review"
+        existing_dept_rollup.created_at = now
+    else:
+        title = (
+            "Contract Renewal Intent Submitted"
+            if dept_renewals_today <= 1
+            else f"{dept_renewals_today} Subordinate Renewal Intents Submitted"
+        )
+        message = (
+            f"{current_user.full_name} submitted a formal Contract Renewal Intent for {dept_name}."
+            if dept_renewals_today <= 1
+            else f"{dept_renewals_today} COS Personnel in {dept_name} have submitted renewal intents for review."
+        )
+        db.add(
+            models.Notification(
+                user_id=dept_head.id if dept_head else None,
+                target_role="Department Head" if not dept_head else None,
+                title=title,
+                message=message,
+                category="renewal_rollup_dept",
+                is_read=False,
+                action_view="intent_review",
+                created_at=now,
+            )
+        )
+
+    # 4. Smart Rollup Notification for HR Personnel (Campus-Wide Batch)
+    hr_renewals_today = (
+        db.query(models.RenewalApplication)
+        .filter(models.RenewalApplication.submitted_at >= today_start)
+        .count()
+    )
+
+    existing_hr_rollup = (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.category == "renewal_rollup_hr",
+            models.Notification.is_read == False,
+            models.Notification.created_at >= today_start,
+            models.Notification.target_role == "HR Personnel",
+        )
+        .first()
+    )
+
+    if existing_hr_rollup:
+        # Aggregation: update existing unread HR batch card
+        existing_hr_rollup.title = f"{hr_renewals_today} Contract Renewal Applications Submitted"
+        existing_hr_rollup.message = f"{hr_renewals_today} COS Personnel across campus departments have submitted renewal applications today."
+        existing_hr_rollup.action_view = "evaluation_management"
+        existing_hr_rollup.created_at = now
+    else:
+        hr_title = (
+            "New Contract Renewal Application"
+            if hr_renewals_today <= 1
+            else f"{hr_renewals_today} Renewal Applications Submitted"
+        )
+        hr_message = (
+            f"A contract renewal application was submitted by {current_user.full_name} ({dept_name})."
+            if hr_renewals_today <= 1
+            else f"{hr_renewals_today} COS Personnel across campus departments have submitted renewal applications today."
+        )
+        db.add(
+            models.Notification(
+                target_role="HR Personnel",
+                title=hr_title,
+                message=hr_message,
+                category="renewal_rollup_hr",
+                is_read=False,
+                action_view="evaluation_management",
+                created_at=now,
+            )
+        )
+
+    db.commit()
+
+    # 5. Security Audit Log
+    log_audit(
+        db=db,
+        action="RENEWAL_INTENT_SUBMITTED",
+        target_scope=f"User #{current_user.id} ({current_user.full_name})",
+        operation_details=f"Submitted contract renewal application for period {payload.period}.",
+        user=current_user,
+    )
+
     return renewal
