@@ -43,21 +43,35 @@ def submit_dar(
     verified_campus = None
 
     if report.latitude and report.longitude:
-        dist_main = calculate_haversine_distance_meters(
-            report.latitude, report.longitude,
-            settings.EVSU_MAIN_LATITUDE, settings.EVSU_MAIN_LONGITUDE,
-        )
-        dist_luna = calculate_haversine_distance_meters(
-            report.latitude, report.longitude,
-            settings.EVSU_LUNA_LATITUDE, settings.EVSU_LUNA_LONGITUDE,
-        )
+        # Check against database-configured campus geofences
+        active_campuses = db.query(models.CampusGeofence).filter(models.CampusGeofence.enforce_geofence == True).all()
+        if active_campuses:
+            for campus in active_campuses:
+                dist = calculate_haversine_distance_meters(
+                    report.latitude, report.longitude,
+                    campus.latitude, campus.longitude,
+                )
+                if dist <= campus.radius_meters:
+                    is_valid_geofence = True
+                    verified_campus = campus.name
+                    break
+        else:
+            # Fallback to config settings
+            dist_main = calculate_haversine_distance_meters(
+                report.latitude, report.longitude,
+                settings.EVSU_MAIN_LATITUDE, settings.EVSU_MAIN_LONGITUDE,
+            )
+            dist_luna = calculate_haversine_distance_meters(
+                report.latitude, report.longitude,
+                settings.EVSU_LUNA_LATITUDE, settings.EVSU_LUNA_LONGITUDE,
+            )
 
-        if dist_main <= settings.EVSU_MAIN_RADIUS_METERS:
-            is_valid_geofence = True
-            verified_campus = "EVSU Ormoc — Main Campus"
-        elif dist_luna <= settings.EVSU_LUNA_RADIUS_METERS:
-            is_valid_geofence = True
-            verified_campus = "EVSU Ormoc — Luna Campus"
+            if dist_main <= settings.EVSU_MAIN_RADIUS_METERS:
+                is_valid_geofence = True
+                verified_campus = "EVSU Ormoc — Main Campus"
+            elif dist_luna <= settings.EVSU_LUNA_RADIUS_METERS:
+                is_valid_geofence = True
+                verified_campus = "EVSU Ormoc — Luna Campus"
 
     # Normalize tasks structure:
     tasks_data = []

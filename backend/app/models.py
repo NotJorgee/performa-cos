@@ -251,3 +251,22 @@ class Notification(Base):
     is_read = Column(Boolean, default=False)
     action_view = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# CampusGeofence (Multi-Campus Spatial GIS Configuration)
+# ---------------------------------------------------------------------------
+class CampusGeofence(Base):
+    __tablename__ = "campus_geofence"
+
+    id = Column(String(100), primary_key=True)  # e.g. 'evsu_ormoc_main', 'evsu_luna'
+    name = Column(String(255), nullable=False)
+    short_name = Column(String(100), nullable=True)
+    location_note = Column(String(255), nullable=True)
+    latitude = Column(Float, nullable=False, default=11.0065)
+    longitude = Column(Float, nullable=False, default=124.6075)
+    radius_meters = Column(Float, nullable=False, default=500.0)
+    enforce_geofence = Column(Boolean, default=True)
+    is_primary = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+

@@ -323,6 +323,29 @@ export const api = {
         method: 'DELETE',
       }),
   },
+
+  // Multi-Campus Geofencing Engine & GIS Configuration
+  geofences: {
+    list: () => request('/geofences'),
+    updateBatch: (campuses) =>
+      request('/geofences/batch', {
+        method: 'PUT',
+        body: JSON.stringify(campuses),
+      }),
+    updateSingle: (campusId, data) =>
+      request(`/geofences/${campusId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (campusId) =>
+      request(`/geofences/${campusId}`, {
+        method: 'DELETE',
+      }),
+    getVerifications: (campusId = null) => {
+      const q = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : '';
+      return request(`/geofences/verifications${q}`);
+    },
+  },
 };
 
 export default api;
