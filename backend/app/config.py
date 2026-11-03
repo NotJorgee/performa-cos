@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # Resend Email
     RESEND_API_KEY: str = ""
-    RESEND_FROM_EMAIL: str = "noreply@performacos.evsu.edu.ph"
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 
     # Supabase Storage
     SUPABASE_URL: str = ""

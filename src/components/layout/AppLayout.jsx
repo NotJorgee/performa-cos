@@ -243,7 +243,6 @@ export default function AppLayout({
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}
                 onClick={() => {
                   setNotifOpen((prev) => !prev);
-                  setUserMenuOpen(false);
                 }}
                 aria-label={`Notifications (${unreadCount} unread)`}
               >
