@@ -176,8 +176,20 @@ export default function CampusGeofence({
   const polygonRef = useRef(null);
   const vertexMarkersRef = useRef([]);
   const campusMarkersRef = useRef([]);
+  const activeCampusMarkerRef = useRef(null);
   const locateMarkerRef = useRef(null);
   const locatePolylineRef = useRef(null);
+
+  // Helper: calculate geometric centroid of polygon coordinates
+  const calculatePolygonCentroid = (coords) => {
+    if (!coords || coords.length === 0) return [11.0065, 124.6075];
+    const latSum = coords.reduce((acc, c) => acc + c[0], 0);
+    const lngSum = coords.reduce((acc, c) => acc + c[1], 0);
+    return [
+      parseFloat((latSum / coords.length).toFixed(6)),
+      parseFloat((lngSum / coords.length).toFixed(6)),
+    ];
+  };
 
   // 1. Fetch campuses and verification logs from API on mount
   useEffect(() => {
@@ -274,13 +286,7 @@ export default function CampusGeofence({
     // Metric scale indicator
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 
-    // Map click allows fine-tuning center coordinates
-    map.on('click', (e) => {
-      const clickedLat = parseFloat(e.latlng.lat.toFixed(6));
-      const clickedLng = parseFloat(e.latlng.lng.toFixed(6));
-      setLatitude(clickedLat);
-      setLongitude(clickedLng);
-    });
+    // Note: Accidental click teleportation disabled per admin preference; repositioning is done via dragging.
 
     mapInstanceRef.current = map;
 
@@ -393,6 +399,12 @@ export default function CampusGeofence({
             parseFloat(newPos.lng.toFixed(6)),
           ];
           poly.setLatLngs(updated);
+
+          // Dynamically glide center pin to the polygon's new geometric centroid
+          const [cLat, cLng] = calculatePolygonCentroid(updated);
+          if (activeCampusMarkerRef.current) {
+            activeCampusMarkerRef.current.setLatLng([cLat, cLng]);
+          }
         });
 
         handleMarker.on('dragend', (e) => {
@@ -403,6 +415,11 @@ export default function CampusGeofence({
             parseFloat(newPos.lng.toFixed(6)),
           ];
           setPolygonCoords(updated);
+
+          // Update latitude and longitude form state to the polygon centroid
+          const [cLat, cLng] = calculatePolygonCentroid(updated);
+          setLatitude(cLat);
+          setLongitude(cLng);
         });
 
         vertexMarkersRef.current.push(handleMarker);
@@ -434,7 +451,7 @@ export default function CampusGeofence({
     campusMarkersRef.current.forEach((m) => map.removeLayer(m));
     campusMarkersRef.current = [];
 
-    // Render crisp SVG Teardrop Map Pins for each campus
+    // Render compact SVG Teardrop Map Pins for each campus
     campuses.forEach((camp) => {
       const isCurrent = camp.id === selectedCampusId;
       const cLat = isCurrent ? numLat : parseFloat(camp.latitude);
@@ -454,27 +471,27 @@ export default function CampusGeofence({
             cursor: ${isCurrent ? 'grab' : 'pointer'};
             user-select: none;
           ">
-            <svg width="34" height="46" viewBox="0 0 34 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));">
-              <path d="M17 0C7.61 0 0 7.61 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.61 26.39 0 17 0Z" 
+            <svg width="22" height="30" viewBox="0 0 22 30" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.4));">
+              <path d="M11 0C4.92 0 0 4.92 0 11C0 19.5 11 30 11 30C11 30 22 19.5 22 11C22 4.92 17.08 0 11 0Z" 
                     fill="${pinColor}" 
                     stroke="#ffffff" 
-                    stroke-width="2.2" 
+                    stroke-width="1.8" 
                     stroke-linejoin="round"/>
-              <circle cx="17" cy="17" r="7.5" fill="#ffffff" />
-              <circle cx="17" cy="17" r="4.5" fill="${isCurrent ? '#f59e0b' : pinColor}" />
+              <circle cx="11" cy="11" r="5" fill="#ffffff" />
+              <circle cx="11" cy="11" r="3" fill="${isCurrent ? '#f59e0b' : pinColor}" />
             </svg>
 
             <div style="
-              margin-top: 2px;
-              background: rgba(15, 23, 42, 0.9);
+              margin-top: 1px;
+              background: rgba(15, 23, 42, 0.88);
               color: #ffffff;
-              padding: 2px 7px;
-              border-radius: 6px;
-              font-size: 11px;
+              padding: 1px 6px;
+              border-radius: 4px;
+              font-size: 10px;
               font-weight: 700;
               white-space: nowrap;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-              border: 1px solid rgba(255, 255, 255, 0.3);
+              box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+              border: 1px solid rgba(255, 255, 255, 0.25);
               pointer-events: none;
             ">
               ${camp.shortName || camp.name}
@@ -487,25 +504,29 @@ export default function CampusGeofence({
 
       const marker = L.marker([cLat, cLng], {
         icon: teardropPinIcon,
-        draggable: isCurrent,
+        draggable: isCurrent && boundaryType !== 'polygon',
         autoPan: true,
       }).addTo(map);
 
       if (isCurrent) {
-        marker.on('drag', (e) => {
-          const newPos = e.target.getLatLng();
-          if (perimeterCircleRef.current) {
-            perimeterCircleRef.current.setLatLng(newPos);
-          }
-        });
+        activeCampusMarkerRef.current = marker;
 
-        marker.on('dragend', (e) => {
-          const newPos = e.target.getLatLng();
-          const latVal = parseFloat(newPos.lat.toFixed(6));
-          const lngVal = parseFloat(newPos.lng.toFixed(6));
-          setLatitude(latVal);
-          setLongitude(lngVal);
-        });
+        if (boundaryType !== 'polygon') {
+          marker.on('drag', (e) => {
+            const newPos = e.target.getLatLng();
+            if (perimeterCircleRef.current) {
+              perimeterCircleRef.current.setLatLng(newPos);
+            }
+          });
+
+          marker.on('dragend', (e) => {
+            const newPos = e.target.getLatLng();
+            const latVal = parseFloat(newPos.lat.toFixed(6));
+            const lngVal = parseFloat(newPos.lng.toFixed(6));
+            setLatitude(latVal);
+            setLongitude(lngVal);
+          });
+        }
       } else {
         marker.on('click', () => {
           setSelectedCampusId(camp.id);
@@ -765,6 +786,9 @@ export default function CampusGeofence({
       ? DEFAULT_LUNA_POLYGON
       : DEFAULT_MAIN_POLYGON;
     setPolygonCoords(defaultPoly);
+    const [cLat, cLng] = calculatePolygonCentroid(defaultPoly);
+    setLatitude(cLat);
+    setLongitude(cLng);
   };
 
   // Add extra corner to polygon
@@ -775,7 +799,11 @@ export default function CampusGeofence({
       parseFloat((last[0] + 0.0006).toFixed(6)),
       parseFloat((last[1] + 0.0006).toFixed(6)),
     ];
-    setPolygonCoords([...polygonCoords, newCorner]);
+    const updated = [...polygonCoords, newCorner];
+    setPolygonCoords(updated);
+    const [cLat, cLng] = calculatePolygonCentroid(updated);
+    setLatitude(cLat);
+    setLongitude(cLng);
   };
 
   // Remove last corner
@@ -784,7 +812,11 @@ export default function CampusGeofence({
       alert('A polygon boundary must contain at least 3 corner vertices.');
       return;
     }
-    setPolygonCoords(polygonCoords.slice(0, -1));
+    const updated = polygonCoords.slice(0, -1);
+    setPolygonCoords(updated);
+    const [cLat, cLng] = calculatePolygonCentroid(updated);
+    setLatitude(cLat);
+    setLongitude(cLng);
   };
 
   // Refresh verifications
@@ -1412,7 +1444,12 @@ export default function CampusGeofence({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBoundaryType('polygon')}
+                  onClick={() => {
+                    setBoundaryType('polygon');
+                    const [cLat, cLng] = calculatePolygonCentroid(polygonCoords);
+                    setLatitude(cLat);
+                    setLongitude(cLng);
+                  }}
                   style={{
                     border: 'none',
                     padding: '8px 12px',
