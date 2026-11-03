@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Camera, X } from 'lucide-react';
+import { api } from '../../services/api';
 
 export default function MonthlyReport({
   employeeName = 'Jorge Mikhael Gubantes',
@@ -78,10 +79,28 @@ export default function MonthlyReport({
     },
   ],
 }) {
-  const [selectedMonth, setSelectedMonth] = useState('October');
+  const [records, setRecords] = useState(initialRecords);
+  const [selectedMonth, setSelectedMonth] = useState('All Months');
   const [selectedYear, setSelectedYear] = useState('2026');
   const [searchTerm, setSearchTerm] = useState('');
   const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.dar
+      .monthly()
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setRecords(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Unable to load live MAR records:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const months = [
     'All Months',
@@ -90,7 +109,7 @@ export default function MonthlyReport({
   ];
 
   // Filtering records by Month / Year / Search (FR-04, UC-13 step 9)
-  const filteredRecords = initialRecords.filter((rec) => {
+  const filteredRecords = records.filter((rec) => {
     const matchesMonth = selectedMonth === 'All Months' || rec.month === selectedMonth;
     const matchesYear = rec.year === selectedYear;
     const matchesSearch =

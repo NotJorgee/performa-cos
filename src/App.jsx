@@ -33,20 +33,71 @@ import {
   NotificationHistory,
 } from './components';
 import { getInitialNotifications } from './utils/notificationsData';
+import { api } from './services/api';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [authView, setAuthView] = useState('login'); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState({
-    fullName: 'Jorge Mikhael Gubantes',
-    role: 'COS Employee', // 'COS Employee' | 'Department Head' | 'HR Personnel'
-    department: 'Computer Studies Department',
-    initials: 'JG',
-    employeeIdNumber: 'G10222026JMR',
-    jobTitle: 'Admin Aide',
-    avatarUrl: null,
+
+  // Check for invitation token in URL query parameter (?token=... or ?invite=...)
+  const [inviteToken, setInviteToken] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token') || params.get('invite') || '';
+    }
+    return '';
   });
+
+  const [authView, setAuthView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('token') || params.get('invite')) {
+        return 'signup';
+      }
+    }
+    return 'login';
+  }); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
+  
+  // Initialize state from existing localStorage token/user if present
+  const storedUser = api.auth.getCurrentUser();
+  const hasToken = Boolean(localStorage.getItem('performa_token'));
+
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(hasToken && storedUser));
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (storedUser) {
+      return {
+        id: storedUser.id,
+        fullName: storedUser.fullName || 'User',
+        role: storedUser.role || storedUser.roleLabel || 'COS Employee',
+        department: storedUser.department || 'Unassigned',
+        departmentId: storedUser.departmentId,
+        initials: (storedUser.fullName || 'U')
+          .replace(/^(Dr\.|Engr\.|Prof\.)\s*/i, '')
+          .split(' ')
+          .map((n) => n[0])
+          .filter(Boolean)
+          .slice(0, 2)
+          .join(''),
+        employeeIdNumber: storedUser.employeeIdNumber || '',
+        jobTitle: storedUser.jobTitle || storedUser.role,
+        avatarUrl: storedUser.avatarUrl || null,
+      };
+    }
+    return {
+      fullName: 'Jorge Mikhael Gubantes',
+      role: 'HR Personnel',
+      department: 'HRMDO Office',
+      initials: 'JG',
+      employeeIdNumber: 'G11032026JMR',
+      jobTitle: 'System Administrator',
+      avatarUrl: null,
+    };
+  });
+
+  // Password recovery flow states
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryResetToken, setRecoveryResetToken] = useState('');
+  const [recoveryError, setRecoveryError] = useState(null);
+  const [recoveryStatusMsg, setRecoveryStatusMsg] = useState(null);
 
   // Dynamic role-aware notifications
   const [notifications, setNotifications] = useState(() =>
@@ -69,25 +120,67 @@ export default function App() {
 
   const handleLogin = (userAccount) => {
     if (userAccount) {
+      const roleStr = userAccount.role || userAccount.roleLabel || 'COS Employee';
       setCurrentUser({
+        id: userAccount.id,
         fullName: userAccount.fullName,
-        role: userAccount.roleLabel,
+        role: roleStr,
         department: userAccount.department,
-        initials: userAccount.initials,
+        departmentId: userAccount.departmentId,
+        initials: userAccount.initials || 'U',
         employeeIdNumber: userAccount.employeeIdNumber,
         jobTitle:
           userAccount.jobTitle ||
-          (userAccount.roleLabel === 'COS Employee'
+          (roleStr === 'COS Employee'
             ? 'Admin Aide'
-            : userAccount.roleLabel === 'Department Head'
+            : roleStr === 'Department Head'
             ? 'Department Head'
             : 'HRMO Officer'),
         avatarUrl: userAccount.avatarUrl || null,
       });
-      setNotifications(getInitialNotifications(userAccount.roleLabel));
+      setNotifications(getInitialNotifications(roleStr));
     }
     setIsAuthenticated(true);
     setCurrentView('dashboard');
+  };
+
+  const handleLogout = () => {
+    api.auth.logout();
+    setIsAuthenticated(false);
+    setAuthView('login');
+  };
+
+  const handleForgotSubmit = async (email) => {
+    setRecoveryError(null);
+    try {
+      await api.auth.forgotPassword(email);
+      setRecoveryEmail(email);
+      setRecoveryStatusMsg(`An OTP code was dispatched to ${email}. Check your inbox.`);
+      setAuthView('otp');
+    } catch (err) {
+      setRecoveryError(err.message || 'Failed to dispatch OTP. Please verify email.');
+    }
+  };
+
+  const handleVerifyOtp = async (otpCode) => {
+    setRecoveryError(null);
+    try {
+      const res = await api.auth.verifyOtp(recoveryEmail, otpCode);
+      setRecoveryResetToken(res.reset_token);
+      setAuthView('reset_pw');
+    } catch (err) {
+      setRecoveryError(err.message || 'Invalid or expired OTP code.');
+    }
+  };
+
+  const handleResetPassword = async ({ newPassword }) => {
+    setRecoveryError(null);
+    try {
+      await api.auth.resetPassword(recoveryResetToken, newPassword);
+      setAuthView('login');
+    } catch (err) {
+      setRecoveryError(err.message || 'Failed to reset password.');
+    }
   };
 
   // 1. Unauthenticated Login & Recovery Flows (UC-08, UC-07)
@@ -96,16 +189,29 @@ export default function App() {
       return (
         <Login
           onLogin={handleLogin}
-          onForgotPassword={() => setAuthView('forgot')}
-          onGoToSignUp={() => setAuthView('signup')}
+          onForgotPassword={() => {
+            setRecoveryError(null);
+            setRecoveryStatusMsg(null);
+            setAuthView('forgot');
+          }}
         />
       );
     }
     if (authView === 'signup') {
       return (
         <TokenizedSignUp
-          onBackToLogin={() => setAuthView('login')}
+          initialToken={inviteToken}
+          onBackToLogin={() => {
+            setAuthView('login');
+            setInviteToken('');
+            if (typeof window !== 'undefined' && window.history?.replaceState) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          }}
           onLoginAsNewUser={(newUser) => {
+            if (typeof window !== 'undefined' && window.history?.replaceState) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
             handleLogin(newUser);
           }}
         />
@@ -114,7 +220,8 @@ export default function App() {
     if (authView === 'forgot') {
       return (
         <ForgotPassword
-          onSubmitEmail={() => setAuthView('otp')}
+          statusMessage={recoveryStatusMsg}
+          onSubmitEmail={handleForgotSubmit}
           onBackToLogin={() => setAuthView('login')}
         />
       );
@@ -122,7 +229,10 @@ export default function App() {
     if (authView === 'otp') {
       return (
         <VerifyOtp
-          onVerifyOtp={() => setAuthView('reset_pw')}
+          emailHint={recoveryEmail}
+          errorMessage={recoveryError}
+          onVerifyOtp={handleVerifyOtp}
+          onResendOtp={() => handleForgotSubmit(recoveryEmail)}
           onBack={() => setAuthView('forgot')}
         />
       );
@@ -130,9 +240,8 @@ export default function App() {
     if (authView === 'reset_pw') {
       return (
         <ResetNewPassword
-          onResetPassword={() => {
-            setAuthView('login');
-          }}
+          errorMessage={recoveryError}
+          onResetPassword={handleResetPassword}
         />
       );
     }
@@ -147,10 +256,7 @@ export default function App() {
       onMarkAsRead={handleMarkAsRead}
       onMarkAllAsRead={handleMarkAllAsRead}
       onNavigate={(path) => setCurrentView(path)}
-      onLogout={() => {
-        setIsAuthenticated(false);
-        setAuthView('login');
-      }}
+      onLogout={handleLogout}
     >
       {/* ========================================================
           ROLE-SPECIFIC SCREEN ROUTING (SRS Section 8.1)

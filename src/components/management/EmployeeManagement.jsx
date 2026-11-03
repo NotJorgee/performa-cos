@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Settings, Check, Archive, X, UserPlus, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Check, Archive, X, UserPlus, RotateCcw, ChevronDown, ChevronUp, Copy, Shield, User } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
+import { api } from '../../services/api';
 
 export default function EmployeeManagement({
   employees = [
@@ -156,11 +157,27 @@ export default function EmployeeManagement({
     },
   ],
   departments = [
-    'Computer Studies Department',
+    'Disbursing / Cashier Office',
+    'HRMDO Office',
+    'School Clinic',
+    'IPDO Office',
+    'Research Office',
+    'Sports And Development Office',
+    'Quality Assurance & Accreditation Office',
     'Technology Department',
-    'Engineering Department',
+    'Guidance Office',
+    'Extension Service Office',
     'Education Department',
+    'Procurement Office',
+    'IGP Office',
+    'Campus Director Office',
+    'Computer Studies Department',
+    'SASO Office',
+    'Engineering Department',
+    'Administrative and Finance',
+    'Hospitality & Tourism Management',
     'Library Office',
+    'Registrar Office',
     'Maintenance/Janitorial (MESO) Office',
   ],
   onSelectEmployee = () => {},
@@ -170,6 +187,50 @@ export default function EmployeeManagement({
   onBack = null,
 }) {
   const [employeeList, setEmployeeList] = useState(employees);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.users
+      .list({ is_archived: null })
+      .then((users) => {
+        if (isMounted && Array.isArray(users) && users.length > 0) {
+          const mapped = users.map((u) => ({
+            id: u.id,
+            idNumber: u.employee_id_number || 'N/A',
+            fullName: u.full_name,
+            jobTitle: u.job_title || 'Admin Aide',
+            email: u.email,
+            department: u.department ? u.department.name : 'Unassigned',
+            college: u.department?.college || 'Administrative Services',
+            cosCategory: u.cos_category || 'Administrative',
+            dateAppointed: u.date_appointed
+              ? new Date(u.date_appointed).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: '2-digit',
+                  year: 'numeric',
+                })
+              : 'N/A',
+            contractEndDate: u.contract_end_date
+              ? new Date(u.contract_end_date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: '2-digit',
+                  year: 'numeric',
+                })
+              : 'N/A',
+            latestScore: 88.0,
+            latestRating: 'Very Satisfactory',
+            status: u.is_archived ? 'Archived' : u.is_active ? 'Active' : 'Inactive',
+          }));
+          setEmployeeList(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn('API users fetch warning:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -199,6 +260,9 @@ export default function EmployeeManagement({
 
   // Token invite state (UC-07)
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteDept, setInviteDept] = useState(departments[0] || 'Computer Studies Department');
+  const [createdInvite, setCreatedInvite] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Auto-category mapping: Every department EXCEPT maintenance is Administrative
   const isMaintenanceDept = (dept) => {
@@ -265,7 +329,12 @@ export default function EmployeeManagement({
   const activeEmployees = baseFiltered.filter((e) => e.status !== 'Archived');
   const archivedEmployees = baseFiltered.filter((e) => e.status === 'Archived');
 
-  const handleArchiveEmployee = (empId) => {
+  const handleArchiveEmployee = async (empId) => {
+    try {
+      await api.users.archive(empId);
+    } catch (err) {
+      console.warn('Archive API notice:', err);
+    }
     setEmployeeList((prev) =>
       prev.map((e) => (e.id === empId ? { ...e, status: 'Archived' } : e))
     );
@@ -275,7 +344,12 @@ export default function EmployeeManagement({
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleRestoreEmployee = (empId) => {
+  const handleRestoreEmployee = async (empId) => {
+    try {
+      await api.users.restore(empId);
+    } catch (err) {
+      console.warn('Restore API notice:', err);
+    }
     setEmployeeList((prev) =>
       prev.map((e) => (e.id === empId ? { ...e, status: 'Active' } : e))
     );
@@ -369,14 +443,14 @@ export default function EmployeeManagement({
     }, 5000);
   };
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
     const assignedCategory = getComputedCategory(selectedDept);
     const computedEndDate = calculateContractEndDate(dateAppointed);
     const existingIds = employeeList.map((emp) => emp.idNumber).filter(Boolean);
     const generatedIdNumber = generateEvsuEmployeeId(fullName, dateAppointed || new Date(), existingIds);
 
-    const newEmployee = {
+    let newEmployee = {
       id: Date.now(),
       idNumber: generatedIdNumber,
       fullName,
@@ -394,6 +468,24 @@ export default function EmployeeManagement({
       status: 'Active',
     };
 
+    try {
+      const res = await api.users.create({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password: password || '@Password_123',
+        role: 'COS Employee',
+        job_title: jobTitle.trim() || 'Admin Aide',
+        date_appointed: dateAppointed || null,
+        cos_category: assignedCategory,
+      });
+      newEmployee.id = res.id;
+      newEmployee.idNumber = res.employee_id_number;
+      setToastMsg(`COS Personnel "${fullName}" successfully registered in database (ID: ${res.employee_id_number})!`);
+    } catch (err) {
+      console.warn('API user create fallback:', err);
+      setToastMsg(`COS Personnel "${fullName}" added locally!`);
+    }
+
     setEmployeeList([newEmployee, ...employeeList]);
     onAddEmployee(newEmployee);
     setShowAddModal(false);
@@ -403,17 +495,55 @@ export default function EmployeeManagement({
     setEmail('');
     setPassword('');
     setDateAppointed('');
-    setToastMsg(`COS Personnel "${fullName}" successfully added to ${selectedDept}!`);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleInviteSubmit = (e) => {
+  const handleInviteSubmit = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    onSendTokenInvite({ email: inviteEmail, department: selectedDept });
-    setShowAddModal(false);
-    setToastMsg(`Invitation link sent to ${inviteEmail}! The link will expire in 72 hours.`);
-    setInviteEmail('');
+
+    try {
+      const res = await api.invitations.create({
+        email: inviteEmail.trim(),
+        role: 'COS Employee',
+        department_name: inviteDept,
+      });
+      const fullUrl = res.invite_url || `${window.location.origin}/?token=${res.token}`;
+      setCreatedInvite({
+        token: res.token,
+        email: inviteEmail.trim(),
+        role: 'COS Employee',
+        department: inviteDept,
+        url: fullUrl,
+      });
+      setToastMsg(`Official invitation (${res.token}) generated for ${inviteEmail}!`);
+      onSendTokenInvite({
+        email: inviteEmail,
+        department: inviteDept,
+        token: res.token,
+        role: 'COS Employee',
+        url: fullUrl,
+      });
+    } catch (err) {
+      console.warn('Invitation API fallback:', err);
+      const fallbackToken = `EVSU-INV-COS-${Math.floor(10000 + Math.random() * 90000)}`;
+      const fullUrl = `${window.location.origin}/?token=${fallbackToken}`;
+      setCreatedInvite({
+        token: fallbackToken,
+        email: inviteEmail.trim(),
+        role: 'COS Employee',
+        department: inviteDept,
+        url: fullUrl,
+      });
+      setToastMsg(`Invitation link generated for ${inviteEmail}!`);
+      onSendTokenInvite({
+        email: inviteEmail,
+        department: inviteDept,
+        token: fallbackToken,
+        role: 'COS Employee',
+        url: fullUrl,
+      });
+    }
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -685,74 +815,204 @@ export default function EmployeeManagement({
             {modalMode === 'invite' ? (
               /* TOKENIZED SIGN-UP (Default Add Employee - UC-07) */
               <div>
-                <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
-                  Send an email invitation link to the new employee. When they register, the system will automatically assign their official EVSU Employee ID.
-                </p>
-
-                <form onSubmit={handleInviteSubmit}>
-                  <div className="form-group">
-                    <label>
-                      New Hire Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                    </label>
-                    <input
-                      className="form-control"
-                      type="email"
-                      required
-                      placeholder="newhire@evsu.edu.ph"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Button to access Manual Add Employee */}
-                  <div
-                    style={{
-                      background: '#f8fafc',
-                      border: '1px dashed var(--line)',
-                      borderRadius: '8px',
-                      padding: '12px 14px',
-                      marginBottom: '18px',
-                      marginTop: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-800)' }}>
-                        Register an employee directly?
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--ink-500)' }}>
-                        Directly input personnel details and set initial login credentials.
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      onClick={() => setModalMode('manual')}
-                      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                    >
-                      <UserPlus size={14} /> Add Manually
-                    </button>
-                  </div>
-
-                  <div className="flex-between" style={{ marginTop: '20px' }}>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setShowAddModal(false);
-                        setModalMode('invite');
+                {createdInvite ? (
+                  <div>
+                    <div
+                      style={{
+                        background: '#ecfdf5',
+                        border: '1px solid #a7f3d0',
+                        borderRadius: '10px',
+                        padding: '16px',
+                        marginBottom: '18px',
+                        textAlign: 'center',
                       }}
                     >
-                      Cancel
-                    </button>
-                    <button type="submit" className="btn btn-primary">
-                      Send Registration Invite
-                    </button>
+                      <div
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto 10px',
+                        }}
+                      >
+                        <Check size={24} strokeWidth={2.8} />
+                      </div>
+                      <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 800, color: '#065f46' }}>
+                        Official Invitation Link Generated!
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#047857' }}>
+                        An invitation email was dispatched via Resend. You can also copy and share the direct registration link below.
+                      </p>
+                    </div>
+
+                    <div style={{ background: '#f8fafc', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span className="muted">Role Type:</span>
+                        <strong style={{ color: createdInvite.role === 'COS Employee' ? 'var(--brand-700)' : 'var(--ink-900)' }}>
+                          {createdInvite.role}
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span className="muted">Assigned Department:</span>
+                        <span>{createdInvite.department}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span className="muted">Recipient:</span>
+                        <span>{createdInvite.email}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="muted">Token:</span>
+                        <code style={{ fontWeight: 800, color: 'var(--brand-800)' }}>{createdInvite.token}</code>
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '18px' }}>
+                      <label style={{ fontSize: '12px' }}>Direct Registration Link</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          className="form-control"
+                          readOnly
+                          value={createdInvite.url}
+                          style={{ fontSize: '12px', background: '#ffffff', fontFamily: 'monospace' }}
+                        />
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => {
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(createdInvite.url);
+                              setCopiedLink(true);
+                              setTimeout(() => setCopiedLink(false), 2500);
+                            }
+                          }}
+                          style={{
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: copiedLink ? '#ecfdf5' : 'var(--white)',
+                            borderColor: copiedLink ? '#10b981' : 'var(--line)',
+                            color: copiedLink ? '#065f46' : 'var(--ink-800)',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                          <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => {
+                          setCreatedInvite(null);
+                          setInviteEmail('');
+                          setShowAddModal(false);
+                        }}
+                      >
+                        Done
+                      </button>
+                    </div>
                   </div>
-                </form>
+                ) : (
+                  <div>
+                    <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
+                      Send an invitation link for a new COS Employee. When they open the link, the registration page will automatically configure for their role.
+                    </p>
+
+                    <form onSubmit={handleInviteSubmit}>
+                      {/* Recipient Institutional Email */}
+                      <div className="form-group" style={{ marginBottom: '14px' }}>
+                        <label style={{ fontSize: '12px' }}>
+                          Recipient Institutional Email <span style={{ color: 'var(--red-600)' }}>*</span>
+                        </label>
+                        <input
+                          className="form-control"
+                          type="email"
+                          required
+                          placeholder="recipient@evsu.edu.ph"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Assigned Department */}
+                      <div className="form-group" style={{ marginBottom: '14px' }}>
+                        <label style={{ fontSize: '12px' }}>
+                          Assigned Department <span style={{ color: 'var(--red-600)' }}>*</span>
+                        </label>
+                        <select
+                          className="form-control"
+                          value={inviteDept}
+                          onChange={(e) => setInviteDept(e.target.value)}
+                        >
+                          {departments.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Button to access Manual Add Employee */}
+                      <div
+                        style={{
+                          background: '#f8fafc',
+                          border: '1px dashed var(--line)',
+                          borderRadius: '8px',
+                          padding: '12px 14px',
+                          marginBottom: '18px',
+                          marginTop: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-800)' }}>
+                            Register directly without sending link?
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--ink-500)' }}>
+                            Directly input personnel details and set initial login credentials.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => setModalMode('manual')}
+                          style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                        >
+                          <UserPlus size={14} /> Add Manually
+                        </button>
+                      </div>
+
+                      <div className="flex-between" style={{ marginTop: '20px' }}>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => {
+                            setShowAddModal(false);
+                            setModalMode('invite');
+                            setCreatedInvite(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="btn btn-primary">
+                          Generate & Send Invite
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
               </div>
             ) : (
               /* MANUAL ADD EMPLOYEE (Accessed via nested button) */

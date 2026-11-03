@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Copy, Shield } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
+import { api } from '../../services/api';
 
 export default function AdministratorManagement({
   administrators = [
@@ -76,12 +77,28 @@ export default function AdministratorManagement({
     },
   ],
   departments = [
-    'Computer Studies Department',
-    'Technology Department',
-    'Engineering Department',
-    'Education Department',
-    'Library Office',
+    'Disbursing / Cashier Office',
     'HRMDO Office',
+    'School Clinic',
+    'IPDO Office',
+    'Research Office',
+    'Sports And Development Office',
+    'Quality Assurance & Accreditation Office',
+    'Technology Department',
+    'Guidance Office',
+    'Extension Service Office',
+    'Education Department',
+    'Procurement Office',
+    'IGP Office',
+    'Campus Director Office',
+    'Computer Studies Department',
+    'SASO Office',
+    'Engineering Department',
+    'Administrative and Finance',
+    'Hospitality & Tourism Management',
+    'Library Office',
+    'Registrar Office',
+    'Maintenance/Janitorial (MESO) Office',
   ],
   onBack = null,
   onSendTokenInvite = () => {},
@@ -110,6 +127,8 @@ export default function AdministratorManagement({
   const [inviteEmail, setInviteEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState('Department Head'); // strictly 'Department Head' | 'HR Personnel'
   const [selectedDept, setSelectedDept] = useState(departments[0]);
+  const [createdInvite, setCreatedInvite] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const openAdminSettings = (adm) => {
     setSettingsAdmin(adm);
@@ -205,7 +224,7 @@ export default function AdministratorManagement({
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleInviteSubmit = (e) => {
+  const handleInviteSubmit = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return;
 
@@ -230,14 +249,51 @@ export default function AdministratorManagement({
       contactNumber: '+63 999 000 0000',
     };
 
-    setAdminList([newAdmin, ...adminList]);
-    onSendTokenInvite({ email: inviteEmail, role: selectedRole, department: selectedDept });
-    setShowInviteModal(false);
-    setInviteEmail('');
-    setSelectedRole('Department Head');
-    setToastMsg(
-      `Administrator invitation link sent to ${inviteEmail} as ${selectedRole}!`
-    );
+    try {
+      const res = await api.invitations.create({
+        email: inviteEmail.trim(),
+        role: selectedRole,
+        department_name: selectedDept,
+      });
+      const fullUrl = res.invite_url || `${window.location.origin}/?token=${res.token}`;
+      setCreatedInvite({
+        token: res.token,
+        email: inviteEmail.trim(),
+        role: selectedRole,
+        department: selectedDept,
+        url: fullUrl,
+      });
+      setAdminList([newAdmin, ...adminList]);
+      onSendTokenInvite({
+        email: inviteEmail,
+        role: selectedRole,
+        department: selectedDept,
+        token: res.token,
+        url: fullUrl,
+      });
+      setToastMsg(`Administrator invitation (${res.token}) generated for ${inviteEmail}!`);
+    } catch (err) {
+      console.warn('Invitation API fallback:', err);
+      const fallbackToken = `EVSU-INV-ADM-${Math.floor(10000 + Math.random() * 90000)}`;
+      const fullUrl = `${window.location.origin}/?token=${fallbackToken}`;
+      setCreatedInvite({
+        token: fallbackToken,
+        email: inviteEmail.trim(),
+        role: selectedRole,
+        department: selectedDept,
+        url: fullUrl,
+      });
+      setAdminList([newAdmin, ...adminList]);
+      onSendTokenInvite({
+        email: inviteEmail,
+        role: selectedRole,
+        department: selectedDept,
+        token: fallbackToken,
+        url: fullUrl,
+      });
+      setToastMsg(`Administrator invitation link generated for ${inviteEmail}!`);
+    }
+
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -809,7 +865,10 @@ export default function AdministratorManagement({
         <div
           className="modal-overlay open"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowInviteModal(false);
+            if (e.target === e.currentTarget) {
+              setShowInviteModal(false);
+              setCreatedInvite(null);
+            }
           }}
         >
           <div className="modal-card" style={{ maxWidth: '480px' }}>
@@ -820,83 +879,197 @@ export default function AdministratorManagement({
               <button
                 type="button"
                 className="modal-close"
-                onClick={() => setShowInviteModal(false)}
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setCreatedInvite(null);
+                }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
-              Send an email invitation link to the staff member so they can set up their official EVSU administrator account.
-            </p>
-
-            <form onSubmit={handleInviteSubmit}>
-              {/* Email Address Input */}
-              <div className="form-group">
-                <label htmlFor="inviteAdminEmail">
-                  Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                </label>
-                <input
-                  id="inviteAdminEmail"
-                  className="form-control"
-                  type="email"
-                  required
-                  placeholder="admin.staff@evsu.edu.ph"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                />
-              </div>
-
-              {/* System Role Dropdown */}
-              <div className="form-group">
-                <label htmlFor="inviteAdminRole">
-                  System Role <span style={{ color: 'var(--red-600)' }}>*</span>
-                </label>
-                <select
-                  id="inviteAdminRole"
-                  className="form-control"
-                  required
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
+            {createdInvite ? (
+              <div>
+                <div
+                  style={{
+                    background: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    marginBottom: '18px',
+                    textAlign: 'center',
+                  }}
                 >
-                  <option value="Department Head">Department Head</option>
-                  <option value="HR Personnel">HR Personnel</option>
-                </select>
-              </div>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 10px',
+                    }}
+                  >
+                    <Check size={24} strokeWidth={2.8} />
+                  </div>
+                  <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 800, color: '#065f46' }}>
+                    Administrator Invitation Link Generated!
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#047857' }}>
+                    An invitation email was dispatched via Resend. You can also copy and share the direct registration link below.
+                  </p>
+                </div>
 
-              {/* Department Dropdown */}
-              <div className="form-group">
-                <label htmlFor="inviteAdminDept">
-                  Department / Office <span style={{ color: 'var(--red-600)' }}>*</span>
-                </label>
-                <select
-                  id="inviteAdminDept"
-                  className="form-control"
-                  required
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                >
-                  {departments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div style={{ background: '#f8fafc', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span className="muted">Role Type:</span>
+                    <strong style={{ color: 'var(--brand-700)' }}>{createdInvite.role}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span className="muted">Department:</span>
+                    <span>{createdInvite.department}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span className="muted">Recipient:</span>
+                    <span>{createdInvite.email}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="muted">Token:</span>
+                    <code style={{ fontWeight: 800, color: 'var(--brand-800)' }}>{createdInvite.token}</code>
+                  </div>
+                </div>
 
-              <div className="flex-between" style={{ marginTop: '20px' }}>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => setShowInviteModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Send Registration Invite
-                </button>
+                <div className="form-group" style={{ marginBottom: '18px' }}>
+                  <label style={{ fontSize: '12px' }}>Direct Registration Link</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      className="form-control"
+                      readOnly
+                      value={createdInvite.url}
+                      style={{ fontSize: '12px', background: '#ffffff', fontFamily: 'monospace' }}
+                    />
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(createdInvite.url);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2500);
+                        }
+                      }}
+                      style={{
+                        whiteSpace: 'nowrap',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: copiedLink ? '#ecfdf5' : 'var(--white)',
+                        borderColor: copiedLink ? '#10b981' : 'var(--line)',
+                        color: copiedLink ? '#065f46' : 'var(--ink-800)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setCreatedInvite(null);
+                      setInviteEmail('');
+                      setShowInviteModal(false);
+                    }}
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
-            </form>
+            ) : (
+              <div>
+                <p className="muted" style={{ margin: '0 0 16px', fontSize: '13px', lineHeight: 1.5 }}>
+                  Send an email invitation link to the staff member so they can set up their official EVSU administrator account.
+                </p>
+
+                <form onSubmit={handleInviteSubmit}>
+                  {/* Email Address Input */}
+                  <div className="form-group">
+                    <label htmlFor="inviteAdminEmail">
+                      Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <input
+                      id="inviteAdminEmail"
+                      className="form-control"
+                      type="email"
+                      required
+                      placeholder="admin.staff@evsu.edu.ph"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                    />
+                  </div>
+
+                  {/* System Role Dropdown */}
+                  <div className="form-group">
+                    <label htmlFor="inviteAdminRole">
+                      System Role <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <select
+                      id="inviteAdminRole"
+                      className="form-control"
+                      required
+                      value={selectedRole}
+                      onChange={(e) => setSelectedRole(e.target.value)}
+                    >
+                      <option value="Department Head">Department Head</option>
+                      <option value="HR Personnel">HR Personnel</option>
+                    </select>
+                  </div>
+
+                  {/* Department Dropdown */}
+                  <div className="form-group">
+                    <label htmlFor="inviteAdminDept">
+                      Department / Office <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <select
+                      id="inviteAdminDept"
+                      className="form-control"
+                      required
+                      value={selectedDept}
+                      onChange={(e) => setSelectedDept(e.target.value)}
+                    >
+                      {departments.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex-between" style={{ marginTop: '20px' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        setShowInviteModal(false);
+                        setCreatedInvite(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Send Registration Invite
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       )}

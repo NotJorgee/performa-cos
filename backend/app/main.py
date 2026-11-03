@@ -1,4 +1,3 @@
-import math
 import datetime
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +7,15 @@ from sqlalchemy import text
 from .config import settings
 from .database import get_db, engine, Base
 from . import models, schemas
-from .id_generator import generate_evsu_employee_id
+from .auth import get_current_user
+from .storage_service import ensure_buckets_exist
+
+# Routers
+from .routers.auth import router as auth_router
+from .routers.uploads import router as uploads_router
+from .routers.invitations import router as invitations_router
+from .routers.users import router as users_router
+from .routers.dar import router as dar_router
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -26,6 +33,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include Routers
+app.include_router(auth_router)
+app.include_router(uploads_router)
+app.include_router(invitations_router)
+app.include_router(users_router)
+app.include_router(dar_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        ensure_buckets_exist()
+    except Exception as e:
+        print(f"[startup] Storage bucket check failed: {e}")
+
 
 @app.get("/")
 def root():
@@ -41,12 +63,15 @@ def root():
 def health_check(db: Session = Depends(get_db)):
     """Health check endpoint that verifies PostgreSQL connectivity."""
     try:
-        # Check active PostgreSQL connection
         result = db.execute(text("SELECT 1")).scalar()
         return {
             "status": "healthy",
             "database": "connected" if result == 1 else "unexpected_result",
-            "postgres_host": settings.DATABASE_URL.split("@")[-1].split(":")[0] if "@" in settings.DATABASE_URL else "configured",
+            "postgres_host": (
+                settings.DATABASE_URL.split("@")[-1].split(":")[0]
+                if "@" in settings.DATABASE_URL
+                else "configured"
+            ),
         }
     except Exception as e:
         raise HTTPException(
@@ -56,18 +81,31 @@ def health_check(db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 1. DEPARTMENTS ENDPOINTS (UC-10, FR-23)
+# DEPARTMENTS ENDPOINTS (UC-10, FR-23)
 # ==========================================
 @app.get("/api/departments", response_model=list[schemas.DepartmentOut])
-def list_departments(db: Session = Depends(get_db)):
-    return db.query(models.Department).all()
+def list_departments(
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """List all official university departments/offices."""
+    return db.query(models.Department).order_by(models.Department.name.asc()).all()
 
 
 @app.post("/api/departments", response_model=schemas.DepartmentOut, status_code=status.HTTP_201_CREATED)
-def create_department(dept: schemas.DepartmentCreate, db: Session = Depends(get_db)):
+def create_department(
+    dept: schemas.DepartmentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Create a new department (HR only)."""
+    if current_user.role != "HR Personnel":
+        raise HTTPException(status_code=403, detail="Only HR Personnel can create departments.")
+
     existing = db.query(models.Department).filter(models.Department.name == dept.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Department with this name already exists.")
+
     new_dept = models.Department(**dept.model_dump())
     db.add(new_dept)
     db.commit()
@@ -75,158 +113,78 @@ def create_department(dept: schemas.DepartmentCreate, db: Session = Depends(get_
     return new_dept
 
 
-@app.delete("/api/departments/{dept_id}")
-def delete_department(dept_id: int, db: Session = Depends(get_db)):
+@app.patch("/api/departments/{dept_id}", response_model=schemas.DepartmentOut)
+def update_department(
+    dept_id: int,
+    dept_update: schemas.DepartmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Edit department info (HR only)."""
+    if current_user.role != "HR Personnel":
+        raise HTTPException(status_code=403, detail="Only HR Personnel can edit departments.")
+
     dept = db.query(models.Department).filter(models.Department.id == dept_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found.")
-    
+
+    if dept_update.name is not None and dept_update.name != dept.name:
+        existing = db.query(models.Department).filter(models.Department.name == dept_update.name).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Department with this name already exists.")
+        dept.name = dept_update.name
+
+    if dept_update.college is not None:
+        dept.college = dept_update.college
+    if dept_update.college_code is not None:
+        dept.college_code = dept_update.college_code
+    if dept_update.latitude is not None:
+        dept.latitude = dept_update.latitude
+    if dept_update.longitude is not None:
+        dept.longitude = dept_update.longitude
+    if dept_update.radius_meters is not None:
+        dept.radius_meters = dept_update.radius_meters
+
+    db.commit()
+    db.refresh(dept)
+    return dept
+
+
+@app.delete("/api/departments/{dept_id}")
+def delete_department(
+    dept_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Delete department (HR only)."""
+    if current_user.role != "HR Personnel":
+        raise HTTPException(status_code=403, detail="Only HR Personnel can delete departments.")
+
+    dept = db.query(models.Department).filter(models.Department.id == dept_id).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Department not found.")
+
     # Referential Integrity Rule (UC-10, FR-23)
     user_count = db.query(models.UserAccount).filter(models.UserAccount.department_id == dept_id).count()
     if user_count > 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot delete department '{dept.name}': {user_count} active employee accounts are assigned to it.",
+            detail=f"Cannot delete department '{dept.name}': {user_count} employee accounts are assigned to it.",
         )
-    
+
     db.delete(dept)
     db.commit()
     return {"message": f"Department '{dept.name}' deleted successfully."}
 
 
 # ==========================================
-# 2. USER ACCOUNT & AUTH ENDPOINTS (UC-07)
-# ==========================================
-@app.get("/api/users", response_model=list[schemas.UserAccountOut])
-def list_users(db: Session = Depends(get_db)):
-    return db.query(models.UserAccount).all()
-
-
-@app.post("/api/users", response_model=schemas.UserAccountOut, status_code=status.HTTP_201_CREATED)
-@app.post("/api/auth/register", response_model=schemas.UserAccountOut, status_code=status.HTTP_201_CREATED)
-def register_user(user_in: schemas.UserAccountCreate, db: Session = Depends(get_db)):
-    """
-    Registers a new employee account and autonomously generates their official
-    unique EVSU Employee ID in the format: Last Name Initial + MMDDYYYY + First Initial + Middle Initial.
-    Handles duplicate collisions with incremental suffixes (-1, -2).
-    """
-    existing = db.query(models.UserAccount).filter(models.UserAccount.email == user_in.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Institutional email is already registered.")
-
-    emp_id = user_in.employee_id_number
-    if not emp_id:
-        emp_id = generate_evsu_employee_id(
-            db=db,
-            full_name=user_in.full_name,
-            contract_start_date=user_in.date_appointed or datetime.date.today(),
-        )
-
-    new_user = models.UserAccount(
-        employee_id_number=emp_id,
-        full_name=user_in.full_name,
-        email=user_in.email,
-        password_hash=f"mock_hash_{user_in.password}",
-        role=user_in.role,
-        department_id=user_in.department_id,
-        cos_category=user_in.cos_category or "Administrative",
-        date_appointed=user_in.date_appointed or datetime.date.today(),
-        contract_end_date=user_in.contract_end_date,
-        is_active=user_in.is_active,
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
-
-@app.post("/api/auth/login")
-def login(creds: schemas.LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(models.UserAccount).filter(models.UserAccount.email == creds.email).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid institutional email or password.")
-    
-    # In production, compare with passlib/bcrypt: pwd_context.verify(creds.password, user.password_hash)
-    # Temporary dev fallback allows smooth initial testing
-    return {
-        "access_token": f"dev-token-for-user-{user.id}",
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "fullName": user.full_name,
-            "email": user.email,
-            "role": user.role,
-            "department": user.department.name if user.department else "Unassigned",
-            "cosCategory": user.cos_category,
-            "employeeIdNumber": user.employee_id_number,
-        },
-    }
-
-
-# ==========================================
-# 3. DAILY ACCOMPLISHMENT REPORTS (UC-13, FR-29, FR-30)
-# ==========================================
-def calculate_haversine_distance_meters(lat1, lon1, lat2, lon2):
-    """Calculates distance in meters between two GPS coordinates."""
-    R = 6371000  # Earth radius in meters
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
-    a = math.sin(delta_phi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-
-@app.post("/api/dar", response_model=schemas.DailyReportOut, status_code=status.HTTP_201_CREATED)
-def submit_dar(report: schemas.DailyReportCreate, user_id: int = 1, db: Session = Depends(get_db)):
-    # Multi-Campus Geofence Verification (UC-13, FR-29): EVSU Ormoc Main Campus or EVSU Luna Campus
-    is_valid_geofence = False
-    verified_campus = None
-    if report.latitude and report.longitude:
-        dist_main = calculate_haversine_distance_meters(
-            report.latitude, report.longitude,
-            settings.EVSU_MAIN_LATITUDE, settings.EVSU_MAIN_LONGITUDE
-        )
-        dist_luna = calculate_haversine_distance_meters(
-            report.latitude, report.longitude,
-            settings.EVSU_LUNA_LATITUDE, settings.EVSU_LUNA_LONGITUDE
-        )
-        if dist_main <= settings.EVSU_MAIN_RADIUS_METERS:
-            is_valid_geofence = True
-            verified_campus = "EVSU Ormoc — Main Campus"
-        elif dist_luna <= settings.EVSU_LUNA_RADIUS_METERS:
-            is_valid_geofence = True
-            verified_campus = "EVSU Ormoc — Luna Campus"
-
-    new_dar = models.DailyAccomplishmentReport(
-        user_id=user_id,
-        log_date=report.log_date or datetime.date.today(),
-        status="Submitted" if is_valid_geofence else "Pending Geofence Verification",
-        is_geofence_verified=is_valid_geofence,
-        latitude=report.latitude,
-        longitude=report.longitude,
-        remarks=f"[{verified_campus}] {report.remarks}" if verified_campus and report.remarks else (verified_campus or report.remarks),
-        tasks=[t.model_dump() for t in report.tasks],
-    )
-    db.add(new_dar)
-    db.commit()
-    db.refresh(new_dar)
-    return new_dar
-
-
-@app.get("/api/dar", response_model=list[schemas.DailyReportOut])
-def list_dars(user_id: int = None, db: Session = Depends(get_db)):
-    query = db.query(models.DailyAccomplishmentReport)
-    if user_id:
-        query = query.filter(models.DailyAccomplishmentReport.user_id == user_id)
-    return query.order_by(models.DailyAccomplishmentReport.log_date.desc()).all()
-
-
-# ==========================================
-# 4. EVALUATION SYSTEM (50/20/30) (UC-01, UC-04, UC-05, UC-06)
+# EVALUATION SYSTEM (50/20/30) (UC-01, UC-04, UC-05, UC-06)
 # ==========================================
 @app.get("/api/evaluations", response_model=list[schemas.EvaluationRecordOut])
-def list_evaluations(db: Session = Depends(get_db)):
+def list_evaluations(
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
     return db.query(models.EvaluationRecord).all()
 
 
@@ -234,7 +192,8 @@ def list_evaluations(db: Session = Depends(get_db)):
 def submit_evaluation_score(
     eval_id: int,
     payload: schemas.EvaluationScoreSubmit,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
 ):
     ev = db.query(models.EvaluationRecord).filter(models.EvaluationRecord.id == eval_id).first()
     if not ev:
@@ -254,8 +213,7 @@ def submit_evaluation_score(
     if payload.dimension_scores:
         ev.dimension_scores = payload.dimension_scores
 
-    # 50/20/30 Formula Calculation
-    # Final = (Supervisor * 0.50) + (Peer * 0.20) + (HRMO * 0.30)
+    # 50/20/30 Formula: Final = (Supervisor * 0.50) + (Peer * 0.20) + (HRMO * 0.30)
     if ev.supervisor_score is not None and ev.peer_score is not None and ev.hrmo_score is not None:
         weighted = (ev.supervisor_score * 0.50) + (ev.peer_score * 0.20) + (ev.hrmo_score * 0.30)
         ev.final_score = round(weighted, 2)
@@ -288,7 +246,8 @@ def submit_evaluation_score(
 def fast_track_reject(
     eval_id: int,
     payload: schemas.FastTrackRejectionSubmit,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
 ):
     """Fast-Track Non-Renewal Rejection (UC-06)."""
     ev = db.query(models.EvaluationRecord).filter(models.EvaluationRecord.id == eval_id).first()
@@ -307,21 +266,24 @@ def fast_track_reject(
 
 
 # ==========================================
-# 5. CONTRACT RENEWALS (UC-02)
+# CONTRACT RENEWALS (UC-02)
 # ==========================================
 @app.get("/api/renewals", response_model=list[schemas.RenewalApplicationOut])
-def list_renewals(db: Session = Depends(get_db)):
+def list_renewals(
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
     return db.query(models.RenewalApplication).all()
 
 
 @app.post("/api/renewals", response_model=schemas.RenewalApplicationOut, status_code=status.HTTP_201_CREATED)
 def submit_renewal(
     payload: schemas.RenewalApplicationCreate,
-    employee_id: int = 1,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
 ):
     renewal = models.RenewalApplication(
-        employee_id=employee_id,
+        employee_id=current_user.id,
         period=payload.period,
         status="Submitted",
         loi_file_url=payload.loi_file_url,

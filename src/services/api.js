@@ -1,12 +1,14 @@
 // Centralized API client for PerformaCOS 3-Tier Architecture
-// Communicates strictly with the FastAPI backend over HTTP (No direct database/Supabase calls in frontend)
+// Communicates strictly with the FastAPI backend over HTTP
 
 const API_BASE_URL = '/api';
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('performa_token');
+  const isFormData = options.body instanceof FormData;
+
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
@@ -49,6 +51,33 @@ export const api = {
       }
       return res;
     },
+    register: async (payload) => {
+      const res = await request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (res.access_token) {
+        localStorage.setItem('performa_token', res.access_token);
+        localStorage.setItem('performa_user', JSON.stringify(res.user));
+      }
+      return res;
+    },
+    getMe: () => request('/auth/me'),
+    forgotPassword: (email) =>
+      request('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+    verifyOtp: (email, otp_code) =>
+      request('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp_code }),
+      }),
+    resetPassword: (reset_token, new_password) =>
+      request('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ reset_token, new_password }),
+      }),
     logout: () => {
       localStorage.removeItem('performa_token');
       localStorage.removeItem('performa_user');
@@ -70,6 +99,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    update: (deptId, data) =>
+      request(`/departments/${deptId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
     delete: (deptId) =>
       request(`/departments/${deptId}`, {
         method: 'DELETE',
@@ -78,18 +112,126 @@ export const api = {
 
   // Users & Personnel (UC-07)
   users: {
-    list: () => request('/users'),
+    list: (params = {}) => {
+      const query = new URLSearchParams();
+      if (params.role) query.append('role', params.role);
+      if (params.department_id) query.append('department_id', params.department_id);
+      if (params.is_active !== undefined) query.append('is_active', params.is_active);
+      if (params.is_archived !== undefined) query.append('is_archived', params.is_archived);
+      if (params.search) query.append('search', params.search);
+      const qs = query.toString();
+      return request(`/users${qs ? `?${qs}` : ''}`);
+    },
+    get: (userId) => request(`/users/${userId}`),
+    create: (data) =>
+      request('/users', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateContact: (userId, data) =>
+      request(`/users/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    adminUpdate: (userId, data) =>
+      request(`/users/${userId}/admin-update`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    transferDepartment: (userId, departmentId) =>
+      request(`/users/${userId}/department`, {
+        method: 'PATCH',
+        body: JSON.stringify({ department_id: departmentId }),
+      }),
+    archive: (userId) =>
+      request(`/users/${userId}/archive`, {
+        method: 'PATCH',
+      }),
+    restore: (userId) =>
+      request(`/users/${userId}/restore`, {
+        method: 'PATCH',
+      }),
+    changePassword: (userId, current_password, new_password) =>
+      request(`/users/${userId}/password`, {
+        method: 'PATCH',
+        body: JSON.stringify({ current_password, new_password }),
+      }),
+  },
+
+  // Invitation Management
+  invitations: {
+    create: (data) =>
+      request('/invitations', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    list: () => request('/invitations'),
+    revoke: (id) =>
+      request(`/invitations/${id}`, {
+        method: 'DELETE',
+      }),
+    validate: (token) => request(`/invitations/validate?token=${encodeURIComponent(token)}`),
   },
 
   // Daily Accomplishment Reports (DAR) & Geofencing (UC-13, FR-29, FR-30)
   dar: {
-    list: (userId = null) =>
-      request(`/dar${userId ? `?user_id=${userId}` : ''}`),
+    list: (userId = null, month = null, year = null) => {
+      const query = new URLSearchParams();
+      if (userId) query.append('user_id', userId);
+      if (month) query.append('month', month);
+      if (year) query.append('year', year);
+      const qs = query.toString();
+      return request(`/dar${qs ? `?${qs}` : ''}`);
+    },
+    monthly: (userId = null, monthName = null, year = null) => {
+      const query = new URLSearchParams();
+      if (userId) query.append('user_id', userId);
+      if (monthName) query.append('month_name', monthName);
+      if (year) query.append('year', year);
+      const qs = query.toString();
+      return request(`/dar/monthly${qs ? `?${qs}` : ''}`);
+    },
     submit: (data) =>
       request('/dar', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+  },
+
+  // File Uploads (Supabase Storage via FastAPI)
+  uploads: {
+    uploadDarPhoto: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request('/uploads/dar-photo', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    uploadAvatar: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request('/uploads/avatar', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    uploadLoi: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request('/uploads/loi', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    uploadFastTrack: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request('/uploads/fast-track', {
+        method: 'POST',
+        body: formData,
+      });
+    },
   },
 
   // Multi-Level Evaluation (50/20/30) (UC-01, UC-04, UC-05, UC-06)

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Check, AlertTriangle, X, Trash2, Lock } from 'lucide-react';
+import { api } from '../../services/api';
 
 const EVSU_DEPT_PRESETS = [
   'Disbursing / Cashier Office',
@@ -14,10 +15,13 @@ const EVSU_DEPT_PRESETS = [
   'Extension Service Office',
   'Education Department',
   'Procurement Office',
+  'IGP Office',
   'Campus Director Office',
   'Computer Studies Department',
+  'SASO Office',
   'Engineering Department',
-  'Administrative and Finance Office',
+  'Administrative and Finance',
+  'Hospitality & Tourism Management',
   'Library Office',
   'Registrar Office',
   'Maintenance/Janitorial (MESO) Office',
@@ -85,6 +89,31 @@ export default function DepartmentManagement({
   const [toastMsg, setToastMsg] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    api.departments
+      .list()
+      .then((depts) => {
+        if (isMounted && Array.isArray(depts) && depts.length > 0) {
+          const mapped = depts.map((d) => ({
+            id: d.id,
+            name: d.name,
+            college: d.college || 'Academic Services',
+            collegeCode: d.college_code || 'EVSU',
+            employeeCount: 0,
+            activeEvaluations: 0,
+          }));
+          setDeptList(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn('API departments fetch notice:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [collegeFilter, setCollegeFilter] = useState('');
@@ -107,10 +136,11 @@ export default function DepartmentManagement({
     setDeleteError(null);
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!newDeptName.trim()) return;
-    const newDept = {
+
+    let newDept = {
       id: Date.now(),
       name: newDeptName.trim(),
       college: newCollege.trim(),
@@ -118,15 +148,28 @@ export default function DepartmentManagement({
       employeeCount: 0,
       activeEvaluations: 0,
     };
+
+    try {
+      const res = await api.departments.create({
+        name: newDeptName.trim(),
+        college: newCollege.trim(),
+        college_code: newCollegeCode.trim(),
+      });
+      newDept.id = res.id;
+      setToastMsg(`Department "${newDept.name}" created in database.`);
+    } catch (err) {
+      console.warn('API create department notice:', err);
+      setToastMsg(`Department "${newDept.name}" added locally.`);
+    }
+
     setDeptList([newDept, ...deptList]);
     onAddDepartment(newDept);
     setNewDeptName('');
     setShowAddModal(false);
-    setToastMsg(`Department "${newDept.name}" added successfully.`);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleSaveSettings = (e) => {
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
     if (!settingsDept || !editDeptName.trim()) return;
 
@@ -137,14 +180,25 @@ export default function DepartmentManagement({
       collegeCode: editCollegeCode.trim(),
     };
 
+    try {
+      await api.departments.update(settingsDept.id, {
+        name: editDeptName.trim(),
+        college: editCollege.trim(),
+        college_code: editCollegeCode.trim(),
+      });
+      setToastMsg(`Department "${updated.name}" updated in database.`);
+    } catch (err) {
+      console.warn('API update department notice:', err);
+      setToastMsg(`Department settings updated for "${updated.name}".`);
+    }
+
     setDeptList((prev) => prev.map((d) => (d.id === settingsDept.id ? updated : d)));
     onUpdateDepartment(settingsDept.id, updated);
-    setToastMsg(`Department settings updated for "${updated.name}".`);
     setSettingsDept(null);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleDelete = (dept) => {
+  const handleDelete = async (dept) => {
     // Referential Integrity Rule (UC-10, FR-23)
     if (dept.employeeCount > 0 || dept.activeEvaluations > 0) {
       setDeleteError(
@@ -158,9 +212,15 @@ export default function DepartmentManagement({
       )
     ) {
       setDeleteError(null);
+      try {
+        await api.departments.delete(dept.id);
+        setToastMsg(`Department "${dept.name}" was successfully removed from database.`);
+      } catch (err) {
+        setDeleteError(err.message || `Cannot delete "${dept.name}".`);
+        return;
+      }
       setDeptList((prev) => prev.filter((d) => d.id !== dept.id));
       onDeleteDepartment(dept.id);
-      setToastMsg(`Department "${dept.name}" was successfully removed.`);
       setSettingsDept(null);
       setTimeout(() => setToastMsg(null), 4500);
     }

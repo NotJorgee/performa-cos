@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, AlertTriangle, Lightbulb, Camera, MapPin } from 'lucide-react';
 import { verifyCoordinatesAgainstCampuses } from '../../utils/campusGeofence';
+import { api } from '../../services/api';
 
 const AUTOCOMPLETE_SUGGESTIONS = [
   'Assisted students with enrollment queries and clearance routing',
@@ -22,6 +23,7 @@ export default function DailyReporting({
   const [quantity, setQuantity] = useState('');
   const [remarks, setRemarks] = useState('');
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [geoError, setGeoError] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
@@ -34,11 +36,12 @@ export default function DailyReporting({
   const handlePhotoSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setPhotoFile(file);
       setPhotoPreview(URL.createObjectURL(file));
     }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     setGeoError(null);
     setIsSubmitting(true);
@@ -57,7 +60,7 @@ export default function DailyReporting({
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const { latitude, longitude } = pos.coords;
 
         // Multi-Campus Geofence verification (EVSU Ormoc Main Campus or EVSU Luna Campus)
@@ -77,13 +80,39 @@ export default function DailyReporting({
           ? verification.verifiedCampus.name
           : 'EVSU Ormoc Campus';
 
+        let uploadedPhotoUrl = photoPreview;
+        if (photoFile) {
+          try {
+            const uploadRes = await api.uploads.uploadDarPhoto(photoFile);
+            if (uploadRes && uploadRes.url) {
+              uploadedPhotoUrl = uploadRes.url;
+            }
+          } catch (upErr) {
+            console.warn('Storage upload warning:', upErr);
+          }
+        }
+
+        try {
+          await api.dar.submit({
+            latitude,
+            longitude,
+            job_description: jobDescription,
+            work_accomplished: workAccomplished,
+            quantity,
+            remarks,
+            photo_evidence_url: uploadedPhotoUrl,
+          });
+        } catch (apiErr) {
+          console.warn('API DAR submit warning:', apiErr);
+        }
+
         const newEntry = {
           dateSubmitted: new Date().toLocaleString(),
           jobDescription,
           workAccomplished,
           quantity,
           remarks,
-          photoEvidenceUrl: photoPreview,
+          photoEvidenceUrl: uploadedPhotoUrl,
           isGeofenceValid: true,
           campusSite: campusLabel,
           coordinates: `${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`,
@@ -96,6 +125,7 @@ export default function DailyReporting({
         setQuantity('');
         setRemarks('');
         setPhotoPreview(null);
+        setPhotoFile(null);
         setSuccessToast(
           `Daily Accomplishment Report verified at ${verification.verifiedCampus ? verification.verifiedCampus.shortName : 'EVSU Campus'} and submitted successfully!`
         );

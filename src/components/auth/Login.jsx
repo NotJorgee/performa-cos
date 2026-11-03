@@ -1,51 +1,12 @@
 import React, { useState } from 'react';
-import { Check, Eye, EyeOff, AlertCircle, UserPlus } from 'lucide-react';
+import { Check, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import loginBg from '../../assets/images/login-bg.png';
-
-export const DEMO_CREDENTIALS = [
-  {
-    roleName: 'COS',
-    roleLabel: 'COS Employee',
-    email: 'COS@evsu.edu.ph',
-    password: '@Password_123',
-    fullName: 'Jorge Mikhael Gubantes',
-    department: 'Computer Studies Department',
-    jobTitle: 'Admin Aide',
-    initials: 'JG',
-    employeeIdNumber: 'G10222026JMR',
-    avatarUrl: null,
-  },
-  {
-    roleName: 'Department Head',
-    roleLabel: 'Department Head',
-    email: 'DH@evsu.edu.ph',
-    password: '@Password_123',
-    fullName: 'Engr. Roberto Del Rosario',
-    department: 'Computer Studies Department',
-    jobTitle: 'Department Head',
-    initials: 'RD',
-    employeeIdNumber: 'D10222026RDR',
-    avatarUrl: null,
-  },
-  {
-    roleName: 'HR',
-    roleLabel: 'HR Personnel',
-    email: 'HR@evsu.edu.ph',
-    password: '@Password_123',
-    fullName: 'Dr. Maria Clara Ramos',
-    department: 'HRMDO Office',
-    jobTitle: 'HRMO Officer',
-    initials: 'MR',
-    employeeIdNumber: 'R10222026MCR',
-    avatarUrl: null,
-  },
-];
+import { api } from '../../services/api';
 
 export default function Login({
   onLogin = () => {},
   onForgotPassword = () => {},
-  onGoToSignUp = () => {},
   externalErrorMessage = null,
 }) {
   const [email, setEmail] = useState('');
@@ -62,37 +23,58 @@ export default function Login({
   const emailOk = emailTrimmed.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
   const passwordOk = password.length >= 6;
 
-  const handleFillDemo = (demoItem) => {
-    setEmail(demoItem.email);
-    setPassword(demoItem.password);
-    setErrorMessage(null);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    const normalizedInputEmail = email.trim().toLowerCase();
-    const matchedAccount = DEMO_CREDENTIALS.find(
-      (c) => c.email.toLowerCase() === normalizedInputEmail
-    );
-
-    // Legitimate institutional security warning without exposing credential details
-    if (!matchedAccount || password !== matchedAccount.password) {
-      setErrorMessage(
-        'Invalid institutional credentials. Please check your email and password, or contact HRMDO if your account is locked.'
-      );
+    const inputEmail = email.trim();
+    if (!inputEmail || !password) {
+      setErrorMessage('Please enter both your institutional email and password.');
       return;
     }
 
-    // Success! Show loading & extended welcome animation so user can comfortably read it
     setIsLoading(true);
-    setWelcomeUser(matchedAccount);
-    setShowWelcome(true);
 
-    setTimeout(() => {
-      onLogin(matchedAccount);
-    }, 2800);
+    try {
+      // 1. Authenticate with real FastAPI + Supabase PostgreSQL backend
+      const response = await api.auth.login(inputEmail, password);
+      const user = response.user;
+
+      const userAccount = {
+        id: user.id,
+        fullName: user.fullName,
+        role: user.role,
+        roleLabel: user.role,
+        department: user.department,
+        departmentId: user.departmentId,
+        jobTitle: user.jobTitle || user.role,
+        employeeIdNumber: user.employeeIdNumber,
+        cosCategory: user.cosCategory,
+        avatarUrl: user.avatarUrl,
+        initials: user.fullName
+          ? user.fullName
+              .replace(/^(Dr\.|Engr\.|Prof\.)\s*/i, '')
+              .split(' ')
+              .map((n) => n[0])
+              .filter(Boolean)
+              .slice(0, 2)
+              .join('')
+          : 'U',
+      };
+
+      setWelcomeUser(userAccount);
+      setShowWelcome(true);
+
+      setTimeout(() => {
+        onLogin(userAccount);
+      }, 1800);
+    } catch (err) {
+      setIsLoading(false);
+      setErrorMessage(
+        err.message ||
+          'Invalid institutional credentials. Please check your email and password, or contact HRMDO if your account is locked.'
+      );
+    }
   };
 
   return (
@@ -234,64 +216,9 @@ export default function Login({
                 {isLoading && <span className="btn-spinner" aria-hidden="true" />}
               </button>
 
-              {/* Quick Demo Credentials Autofill */}
-              <div className="lv2-demo-card">
-                <div className="lv2-demo-head">
-                  <span>Demo Quick Select</span>
-                  <span style={{ opacity: 0.7 }}>1-click credentials setup</span>
-                </div>
-                <div className="lv2-demo-buttons">
-                  {DEMO_CREDENTIALS.map((demo) => (
-                    <button
-                      key={demo.roleName}
-                      type="button"
-                      className="lv2-demo-btn"
-                      onClick={() => handleFillDemo(demo)}
-                      title={`Select ${demo.roleLabel}`}
-                    >
-                      {demo.roleName}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tokenized Sign-Up Navigation Button */}
-                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed rgba(255,255,255,0.22)' }}>
-                  <button
-                    type="button"
-                    onClick={onGoToSignUp}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      border: '1.5px solid rgba(255,255,255,0.3)',
-                      background: 'rgba(255,255,255,0.15)',
-                      color: '#ffffff',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '7px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#ffffff';
-                      e.currentTarget.style.color = '#7a0c2e';
-                      e.currentTarget.style.borderColor = '#ffffff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-                      e.currentTarget.style.color = '#ffffff';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-                    }}
-                    title="View tokenized invitation onboarding page for COS staff and Administrators"
-                  >
-                    <UserPlus size={14} />
-                    <span>View Tokenized Sign-Up (COS / Admin)</span>
-                  </button>
-                </div>
+              {/* Institutional Footer */}
+              <div className="lv2-footer" style={{ marginTop: '28px' }}>
+                <span>Official Institutional Portal &bull; Eastern Visayas State University</span>
               </div>
             </form>
           </div>
@@ -330,7 +257,7 @@ export default function Login({
             </div>
             <div className="lv2-success-title">Welcome to PerformaCOS</div>
             <div className="lv2-success-sub">
-              Signing in as {welcomeUser?.roleLabel || 'User'} &bull; {welcomeUser?.fullName}
+              Signing in as {welcomeUser?.roleLabel || welcomeUser?.role || 'User'} &bull; {welcomeUser?.fullName}
             </div>
           </div>
         </div>

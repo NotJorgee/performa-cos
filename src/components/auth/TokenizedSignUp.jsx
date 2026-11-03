@@ -1,158 +1,244 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Shield,
   Check,
   Eye,
   EyeOff,
-  Sparkles,
   ArrowLeft,
   Mail,
   AlertCircle,
+  Building,
+  Briefcase,
+  Phone,
+  Lock,
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
+import { api } from '../../services/api';
 
 const DEPARTMENTS = [
-  'Computer Studies Department',
-  'Technology Department',
-  'Engineering Department',
-  'Education Department',
-  'Mathematics Department',
-  'Maintenance/Janitorial (MESO) Office',
-  'Library Office',
+  'Disbursing / Cashier Office',
   'HRMDO Office',
+  'School Clinic',
+  'IPDO Office',
+  'Research Office',
+  'Sports And Development Office',
+  'Quality Assurance & Accreditation Office',
+  'Technology Department',
+  'Guidance Office',
+  'Extension Service Office',
+  'Education Department',
+  'Procurement Office',
+  'IGP Office',
+  'Campus Director Office',
+  'Computer Studies Department',
+  'SASO Office',
+  'Engineering Department',
+  'Administrative and Finance',
+  'Hospitality & Tourism Management',
+  'Library Office',
+  'Registrar Office',
+  'Maintenance/Janitorial (MESO) Office',
 ];
 
 export default function TokenizedSignUp({
+  initialToken = '',
   onBackToLogin = () => {},
   onLoginAsNewUser = () => {},
 }) {
-  // Mode: 'cos' | 'admin'
-  const [roleMode, setRoleMode] = useState('cos');
+  // Extract token candidate from prop or URL
+  const resolvedInitialToken = (() => {
+    if (initialToken) return initialToken;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token') || params.get('invite') || '';
+    }
+    return '';
+  })();
 
-  // Form State - COS
-  const [cosEmail, setCosEmail] = useState('newhire.cos@evsu.edu.ph');
-  const [cosName, setCosName] = useState('Camille Joy Reyes');
+  const [tokenInput, setTokenInput] = useState(resolvedInitialToken);
+  const [tokenData, setTokenData] = useState(null);
+  const [isValidatingToken, setIsValidatingToken] = useState(Boolean(resolvedInitialToken));
+  const [tokenError, setTokenError] = useState(null);
+
+  // Role mode: 'cos' | 'admin'
+  const [roleMode, setRoleMode] = useState(() => {
+    if (resolvedInitialToken.toUpperCase().includes('ADM')) return 'admin';
+    return 'cos';
+  });
+
+  // Form State - COS Employee
+  const [cosEmail, setCosEmail] = useState('');
+  const [cosName, setCosName] = useState('');
   const [cosDept, setCosDept] = useState('Computer Studies Department');
   const [cosTitle, setCosTitle] = useState('Administrative Aide VI (COS)');
-  const [cosPhone, setCosPhone] = useState('+63 912 345 6789');
-  const [cosPassword, setCosPassword] = useState('@Password_123');
-  const [cosConfirm, setCosConfirm] = useState('@Password_123');
-  const [cosAgreed, setCosAgreed] = useState(true);
+  const [cosPhone, setCosPhone] = useState('');
+  const [cosPassword, setCosPassword] = useState('');
+  const [cosConfirm, setCosConfirm] = useState('');
+  const [cosAgreed, setCosAgreed] = useState(false);
 
-  // Form State - Admin
-  const [adminEmail, setAdminEmail] = useState('admin.staff@evsu.edu.ph');
-  const [adminName, setAdminName] = useState('Dr. Ronald Allan Santos');
+  // Form State - Administrator / Department Head
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminName, setAdminName] = useState('');
   const [adminRole, setAdminRole] = useState('Department Head'); // 'Department Head' | 'HR Personnel'
   const [adminDept, setAdminDept] = useState('Computer Studies Department');
-  const [adminTitle, setAdminTitle] = useState('Department Chairperson');
-  const [adminPhone, setAdminPhone] = useState('+63 917 888 9922');
-  const [adminPassword, setAdminPassword] = useState('@Password_123');
-  const [adminConfirm, setAdminConfirm] = useState('@Password_123');
-  const [adminAgreed, setAdminAgreed] = useState(true);
+  const [adminTitle, setAdminTitle] = useState('Department Head');
+  const [adminPhone, setAdminPhone] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminConfirm, setAdminConfirm] = useState('');
+  const [adminAgreed, setAdminAgreed] = useState(false);
 
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredUser, setRegisteredUser] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [formError, setFormError] = useState(null);
 
-  // Dynamic EVSU Employee ID calculation
+  // Validate invitation token whenever tokenInput changes
+  useEffect(() => {
+    const rawToken = tokenInput.trim();
+    if (!rawToken) {
+      setTokenData(null);
+      setTokenError(null);
+      setIsValidatingToken(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsValidatingToken(true);
+    setTokenError(null);
+
+    api.invitations
+      .validate(rawToken)
+      .then((data) => {
+        if (!isMounted) return;
+        setTokenData(data);
+        setTokenError(null);
+
+        // Determine role mode from validated backend role
+        const isCos = data.role === 'COS Employee' || rawToken.toUpperCase().includes('COS');
+        setRoleMode(isCos ? 'cos' : 'admin');
+
+        // Pre-fill email if invitation was bound to an email
+        if (data.email) {
+          if (isCos) setCosEmail(data.email);
+          else setAdminEmail(data.email);
+        }
+
+        // Pre-select department if invitation was bound to one
+        if (data.department_name) {
+          if (isCos) setCosDept(data.department_name);
+          else setAdminDept(data.department_name);
+        }
+
+        if (!isCos && data.role) {
+          setAdminRole(data.role);
+          if (data.role === 'Department Head') {
+            setAdminTitle('Department Head');
+          }
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setTokenData(null);
+        setTokenError(
+          err.message || 'Invalid or expired invitation token. Please check your link.'
+        );
+      })
+      .finally(() => {
+        if (isMounted) setIsValidatingToken(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [tokenInput]);
+
+  // Dynamic preview of employee ID
   const currentFullName = roleMode === 'cos' ? cosName : adminName;
   const currentGeneratedId = generateEvsuEmployeeId(
     currentFullName || (roleMode === 'cos' ? 'COS Staff' : 'Admin Staff'),
     new Date()
   );
 
-  // Handle Quick Autofill for demo
-  const handleQuickAutofill = () => {
-    if (roleMode === 'cos') {
-      setCosEmail('camille.reyes@evsu.edu.ph');
-      setCosName('Camille Joy Reyes');
-      setCosDept('Computer Studies Department');
-      setCosTitle('Administrative Aide VI (COS)');
-      setCosPhone('+63 912 345 6789');
-      setCosPassword('@Password_123');
-      setCosConfirm('@Password_123');
-      setCosAgreed(true);
-    } else {
-      setAdminEmail('ronald.santos@evsu.edu.ph');
-      setAdminName('Dr. Ronald Allan Santos');
-      setAdminRole('Department Head');
-      setAdminDept('Computer Studies Department');
-      setAdminTitle('Department Chairperson');
-      setAdminPhone('+63 917 888 9922');
-      setAdminPassword('@Password_123');
-      setAdminConfirm('@Password_123');
-      setAdminAgreed(true);
-    }
-    setErrorMsg(null);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMsg(null);
+    setFormError(null);
 
     const isCos = roleMode === 'cos';
     const pwd = isCos ? cosPassword : adminPassword;
     const confirm = isCos ? cosConfirm : adminConfirm;
     const agreed = isCos ? cosAgreed : adminAgreed;
+    const tokenToUse = tokenInput.trim();
+
+    if (!tokenToUse) {
+      setFormError('Please provide a valid invitation token.');
+      return;
+    }
 
     if (!agreed) {
-      setErrorMsg('Please accept the institutional terms to complete account registration.');
+      setFormError('Please accept the institutional terms to complete account registration.');
       return;
     }
 
     if (pwd !== confirm) {
-      setErrorMsg('Passwords do not match. Please ensure both password fields match.');
+      setFormError('Passwords do not match. Please ensure both password fields match.');
       return;
     }
 
     if (pwd.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long.');
+      setFormError('Password must be at least 8 characters long.');
       return;
     }
 
     setIsSubmitting(true);
 
-    const newUser = isCos
-      ? {
-          fullName: cosName,
-          roleLabel: 'COS Employee',
-          department: cosDept,
-          jobTitle: cosTitle,
-          employeeIdNumber: currentGeneratedId,
-          email: cosEmail,
-          initials: cosName
-            .split(' ')
-            .map((n) => n[0])
-            .filter(Boolean)
-            .slice(0, 2)
-            .join(''),
-          avatarUrl: null,
-        }
-      : {
-          fullName: adminName,
-          roleLabel: adminRole,
-          department: adminDept,
-          jobTitle: adminTitle,
-          employeeIdNumber: currentGeneratedId,
-          email: adminEmail,
-          initials: adminName
-            .replace(/^(Dr\.|Engr\.|Prof\.)\s*/i, '')
-            .split(' ')
-            .map((n) => n[0])
-            .filter(Boolean)
-            .slice(0, 2)
-            .join(''),
-          avatarUrl: null,
-        };
+    try {
+      const payload = {
+        invitation_token: tokenToUse,
+        email: isCos ? cosEmail.trim() : adminEmail.trim(),
+        full_name: isCos ? cosName.trim() : adminName.trim(),
+        password: pwd,
+        role: isCos ? 'COS Employee' : adminRole,
+        cos_category: isCos ? 'Administrative' : null,
+        job_title: isCos ? cosTitle.trim() : adminTitle.trim(),
+        contact_number: isCos ? cosPhone.trim() : adminPhone.trim(),
+      };
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+      const response = await api.auth.register(payload);
+      const user = response.user;
+
+      const newUser = {
+        id: user.id,
+        fullName: user.fullName,
+        roleLabel: user.role,
+        role: user.role,
+        department: user.department,
+        jobTitle: user.jobTitle,
+        employeeIdNumber: user.employeeIdNumber,
+        email: user.email,
+        initials: user.fullName
+          ? user.fullName
+              .replace(/^(Dr\.|Engr\.|Prof\.)\s*/i, '')
+              .split(' ')
+              .map((n) => n[0])
+              .filter(Boolean)
+              .slice(0, 2)
+              .join('')
+          : 'U',
+        avatarUrl: null,
+      };
+
       setRegisteredUser(newUser);
-    }, 700);
+    } catch (err) {
+      setFormError(
+        err.message ||
+          'Registration failed. Please check your invitation token and institutional credentials.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -194,396 +280,268 @@ export default function TokenizedSignUp({
             </button>
 
             <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>
-              Invitation Onboarding
+              Official Onboarding Portal
             </span>
           </div>
 
           {/* Title */}
-          <div className="auth-card-brand" style={{ marginBottom: '14px' }}>
-            <span className="auth-card-brand-title">Account Registration</span>
+          <div className="auth-card-brand" style={{ marginBottom: '16px' }}>
+            <span className="auth-card-brand-title">
+              {roleMode === 'cos' ? 'COS Employee Registration' : 'Administrator / Department Head Registration'}
+            </span>
             <span className="auth-card-brand-sub">
-              Complete your profile and set up your institutional credentials.
+              {roleMode === 'cos'
+                ? 'Complete your profile to access accomplishment reports and performance evaluations.'
+                : 'Complete your profile to access supervisory evaluations, endorsement workflows, and administrative dashboards.'}
             </span>
           </div>
 
-            {/* Invitation Token Info Pill */}
+          {/* Invitation Status Banner */}
+          {isValidatingToken && (
             <div
               style={{
                 background: '#f8fafc',
                 border: '1px solid var(--line)',
                 borderRadius: '8px',
-                padding: '9px 12px',
-                fontSize: '12px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                fontSize: '12.5px',
                 color: 'var(--ink-600)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
                 gap: '8px',
+              }}
+            >
+              <span className="btn-spinner" style={{ display: 'inline-block', width: '14px', height: '14px', borderWidth: '2px' }} />
+              <span>Verifying your institutional invitation token...</span>
+            </div>
+          )}
+
+          {tokenData && (
+            <div
+              style={{
+                background: roleMode === 'cos' ? '#ecfdf5' : '#fdf2f4',
+                border: `1px solid ${roleMode === 'cos' ? '#a7f3d0' : '#fecdd3'}`,
+                borderRadius: '10px',
+                padding: '12px 16px',
+                marginBottom: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: roleMode === 'cos' ? '#10b981' : '#7a1128',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                {roleMode === 'cos' ? <Check size={20} strokeWidth={2.6} /> : <Shield size={19} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: roleMode === 'cos' ? '#065f46' : '#881337' }}>
+                  {roleMode === 'cos' ? 'Official COS Employee Invitation' : 'Official Administrator Invitation'}
+                </div>
+                <div style={{ fontSize: '12px', color: roleMode === 'cos' ? '#047857' : '#9f1239' }}>
+                  Token verified &bull; Assigned to {tokenData.department_name || 'Eastern Visayas State University'}
+                </div>
+              </div>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: roleMode === 'cos' ? '#d1fae5' : '#ffe4e6',
+                  color: roleMode === 'cos' ? '#065f46' : '#881337',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.4px',
+                }}
+              >
+                {tokenData.role || (roleMode === 'cos' ? 'COS Staff' : 'Admin')}
+              </span>
+            </div>
+          )}
+
+          {tokenError && (
+            <div
+              style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                marginBottom: '16px',
+              }}
+            >
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: '2px' }}>Invalid or Expired Invitation</strong>
+                <span>{tokenError} Please ensure you are opening the exact link sent to your email, or contact HRMDO.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Invitation Token Field (Shown if manual verification or adjustment needed) */}
+          {(!tokenData || tokenError) && (
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid var(--line)',
+                borderRadius: '8px',
+                padding: '10px 14px',
                 marginBottom: '18px',
               }}
             >
-              <div>
-                <span className="muted">Invitation Token:</span>{' '}
-                <code
-                  style={{
-                    background: '#e2e8f0',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    fontSize: '11.5px',
-                    color: 'var(--ink-900)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {roleMode === 'cos' ? 'EVSU-INV-COS-84920' : 'EVSU-INV-ADM-39104'}
-                </code>
-              </div>
-              <span style={{ fontSize: '11px', color: 'var(--ink-500)', whiteSpace: 'nowrap' }}>
-                Expires in 72h
-              </span>
+              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '6px' }}>
+                Invitation Token
+              </label>
+              <input
+                type="text"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="EVSU-INV-COS-..."
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--line)',
+                  background: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  letterSpacing: '0.8px',
+                  fontFamily: 'monospace',
+                  color: 'var(--brand-800)',
+                }}
+              />
             </div>
+          )}
 
-            {/* DEMO SWITCHER: COS vs Administrator Toggle */}
-            <div style={{ marginBottom: '16px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '6px',
-                }}
-              >
-                <label style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-700)', letterSpacing: '0.5px' }}>
-                  Demo View Switcher
-                </label>
-                <button
-                  type="button"
-                  onClick={handleQuickAutofill}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--brand-700)',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '2px 4px',
-                  }}
-                  title="Fill realistic demo values for testing"
-                >
-                  <Sparkles size={13} /> Autofill Demo Data
-                </button>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '6px',
-                  background: 'var(--brand-50, #fdf2f4)',
-                  padding: '4px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--brand-100, #fce7eb)',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRoleMode('cos');
-                    setErrorMsg(null);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '7px',
-                    padding: '8px 12px',
-                    borderRadius: '7px',
-                    border: roleMode === 'cos' ? '1px solid var(--brand-700)' : '1px solid transparent',
-                    background: roleMode === 'cos' ? '#ffffff' : 'transparent',
-                    color: roleMode === 'cos' ? 'var(--brand-700)' : 'var(--ink-600)',
-                    fontWeight: roleMode === 'cos' ? 800 : 600,
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    boxShadow: roleMode === 'cos' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <User size={15} />
-                  <span>Regular COS Sign-Up</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRoleMode('admin');
-                    setErrorMsg(null);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '7px',
-                    padding: '8px 12px',
-                    borderRadius: '7px',
-                    border: roleMode === 'admin' ? '1px solid var(--brand-700)' : '1px solid transparent',
-                    background: roleMode === 'admin' ? '#ffffff' : 'transparent',
-                    color: roleMode === 'admin' ? 'var(--brand-700)' : 'var(--ink-600)',
-                    fontWeight: roleMode === 'admin' ? 800 : 600,
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    boxShadow: roleMode === 'admin' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <Shield size={15} />
-                  <span>Admin Sign-Up</span>
-                </button>
-              </div>
+          {/* Form Error Banner */}
+          {formError && (
+            <div
+              style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                padding: '9px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '14px',
+              }}
+            >
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              <span>{formError}</span>
             </div>
+          )}
 
-            {/* Error Message */}
-            {errorMsg && (
-              <div
-                style={{
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#991b1b',
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '14px',
-                }}
-              >
-                <AlertCircle size={16} style={{ flexShrink: 0 }} />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {/* REGISTRATION FORM */}
-            <form onSubmit={handleSubmit}>
-              {roleMode === 'cos' ? (
-                /* ====================================================
-                   1. REGULAR COS EMPLOYEE SIGN-UP FIELDS
-                   ==================================================== */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Institutional Email */}
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
-                      Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="email"
-                        required
-                        value={cosEmail}
-                        onChange={(e) => setCosEmail(e.target.value)}
-                        placeholder="newhire.cos@evsu.edu.ph"
-                        style={{ paddingLeft: '34px', background: '#f8fafc' }}
-                      />
-                      <Mail
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
+          {/* REGISTRATION FORM */}
+          <form onSubmit={handleSubmit}>
+            {roleMode === 'cos' ? (
+              /* ====================================================
+                 1. REGULAR COS EMPLOYEE SIGN-UP FIELDS
+                 ==================================================== */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Institutional Email */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px' }}>
+                    Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-control"
+                      type="email"
+                      required
+                      value={cosEmail}
+                      onChange={(e) => setCosEmail(e.target.value)}
+                      placeholder="firstname.lastname@evsu.edu.ph"
+                      style={{ paddingLeft: '34px' }}
+                    />
+                    <Mail
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                    />
                   </div>
+                </div>
 
-                  {/* Full Name */}
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
-                      Full Legal Name <span style={{ color: 'var(--red-600)' }}>*</span>
-                    </label>
+                {/* Full Legal Name */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px' }}>
+                    Full Legal Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
                     <input
                       className="form-control"
                       type="text"
                       required
                       value={cosName}
                       onChange={(e) => setCosName(e.target.value)}
-                      placeholder="e.g. Camille Joy Reyes"
+                      placeholder="e.g. Maria Santos Dela Cruz"
+                      style={{ paddingLeft: '34px' }}
+                    />
+                    <User
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
                     />
                   </div>
-
-                  {/* Department & Designation Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>
-                        Assigned Department <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                      <select
-                        className="form-control"
-                        value={cosDept}
-                        onChange={(e) => setCosDept(e.target.value)}
-                        required
-                      >
-                        {DEPARTMENTS.map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>
-                        Position / Job Title <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                      <input
-                        className="form-control"
-                        type="text"
-                        required
-                        value={cosTitle}
-                        onChange={(e) => setCosTitle(e.target.value)}
-                        placeholder="e.g. Admin Aide VI (COS)"
-                      />
-                    </div>
-                  </div>
-
-                  {/* System-Assigned Employee ID Preview */}
-                  <div
-                    style={{
-                      background: 'var(--brand-50, #fdf2f4)',
-                      border: '1px solid var(--brand-200, #f8c5cd)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-800)', textTransform: 'uppercase' }}>
-                        Auto-Assigned EVSU Employee ID
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '1px' }}>
-                        Formula: Initial + MMDDYYYY + First Initial + Middle Initial
-                      </div>
-                    </div>
-                    <code
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid var(--brand-300, #fca5a5)',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 800,
-                        color: 'var(--brand-700)',
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      {currentGeneratedId}
-                    </code>
-                  </div>
-
-                  {/* Contact Number */}
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>Contact Number (Mobile / SMS)</label>
-                    <input
-                      className="form-control"
-                      type="tel"
-                      value={cosPhone}
-                      onChange={(e) => setCosPhone(e.target.value)}
-                      placeholder="+63 912 345 6789"
-                    />
-                  </div>
-
-                  {/* Password & Confirm */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>Create Password</label>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="form-control"
-                          type={showPassword ? 'text' : 'password'}
-                          required
-                          value={cosPassword}
-                          onChange={(e) => setCosPassword(e.target.value)}
-                          placeholder="••••••••••"
-                          style={{ paddingRight: '34px' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--ink-400)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>Confirm Password</label>
-                      <input
-                        className="form-control"
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={cosConfirm}
-                        onChange={(e) => setCosConfirm(e.target.value)}
-                        placeholder="••••••••••"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Compliance Checkbox */}
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '8px',
-                      fontSize: '12px',
-                      color: 'var(--ink-700)',
-                      cursor: 'pointer',
-                      marginTop: '4px',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={cosAgreed}
-                      onChange={(e) => setCosAgreed(e.target.checked)}
-                      style={{ marginTop: '2px' }}
-                    />
-                    <span>
-                      I agree to submit daily accomplishment reports (DAR) and comply with institutional campus geofence verification policies.
-                    </span>
-                  </label>
                 </div>
-              ) : (
-                /* ====================================================
-                   2. ADMINISTRATOR SIGN-UP FIELDS
-                   ==================================================== */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Institutional Email */}
+
+                {/* Department Selection */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px' }}>
+                    Assigned Department / Academic Unit <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      className="form-control"
+                      value={cosDept}
+                      onChange={(e) => setCosDept(e.target.value)}
+                      style={{ paddingLeft: '34px' }}
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    <Building
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Job Title & Contact Number Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>
-                      Administrator Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                    </label>
+                    <label style={{ fontSize: '12px' }}>Official Job Title</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
-                        type="email"
-                        required
-                        value={adminEmail}
-                        onChange={(e) => setAdminEmail(e.target.value)}
-                        placeholder="admin.staff@evsu.edu.ph"
-                        style={{ paddingLeft: '34px', background: '#f8fafc' }}
+                        type="text"
+                        value={cosTitle}
+                        onChange={(e) => setCosTitle(e.target.value)}
+                        placeholder="Admin Aide / Faculty"
+                        style={{ paddingLeft: '34px' }}
                       />
-                      <Mail
+                      <Briefcase
                         size={15}
                         color="var(--ink-400)"
                         style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
@@ -591,224 +549,373 @@ export default function TokenizedSignUp({
                     </div>
                   </div>
 
-                  {/* Full Name */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12px' }}>Contact Phone</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type="tel"
+                        value={cosPhone}
+                        onChange={(e) => setCosPhone(e.target.value)}
+                        placeholder="+63 9XX XXX XXXX"
+                        style={{ paddingLeft: '34px' }}
+                      />
+                      <Phone
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Generated Employee ID Preview */}
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px dashed var(--line)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
+                    System Generated EVSU ID:
+                  </span>
+                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.5px' }}>
+                    {currentGeneratedId}
+                  </span>
+                </div>
+
+                {/* Password Fields */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '12px' }}>
-                      Administrator Full Name <span style={{ color: 'var(--red-600)' }}>*</span>
+                      Password <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={cosPassword}
+                        onChange={(e) => setCosPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        style={{ paddingLeft: '34px' }}
+                      />
+                      <Lock
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12px' }}>
+                      Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={cosConfirm}
+                        onChange={(e) => setCosConfirm(e.target.value)}
+                        placeholder="Re-type password"
+                        style={{ paddingLeft: '34px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-500)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Agreement Checkbox */}
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    fontSize: '12px',
+                    color: 'var(--ink-700)',
+                    cursor: 'pointer',
+                    marginTop: '4px',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={cosAgreed}
+                    onChange={(e) => setCosAgreed(e.target.checked)}
+                    style={{ marginTop: '2px' }}
+                  />
+                  <span>
+                    I affirm that the institutional details provided are true and correct under Eastern Visayas State University guidelines.
+                  </span>
+                </label>
+              </div>
+            ) : (
+              /* ====================================================
+                 2. ADMINISTRATOR / DEPARTMENT HEAD SIGN-UP FIELDS
+                 ==================================================== */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Institutional Email */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px' }}>
+                    Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-control"
+                      type="email"
+                      required
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      placeholder="admin.name@evsu.edu.ph"
+                      style={{ paddingLeft: '34px' }}
+                    />
+                    <Mail
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Full Legal Name */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px' }}>
+                    Full Legal Name & Title <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
                     <input
                       className="form-control"
                       type="text"
                       required
                       value={adminName}
                       onChange={(e) => setAdminName(e.target.value)}
-                      placeholder="e.g. Dr. Ronald Allan Santos"
+                      placeholder="e.g. Engr. Roberto Del Rosario"
+                      style={{ paddingLeft: '34px' }}
+                    />
+                    <User
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
                     />
                   </div>
+                </div>
 
-                  {/* Admin Role Selector & Department */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>
-                        System Role <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                      <select
-                        className="form-control"
-                        value={adminRole}
-                        onChange={(e) => {
-                          const newRole = e.target.value;
-                          setAdminRole(newRole);
-                          if (newRole === 'HR Personnel') {
-                            setAdminDept('HRMDO Office');
-                            setAdminTitle('HRMO Officer');
-                          } else {
-                            setAdminDept('Computer Studies Department');
-                            setAdminTitle('Department Chairperson');
-                          }
-                        }}
-                        required
-                      >
-                        <option value="Department Head">Department Head</option>
-                        <option value="HR Personnel">HR Personnel</option>
-                      </select>
-                    </div>
+                {/* Department Selection */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px' }}>
+                    Department / Administrative Office <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      className="form-control"
+                      value={adminDept}
+                      onChange={(e) => setAdminDept(e.target.value)}
+                      style={{ paddingLeft: '34px' }}
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    <Building
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                    />
+                  </div>
+                </div>
 
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>
-                        Assigned Unit / Office <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                      <select
+                {/* Admin Position & Contact Phone */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12px' }}>Administrative Title</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
                         className="form-control"
-                        value={adminDept}
-                        onChange={(e) => setAdminDept(e.target.value)}
-                        required
-                      >
-                        {DEPARTMENTS.map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
-                          </option>
-                        ))}
-                      </select>
+                        type="text"
+                        value={adminTitle}
+                        onChange={(e) => setAdminTitle(e.target.value)}
+                        placeholder="Department Head"
+                        style={{ paddingLeft: '34px' }}
+                      />
+                      <Briefcase
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
                     </div>
                   </div>
 
-                  {/* Administrative Title */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12px' }}>Official Contact Number</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type="tel"
+                        value={adminPhone}
+                        onChange={(e) => setAdminPhone(e.target.value)}
+                        placeholder="+63 9XX XXX XXXX"
+                        style={{ paddingLeft: '34px' }}
+                      />
+                      <Phone
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Generated Admin ID Preview */}
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px dashed var(--line)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
+                    System Generated Official ID:
+                  </span>
+                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.5px' }}>
+                    {currentGeneratedId}
+                  </span>
+                </div>
+
+                {/* Password Fields */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '12px' }}>
-                      Official Administrative Title <span style={{ color: 'var(--red-600)' }}>*</span>
+                      Password <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
-                    <input
-                      className="form-control"
-                      type="text"
-                      required
-                      value={adminTitle}
-                      onChange={(e) => setAdminTitle(e.target.value)}
-                      placeholder="e.g. Department Chairperson / Supervising HRMO"
-                    />
-                  </div>
-
-                  {/* System-Assigned ID Preview */}
-                  <div
-                    style={{
-                      background: 'var(--brand-50, #fdf2f4)',
-                      border: '1px solid var(--brand-200, #f8c5cd)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-800)', textTransform: 'uppercase' }}>
-                        Assigned Administrator ID
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '1px' }}>
-                        Official institutional personnel identifier
-                      </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="form-control"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        style={{ paddingLeft: '34px' }}
+                      />
+                      <Lock
+                        size={15}
+                        color="var(--ink-400)"
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      />
                     </div>
-                    <code
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid var(--brand-300, #fca5a5)',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 800,
-                        color: 'var(--brand-700)',
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      {currentGeneratedId}
-                    </code>
                   </div>
 
-                  {/* Contact Number */}
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px' }}>Administrative Phone Contact</label>
-                    <input
-                      className="form-control"
-                      type="tel"
-                      value={adminPhone}
-                      onChange={(e) => setAdminPhone(e.target.value)}
-                      placeholder="+63 917 888 9922"
-                    />
-                  </div>
-
-                  {/* Password & Confirm */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>Create Admin Password</label>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="form-control"
-                          type={showPassword ? 'text' : 'password'}
-                          required
-                          value={adminPassword}
-                          onChange={(e) => setAdminPassword(e.target.value)}
-                          placeholder="••••••••••"
-                          style={{ paddingRight: '34px' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--ink-400)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '12px' }}>Confirm Password</label>
+                    <label style={{ fontSize: '12px' }}>
+                      Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
                       <input
                         className="form-control"
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={adminConfirm}
                         onChange={(e) => setAdminConfirm(e.target.value)}
-                        placeholder="••••••••••"
+                        placeholder="Re-type password"
+                        style={{ paddingLeft: '34px' }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-500)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
                     </div>
                   </div>
-
-                  {/* Admin Confidentiality Agreement */}
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '8px',
-                      fontSize: '12px',
-                      color: 'var(--ink-700)',
-                      cursor: 'pointer',
-                      marginTop: '4px',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={adminAgreed}
-                      onChange={(e) => setAdminAgreed(e.target.checked)}
-                      style={{ marginTop: '2px' }}
-                    />
-                    <span>
-                      I acknowledge administrative oversight responsibility, data privacy compliance, and strict evaluation confidentiality.
-                    </span>
-                  </label>
                 </div>
-              )}
 
-              {/* Submit Button */}
-              <div style={{ marginTop: '20px' }}>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isSubmitting}
+                {/* Admin Confidentiality Agreement */}
+                <label
                   style={{
-                    width: '100%',
-                    padding: '11px',
-                    fontSize: '14px',
-                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    fontSize: '12px',
+                    color: 'var(--ink-700)',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(122, 12, 46, 0.25)',
+                    marginTop: '4px',
+                    lineHeight: 1.4,
                   }}
                 >
-                  {isSubmitting ? 'Registering & Activating...' : `Complete ${roleMode === 'cos' ? 'COS Staff' : 'Administrator'} Registration`}
-                </button>
+                  <input
+                    type="checkbox"
+                    checked={adminAgreed}
+                    onChange={(e) => setAdminAgreed(e.target.checked)}
+                    style={{ marginTop: '2px' }}
+                  />
+                  <span>
+                    I acknowledge administrative oversight responsibility, data privacy compliance, and strict evaluation confidentiality.
+                  </span>
+                </label>
               </div>
-            </form>
-          </div>
+            )}
+
+            {/* Submit Button */}
+            <div style={{ marginTop: '20px' }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSubmitting || isValidatingToken}
+                style={{
+                  width: '100%',
+                  padding: '11px',
+                  fontSize: '14px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(122, 12, 46, 0.25)',
+                }}
+              >
+                {isSubmitting
+                  ? 'Registering & Activating...'
+                  : `Complete ${roleMode === 'cos' ? 'COS Staff' : 'Administrator'} Registration`}
+              </button>
+            </div>
+          </form>
         </div>
+      </div>
 
       {/* SUCCESS CONFIRMATION MODAL */}
       {registeredUser && (
