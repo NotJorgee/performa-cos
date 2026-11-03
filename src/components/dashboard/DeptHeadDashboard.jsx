@@ -1,26 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ClipboardCheck, UserCheck, FileText, ArrowRight } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
+import api from '../../services/api';
 
 export default function DeptHeadDashboard({
   currentUser = {
-    fullName: 'Engr. Roberto Del Rosario',
+    fullName: 'Department Head',
     department: 'Computer Studies Department',
     college: 'College of Technology',
   },
-  metrics = {
-    totalSubordinates: 12,
-    pendingReviews: 2,
-    pendingIntents: 3,
-    avgScore: 88.5,
-    ratingLabel: 'Very Satisfactory',
-  },
+  metrics: propMetrics = null,
   onNavigate = () => {},
 }) {
-  const pendingCount = metrics?.pendingReviews ?? 2;
-  const pendingIntentsCount = metrics?.pendingIntents ?? 3;
-  const fullFirstName = getFullFirstName(currentUser.fullName || 'Roberto');
+  const [metrics, setMetrics] = useState(
+    propMetrics || {
+      totalSubordinates: 0,
+      pendingReviews: 0,
+      pendingIntents: 0,
+      avgScore: 0,
+      ratingLabel: 'Active Department',
+    }
+  );
+
+  useEffect(() => {
+    if (propMetrics) {
+      setMetrics(propMetrics);
+      return;
+    }
+    const fetchMetrics = async () => {
+      try {
+        const data = await api.analytics.getDeptHeadDashboard();
+        setMetrics(data);
+      } catch (err) {
+        console.error('Failed to load Dept Head dashboard analytics:', err);
+      }
+    };
+    fetchMetrics();
+  }, [propMetrics]);
+
+  const pendingCount = metrics?.pendingReviews ?? 0;
+  const pendingIntentsCount = metrics?.pendingIntents ?? 0;
+  const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Department Head');
 
   return (
     <div>

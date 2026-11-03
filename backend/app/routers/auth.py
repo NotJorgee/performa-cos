@@ -15,6 +15,7 @@ from .. import models, schemas
 from ..auth import hash_password, verify_password, create_access_token, get_current_user, hash_token
 from ..email_service import send_otp_email, send_welcome_email
 from ..id_generator import generate_evsu_employee_id
+from .audit import log_audit
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -67,6 +68,15 @@ def login(creds: schemas.LoginRequest, request: Request, db: Session = Depends(g
     )
     db.add(session)
     db.commit()
+
+    log_audit(
+        db=db,
+        action="USER_LOGGED_IN",
+        target_scope=f"User #{user.id} ({user.email})",
+        operation_details="Authenticated via secure institutional credential handshake.",
+        user=user,
+        request=request,
+    )
 
     return {"access_token": token, "token_type": "bearer", "user": _build_user_response(user)}
 
@@ -131,6 +141,15 @@ def register(
 
     db.commit()
     db.refresh(new_user)
+
+    log_audit(
+        db=db,
+        action="USER_REGISTERED",
+        target_scope=f"User #{new_user.id} ({new_user.email})",
+        operation_details=f"Completed institutional registration via invitation token {payload.invitation_token}.",
+        user=new_user,
+        request=None,
+    )
 
     # 8. Send welcome email in background
     background_tasks.add_task(send_welcome_email, new_user.email, new_user.full_name, new_user.role)
@@ -227,6 +246,16 @@ def reset_password(payload: schemas.ResetPasswordRequest, db: Session = Depends(
 
     user.password_hash = hash_password(payload.new_password)
     db.commit()
+
+    log_audit(
+        db=db,
+        action="PASSWORD_RESET_COMPLETED",
+        target_scope=f"User #{user.id} ({user.email})",
+        operation_details="Account credentials updated via verified OTP reset flow.",
+        user=user,
+        request=None,
+    )
+
     return {"message": "Password reset successful."}
 
 

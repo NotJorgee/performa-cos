@@ -1,46 +1,9 @@
 import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 
 export default function HREvaluationsProxy({
-  evaluations = [
-    {
-      id: 1,
-      employeeId: 101,
-      employeeIdNumber: 'G10222026JMR',
-      fullName: 'Jorge Mikhael Gubantes',
-      department: 'Computer Studies Department',
-      cosCategory: 'Administrative',
-      supervisorScore: 92, // 50%
-      peerScore: 88,       // 20%
-      hrmoScore: null,     // 30%
-      status: 'Pending HR Review',
-    },
-    {
-      id: 2,
-      employeeId: 102,
-      employeeIdNumber: 'R10222026IJM',
-      fullName: 'Ian Joseph Ranoco',
-      department: 'Computer Studies Department',
-      cosCategory: 'Administrative',
-      supervisorScore: 86,
-      peerScore: 82,
-      hrmoScore: null,
-      status: 'Pending HR Review',
-    },
-    {
-      id: 3,
-      employeeId: 103,
-      employeeIdNumber: 'M10222026CBM',
-      fullName: 'Carlos Mendoza',
-      department: 'Maintenance/Janitorial (MESO) Office',
-      cosCategory: 'Maintenance/Janitorial',
-      supervisorScore: 66.7,
-      peerScore: 70.0,
-      hrmoScore: null,
-      status: 'Pending HR Review',
-    },
-  ],
+  evaluations = [],
   onSubmitHrScore = () => {},
   onBack = null,
 }) {
@@ -90,62 +53,91 @@ export default function HREvaluationsProxy({
         </div>
       )}
 
-      {/* VIEW 1: Evaluations Queue Table */}
+      {/* VIEW 1: Evaluations Queue Table or Standby State */}
       {!selectedEvalId && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
-            <div className="card-title" style={{ margin: 0 }}>
-              HR Evaluation Queue &amp; Triad Scoring Progress
+        evaluations.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '52px 24px', border: '1px dashed var(--line)' }}>
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'var(--brand-50)',
+                color: 'var(--brand-700)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}
+            >
+              <Clock size={26} />
             </div>
-            <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
-              Input the 30% HR administrative compliance ratings and monitor supervisor (50%) and peer (20%) evaluation progress for COS personnel.
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)' }}>
+              No Active Evaluation Cycles
+            </h3>
+            <p className="muted" style={{ margin: '0 auto 20px', maxWidth: '480px', fontSize: '13px', lineHeight: 1.5 }}>
+              The 50/20/30 triad scoring queue (Supervisor 50%, Peer 20%, HRMO 30%) will activate when the upcoming evaluation window is officially opened.
             </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#f8fafc', padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--line)', fontSize: '12px', color: 'var(--ink-600)' }}>
+              <span>Status: <strong>Evaluation Window Standby</strong></span>
+            </div>
           </div>
+        ) : (
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
+              <div className="card-title" style={{ margin: 0 }}>
+                HR Evaluation Queue &amp; Triad Scoring Progress
+              </div>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
+                Input the 30% HR administrative compliance ratings and monitor supervisor (50%) and peer (20%) evaluation progress for COS personnel.
+              </p>
+            </div>
 
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Employee Name</th>
-                <th>Department</th>
-                <th>Supervisor (50%)</th>
-                <th>Peer (20%)</th>
-                <th>HRMO (30%)</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {evaluations.map((ev) => {
-                return (
-                  <tr key={ev.id}>
-                    <td>
-                      <b>{ev.fullName}</b>
-                      <div className="muted" style={{ fontSize: '12px' }}>ID: {ev.employeeIdNumber}</div>
-                    </td>
-                    <td>{ev.department}</td>
-                    <td>{ev.supervisorScore !== null ? `${ev.supervisorScore} / 100` : <span className="muted">—</span>}</td>
-                    <td>{ev.peerScore !== null ? `${ev.peerScore} / 100` : <span className="muted">—</span>}</td>
-                    <td>{ev.hrmoScore !== null ? `${ev.hrmoScore} / 100` : <span className="muted">—</span>}</td>
-                    <td>
-                      <span className={`badge badge-${ev.status === 'Completed' ? 'completed' : 'inprogress'}`}>
-                        {ev.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        onClick={() => setSelectedEvalId(ev.id)}
-                      >
-                        Input HR Score →
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Employee Name</th>
+                  <th>Department</th>
+                  <th>Supervisor (50%)</th>
+                  <th>Peer (20%)</th>
+                  <th>HRMO (30%)</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evaluations.map((ev) => {
+                  return (
+                    <tr key={ev.id}>
+                      <td>
+                        <b>{ev.fullName}</b>
+                        <div className="muted" style={{ fontSize: '12px' }}>ID: {ev.employeeIdNumber}</div>
+                      </td>
+                      <td>{ev.department}</td>
+                      <td>{ev.supervisorScore !== null ? `${ev.supervisorScore} / 100` : <span className="muted">—</span>}</td>
+                      <td>{ev.peerScore !== null ? `${ev.peerScore} / 100` : <span className="muted">—</span>}</td>
+                      <td>{ev.hrmoScore !== null ? `${ev.hrmoScore} / 100` : <span className="muted">—</span>}</td>
+                      <td>
+                        <span className={`badge badge-${ev.status === 'Completed' ? 'completed' : 'inprogress'}`}>
+                          {ev.status}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => setSelectedEvalId(ev.id)}
+                        >
+                          Input HR Score →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
 
       {/* VIEW 2: Grading Form */}

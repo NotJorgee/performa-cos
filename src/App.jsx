@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './styles/style.css';
 import {
   AppLayout,
@@ -104,18 +104,51 @@ export default function App() {
     getInitialNotifications(currentUser.role)
   );
 
-  const handleMarkAsRead = (id, readState = false) => {
+  // Fetch in-app notifications from API on login / role change
+  useEffect(() => {
+    if (!currentUser || !currentUser.id) return;
+    const fetchNotifications = async () => {
+      try {
+        const data = await api.notifications.list();
+        if (Array.isArray(data)) {
+          setNotifications(data);
+        }
+      } catch (err) {
+        console.error('Failed to load notifications from API:', err);
+      }
+    };
+    fetchNotifications();
+  }, [currentUser?.id, currentUser?.role]);
+
+  const handleMarkAsRead = async (id, readState = false) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, unread: readState } : n))
     );
+    if (!readState) {
+      try {
+        await api.notifications.markAsRead(id);
+      } catch (err) {
+        console.error('Failed to mark notification read on API:', err);
+      }
+    }
   };
 
-  const handleMarkAllAsRead = () => {
+  const handleMarkAllAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    try {
+      await api.notifications.markAllAsRead();
+    } catch (err) {
+      console.error('Failed to mark all notifications read on API:', err);
+    }
   };
 
-  const handleDeleteNotification = (id) => {
+  const handleDeleteNotification = async (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await api.notifications.delete(id);
+    } catch (err) {
+      console.error('Failed to delete notification on API:', err);
+    }
   };
 
   const handleLogin = (userAccount) => {
@@ -296,6 +329,7 @@ export default function App() {
           )}
           {currentView === 'contract_status' && (
             <ContractStatus
+              currentUser={currentUser}
               onNavigate={setCurrentView}
               onBack={() => setCurrentView('dashboard')}
             />

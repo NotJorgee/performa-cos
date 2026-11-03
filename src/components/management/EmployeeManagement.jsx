@@ -4,158 +4,7 @@ import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
 
 export default function EmployeeManagement({
-  employees = [
-    {
-      id: 1,
-      idNumber: 'G10222026JMR',
-      fullName: 'Jorge Mikhael Gubantes',
-      jobTitle: 'Admin Aide',
-      email: 'jorge.gubantes@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 92.4,
-      latestRating: 'Outstanding',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      idNumber: 'R10222026IJM',
-      fullName: 'Ian Joseph Ranoco',
-      jobTitle: 'Admin Aide',
-      email: 'ian.ranoco@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 88.6,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      idNumber: 'P10222026JLP',
-      fullName: 'Jeramae Pace',
-      jobTitle: 'Records Custodian',
-      email: 'jeramae.pace@evsu.edu.ph',
-      department: 'Library Office',
-      college: 'Administrative and Support Services',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 78.5,
-      latestRating: 'Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      idNumber: 'M10222026CBM',
-      fullName: 'Carlos Mendoza',
-      jobTitle: 'Utility Worker',
-      email: 'carlos.mendoza@evsu.edu.ph',
-      department: 'Maintenance/Janitorial (MESO) Office',
-      college: 'Physical Plant and General Services',
-      cosCategory: 'Maintenance/Janitorial',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 68.0,
-      latestRating: 'Needs Improvement',
-      status: 'Active',
-    },
-    {
-      id: 5,
-      idNumber: 'E10222025ABC',
-      fullName: 'Elena Santos',
-      jobTitle: 'Laboratory Custodian',
-      email: 'elena.santos@evsu.edu.ph',
-      department: 'Engineering Department',
-      college: 'College of Engineering',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2025',
-      contractEndDate: 'Apr 22, 2026',
-      latestScore: 54.0,
-      latestRating: 'Unsatisfactory',
-      status: 'Archived',
-    },
-    {
-      id: 6,
-      idNumber: 'D10222026XYZ',
-      fullName: 'Danilo Cruz',
-      jobTitle: 'Technical Aide',
-      email: 'danilo.cruz@evsu.edu.ph',
-      department: 'Technology Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 84.0,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 7,
-      idNumber: 'A10222026MTR',
-      fullName: 'Mark Anthony Reyes',
-      jobTitle: 'Laboratory Custodian',
-      email: 'mark.reyes@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 89.2,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 8,
-      idNumber: 'C10222025ABC',
-      fullName: 'Clarisse Villamor',
-      jobTitle: 'Admin Aide',
-      email: 'clarisse.villamor@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2025',
-      contractEndDate: 'Apr 22, 2026',
-      latestScore: 82.0,
-      latestRating: 'Satisfactory',
-      status: 'Archived',
-    },
-    {
-      id: 9,
-      idNumber: 'R10222025XYZ',
-      fullName: 'Ramon Bautista',
-      jobTitle: 'Sanitation Aide',
-      email: 'ramon.bautista@evsu.edu.ph',
-      department: 'Engineering Department',
-      college: 'College of Engineering',
-      cosCategory: 'Maintenance/Janitorial',
-      dateAppointed: 'Oct 22, 2025',
-      contractEndDate: 'Apr 22, 2026',
-      latestScore: 76.5,
-      latestRating: 'Satisfactory',
-      status: 'Archived',
-    },
-    {
-      id: 10,
-      idNumber: 'S10222026MGA',
-      fullName: 'Maria Santos',
-      jobTitle: 'Clerical Assistant',
-      email: 'maria.santos@evsu.edu.ph',
-      department: 'Education Department',
-      college: 'College of Education',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      latestScore: 84.5,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-  ],
+  employees = [],
   departments = [
     'Disbursing / Cashier Office',
     'HRMDO Office',
@@ -187,14 +36,18 @@ export default function EmployeeManagement({
   onBack = null,
 }) {
   const [employeeList, setEmployeeList] = useState(employees);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+    setIsLoading(true);
     api.users
       .list({ is_archived: null })
       .then((users) => {
-        if (isMounted && Array.isArray(users) && users.length > 0) {
-          const mapped = users.map((u) => ({
+        if (!isMounted) return;
+        if (Array.isArray(users)) {
+          const cosUsers = users.filter((u) => u.role === 'COS Employee');
+          const mapped = cosUsers.map((u) => ({
             id: u.id,
             idNumber: u.employee_id_number || 'N/A',
             fullName: u.full_name,
@@ -217,8 +70,8 @@ export default function EmployeeManagement({
                   year: 'numeric',
                 })
               : 'N/A',
-            latestScore: 88.0,
-            latestRating: 'Very Satisfactory',
+            latestScore: null,
+            latestRating: 'Pending Cycle',
             status: u.is_archived ? 'Archived' : u.is_active ? 'Active' : 'Inactive',
           }));
           setEmployeeList(mapped);
@@ -226,6 +79,9 @@ export default function EmployeeManagement({
       })
       .catch((err) => {
         console.warn('API users fetch warning:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
     return () => {
       isMounted = false;
@@ -607,70 +463,112 @@ export default function EmployeeManagement({
         </button>
       </div>
 
-      {/* Primary Table: Active Employees Only */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>ID Number</th>
-              <th>Full Name</th>
-              <th>Department</th>
-              <th>COS Category</th>
-              <th>Created</th>
-              <th>Contract End</th>
-              <th style={{ textAlign: 'right' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activeEmployees.map((emp) => (
-              <tr key={emp.id}>
-                <td>
-                  <span className="emp-id-chip">{emp.idNumber}</span>
-                </td>
-                <td>
-                  <b>{emp.fullName}</b>
-                  <div className="muted" style={{ fontSize: '12px' }}>
-                    {emp.jobTitle ? `${emp.jobTitle} • ` : ''}{emp.email}
-                  </div>
-                </td>
-                <td>{emp.department}</td>
-                <td>
-                  <span className="badge badge-unassigned">{emp.cosCategory}</span>
-                </td>
-                <td>
-                  <span style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
-                    {emp.dateAppointed || 'Oct 22, 2026'}
-                  </span>
-                </td>
-                <td>{emp.contractEndDate}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    className="btn btn-sm"
-                    type="button"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => handleOpenSettings(emp)}
-                    title={`Account Settings - ${emp.fullName}`}
-                  >
-                    <Settings size={14} /> Settings
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {activeEmployees.length === 0 && (
+      {/* Primary Table or Empty State */}
+      {isLoading ? (
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div className="btn-spinner" style={{ display: 'inline-block', width: '28px', height: '28px', borderWidth: '3px', margin: '0 auto 12px' }} />
+          <p className="muted" style={{ margin: 0, fontSize: '13px' }}>Loading registered personnel...</p>
+        </div>
+      ) : employeeList.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px', border: '1px dashed var(--line)' }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'var(--brand-50)',
+              color: 'var(--brand-700)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}
+          >
+            <User size={26} />
+          </div>
+          <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)' }}>
+            No COS Employees Registered Yet
+          </h3>
+          <p className="muted" style={{ margin: '0 auto 20px', maxWidth: '460px', fontSize: '13px', lineHeight: 1.5 }}>
+            New hires onboard through invitation tokens. Once an employee registers via their invite link, their profile and system-generated ID will appear here.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setShowAddModal(true);
+              setModalMode('invite');
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px' }}
+          >
+            <UserPlus size={16} /> Send Registration Invite
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan="7" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
-                  No active personnel matching search criteria.
-                </td>
+                <th>ID Number</th>
+                <th>Full Name</th>
+                <th>Department</th>
+                <th>COS Category</th>
+                <th>Appointed</th>
+                <th>Contract End</th>
+                <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {activeEmployees.map((emp) => (
+                <tr key={emp.id}>
+                  <td>
+                    <span className="emp-id-chip">{emp.idNumber}</span>
+                  </td>
+                  <td>
+                    <b>{emp.fullName}</b>
+                    <div className="muted" style={{ fontSize: '12px' }}>
+                      {emp.jobTitle ? `${emp.jobTitle} • ` : ''}{emp.email}
+                    </div>
+                  </td>
+                  <td>{emp.department}</td>
+                  <td>
+                    <span className="badge badge-unassigned">{emp.cosCategory}</span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
+                      {emp.dateAppointed || 'Oct 22, 2026'}
+                    </span>
+                  </td>
+                  <td>{emp.contractEndDate}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn btn-sm"
+                      type="button"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => handleOpenSettings(emp)}
+                      title={`Account Settings - ${emp.fullName}`}
+                    >
+                      <Settings size={14} /> Settings
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {activeEmployees.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
+                    No active personnel matching search filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Toggle Button for Archived Employees */}
       <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>

@@ -2,146 +2,29 @@ import React, { useState } from 'react';
 import { Check, Archive, AlertTriangle, X, Clock, FileCheck, Award } from 'lucide-react';
 
 export default function EvaluationManagement({
-  eligibleEmployees = [
-    {
-      id: 101,
-      idNumber: 'G10222026JMR',
-      fullName: 'Jorge Mikhael Gubantes',
-      jobTitle: 'Admin Aide',
-      department: 'Computer Studies Department',
-      cosCategory: 'Administrative',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Confirmed',
-      deptHeadEndorsement: 'Recommended',
-      routingStatus: 'Pending Initiation', // 'Pending Initiation' | 'Evaluation in Progress' | 'Evaluation Completed' | 'Contract Renewed' | etc.
-      evaluationScores: {
-        supervisor: 93.3,
-        peer: 90.0,
-        hrmo: 93.3,
-        finalGrade: 92.6,
-        interpretation: 'Outstanding',
-        supervisorRecommendation: 'Recommended for Renewal',
-        supervisorStrengths: 'Consistently produces exceptional quality administrative outputs with zero defect. Spearheaded student query backlog clearance.',
-      },
-    },
-    {
-      id: 102,
-      idNumber: 'R10222026IJM',
-      fullName: 'Ian Joseph Ranoco',
-      jobTitle: 'Admin Aide',
-      department: 'Computer Studies Department',
-      cosCategory: 'Administrative',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Confirmed',
-      deptHeadEndorsement: 'Recommended',
-      routingStatus: 'Evaluation Completed', // Finished evaluation ready for HR renewal decision!
-      evaluationScores: {
-        supervisor: 90.0,
-        peer: 86.7,
-        hrmo: 90.0,
-        finalGrade: 89.3,
-        interpretation: 'Very Satisfactory',
-        supervisorRecommendation: 'Recommended for Renewal',
-        supervisorStrengths: 'Demonstrates strong organizational skills and dependable support during university accreditation cycles.',
-      },
-    },
-    {
-      id: 103,
-      idNumber: 'M10222026CBM',
-      fullName: 'Carlos Mendoza',
-      jobTitle: 'Maintenance Technician',
-      department: 'Maintenance/Janitorial (MESO) Office',
-      cosCategory: 'Maintenance/Janitorial',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Confirmed',
-      deptHeadEndorsement: 'Recommended',
-      routingStatus: 'Evaluation in Progress', // In progress evaluation!
-      evaluationScores: {
-        supervisor: 66.7,
-        peer: 70.0,
-        hrmo: 68.0,
-        finalGrade: 68.0,
-        interpretation: 'Needs Improvement',
-        supervisorRecommendation: 'Renewal Subject to Evaluation',
-        supervisorStrengths: 'Reliable physical campus sanitation and waste handling. Requires closer monitoring on emergency facility repair response times.',
-      },
-    },
-    {
-      id: 104,
-      idNumber: 'P10222026JLP',
-      fullName: 'Jeramae Pace',
-      jobTitle: 'Library Aide',
-      department: 'Library Office',
-      cosCategory: 'Administrative',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Awaiting Intent',
-      deptHeadEndorsement: 'Awaiting Intent',
-      routingStatus: 'Awaiting Employee Intent',
-      evaluationScores: {
-        supervisor: 80.0,
-        peer: 76.7,
-        hrmo: 80.0,
-        finalGrade: 79.3,
-        interpretation: 'Satisfactory',
-        supervisorRecommendation: 'Recommended for Renewal',
-        supervisorStrengths: 'Good library cataloging assistance and student desk support.',
-      },
-    },
-    {
-      id: 105,
-      idNumber: 'E10222026ABC',
-      fullName: 'Elena Santos',
-      jobTitle: 'Laboratory Aide',
-      department: 'Engineering Department',
-      cosCategory: 'Administrative',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Declined',
-      deptHeadEndorsement: 'N/A (Declined)',
-      declineReason: 'Pursuing full-time graduate degree program.',
-      routingStatus: 'Contract Closure Pending',
-    },
-    {
-      id: 106,
-      idNumber: 'D10222026XYZ',
-      fullName: 'Danilo Cruz',
-      jobTitle: 'Technical Aide',
-      department: 'Technology Department',
-      cosCategory: 'Administrative',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Confirmed',
-      deptHeadEndorsement: 'Not Recommended',
-      routingStatus: 'Non-Renewal Endorsed',
-      rejectionCategory: 'Gross Incompetence / Poor Performance',
-      rejectionJustification: 'Repeated non-compliance with laboratory equipment calibration standards and unattended safety violations.',
-    },
-    {
-      id: 107,
-      idNumber: 'S10222026MGA',
-      fullName: 'Maria Santos',
-      jobTitle: 'Clerical Assistant',
-      department: 'Education Department',
-      cosCategory: 'Administrative',
-      contractEndDate: 'Dec 31, 2026',
-      intentStatus: 'Confirmed',
-      deptHeadEndorsement: 'Awaiting Dept Head Review',
-      routingStatus: 'Awaiting Dept Head Endorsement',
-      evaluationScores: {
-        supervisor: 85.0,
-        peer: 82.5,
-        hrmo: 85.0,
-        finalGrade: 84.5,
-        interpretation: 'Very Satisfactory',
-        supervisorRecommendation: 'Recommended for Renewal',
-        supervisorStrengths: 'Consistently ensures timely record coordination and organized departmental files.',
-      },
-    },
-  ],
+  eligibleEmployees = [],
   departments = [
-    'Computer Studies Department',
+    'Disbursing / Cashier Office',
+    'HRMDO Office',
+    'School Clinic',
+    'IPDO Office',
+    'Research Office',
+    'Sports And Development Office',
+    'Quality Assurance & Accreditation Office',
     'Technology Department',
-    'Engineering Department',
+    'Guidance Office',
+    'Extension Service Office',
     'Education Department',
+    'Procurement Office',
+    'IGP Office',
+    'Campus Director Office',
+    'Computer Studies Department',
+    'SASO Office',
+    'Engineering Department',
+    'Administrative and Finance',
+    'Hospitality & Tourism Management',
     'Library Office',
+    'Registrar Office',
     'Maintenance/Janitorial (MESO) Office',
   ],
   onStartEmployeeEvaluation = () => {},
@@ -923,8 +806,26 @@ export default function EvaluationManagement({
             </tr>
           </thead>
           <tbody>
-            {actionableEmployees.map(renderEmployeeRow)}
-            {pendingEmployees.map(renderEmployeeRow)}
+            {actionableEmployees.length === 0 && pendingEmployees.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', background: '#fff' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--red-50, #fef2f2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red-700, #991b1b)' }}>
+                      <FileCheck size={22} />
+                    </div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>No Evaluation Records in Current Cycle</div>
+                    <div style={{ fontSize: '12.5px', color: '#64748b', maxWidth: '420px', lineHeight: 1.5 }}>
+                      Contract renewal eligibility and evaluation queues will populate automatically when employee contract terms enter the institutional evaluation cycle.
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              <>
+                {actionableEmployees.map(renderEmployeeRow)}
+                {pendingEmployees.map(renderEmployeeRow)}
+              </>
+            )}
           </tbody>
         </table>
       </div>

@@ -258,6 +258,60 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+
+  // Audit Logs & Security Trail (Phase 4)
+  audit: {
+    list: (params = {}) => {
+      const query = new URLSearchParams();
+      if (params.page) query.append('page', params.page);
+      if (params.limit) query.append('limit', params.limit);
+      if (params.action) query.append('action', params.action);
+      if (params.role) query.append('role', params.role);
+      if (params.search) query.append('search', params.search);
+      if (params.start_date) query.append('start_date', params.start_date);
+      if (params.end_date) query.append('end_date', params.end_date);
+      const qs = query.toString();
+      return request(`/audit-logs${qs ? `?${qs}` : ''}`);
+    },
+  },
+
+  // Dashboard Analytics (Phase 4)
+  analytics: {
+    getHRDashboard: () => request('/analytics/hr-dashboard'),
+    getDeptHeadDashboard: () => request('/analytics/depthead-dashboard'),
+    getEmployeeDashboard: () => request('/analytics/employee-dashboard'),
+  },
+
+  // In-App Notifications (Phase 4)
+  notifications: {
+    list: (unreadOnly = false) =>
+      request(`/notifications${unreadOnly ? '?unread_only=true' : ''}`),
+    markAsRead: (id) =>
+      request(`/notifications/${id}/read`, {
+        method: 'PATCH',
+      }),
+    markAllAsRead: () =>
+      request('/notifications/read-all', {
+        method: 'PATCH',
+      }),
+    delete: (id) =>
+      request(`/notifications/${id}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Concurrent User Sessions & Device Security (Phase 4)
+  sessions: {
+    list: () => request('/sessions'),
+    revoke: (id) =>
+      request(`/sessions/${id}`, {
+        method: 'DELETE',
+      }),
+    revokeAllOthers: () =>
+      request('/sessions/all/others', {
+        method: 'DELETE',
+      }),
+  },
 };
 
 export default api;

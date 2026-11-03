@@ -16,6 +16,10 @@ from .routers.uploads import router as uploads_router
 from .routers.invitations import router as invitations_router
 from .routers.users import router as users_router
 from .routers.dar import router as dar_router
+from .routers.audit import router as audit_router
+from .routers.analytics import router as analytics_router
+from .routers.notifications import router as notifications_router
+from .routers.sessions import router as sessions_router
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -39,6 +43,10 @@ app.include_router(uploads_router)
 app.include_router(invitations_router)
 app.include_router(users_router)
 app.include_router(dar_router)
+app.include_router(audit_router)
+app.include_router(analytics_router)
+app.include_router(notifications_router)
+app.include_router(sessions_router)
 
 
 @app.on_event("startup")

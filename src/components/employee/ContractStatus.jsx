@@ -2,29 +2,47 @@ import React, { useState } from 'react';
 import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ContractStatus({
-  contract = {
-    employeeName: 'Jorge Mikhael Gubantes',
-    department: 'Computer Studies Department',
-    cosCategory: 'Administrative',
-    startDate: 'July 01, 2026',
-    endDate: 'December 31, 2026',
-    daysRemaining: 74,
-    renewalStatus: 'Open for Intent Confirmation', // 'Open for Intent Confirmation' | 'Renewal Intent Confirmed' | 'Declined'
-    totalDarsLogged: 84,
-    verifiedDarCount: 84,
-  },
+  currentUser = null,
+  contract: propContract = null,
   departments = [
-    'Computer Studies Department',
+    'Disbursing / Cashier Office',
+    'HRMDO Office',
+    'School Clinic',
+    'IPDO Office',
+    'Research Office',
+    'Sports And Development Office',
+    'Quality Assurance & Accreditation Office',
     'Technology Department',
-    'Engineering Department',
+    'Guidance Office',
+    'Extension Service Office',
     'Education Department',
+    'Procurement Office',
+    'IGP Office',
+    'Campus Director Office',
+    'Computer Studies Department',
+    'SASO Office',
+    'Engineering Department',
+    'Administrative and Finance',
+    'Hospitality & Tourism Management',
     'Library Office',
+    'Registrar Office',
     'Maintenance/Janitorial (MESO) Office',
   ],
   onConfirmRenewal = () => {},
   onDeclineRenewal = () => {},
   onBack = null,
 }) {
+  const contract = propContract || {
+    employeeName: currentUser?.full_name || currentUser?.fullName || 'COS Personnel',
+    department: currentUser?.department_name || currentUser?.department || 'Computer Studies Department',
+    cosCategory: currentUser?.category || currentUser?.cosCategory || 'Administrative',
+    startDate: currentUser?.appointment_date || currentUser?.date_of_assumption || 'July 01, 2026',
+    endDate: currentUser?.contract_end_date || 'December 31, 2026',
+    daysRemaining: currentUser?.contract_end_date ? Math.max(0, Math.ceil((new Date(currentUser.contract_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 60,
+    renewalStatus: 'Open for Intent Confirmation',
+    totalDarsLogged: 0,
+    verifiedDarCount: 0,
+  };
   const [status, setStatus] = useState(contract.renewalStatus);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);

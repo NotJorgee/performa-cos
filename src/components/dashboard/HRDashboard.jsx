@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Clock,
   FileSpreadsheet,
@@ -11,27 +11,48 @@ import {
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
+import api from '../../services/api';
 
 export default function HRDashboard({
   currentUser = {
-    fullName: 'Dr. Maria Clara Ramos',
+    fullName: 'HR Officer',
     department: 'HRMDO Office',
   },
-  metrics = {
-    totalEmployees: 48,
-    totalAdministrators: 6,
-    activeColleges: 6,
-    darSubmittedToday: 42,
-    pendingEvaluations: 9,
-    marReportsSubmitted: 45,
-    completionRate: 85,
-    nearingExpiration: 4,
-  },
+  metrics: propMetrics = null,
   onNavigate = () => {},
 }) {
-  const expiringCount = metrics?.nearingExpiration ?? 4;
-  const pendingHrEvalCount = metrics?.pendingEvaluations ?? 9;
-  const fullFirstName = getFullFirstName(currentUser.fullName || 'Maria Clara');
+  const [metrics, setMetrics] = useState(
+    propMetrics || {
+      totalEmployees: 0,
+      totalAdministrators: 0,
+      activeColleges: 0,
+      darSubmittedToday: 0,
+      pendingEvaluations: 0,
+      marReportsSubmitted: 0,
+      completionRate: 0,
+      nearingExpiration: 0,
+    }
+  );
+
+  useEffect(() => {
+    if (propMetrics) {
+      setMetrics(propMetrics);
+      return;
+    }
+    const fetchMetrics = async () => {
+      try {
+        const data = await api.analytics.getHRDashboard();
+        setMetrics(data);
+      } catch (err) {
+        console.error('Failed to load HR dashboard analytics:', err);
+      }
+    };
+    fetchMetrics();
+  }, [propMetrics]);
+
+  const expiringCount = metrics?.nearingExpiration ?? 0;
+  const pendingHrEvalCount = metrics?.pendingEvaluations ?? 0;
+  const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'HR Officer');
 
   return (
     <div>

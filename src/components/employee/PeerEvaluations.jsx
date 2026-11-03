@@ -4,24 +4,7 @@ import DynamicRubric from '../common/DynamicRubric';
 
 export default function PeerEvaluations({
   departmentName = 'Computer Studies Department',
-  assignedPeers = [
-    {
-      id: 201,
-      employeeIdNumber: 'R10222026IJM',
-      targetName: 'Ian Joseph Ranoco',
-      department: 'Computer Studies Department',
-      cosCategory: 'Administrative',
-      status: 'Pending Your Evaluation',
-    },
-    {
-      id: 202,
-      employeeIdNumber: 'V10222026MAV',
-      targetName: 'Mark Anthony Villa',
-      department: 'Computer Studies Department',
-      cosCategory: 'Maintenance/Janitorial',
-      status: 'Pending Your Evaluation',
-    },
-  ],
+  assignedPeers = [],
   onSubmitPeerScore = () => {},
   onBack = null,
 }) {
@@ -82,48 +65,60 @@ export default function PeerEvaluations({
             </p>
           </div>
 
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Assigned Colleague</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignedPeers.map((peer) => {
-                const isDone = submittedPeerIds.includes(peer.id);
-                return (
-                  <tr key={peer.id}>
-                    <td>
-                      <b>{peer.targetName}</b>
-                      <div className="muted" style={{ fontSize: '12px' }}>ID: {peer.employeeIdNumber}</div>
-                      <div className="muted" style={{ fontSize: '11px' }}>{peer.department}</div>
-                    </td>
-                    <td>
-                      <span className="badge badge-dept">{peer.cosCategory}</span>
-                    </td>
-                    <td>
-                      <span className={`badge badge-${isDone ? 'completed' : 'inprogress'}`}>
-                        {isDone ? 'Submitted' : peer.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        disabled={isDone}
-                        onClick={() => setSelectedPeerId(peer.id)}
-                      >
-                        {isDone ? 'Completed' : 'Evaluate Peer →'}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {assignedPeers.length === 0 ? (
+            <div className="card empty-state" style={{ padding: '48px 20px', textAlign: 'center', border: 'none' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--red-50, #fef2f2)', color: 'var(--red-700, #991b1b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <Lock size={22} />
+              </div>
+              <h3 style={{ margin: '0 0 6px', color: 'var(--ink-800)' }}>No Assigned Peer Evaluations</h3>
+              <p className="muted" style={{ margin: 0, fontSize: '13.5px', maxWidth: '420px', marginInline: 'auto' }}>
+                Peer evaluations will be assigned automatically by the system when an active triad evaluation cycle is initiated for your department.
+              </p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Assigned Colleague</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignedPeers.map((peer) => {
+                  const isDone = submittedPeerIds.includes(peer.id);
+                  return (
+                    <tr key={peer.id}>
+                      <td>
+                        <b>{peer.targetName}</b>
+                        <div className="muted" style={{ fontSize: '12px' }}>ID: {peer.employeeIdNumber}</div>
+                        <div className="muted" style={{ fontSize: '11px' }}>{peer.department}</div>
+                      </td>
+                      <td>
+                        <span className="badge badge-dept">{peer.cosCategory}</span>
+                      </td>
+                      <td>
+                        <span className={`badge badge-${isDone ? 'completed' : 'inprogress'}`}>
+                          {isDone ? 'Submitted' : peer.status}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          disabled={isDone}
+                          onClick={() => setSelectedPeerId(peer.id)}
+                        >
+                          {isDone ? 'Completed' : 'Evaluate Peer →'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

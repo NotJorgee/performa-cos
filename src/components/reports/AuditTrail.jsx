@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../services/api';
 import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check } from 'lucide-react';
 
 export const formatAuditAction = (action) => {
@@ -19,87 +20,32 @@ export const formatAuditAction = (action) => {
 };
 
 export default function AuditTrail({
-  logs = [
-    {
-      id: 1,
-      isoDate: '2026-10-25T10:15:22',
-      timestamp: 'Oct 25, 2026 10:15:22',
-      user: 'Jorge Mikhael Gubantes',
-      role: 'COS Employee',
-      action: 'DAR_SUBMITTED',
-      targetScope: 'Daily Accomplishment Report #105',
-      ipAddress: '192.168.1.45',
-      operationDetails: 'Submitted geofenced task log with 2 photo attachments; GPS campus verified.',
-    },
-    {
-      id: 2,
-      isoDate: '2026-10-25T08:30:10',
-      timestamp: 'Oct 25, 2026 08:30:10',
-      user: 'Dr. Maria Clara Ramos',
-      role: 'HR Personnel',
-      action: 'EVALUATION_PERIOD_INITIATED',
-      targetScope: 'Annual Performance Review 2026',
-      ipAddress: '192.168.1.5',
-      operationDetails: 'Published evaluation criteria rubric and enabled HR triad grading window.',
-    },
-    {
-      id: 3,
-      isoDate: '2026-10-24T16:20:00',
-      timestamp: 'Oct 24, 2026 16:20:00',
-      user: 'Carlos Mendoza',
-      role: 'COS Employee',
-      action: 'DAR_SUBMITTED',
-      targetScope: 'Daily Accomplishment Report #104',
-      ipAddress: '192.168.1.52',
-      operationDetails: 'Submitted physical plant maintenance checklist with photo verification.',
-    },
-    {
-      id: 4,
-      isoDate: '2026-10-23T14:45:15',
-      timestamp: 'Oct 23, 2026 14:45:15',
-      user: 'Engr. Roberto Del Rosario',
-      role: 'Department Head',
-      action: 'EVALUATION_DRAFT_SAVED',
-      targetScope: 'Evaluation Cycle #1 (Computer Studies)',
-      ipAddress: '192.168.1.12',
-      operationDetails: 'Saved draft ratings for 5 COS employees in Computer Studies Department.',
-    },
-    {
-      id: 5,
-      isoDate: '2026-10-20T11:10:05',
-      timestamp: 'Oct 20, 2026 11:10:05',
-      user: 'Ian Joseph Ranoco',
-      role: 'COS Employee',
-      action: 'PASSWORD_RESET_COMPLETED',
-      targetScope: 'User Account #102',
-      ipAddress: '192.168.1.60',
-      operationDetails: 'Verified email OTP code and securely updated account password.',
-    },
-    {
-      id: 6,
-      isoDate: '2026-10-18T09:15:30',
-      timestamp: 'Oct 18, 2026 09:15:30',
-      user: 'Jeramae Pace',
-      role: 'COS Employee',
-      action: 'DAR_SUBMITTED',
-      targetScope: 'Daily Accomplishment Report #101',
-      ipAddress: '192.168.1.33',
-      operationDetails: 'Library cataloging records updated; GPS verified within EVSU campus bounds.',
-    },
-    {
-      id: 7,
-      isoDate: '2026-10-05T15:00:00',
-      timestamp: 'Oct 05, 2026 15:00:00',
-      user: 'HR Compliance Officer',
-      role: 'HR Personnel',
-      action: 'FAST_TRACK_REJECTION',
-      targetScope: 'Contract Renewal Form #88',
-      ipAddress: '192.168.1.8',
-      operationDetails: 'Disapproved automated fast-track renewal; required full triad evaluation appraisal.',
-    },
-  ],
+  logs: initialLogs = [],
   onBack = null,
 }) {
+  const [logs, setLogs] = useState(initialLogs);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialLogs && initialLogs.length > 0) {
+      setLogs(initialLogs);
+      return;
+    }
+    const fetchAuditLogs = async () => {
+      try {
+        setIsLoading(true);
+        if (api.audit && api.audit.list) {
+          const res = await api.audit.list();
+          setLogs(Array.isArray(res) ? res : res.logs || []);
+        }
+      } catch (err) {
+        console.error('Failed to load audit logs:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAuditLogs();
+  }, [initialLogs]);
   // Main Table Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('');
@@ -422,8 +368,18 @@ export default function AuditTrail({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="6" className="muted" style={{ padding: '28px', textAlign: 'center' }}>
-                  No security log records found matching the specified filters.
+                <td colSpan="6" style={{ padding: '48px 16px', textAlign: 'center', background: '#fff' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--red-50, #fef2f2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red-700, #991b1b)' }}>
+                      <ShieldAlert size={22} />
+                    </div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>
+                      {searchTerm || actionFilter || timeFilter !== 'all' ? 'No Logs Matching Filters' : 'No Security Audit Events Logged'}
+                    </div>
+                    <div style={{ fontSize: '12.5px', color: '#64748b', maxWidth: '420px', lineHeight: 1.5 }}>
+                      System activity, administrative modifications, and security actions will be chronologically logged here in real time.
+                    </div>
+                  </div>
                 </td>
               </tr>
             )}

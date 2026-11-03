@@ -20,6 +20,7 @@ import {
   Calendar,
   RotateCcw,
 } from 'lucide-react';
+import api from '../../services/api';
 
 export default function ProfileSettings({
   currentUser = {
@@ -68,22 +69,42 @@ export default function ProfileSettings({
   const [smsAlerts, setSmsAlerts] = useState(true);
 
   // Active Sessions State
-  const [otherSessions, setOtherSessions] = useState([
-    {
-      id: 1,
-      device: 'Apple iPhone 15 · Safari Mobile',
-      network: 'Globe Telecom Cellular (IP: 112.198.42.11)',
-      lastActive: 'Today at 07:42 AM',
-      type: 'mobile',
-    },
-    {
-      id: 2,
-      device: 'MacBook Air · macOS Sonoma',
-      network: 'Home Wi-Fi (IP: 180.191.88.24)',
-      lastActive: 'Yesterday at 08:15 PM',
-      type: 'laptop',
-    },
-  ]);
+  const [currentSessionInfo, setCurrentSessionInfo] = useState(null);
+  const [otherSessions, setOtherSessions] = useState([]);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const list = await api.sessions.list();
+        if (Array.isArray(list)) {
+          const current = list.find((s) => s.isCurrentSession) || list[0];
+          const others = list.filter((s) => !s.isCurrentSession);
+          if (current) {
+            setCurrentSessionInfo({
+              device: current.deviceDescription || 'Web Browser',
+              network: `${current.networkInfo || 'Broadband'} (IP: ${current.ipAddress || '127.0.0.1'})`,
+              lastActive: 'Active Now (This Device)',
+              type: (current.deviceDescription || '').toLowerCase().includes('phone') ? 'mobile' : 'laptop',
+            });
+          }
+          setOtherSessions(
+            others.map((o) => ({
+              id: o.id,
+              device: o.deviceDescription || 'Web Browser',
+              network: `${o.networkInfo || 'Broadband'} (IP: ${o.ipAddress || '127.0.0.1'})`,
+              lastActive: o.lastActive ? new Date(o.lastActive).toLocaleString() : 'Recently Active',
+              type: (o.deviceDescription || '').toLowerCase().includes('phone') ? 'mobile' : 'laptop',
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Failed to load user sessions:', err);
+      }
+    };
+    if (activeTab === 'sessions') {
+      fetchSessions();
+    }
+  }, [activeTab]);
 
   // Flash Feedback
   const [toastMsg, setToastMsg] = useState(null);
@@ -159,15 +180,25 @@ export default function ProfileSettings({
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleRevokeSession = (sessionId) => {
-    setOtherSessions((prev) => prev.filter((s) => s.id !== sessionId));
-    setToastMsg('Selected device session was revoked successfully.');
+  const handleRevokeSession = async (sessionId) => {
+    try {
+      await api.sessions.revoke(sessionId);
+      setOtherSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      setToastMsg('Selected device session was revoked successfully.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to revoke session.');
+    }
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleSignOutAllOther = () => {
-    setOtherSessions([]);
-    setToastMsg('All other device sessions have been terminated. You remain active on this computer.');
+  const handleSignOutAllOther = async () => {
+    try {
+      await api.sessions.revokeAllOthers();
+      setOtherSessions([]);
+      setToastMsg('All other device sessions have been terminated. You remain active on this computer.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to revoke other sessions.');
+    }
     setTimeout(() => setToastMsg(null), 4000);
   };
 
@@ -806,13 +837,15 @@ export default function ProfileSettings({
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>Windows 11 PC · Google Chrome</b>
+                    <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
+                      {currentSessionInfo?.device || 'This Device · Web Browser'}
+                    </b>
                     <span className="badge badge-active" style={{ fontSize: '10.5px', padding: '2px 6px' }}>
                       Current Session
                     </span>
                   </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                    EVSU Campus Network (IP: 192.168.10.82) • Active Now (This Device)
+                    {currentSessionInfo?.network || 'Active Connection'} • {currentSessionInfo?.lastActive || 'Active Now (This Device)'}
                   </div>
                 </div>
               </div>

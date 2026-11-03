@@ -4,78 +4,7 @@ import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
 
 export default function AdministratorManagement({
-  administrators = [
-    {
-      id: 1,
-      idNumber: 'R10222026MCR',
-      fullName: 'Dr. Maria Clara Ramos',
-      email: 'maria.ramos@evsu.edu.ph',
-      role: 'HR Personnel',
-      department: 'HRMDO Office',
-      status: 'Active',
-      contactNumber: '+63 917 112 2334',
-    },
-    {
-      id: 2,
-      idNumber: 'D10222026RDR',
-      fullName: 'Engr. Roberto Del Rosario',
-      email: 'roberto.delrosario@evsu.edu.ph',
-      role: 'Department Head',
-      department: 'Computer Studies Department',
-      status: 'Active',
-      contactNumber: '+63 918 223 3445',
-    },
-    {
-      id: 3,
-      idNumber: 'S10222026EDS',
-      fullName: 'Dr. Eduardo Santos',
-      email: 'eduardo.santos@evsu.edu.ph',
-      role: 'Department Head',
-      department: 'Engineering Department',
-      status: 'Active',
-      contactNumber: '+63 919 334 4556',
-    },
-    {
-      id: 4,
-      idNumber: 'M10222026EPM',
-      fullName: 'Prof. Elena Mendoza',
-      email: 'elena.mendoza@evsu.edu.ph',
-      role: 'Department Head',
-      department: 'Technology Department',
-      status: 'Active',
-      contactNumber: '+63 920 445 5667',
-    },
-    {
-      id: 5,
-      idNumber: 'G10222026RGA',
-      fullName: 'Atty. Ronald Gomez',
-      email: 'ronald.gomez@evsu.edu.ph',
-      role: 'HR Personnel',
-      department: 'HRMDO Office',
-      status: 'Active',
-      contactNumber: '+63 921 556 6778',
-    },
-    {
-      id: 6,
-      idNumber: 'C10222026AAC',
-      fullName: 'Dr. Alicia Cruz',
-      email: 'alicia.cruz@evsu.edu.ph',
-      role: 'Department Head',
-      department: 'Education Department',
-      status: 'Active',
-      contactNumber: '+63 922 667 7889',
-    },
-    {
-      id: 7,
-      idNumber: 'F10222025FCB',
-      fullName: 'Engr. Fernando Cruz',
-      email: 'fernando.cruz@evsu.edu.ph',
-      role: 'Department Head',
-      department: 'Engineering Department',
-      status: 'Archived',
-      contactNumber: '+63 923 778 8990',
-    },
-  ],
+  administrators = [],
   departments = [
     'Disbursing / Cashier Office',
     'HRMDO Office',
@@ -105,6 +34,42 @@ export default function AdministratorManagement({
   onUpdateAdministrator = () => {},
 }) {
   const [adminList, setAdminList] = useState(administrators);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    api.users
+      .list({ is_archived: null })
+      .then((users) => {
+        if (!isMounted) return;
+        if (Array.isArray(users)) {
+          const adminUsers = users.filter(
+            (u) => u.role === 'HR Personnel' || u.role === 'Department Head'
+          );
+          const mapped = adminUsers.map((u) => ({
+            id: u.id,
+            idNumber: u.employee_id_number || 'N/A',
+            fullName: u.full_name,
+            email: u.email,
+            role: u.role,
+            department: u.department ? u.department.name : 'HRMDO Office',
+            status: u.is_archived ? 'Archived' : u.is_active ? 'Active' : 'Inactive',
+            contactNumber: u.contact_number || '+63 9XX XXX XXXX',
+          }));
+          setAdminList(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn('API administrators fetch notice:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
@@ -366,72 +331,111 @@ export default function AdministratorManagement({
         </button>
       </div>
 
-      {/* Primary Table: Active Administrators Only */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>ID Number</th>
-              <th>Administrator Name</th>
-              <th>System Role</th>
-              <th>Department / Office</th>
-              <th style={{ textAlign: 'right' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activeAdmins.map((adm) => (
-              <tr key={adm.id}>
-                <td>
-                  <span className="emp-id-chip">{adm.idNumber}</span>
-                </td>
-                <td>
-                  <b>{adm.fullName}</b>
-                  <div className="muted" style={{ fontSize: '12px' }}>
-                    {adm.email}
-                  </div>
-                </td>
-                <td>
-                  <b style={{ fontSize: '13px', color: 'var(--ink-900)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    {adm.role === 'Department Head' ? (
-                      <>
-                        <Building2 size={13} /> Department Head
-                      </>
-                    ) : (
-                      <>
-                        <ClipboardList size={13} /> HR Personnel
-                      </>
-                    )}
-                  </b>
-                </td>
-                <td>{adm.department}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    className="btn btn-sm"
-                    type="button"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => openAdminSettings(adm)}
-                    title={`Edit Settings - ${adm.fullName}`}
-                  >
-                    <Settings size={14} /> Settings
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {activeAdmins.length === 0 && (
+      {/* Primary Table or Empty State */}
+      {isLoading ? (
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div className="btn-spinner" style={{ display: 'inline-block', width: '28px', height: '28px', borderWidth: '3px', margin: '0 auto 12px' }} />
+          <p className="muted" style={{ margin: 0, fontSize: '13px' }}>Loading administrator accounts...</p>
+        </div>
+      ) : adminList.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px', border: '1px dashed var(--line)' }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'var(--brand-50)',
+              color: 'var(--brand-700)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}
+          >
+            <Shield size={26} />
+          </div>
+          <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)' }}>
+            No Administrators Registered Yet
+          </h3>
+          <p className="muted" style={{ margin: '0 auto 20px', maxWidth: '460px', fontSize: '13px', lineHeight: 1.5 }}>
+            Department Heads and HR Personnel register via official administrator invitation links. Once an administrator registers, their profile will appear here.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowInviteModal(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px' }}
+          >
+            <Shield size={16} /> Invite Administrator
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan="5" className="muted" style={{ padding: '28px', textAlign: 'center' }}>
-                  No active permanent administrators matching search criteria.
-                </td>
+                <th>ID Number</th>
+                <th>Administrator Name</th>
+                <th>System Role</th>
+                <th>Department / Office</th>
+                <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {activeAdmins.map((adm) => (
+                <tr key={adm.id}>
+                  <td>
+                    <span className="emp-id-chip">{adm.idNumber}</span>
+                  </td>
+                  <td>
+                    <b>{adm.fullName}</b>
+                    <div className="muted" style={{ fontSize: '12px' }}>
+                      {adm.email}
+                    </div>
+                  </td>
+                  <td>
+                    <b style={{ fontSize: '13px', color: 'var(--ink-900)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      {adm.role === 'Department Head' ? (
+                        <>
+                          <Building2 size={13} /> Department Head
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardList size={13} /> HR Personnel
+                        </>
+                      )}
+                    </b>
+                  </td>
+                  <td>{adm.department}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn btn-sm"
+                      type="button"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => openAdminSettings(adm)}
+                      title={`Edit Settings - ${adm.fullName}`}
+                    >
+                      <Settings size={14} /> Settings
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {activeAdmins.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="muted" style={{ padding: '28px', textAlign: 'center' }}>
+                    No active permanent administrators matching search criteria.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Toggle Button for Archived Administrators */}
       <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>

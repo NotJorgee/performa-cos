@@ -1,27 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, MapPin, FileText, Users, ArrowRight } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
+import api from '../../services/api';
 
 export default function EmployeeDashboard({
   currentUser = {
-    fullName: 'Jorge Mikhael Gubantes',
-    position: 'College Office Staff',
+    fullName: 'COS Personnel',
+    position: 'Staff',
     department: 'Computer Studies Department',
     cosCategory: 'Administrative',
   },
-  metrics = {
-    contractEndDate: 'December 31, 2026',
-    daysUntilExpiration: 74,
-    darTasksToday: 0,
-    totalDarsLogged: 84,
-    renewalIntentStatus: 'Open for Intent Confirmation',
-    pendingPeerReviews: 1,
-  },
+  metrics: propMetrics = null,
   onNavigate = () => {},
 }) {
-  const fullFirstName = getFullFirstName(currentUser.fullName || 'Jorge Mikhael Gubantes');
-  const isExpiringSoon = (metrics.daysUntilExpiration ?? 74) <= 30;
+  const [metrics, setMetrics] = useState(
+    propMetrics || {
+      contractEndDate: currentUser?.contract_end_date || 'Not Specified',
+      daysUntilExpiration: 0,
+      darTasksToday: 0,
+      totalDarsLogged: 0,
+      renewalIntentStatus: 'Open for Intent Confirmation',
+      pendingPeerReviews: 0,
+    }
+  );
+
+  useEffect(() => {
+    if (propMetrics) {
+      setMetrics(propMetrics);
+      return;
+    }
+    const fetchMetrics = async () => {
+      try {
+        const data = await api.analytics.getEmployeeDashboard();
+        setMetrics(data);
+      } catch (err) {
+        console.error('Failed to load Employee dashboard analytics:', err);
+      }
+    };
+    fetchMetrics();
+  }, [propMetrics]);
+
+  const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Personnel');
+  const isExpiringSoon = (metrics.daysUntilExpiration ?? 0) <= 30 && (metrics.daysUntilExpiration ?? 0) > 0;
 
   return (
     <div>

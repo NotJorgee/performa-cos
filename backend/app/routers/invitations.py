@@ -12,6 +12,7 @@ from ..config import settings
 from .. import models, schemas
 from ..auth import get_current_user
 from ..email_service import send_invitation_email
+from .audit import log_audit
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations"])
 
@@ -70,6 +71,15 @@ def create_invitation(
             current_user.full_name,
         )
 
+    log_audit(
+        db=db,
+        action="INVITATION_CREATED",
+        target_scope=f"{payload.role} token {token_str}",
+        operation_details=f"Generated registration invite for {payload.email or 'link sharing'} by {current_user.full_name}.",
+        user=current_user,
+        request=None,
+    )
+
     # Attach computed invite_url
     invitation.invite_url = f"{settings.APP_FRONTEND_URL}/?token={invitation.token}"
     return invitation
@@ -112,8 +122,19 @@ def revoke_invitation(
     if invite.used_at is not None:
         raise HTTPException(status_code=400, detail="Cannot revoke an already used invitation token.")
 
+    token_name = invite.token
     db.delete(invite)
     db.commit()
+
+    log_audit(
+        db=db,
+        action="INVITATION_REVOKED",
+        target_scope=f"Token {token_name}",
+        operation_details=f"Revoked registration invitation token {token_name}.",
+        user=current_user,
+        request=None,
+    )
+
     return {"message": "Invitation token revoked successfully."}
 
 

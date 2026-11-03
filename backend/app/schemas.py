@@ -303,3 +303,45 @@ class FileUploadResponse(BaseModel):
     url: str
     path: str
     bucket: str
+
+
+# --- Audit Log Schemas ---
+class AuditLogOut(BaseModel):
+    id: int
+    timestamp: datetime.datetime
+    user_id: Optional[int] = None
+    user_name: Optional[str] = None
+    role: Optional[str] = None
+    action: str
+    target_scope: Optional[str] = None
+    ip_address: Optional[str] = None
+    operation_details: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# --- Notification Schemas ---
+class NotificationOut(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    target_role: Optional[str] = None
+    title: str
+    message: str
+    category: Optional[str] = None
+    is_read: bool = False
+    action_view: Optional[str] = None
+    created_at: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NotificationCreate(BaseModel):
+    user_id: Optional[int] = None
+    target_role: Optional[str] = None
+    title: str
+    message: str
+    category: Optional[str] = "system"
+    action_view: Optional[str] = None
+
