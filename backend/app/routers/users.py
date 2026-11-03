@@ -179,6 +179,8 @@ def admin_update_user(
         user.full_name = payload.full_name
     if payload.email is not None:
         user.email = payload.email
+    if payload.employee_id_number is not None:
+        user.employee_id_number = payload.employee_id_number
     if payload.job_title is not None:
         user.job_title = payload.job_title
     if payload.role is not None:

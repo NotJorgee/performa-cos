@@ -136,6 +136,7 @@ class UserChangePassword(BaseModel):
 class UserAdminUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    employee_id_number: Optional[str] = None
     job_title: Optional[str] = None
     role: Optional[str] = None
     department_id: Optional[int] = None

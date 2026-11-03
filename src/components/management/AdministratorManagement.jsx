@@ -30,6 +30,7 @@ export default function AdministratorManagement({
             fullName: u.full_name,
             email: u.email,
             role: u.role,
+            jobTitle: u.job_title || (u.role === 'Department Head' ? 'Department Head' : 'HRMO Officer'),
             department: (u.department && typeof u.department === 'object' && u.department.name)
               ? u.department.name
               : (u.department_name || 'HRMDO Office'),
@@ -61,6 +62,7 @@ export default function AdministratorManagement({
   const [editFullName, setEditFullName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editIdNumber, setEditIdNumber] = useState('');
+  const [editJobTitle, setEditJobTitle] = useState('');
   const [identitySuccessMsg, setIdentitySuccessMsg] = useState(null);
 
   // Department transfer fields (Department Heads only)
@@ -79,6 +81,7 @@ export default function AdministratorManagement({
     setEditFullName(adm.fullName || '');
     setEditEmail(adm.email || '');
     setEditIdNumber(adm.idNumber || '');
+    setEditJobTitle(adm.jobTitle || (adm.role === 'Department Head' ? 'Department Head' : 'HRMO Officer'));
     setIdentitySuccessMsg(null);
     const availableDepts = departments.filter(
       (d) => d !== 'HRMDO Office' && d !== adm.department
@@ -87,16 +90,31 @@ export default function AdministratorManagement({
     setTransferSuccessMsg(null);
   };
 
-  const handleSaveIdentity = (e) => {
+  const handleSaveIdentity = async (e) => {
     e.preventDefault();
     if (!settingsAdmin || !editFullName.trim() || !editEmail.trim() || !editIdNumber.trim()) return;
 
+    const defaultTitle = settingsAdmin.role === 'Department Head' ? 'Department Head' : 'HRMO Officer';
     const updated = {
       ...settingsAdmin,
       fullName: editFullName.trim(),
       email: editEmail.trim(),
       idNumber: editIdNumber.trim(),
+      jobTitle: editJobTitle.trim() || defaultTitle,
     };
+
+    try {
+      if (api.users && api.users.adminUpdate) {
+        await api.users.adminUpdate(settingsAdmin.id, {
+          full_name: updated.fullName,
+          email: updated.email,
+          employee_id_number: updated.idNumber,
+          job_title: updated.jobTitle,
+        });
+      }
+    } catch (err) {
+      console.warn('API admin update notice:', err);
+    }
 
     setAdminList((prev) =>
       prev.map((a) => (a.id === settingsAdmin.id ? updated : a))
@@ -346,7 +364,7 @@ export default function AdministratorManagement({
                   <td>
                     <b>{adm.fullName}</b>
                     <div className="muted" style={{ fontSize: '12px' }}>
-                      {adm.email}
+                      {adm.jobTitle ? `${adm.jobTitle} • ` : ''}{adm.email}
                     </div>
                   </td>
                   <td>
@@ -465,7 +483,7 @@ export default function AdministratorManagement({
                     <td>
                       <b>{adm.fullName}</b>
                       <div className="muted" style={{ fontSize: '12px' }}>
-                        {adm.email}
+                        {adm.jobTitle ? `${adm.jobTitle} • ` : ''}{adm.email}
                       </div>
                     </td>
                     <td>
@@ -552,7 +570,7 @@ export default function AdministratorManagement({
                   {settingsAdmin.fullName}
                 </div>
                 <div className="muted" style={{ fontSize: '12px' }}>
-                  {settingsAdmin.email} • {settingsAdmin.department}
+                  {settingsAdmin.jobTitle ? `${settingsAdmin.jobTitle} • ` : ''}{settingsAdmin.email} • {settingsAdmin.department}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -657,6 +675,21 @@ export default function AdministratorManagement({
                     onChange={(e) => setEditEmail(e.target.value)}
                     style={{ fontSize: '13px' }}
                     placeholder="name@evsu.edu.ph"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Administrator Job Title / Position <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    required
+                    value={editJobTitle}
+                    onChange={(e) => setEditJobTitle(e.target.value)}
+                    style={{ fontSize: '13px' }}
+                    placeholder="e.g. Department Head, College Dean, HRMO Officer"
                   />
                 </div>
 
