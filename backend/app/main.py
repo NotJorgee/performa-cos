@@ -21,6 +21,7 @@ from .routers.analytics import router as analytics_router
 from .routers.notifications import router as notifications_router
 from .routers.sessions import router as sessions_router
 from .routers.geofence import router as geofence_router
+from .routers.backup import router as backup_router
 from .routers.audit import log_audit
 
 # Initialize FastAPI App
@@ -50,6 +51,7 @@ app.include_router(analytics_router)
 app.include_router(notifications_router)
 app.include_router(sessions_router)
 app.include_router(geofence_router)
+app.include_router(backup_router)
 
 
 @app.on_event("startup")

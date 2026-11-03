@@ -346,6 +346,42 @@ export const api = {
       return request(`/geofences/verifications${q}`);
     },
   },
+
+  // Institutional Database Backup & Export Engine
+  backup: {
+    getStats: () => request('/backup/stats'),
+    getHistory: () => request('/backup/history'),
+    downloadCsv: async () => {
+      const token = localStorage.getItem('performa_token');
+      const res = await fetch(`${API_BASE_URL}/backup/export/csv`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Backup export failed: ${res.statusText}`);
+      const blob = await res.blob();
+      const contentDisp = res.headers.get('content-disposition');
+      let filename = 'evsu_performa_records_archive.csv';
+      if (contentDisp && contentDisp.includes('filename=')) {
+        const match = contentDisp.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+      return { blob, filename };
+    },
+    downloadSql: async () => {
+      const token = localStorage.getItem('performa_token');
+      const res = await fetch(`${API_BASE_URL}/backup/export/sql`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Database dump failed: ${res.statusText}`);
+      const blob = await res.blob();
+      const contentDisp = res.headers.get('content-disposition');
+      let filename = 'evsu_performa_database_dump.sql';
+      if (contentDisp && contentDisp.includes('filename=')) {
+        const match = contentDisp.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+      return { blob, filename };
+    },
+  },
 };
 
 export default api;

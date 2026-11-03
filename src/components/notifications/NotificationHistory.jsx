@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Inbox,
   Filter,
+  ArrowLeft,
 } from 'lucide-react';
 
 export default function NotificationHistory({
@@ -27,6 +28,7 @@ export default function NotificationHistory({
   onMarkAsRead = () => {},
   onMarkAllAsRead = () => {},
   onDeleteNotification = () => {},
+  onRefreshNotifications = null,
   onNavigate = () => {},
   onBack = () => {},
 }) {
@@ -155,6 +157,21 @@ export default function NotificationHistory({
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {onRefreshNotifications && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              onClick={async () => {
+                await onRefreshNotifications();
+                showToast('Notification feed refreshed from server.');
+              }}
+              title="Sync latest notifications from server"
+            >
+              <RotateCcw size={14} /> Refresh
+            </button>
+          )}
+
           {unreadCount > 0 && (
             <button
               type="button"
@@ -174,9 +191,9 @@ export default function NotificationHistory({
               className="btn btn-sm"
               type="button"
               onClick={onBack}
-              style={{ cursor: 'pointer' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
             >
-              ← Back to Dashboard
+              <ArrowLeft size={14} /> Back to Dashboard
             </button>
           )}
         </div>

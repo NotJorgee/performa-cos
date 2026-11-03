@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './styles/style.css';
 import {
   AppLayout,
@@ -107,21 +107,33 @@ export default function App() {
     getInitialNotifications(currentUser.role)
   );
 
-  // Fetch in-app notifications from API on login / role change
+  // Live in-app notifications from API (initial load + 30s background cycle + window focus)
+  const refreshNotifications = useCallback(async () => {
+    if (!currentUser || !currentUser.id) return;
+    try {
+      const data = await api.notifications.list();
+      if (Array.isArray(data)) {
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.warn('Notification sync notice:', err.message);
+    }
+  }, [currentUser?.id, currentUser?.role]);
+
   useEffect(() => {
     if (!currentUser || !currentUser.id) return;
-    const fetchNotifications = async () => {
-      try {
-        const data = await api.notifications.list();
-        if (Array.isArray(data)) {
-          setNotifications(data);
-        }
-      } catch (err) {
-        console.error('Failed to load notifications from API:', err);
-      }
+    refreshNotifications();
+
+    const intervalId = setInterval(refreshNotifications, 30000);
+
+    const onFocus = () => refreshNotifications();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
     };
-    fetchNotifications();
-  }, [currentUser?.id, currentUser?.role]);
+  }, [currentUser?.id, currentUser?.role, refreshNotifications]);
 
   const handleMarkAsRead = async (id, readState = false) => {
     setNotifications((prev) =>
@@ -465,6 +477,7 @@ export default function App() {
           onMarkAsRead={handleMarkAsRead}
           onMarkAllAsRead={handleMarkAllAsRead}
           onDeleteNotification={handleDeleteNotification}
+          onRefreshNotifications={refreshNotifications}
           onNavigate={setCurrentView}
           onBack={() => setCurrentView('dashboard')}
         />

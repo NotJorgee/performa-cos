@@ -1,94 +1,109 @@
-import React, { useState } from 'react';
-import { Database, FileSpreadsheet, Download, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Database,
+  FileSpreadsheet,
+  Download,
+  Check,
+  ArrowLeft,
+  Users,
+  Building2,
+  MapPin,
+  Clock,
+  RotateCcw,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
+import { api } from '../../services/api';
 
 export default function BackupData({ onBack = null }) {
   const [toastMsg, setToastMsg] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [downloadingFormat, setDownloadingFormat] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simple history of past backups for HR reference
-  const [backupHistory, setBackupHistory] = useState([
-    {
-      id: 1,
-      fileName: 'evsu_performa_records_20261025.csv',
-      type: 'CSV Spreadsheet Archive',
-      fileSize: '3.8 MB',
-      date: 'Oct 25, 2026, 12:45 PM',
-    },
-    {
-      id: 2,
-      fileName: 'evsu_performa_backup_20261025.sql',
-      type: 'SQL Database Dump',
-      fileSize: '14.2 MB',
-      date: 'Oct 25, 2026, 11:30 AM',
-    },
-    {
-      id: 3,
-      fileName: 'evsu_performa_records_20261024.csv',
-      type: 'CSV Spreadsheet Archive',
-      fileSize: '3.6 MB',
-      date: 'Oct 24, 2026, 04:15 PM',
-    },
-  ]);
+  // Live database stats
+  const [dbStats, setDbStats] = useState({
+    usersCount: 0,
+    departmentsCount: 0,
+    darsCount: 0,
+    evaluationsCount: 0,
+    renewalsCount: 0,
+    geofencesCount: 0,
+    auditLogsCount: 0,
+    totalRecords: 0,
+    lastBackupDate: null,
+  });
 
-  const handleDownload = (format) => {
+  // Past backup exports from audit logs
+  const [backupHistory, setBackupHistory] = useState([]);
+
+  const loadStatsAndHistory = async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      if (api?.backup) {
+        const [statsData, historyData] = await Promise.allSettled([
+          api.backup.getStats(),
+          api.backup.getHistory(),
+        ]);
+
+        if (statsData.status === 'fulfilled' && statsData.value) {
+          setDbStats(statsData.value);
+        }
+        if (historyData.status === 'fulfilled' && Array.isArray(historyData.value)) {
+          setBackupHistory(historyData.value);
+        }
+      }
+    } catch (err) {
+      console.warn('Backup data load notice:', err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStatsAndHistory();
+  }, []);
+
+  const handleDownload = async (format) => {
     setDownloadingFormat(format);
+    setErrorMsg(null);
 
-    setTimeout(() => {
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const isSql = format === 'sql';
-      const ext = isSql ? 'sql' : 'csv';
-      const fileName = `evsu_performa_${isSql ? 'database_dump' : 'records_archive'}_${dateStr}.${ext}`;
-      const typeLabel = isSql ? 'SQL Database Backup' : 'CSV Spreadsheet Archive';
-
-      // Sample mock content
-      let content = '';
-      if (isSql) {
-        content = `-- EVSU Performa-COS Database Dump\n-- Generated on: ${now.toLocaleString()}\n-- University: Eastern Visayas State University - Ormoc City Campus\n\nCREATE TABLE IF NOT EXISTS employees (...);\nCREATE TABLE IF NOT EXISTS evaluations (...);\nCREATE TABLE IF NOT EXISTS daily_reports (...);\n`;
+    try {
+      let result;
+      if (format === 'csv') {
+        result = await api.backup.downloadCsv();
       } else {
-        content = `"Employee ID","Full Name","Department","COS Category","Contract End","Status","Latest Score"\n"G10222026JMR","Jorge Mikhael Gubantes","Computer Studies Department","Administrative","Apr 22, 2027","Active","92.4"\n"R10222026IJM","Ian Joseph Ranoco","Computer Studies Department","Administrative","Apr 22, 2027","Active","88.6"\n"M10222026CBM","Carlos Mendoza","Maintenance/Janitorial (MESO) Office","Maintenance/Janitorial","Apr 22, 2027","Active","88.0"\n`;
+        result = await api.backup.downloadSql();
       }
 
-      const mimeType = isSql ? 'application/sql' : 'text/csv';
-      const blob = new Blob([content], { type: mimeType });
+      const { blob, filename } = result;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', fileName);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      // Add to recent list
-      const newEntry = {
-        id: Date.now(),
-        fileName,
-        type: typeLabel,
-        fileSize: isSql ? '14.5 MB' : '3.9 MB',
-        date: 'Just now',
-      };
-      setBackupHistory((prev) => [newEntry, ...prev]);
+      const typeLabel = format === 'sql' ? 'SQL Database Backup' : 'CSV Spreadsheet Archive';
+      setToastMsg(`${typeLabel} (${filename}) generated and downloaded successfully.`);
+      setTimeout(() => setToastMsg(null), 5000);
 
+      // Refresh stats and history to reflect new audit record
+      loadStatsAndHistory();
+    } catch (err) {
+      console.error('Download error:', err);
+      setErrorMsg(`Failed to export ${format.toUpperCase()} backup: ${err.message}`);
+    } finally {
       setDownloadingFormat(null);
-      setToastMsg(`${typeLabel} (${fileName}) downloaded successfully!`);
-      setTimeout(() => setToastMsg(null), 4500);
-    }, 600);
+    }
   };
 
   const handleDownloadExisting = (item) => {
-    const blob = new Blob([`-- Downloaded copy of ${item.fileName}`], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', item.fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    setToastMsg(`Re-downloading ${item.fileName}`);
-    setTimeout(() => setToastMsg(null), 3500);
+    const isSql = item.type.includes('SQL') || item.fileName.endsWith('.sql');
+    handleDownload(isSql ? 'sql' : 'csv');
   };
 
   return (
@@ -97,29 +112,114 @@ export default function BackupData({ onBack = null }) {
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Database size={28} color="var(--brand-700)" /> Backup Data
+            <Database size={28} color="var(--brand-700)" /> Institutional Data Backup &amp; Archiving
           </h1>
           <p className="muted" style={{ margin: 0 }}>
-            Download an offline copy of university records in SQL or CSV format for safe archiving and compliance.
+            Generate and export authenticated copies of Eastern Visayas State University COS records for regulatory compliance, disaster recovery, and offline archiving.
           </p>
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            className="btn btn-sm"
+            type="button"
+            onClick={loadStatsAndHistory}
+            disabled={isLoading}
+            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            title="Refresh database volume statistics"
+          >
+            <RotateCcw size={13} />
+            <span>Refresh Stats</span>
+          </button>
           {onBack && (
-            <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer' }}>
-              ← Back to Dashboard
+            <button
+              className="btn btn-sm"
+              type="button"
+              onClick={onBack}
+              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Dashboard</span>
             </button>
           )}
         </div>
       </div>
 
       {toastMsg && (
-        <div className="flash flash-success" style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div
+          className="flash flash-success"
+          style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
           <Check size={16} />
           {toastMsg}
         </div>
       )}
 
-      {/* Simplified Two-Option Cards */}
+      {errorMsg && (
+        <div
+          className="flash flash-danger"
+          style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <AlertTriangle size={16} />
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Live System Data Volume Strip */}
+      <div
+        className="card"
+        style={{
+          marginBottom: '24px',
+          padding: '16px 20px',
+          background: '#f8fafc',
+          border: '1px solid var(--line)',
+        }}
+      >
+        <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--ink-900)', marginBottom: '10px' }}>
+          Current PostgreSQL Live Database Inventory
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '12px',
+          }}
+        >
+          <div style={{ padding: '10px 14px', background: '#fff', borderRadius: '8px', border: '1px solid var(--line)' }}>
+            <div className="muted" style={{ fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Users size={13} color="var(--brand-700)" /> Registered Accounts
+            </div>
+            <b style={{ fontSize: '18px', color: 'var(--ink-900)' }}>{dbStats.usersCount} Users</b>
+          </div>
+          <div style={{ padding: '10px 14px', background: '#fff', borderRadius: '8px', border: '1px solid var(--line)' }}>
+            <div className="muted" style={{ fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Building2 size={13} color="var(--brand-700)" /> Campus Departments
+            </div>
+            <b style={{ fontSize: '18px', color: 'var(--ink-900)' }}>{dbStats.departmentsCount} Units</b>
+          </div>
+          <div style={{ padding: '10px 14px', background: '#fff', borderRadius: '8px', border: '1px solid var(--line)' }}>
+            <div className="muted" style={{ fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <MapPin size={13} color="var(--brand-700)" /> Geofence Perimeters
+            </div>
+            <b style={{ fontSize: '18px', color: 'var(--ink-900)' }}>{dbStats.geofencesCount} Sites</b>
+          </div>
+          <div style={{ padding: '10px 14px', background: '#fff', borderRadius: '8px', border: '1px solid var(--line)' }}>
+            <div className="muted" style={{ fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <ShieldCheck size={13} color="var(--brand-700)" /> Security Audit Logs
+            </div>
+            <b style={{ fontSize: '18px', color: 'var(--ink-900)' }}>{dbStats.auditLogsCount} Events</b>
+          </div>
+          <div style={{ padding: '10px 14px', background: '#fff', borderRadius: '8px', border: '1px solid var(--line)' }}>
+            <div className="muted" style={{ fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Clock size={13} color="var(--brand-700)" /> Last Backup Timestamp
+            </div>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink-800)', display: 'block', marginTop: '3px' }}>
+              {dbStats.lastBackupDate || 'None recorded yet'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Two-Option Action Cards */}
       <div
         style={{
           display: 'grid',
@@ -158,13 +258,13 @@ export default function BackupData({ onBack = null }) {
                 <FileSpreadsheet size={24} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>CSV Data Archive</h3>
-                <span className="muted" style={{ fontSize: '12.5px' }}>Spreadsheet records (.csv)</span>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>CSV Spreadsheet Archive</h3>
+                <span className="muted" style={{ fontSize: '12.5px' }}>Multi-table institutional dataset (.csv)</span>
               </div>
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--ink-700)', lineHeight: 1.5, margin: '0 0 16px' }}>
-              Downloads personnel appraisal records, employee directories, and evaluation scores in clean CSV spreadsheet format. Ready for Microsoft Excel, Google Sheets, or official institutional reports.
+              Extracts personnel master records, department structures, DAR logs, campus geofence configurations, and audit events into standard delimited CSV format. Compatible with Microsoft Excel, Google Sheets, or university offline storage.
             </p>
           </div>
 
@@ -184,9 +284,9 @@ export default function BackupData({ onBack = null }) {
               cursor: downloadingFormat === 'csv' ? 'not-allowed' : 'pointer',
             }}
           >
-            {downloadingFormat === 'csv' ? 'Preparing CSV Archive...' : (
+            {downloadingFormat === 'csv' ? 'Generating CSV Archive...' : (
               <>
-                <Download size={15} /> Download CSV Archive
+                <Download size={15} /> Export CSV Archive
               </>
             )}
           </button>
@@ -222,13 +322,13 @@ export default function BackupData({ onBack = null }) {
                 <Database size={24} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Complete Database Backup (.sql)</h3>
-                <span className="muted" style={{ fontSize: '12.5px' }}>Full database backup script (.sql)</span>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>Full PostgreSQL SQL Dump</h3>
+                <span className="muted" style={{ fontSize: '12.5px' }}>Complete database backup script (.sql)</span>
               </div>
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--ink-700)', lineHeight: 1.5, margin: '0 0 16px' }}>
-              Downloads a complete database backup file for technical archiving or full system recovery.
+              Generates an authentic PostgreSQL-compatible SQL script with table schema statements and populated INSERT queries for all database rows. Designed for disaster recovery or database migration.
             </p>
           </div>
 
@@ -248,69 +348,77 @@ export default function BackupData({ onBack = null }) {
               cursor: downloadingFormat === 'sql' ? 'not-allowed' : 'pointer',
             }}
           >
-            {downloadingFormat === 'sql' ? 'Generating Database Backup...' : (
+            {downloadingFormat === 'sql' ? 'Generating SQL Dump...' : (
               <>
-                <Download size={15} /> Download Database Backup (.sql)
+                <Download size={15} /> Export PostgreSQL Backup (.sql)
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Recent Downloads History */}
+      {/* Real Backup History */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
           <div className="card-title" style={{ margin: 0 }}>
-            Recent Downloaded Backups
+            Recent Backup Export Audit Trail
           </div>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
-            List of recently generated backup files. Click to download a copy again.
+            Official audit log of backup exports generated by system administrators.
           </p>
         </div>
 
         <table className="data-table">
           <thead>
             <tr>
-              <th>File Name</th>
-              <th>Format</th>
-              <th>Date Generated</th>
-              <th>File Size</th>
-              <th style={{ textAlign: 'right' }}>Action</th>
+              <th>File Archive</th>
+              <th>Format Type</th>
+              <th>Date Exported</th>
+              <th>Exported By</th>
+              <th style={{ textAlign: 'right' }}>Re-Download</th>
             </tr>
           </thead>
           <tbody>
-            {backupHistory.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--ink-900)' }}>
-                    {item.fileName}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`badge ${
-                      item.type.includes('CSV') ? 'badge-active' : 'badge-completed'
-                    }`}
-                    style={{ fontSize: '11.5px' }}
-                  >
-                    {item.type}
-                  </span>
-                </td>
-                <td style={{ fontSize: '13px', color: 'var(--ink-700)' }}>{item.date}</td>
-                <td style={{ fontSize: '13px' }}>{item.fileSize}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => handleDownloadExisting(item)}
-                    style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                    title={`Re-download ${item.fileName}`}
-                  >
-                    <Download size={13} /> Download
-                  </button>
+            {backupHistory.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                  No backup files have been exported yet. Click an option above to generate your first backup.
                 </td>
               </tr>
-            ))}
+            ) : (
+              backupHistory.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--ink-900)' }}>
+                      {item.fileName}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        item.type.includes('CSV') ? 'badge-active' : 'badge-completed'
+                      }`}
+                      style={{ fontSize: '11.5px' }}
+                    >
+                      {item.type}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: '13px', color: 'var(--ink-700)' }}>{item.date}</td>
+                  <td style={{ fontSize: '13px', color: 'var(--ink-800)' }}>{item.executedBy}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => handleDownloadExisting(item)}
+                      style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                      title={`Re-export ${item.fileName}`}
+                    >
+                      <Download size={13} /> Download
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
