@@ -375,11 +375,12 @@ def get_recent_geofence_verifications(
     main_campus = next((c for c in campuses if c.is_primary or "main" in c.id.lower()), campuses[0] if campuses else None)
     luna_campus = next((c for c in campuses if "luna" in c.id.lower()), None)
 
+    limit_val = int(limit.default) if hasattr(limit, "default") else int(limit or 50)
     # 1. Fetch real DAR records from database
     real_dars = (
         db.query(models.DailyAccomplishmentReport)
         .order_by(models.DailyAccomplishmentReport.created_at.desc())
-        .limit(limit)
+        .limit(limit_val)
         .all()
     )
 
@@ -411,6 +412,8 @@ def get_recent_geofence_verifications(
         
         time_str = dar.created_at.strftime("%b %d, %Y %I:%M %p") if dar.created_at else "Recent"
 
+        status_label = "Verified In-Bounds" if dar.is_geofence_verified else "Out of Bounds / Flagged"
+
         logs.append(
             VerificationLogOut(
                 id=dar.id,
@@ -422,121 +425,11 @@ def get_recent_geofence_verifications(
                 coordinates=coord_str,
                 latitude=dar.latitude,
                 longitude=dar.longitude,
-                distance=f"{int(min_dist)}m from center" if min_dist > 0 else "Within zone",
+                distance=f"{int(min_dist)}m from center" if min_dist > 0 else "Within perimeter",
                 distanceMeters=min_dist,
-                status="Verified In-Bounds" if dar.is_geofence_verified else "Out of Bounds / Unverified",
+                status=status_label,
                 isValid=bool(dar.is_geofence_verified),
             )
         )
-
-    # 2. If database has fewer than 6 records, supplement with realistic baseline entries
-    # using real registered employees so the administrative view is immediately informative and fully functional.
-    if len(logs) < 6:
-        baseline_presets = [
-            {
-                "id": 9001,
-                "name": "Jorge Mikhael R. Gubantes",
-                "department": "HRMDO Office",
-                "campusSite": "EVSU Ormoc — Main Campus",
-                "time": "Today, 04:58 PM",
-                "rawTime": datetime.datetime.now().isoformat(),
-                "latitude": 11.00692,
-                "longitude": 124.60718,
-                "distance": "58m from Main center",
-                "distanceMeters": 58.0,
-                "status": "Verified In-Bounds",
-                "isValid": True,
-            },
-            {
-                "id": 9002,
-                "name": "John A. Doe",
-                "department": "Computer Studies Department",
-                "campusSite": "EVSU Ormoc — Main Campus",
-                "time": "Today, 04:45 PM",
-                "rawTime": datetime.datetime.now().isoformat(),
-                "latitude": 11.00635,
-                "longitude": 124.60762,
-                "distance": "32m from Main center",
-                "distanceMeters": 32.0,
-                "status": "Verified In-Bounds",
-                "isValid": True,
-            },
-            {
-                "id": 9003,
-                "name": "Jane A. Doe",
-                "department": "Computer Studies Department",
-                "campusSite": "EVSU Ormoc — Main Campus",
-                "time": "Today, 04:30 PM",
-                "rawTime": datetime.datetime.now().isoformat(),
-                "latitude": 11.00712,
-                "longitude": 124.60688,
-                "distance": "112m from Main center",
-                "distanceMeters": 112.0,
-                "status": "Verified In-Bounds",
-                "isValid": True,
-            },
-            {
-                "id": 9004,
-                "name": "Carlos Mendoza",
-                "department": "Maintenance / Janitorial (MESO) Office",
-                "campusSite": "EVSU Ormoc — Luna Campus",
-                "time": "Today, 04:15 PM",
-                "rawTime": datetime.datetime.now().isoformat(),
-                "latitude": 11.06015,
-                "longitude": 124.61320,
-                "distance": "82m from Luna center",
-                "distanceMeters": 82.0,
-                "status": "Verified In-Bounds",
-                "isValid": True,
-            },
-            {
-                "id": 9005,
-                "name": "Eduardo Tan",
-                "department": "Technology Department",
-                "campusSite": "EVSU Ormoc — Luna Campus",
-                "time": "Yesterday, 05:02 PM",
-                "rawTime": (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat(),
-                "latitude": 11.06095,
-                "longitude": 124.61410,
-                "distance": "64m from Luna center",
-                "distanceMeters": 64.0,
-                "status": "Verified In-Bounds",
-                "isValid": True,
-            },
-            {
-                "id": 9006,
-                "name": "Mark Anthony Reyes",
-                "department": "Disbursing / Cashier Office",
-                "campusSite": "EVSU Ormoc — Main Campus",
-                "time": "Yesterday, 04:35 PM",
-                "rawTime": (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat(),
-                "latitude": 11.00580,
-                "longitude": 124.60830,
-                "distance": "120m from Main center",
-                "distanceMeters": 120.0,
-                "status": "Verified In-Bounds",
-                "isValid": True,
-            },
-        ]
-        
-        for item in baseline_presets:
-            coord_str = f"{item['latitude']:.5f}° N, {item['longitude']:.5f}° E"
-            logs.append(
-                VerificationLogOut(
-                    id=item["id"],
-                    name=item["name"],
-                    department=item["department"],
-                    campusSite=item["campusSite"],
-                    time=item["time"],
-                    rawTime=item["rawTime"],
-                    coordinates=coord_str,
-                    latitude=item["latitude"],
-                    longitude=item["longitude"],
-                    distance=item["distance"],
-                    distanceMeters=item["distanceMeters"],
-                    status=item["status"],
-                    isValid=item["isValid"],
-                )
-            )
 
     return logs

@@ -100,79 +100,8 @@ export default function CampusGeofence({
     locationNote: '',
   });
 
-  // Verification Activity logs from API (with local fallback)
-  const [complianceLogs, setComplianceLogs] = useState([
-    {
-      id: 9001,
-      name: 'Jorge Mikhael R. Gubantes',
-      department: 'HRMDO Office',
-      campusSite: 'EVSU Ormoc — Main Campus',
-      time: 'Today, 04:58 PM',
-      coordinates: '11.00692° N, 124.60718° E',
-      latitude: 11.00692,
-      longitude: 124.60718,
-      distance: '58m from Main center',
-      distanceMeters: 58,
-      status: 'Verified In-Bounds',
-      isValid: true,
-    },
-    {
-      id: 9002,
-      name: 'John A. Doe',
-      department: 'Computer Studies Department',
-      campusSite: 'EVSU Ormoc — Main Campus',
-      time: 'Today, 04:45 PM',
-      coordinates: '11.00635° N, 124.60762° E',
-      latitude: 11.00635,
-      longitude: 124.60762,
-      distance: '32m from Main center',
-      distanceMeters: 32,
-      status: 'Verified In-Bounds',
-      isValid: true,
-    },
-    {
-      id: 9003,
-      name: 'Jane A. Doe',
-      department: 'Computer Studies Department',
-      campusSite: 'EVSU Ormoc — Main Campus',
-      time: 'Today, 04:30 PM',
-      coordinates: '11.00712° N, 124.60688° E',
-      latitude: 11.00712,
-      longitude: 124.60688,
-      distance: '112m from Main center',
-      distanceMeters: 112,
-      status: 'Verified In-Bounds',
-      isValid: true,
-    },
-    {
-      id: 9004,
-      name: 'Carlos Mendoza',
-      department: 'Maintenance / Janitorial (MESO) Office',
-      campusSite: 'EVSU Ormoc — Luna Campus',
-      time: 'Today, 04:15 PM',
-      coordinates: '11.06015° N, 124.61320° E',
-      latitude: 11.06015,
-      longitude: 124.61320,
-      distance: '82m from Luna center',
-      distanceMeters: 82,
-      status: 'Verified In-Bounds',
-      isValid: true,
-    },
-    {
-      id: 9005,
-      name: 'Eduardo Tan',
-      department: 'Technology Department',
-      campusSite: 'EVSU Ormoc — Luna Campus',
-      time: 'Yesterday, 05:02 PM',
-      coordinates: '11.06095° N, 124.61410° E',
-      latitude: 11.06095,
-      longitude: 124.61410,
-      distance: '64m from Luna center',
-      distanceMeters: 64,
-      status: 'Verified In-Bounds',
-      isValid: true,
-    },
-  ]);
+  // Verification Activity logs from API
+  const [complianceLogs, setComplianceLogs] = useState([]);
 
   // Leaflet Map Refs
   const mapContainerRef = useRef(null);
@@ -348,7 +277,7 @@ export default function CampusGeofence({
         if (api?.geofences?.getVerifications) {
           setIsLoadingVerifications(true);
           const logs = await api.geofences.getVerifications();
-          if (isMounted && Array.isArray(logs) && logs.length > 0) {
+          if (isMounted && Array.isArray(logs)) {
             setComplianceLogs(logs);
           }
         }
@@ -1042,7 +971,7 @@ export default function CampusGeofence({
     try {
       if (api?.geofences?.getVerifications) {
         const logs = await api.geofences.getVerifications();
-        if (Array.isArray(logs) && logs.length > 0) {
+        if (Array.isArray(logs)) {
           setComplianceLogs(logs);
         }
       }
