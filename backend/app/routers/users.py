@@ -11,6 +11,7 @@ from ..database import get_db
 from .. import models, schemas
 from ..auth import get_current_user, hash_password, verify_password
 from ..id_generator import generate_evsu_employee_id
+from .audit import log_audit
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -157,6 +158,15 @@ def update_user_contact(
 
     db.commit()
     db.refresh(user)
+
+    log_audit(
+        db=db,
+        action="PROFILE_UPDATED",
+        target_scope=f"User #{user.id} ({user.full_name})",
+        operation_details="Updated personal contact, emergency phone, or office station details.",
+        user=current_user,
+    )
+
     return user
 
 
@@ -192,6 +202,15 @@ def admin_update_user(
 
     db.commit()
     db.refresh(user)
+
+    log_audit(
+        db=db,
+        action="ADMIN_PROFILE_UPDATE",
+        target_scope=f"User #{user.id} ({user.full_name})",
+        operation_details=f"Administrative profile updated (Role: {user.role}, Dept ID: {user.department_id}, Title: {user.job_title}).",
+        user=current_user,
+    )
+
     return user
 
 
@@ -214,9 +233,19 @@ def transfer_department(
     if not dept:
         raise HTTPException(status_code=404, detail="Target department not found.")
 
+    old_dept_id = user.department_id
     user.department_id = payload.department_id
     db.commit()
     db.refresh(user)
+
+    log_audit(
+        db=db,
+        action="DEPARTMENT_TRANSFER",
+        target_scope=f"User #{user.id} ({user.full_name})",
+        operation_details=f"Transferred employee assignment from Dept #{old_dept_id} to Dept #{payload.department_id} ({dept.name}).",
+        user=current_user,
+    )
+
     return user
 
 
@@ -240,6 +269,15 @@ def archive_user(
     user.is_archived = True
     user.is_active = False
     db.commit()
+
+    log_audit(
+        db=db,
+        action="USER_ARCHIVED",
+        target_scope=f"User #{user.id} ({user.full_name})",
+        operation_details=f"Deactivated and archived user account ({user.email}).",
+        user=current_user,
+    )
+
     return {"message": f"User '{user.full_name}' archived successfully.", "user_id": user_id}
 
 
@@ -260,6 +298,15 @@ def restore_user(
     user.is_archived = False
     user.is_active = True
     db.commit()
+
+    log_audit(
+        db=db,
+        action="USER_RESTORED",
+        target_scope=f"User #{user.id} ({user.full_name})",
+        operation_details=f"Reactivated and restored user account ({user.email}).",
+        user=current_user,
+    )
+
     return {"message": f"User '{user.full_name}' restored successfully.", "user_id": user_id}
 
 
@@ -287,4 +334,13 @@ def change_password(
 
     user.password_hash = hash_password(payload.new_password)
     db.commit()
+
+    log_audit(
+        db=db,
+        action="PASSWORD_RESET_COMPLETED",
+        target_scope=f"User #{user.id} ({user.email})",
+        operation_details="Account credentials updated via authenticated profile security settings.",
+        user=current_user,
+    )
+
     return {"message": "Password updated successfully."}

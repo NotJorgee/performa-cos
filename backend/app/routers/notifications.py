@@ -10,6 +10,7 @@ from sqlalchemy import or_, desc
 from ..database import get_db
 from ..auth import get_current_user
 from .. import models, schemas
+from .audit import log_audit
 
 router = APIRouter(prefix="/api/notifications", tags=["In-App Notifications"])
 
@@ -62,6 +63,70 @@ def _format_time_ago(dt: Optional[datetime.datetime]) -> str:
     else:
         days = seconds // 86400
         return f"{days} days ago"
+
+
+@router.get("/preferences", response_model=schemas.NotificationPreferenceOut)
+def get_notification_preferences(
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Retrieve delivery and alert preferences for the authenticated user."""
+    prefs = (
+        db.query(models.NotificationPreference)
+        .filter(models.NotificationPreference.user_id == current_user.id)
+        .first()
+    )
+    if not prefs:
+        prefs = models.NotificationPreference(
+            user_id=current_user.id,
+            deadline_alerts=True,
+            contract_notices=True,
+            approval_alerts=True,
+            sms_alerts=True,
+        )
+        db.add(prefs)
+        db.commit()
+        db.refresh(prefs)
+    return prefs
+
+
+@router.patch("/preferences", response_model=schemas.NotificationPreferenceOut)
+def update_notification_preferences(
+    payload: schemas.NotificationPreferenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Update delivery and alert preferences for the authenticated user."""
+    prefs = (
+        db.query(models.NotificationPreference)
+        .filter(models.NotificationPreference.user_id == current_user.id)
+        .first()
+    )
+    if not prefs:
+        prefs = models.NotificationPreference(user_id=current_user.id)
+        db.add(prefs)
+
+    if payload.deadline_alerts is not None:
+        prefs.deadline_alerts = payload.deadline_alerts
+    if payload.contract_notices is not None:
+        prefs.contract_notices = payload.contract_notices
+    if payload.approval_alerts is not None:
+        prefs.approval_alerts = payload.approval_alerts
+    if payload.sms_alerts is not None:
+        prefs.sms_alerts = payload.sms_alerts
+
+    db.commit()
+    db.refresh(prefs)
+
+    log_audit(
+        db=db,
+        action="NOTIFICATION_PREFERENCES_UPDATED",
+        target_scope=f"User #{current_user.id} ({current_user.email})",
+        operation_details="Updated delivery preferences for contract notices, deadline alerts, or SMS alerts.",
+        user=current_user,
+    )
+
+    return prefs
 
 
 @router.get("")

@@ -11,9 +11,33 @@ export const formatAuditAction = (action) => {
     case 'EVALUATION_DRAFT_SAVED':
       return 'Draft Saved';
     case 'PASSWORD_RESET_COMPLETED':
-      return 'Password Reset';
+      return 'Password Reset / Updated';
     case 'FAST_TRACK_REJECTION':
       return 'Non-Renewal Endorsed';
+    case 'USER_LOGGED_IN':
+      return 'User Signed In';
+    case 'USER_REGISTERED':
+      return 'Account Registered';
+    case 'DEPARTMENT_TRANSFER':
+      return 'Department Transfer';
+    case 'USER_ARCHIVED':
+      return 'Account Archived';
+    case 'USER_RESTORED':
+      return 'Account Restored';
+    case 'PROFILE_UPDATED':
+      return 'Profile Contact Updated';
+    case 'ADMIN_PROFILE_UPDATE':
+      return 'Admin Record Modified';
+    case 'NOTIFICATION_PREFERENCES_UPDATED':
+      return 'Notification Preferences Saved';
+    case 'INVITATION_GENERATED':
+      return 'Invitation Token Generated';
+    case 'INVITATION_REVOKED':
+      return 'Invitation Revoked';
+    case 'SESSION_REVOKED':
+      return 'Device Session Terminated';
+    case 'ALL_OTHER_SESSIONS_REVOKED':
+      return 'Other Sessions Terminated';
     default:
       return (action || '').replace(/_/g, ' ');
   }
@@ -46,27 +70,45 @@ export default function AuditTrail({
     };
     fetchAuditLogs();
   }, [initialLogs]);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   // Main Table Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | 'today' | 'past7d' | 'past30d' | 'custom'
-  const [customStartDate, setCustomStartDate] = useState('2026-10-01');
-  const [customEndDate, setCustomEndDate] = useState('2026-10-25');
+  const [customStartDate, setCustomStartDate] = useState(thirtyDaysAgoIso);
+  const [customEndDate, setCustomEndDate] = useState(todayIso);
   const [toastMsg, setToastMsg] = useState(null);
+
+  const availableActionTypes = [
+    { key: 'USER_LOGGED_IN', label: 'User Sign-Ins' },
+    { key: 'USER_REGISTERED', label: 'Registrations' },
+    { key: 'PASSWORD_RESET_COMPLETED', label: 'Password Changes' },
+    { key: 'PROFILE_UPDATED', label: 'Profile Updates' },
+    { key: 'ADMIN_PROFILE_UPDATE', label: 'Admin Record Updates' },
+    { key: 'DEPARTMENT_TRANSFER', label: 'Department Transfers' },
+    { key: 'USER_ARCHIVED', label: 'Account Archives' },
+    { key: 'USER_RESTORED', label: 'Account Restorations' },
+    { key: 'NOTIFICATION_PREFERENCES_UPDATED', label: 'Notification Preferences' },
+    { key: 'INVITATION_GENERATED', label: 'Invitations Issued' },
+    { key: 'INVITATION_REVOKED', label: 'Invitations Revoked' },
+    { key: 'SESSION_REVOKED', label: 'Session Revocations' },
+    { key: 'ALL_OTHER_SESSIONS_REVOKED', label: 'Mass Session Revocations' },
+    { key: 'DAR_SUBMITTED', label: 'DAR Submissions' },
+    { key: 'EVALUATION_DRAFT_SAVED', label: 'Evaluation Drafts' },
+    { key: 'EVALUATION_PERIOD_INITIATED', label: 'Period Initiations' },
+    { key: 'FAST_TRACK_REJECTION', label: 'Fast-Track Rejections' },
+  ];
 
   // Export Modal State
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportTimeFilter, setExportTimeFilter] = useState('all');
-  const [exportStartDate, setExportStartDate] = useState('2026-10-01');
-  const [exportEndDate, setExportEndDate] = useState('2026-10-25');
+  const [exportStartDate, setExportStartDate] = useState(thirtyDaysAgoIso);
+  const [exportEndDate, setExportEndDate] = useState(todayIso);
   const [exportRoleFilter, setExportRoleFilter] = useState('all');
-  const [exportActionTypes, setExportActionTypes] = useState([
-    'DAR_SUBMITTED',
-    'EVALUATION_DRAFT_SAVED',
-    'EVALUATION_PERIOD_INITIATED',
-    'PASSWORD_RESET_COMPLETED',
-    'FAST_TRACK_REJECTION',
-  ]);
+  const [exportActionTypes, setExportActionTypes] = useState(availableActionTypes.map((a) => a.key));
   const [exportColumns, setExportColumns] = useState([
     'timestamp',
     'user',
@@ -76,14 +118,6 @@ export default function AuditTrail({
     'ipAddress',
     'operationDetails',
   ]);
-
-  const availableActionTypes = [
-    { key: 'DAR_SUBMITTED', label: 'DAR Submissions' },
-    { key: 'EVALUATION_DRAFT_SAVED', label: 'Evaluation Drafts' },
-    { key: 'EVALUATION_PERIOD_INITIATED', label: 'Period Initiations' },
-    { key: 'PASSWORD_RESET_COMPLETED', label: 'Password Changes' },
-    { key: 'FAST_TRACK_REJECTION', label: 'Fast-Track Rejections' },
-  ];
 
   const availableColumns = [
     { key: 'timestamp', label: 'Timestamp' },
@@ -95,24 +129,24 @@ export default function AuditTrail({
     { key: 'operationDetails', label: 'Operation Details' },
   ];
 
-  // Reference date for simulation: Oct 25, 2026
-  const refDate = new Date('2026-10-25T23:59:59');
-
   // Time filter helper
   const matchesTime = (logDateStr, filterType, startStr, endStr) => {
     if (filterType === 'all') return true;
+    if (!logDateStr) return false;
     const logDate = new Date(logDateStr);
-    const diffMs = refDate - logDate;
+    const now = new Date();
+    const diffMs = now.getTime() - logDate.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
     if (filterType === 'today') {
-      return logDateStr.startsWith('2026-10-25');
+      const todayString = now.toISOString().slice(0, 10);
+      return logDateStr.slice(0, 10) === todayString;
     }
     if (filterType === 'past7d') {
-      return diffDays >= 0 && diffDays <= 7;
+      return diffDays >= -1 && diffDays <= 7;
     }
     if (filterType === 'past30d') {
-      return diffDays >= 0 && diffDays <= 30;
+      return diffDays >= -1 && diffDays <= 30;
     }
     if (filterType === 'custom') {
       const logDay = logDateStr.slice(0, 10);
@@ -246,11 +280,11 @@ export default function AuditTrail({
                 style={{ fontSize: '13.5px', width: '100%' }}
               >
                 <option value="">All Action Types</option>
-                <option value="DAR_SUBMITTED">DAR Submissions</option>
-                <option value="EVALUATION_DRAFT_SAVED">Evaluation Drafts</option>
-                <option value="EVALUATION_PERIOD_INITIATED">Period Initiations</option>
-                <option value="PASSWORD_RESET_COMPLETED">Password Changes</option>
-                <option value="FAST_TRACK_REJECTION">Fast-Track Rejections</option>
+                {availableActionTypes.map((act) => (
+                  <option key={act.key} value={act.key}>
+                    {act.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -263,7 +297,7 @@ export default function AuditTrail({
                 style={{ fontSize: '13.5px', width: '100%' }}
               >
                 <option value="all">All Time</option>
-                <option value="today">Today (Oct 25, 2026)</option>
+                <option value="today">Today</option>
                 <option value="past7d">Past 7 Days</option>
                 <option value="past30d">Past 30 Days</option>
                 <option value="custom">Custom Date Range...</option>
@@ -279,8 +313,8 @@ export default function AuditTrail({
                   setSearchTerm('');
                   setActionFilter('');
                   setTimeFilter('all');
-                  setCustomStartDate('2026-10-01');
-                  setCustomEndDate('2026-10-25');
+                  setCustomStartDate(thirtyDaysAgoIso);
+                  setCustomEndDate(todayIso);
                 }}
                 style={{ fontSize: '12px', padding: '6px 12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 title="Reset all search and filter fields"
@@ -428,7 +462,7 @@ export default function AuditTrail({
                   style={{ fontSize: '13px' }}
                 >
                   <option value="all">All Available Records</option>
-                  <option value="today">Today Only (Oct 25, 2026)</option>
+                  <option value="today">Today Only</option>
                   <option value="past7d">Past 7 Days</option>
                   <option value="past30d">Past 30 Days</option>
                   <option value="custom">Custom Date Range...</option>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
   Award,
@@ -7,7 +7,9 @@ import {
   Download,
   BarChart3,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
+import api from '../../services/api';
 
 export default function ExecutiveAnalytics({
   onBack = () => {},
@@ -15,11 +17,34 @@ export default function ExecutiveAnalytics({
 }) {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAnalytics = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.analytics.getExecutiveAnalytics(selectedYear);
+        if (isMounted && data) {
+          setAnalyticsData(data);
+        }
+      } catch (err) {
+        console.error('Failed to load executive analytics:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchAnalytics();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedYear]);
 
   // 12-Month Calendar Year Trend Data (Pure SVG coordinates, zero heavy charting library overhead)
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  const yearlyTrendData = {
+  const defaultYearlyTrendData = {
     '2026': [
       {
         id: 'technology',
@@ -82,10 +107,8 @@ export default function ExecutiveAnalytics({
     ],
   };
 
-  const trendSeries = yearlyTrendData[selectedYear] || yearlyTrendData['2026'];
-
   // Highest-Performing Departments Leaderboard Data
-  const departmentLeaderboard = [
+  const defaultLeaderboard = [
     {
       rank: 1,
       name: 'Computer Studies Department',
@@ -154,7 +177,7 @@ export default function ExecutiveAnalytics({
   ];
 
   // Outstanding Employees Spotlight (Employees scoring >= 90.0 or top performers)
-  const outstandingEmployees = [
+  const defaultOutstandingEmployees = [
     {
       id: 1,
       name: 'Jorge Mikhael Gubantes',
@@ -206,7 +229,7 @@ export default function ExecutiveAnalytics({
   ];
 
   // University-Wide Rating Distribution (Aligned with Official HR Criteria)
-  const ratingDistribution = [
+  const defaultRatingDistribution = [
     { label: 'Outstanding (90 – 100)', count: 6, pct: 22.2, color: '#16a34a' },
     { label: 'Very Satisfactory (80 – 89)', count: 17, pct: 63.0, color: '#2563eb' },
     { label: 'Satisfactory (70 – 79)', count: 3, pct: 11.1, color: '#0284c7' },
@@ -214,12 +237,27 @@ export default function ExecutiveAnalytics({
     { label: 'Unsatisfactory (Below 60)', count: 0, pct: 0.0, color: '#dc2626' },
   ];
 
+  // Derive dynamic state from API response with fallback
+  const trendSeries =
+    analyticsData?.trendSeries ||
+    (defaultYearlyTrendData[selectedYear] || defaultYearlyTrendData['2026']);
+  const departmentLeaderboard =
+    analyticsData?.departmentLeaderboard || defaultLeaderboard;
+  const outstandingEmployees =
+    analyticsData?.outstandingEmployees || defaultOutstandingEmployees;
+  const ratingDistribution =
+    analyticsData?.ratingDistribution || defaultRatingDistribution;
+  const institutionalAverage = analyticsData?.institutionalAverage ?? 86.4;
+  const institutionalRating = analyticsData?.institutionalRating || 'Very Satisfactory';
+  const totalAssessed = analyticsData?.totalAssessed ?? 27;
+
   // Export Executive Analytics Summary to CSV
   const handleExportCsv = () => {
     const csvRows = [
       ['EASTERN VISAYAS STATE UNIVERSITY - HRMO EXECUTIVE PERFORMANCE ANALYTICS'],
       ['Reporting Period', `Calendar Year ${selectedYear} (Annual Performance)`],
-      ['Institutional Average Score', '86.4 / 100 (Very Satisfactory)'],
+      ['Institutional Average Score', `${institutionalAverage} / 100 (${institutionalRating})`],
+      ['Total Assessed Personnel', `${totalAssessed} COS Subordinates`],
       [],
       ['DEPARTMENT PERFORMANCE LEADERBOARD'],
       ['Rank', 'Department', 'College / Division', 'COS Headcount', 'Avg Score', 'Rating', 'Eval Completion %'],
@@ -723,7 +761,7 @@ export default function ExecutiveAnalytics({
                 justifyContent: 'space-between',
               }}
             >
-              <span>Total Assessed COS Roster: <b>27 Subordinates</b></span>
+              <span>Total Assessed COS Roster: <b>{totalAssessed} Subordinates</b></span>
               <span className="badge badge-confirmed" style={{ fontSize: '11px' }}>
                 Standard Bell Distribution
               </span>

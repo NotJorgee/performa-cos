@@ -284,12 +284,19 @@ export const api = {
     getHRDashboard: () => request('/analytics/hr-dashboard'),
     getDeptHeadDashboard: () => request('/analytics/depthead-dashboard'),
     getEmployeeDashboard: () => request('/analytics/employee-dashboard'),
+    getExecutiveAnalytics: (year = '2026') => request(`/analytics/executive?year=${year}`),
   },
 
   // In-App Notifications (Phase 4)
   notifications: {
     list: (unreadOnly = false) =>
       request(`/notifications${unreadOnly ? '?unread_only=true' : ''}`),
+    getPreferences: () => request('/notifications/preferences'),
+    updatePreferences: (data) =>
+      request('/notifications/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
     markAsRead: (id) =>
       request(`/notifications/${id}/read`, {
         method: 'PATCH',

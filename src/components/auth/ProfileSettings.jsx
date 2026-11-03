@@ -67,6 +67,31 @@ export default function ProfileSettings({
   const [contractNotices, setContractNotices] = useState(true);
   const [approvalAlerts, setApprovalAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(true);
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
+  const [isSavingPrefs, setIsSavingPrefs] = useState(false);
+
+  // Load preferences from API
+  useEffect(() => {
+    const fetchPrefs = async () => {
+      try {
+        setIsLoadingPrefs(true);
+        const prefs = await api.notifications.getPreferences();
+        if (prefs) {
+          if (typeof prefs.deadline_alerts === 'boolean') setDeadlineAlerts(prefs.deadline_alerts);
+          if (typeof prefs.contract_notices === 'boolean') setContractNotices(prefs.contract_notices);
+          if (typeof prefs.approval_alerts === 'boolean') setApprovalAlerts(prefs.approval_alerts);
+          if (typeof prefs.sms_alerts === 'boolean') setSmsAlerts(prefs.sms_alerts);
+        }
+      } catch (err) {
+        console.error('Failed to load notification preferences:', err);
+      } finally {
+        setIsLoadingPrefs(false);
+      }
+    };
+    if (activeTab === 'notifications') {
+      fetchPrefs();
+    }
+  }, [activeTab]);
 
   // Active Sessions State
   const [currentSessionInfo, setCurrentSessionInfo] = useState(null);
@@ -138,20 +163,36 @@ export default function ProfileSettings({
     return { text: 'Strong', color: 'var(--green-700)' };
   };
 
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault();
-    onUpdateProfile({
-      contactNumber,
-      alternateEmail,
-      emergencyContact,
-      officeLocation,
-      avatarUrl: avatarPreview,
-    });
-    setToastMsg('Personal contact information updated successfully.');
-    setTimeout(() => setToastMsg(null), 3500);
+    try {
+      if (currentUser?.id) {
+        await api.users.updateContact(currentUser.id, {
+          contact_number: contactNumber,
+          alternate_email: alternateEmail,
+          emergency_contact: emergencyContact,
+          office_location: officeLocation,
+          avatar_url: avatarPreview,
+        });
+      }
+      onUpdateProfile({
+        contactNumber,
+        alternateEmail,
+        emergencyContact,
+        officeLocation,
+        avatarUrl: avatarPreview,
+      });
+      setToastMsg('Personal contact information updated successfully.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update contact information.');
+    }
+    setTimeout(() => {
+      setToastMsg(null);
+      setErrorMsg(null);
+    }, 3500);
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg(null);
     if (newPassword.length < 8) {
@@ -166,18 +207,45 @@ export default function ProfileSettings({
       setErrorMsg('Please choose a stronger password matching the security criteria.');
       return;
     }
-    onChangePassword({ currentPassword, newPassword });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setToastMsg('Password successfully updated.');
-    setTimeout(() => setToastMsg(null), 3500);
+
+    try {
+      if (currentUser?.id) {
+        await api.users.changePassword(currentUser.id, currentPassword, newPassword);
+      }
+      onChangePassword({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setToastMsg('Password successfully updated.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update password.');
+    }
+    setTimeout(() => {
+      setToastMsg(null);
+      setErrorMsg(null);
+    }, 3500);
   };
 
-  const handleNotificationSubmit = (e) => {
+  const handleNotificationSubmit = async (e) => {
     e.preventDefault();
-    setToastMsg('Notification & communication preferences saved.');
-    setTimeout(() => setToastMsg(null), 3500);
+    setIsSavingPrefs(true);
+    try {
+      await api.notifications.updatePreferences({
+        deadline_alerts: deadlineAlerts,
+        contract_notices: contractNotices,
+        approval_alerts: approvalAlerts,
+        sms_alerts: smsAlerts,
+      });
+      setToastMsg('Notification & communication preferences saved successfully.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to save notification preferences.');
+    } finally {
+      setIsSavingPrefs(false);
+      setTimeout(() => {
+        setToastMsg(null);
+        setErrorMsg(null);
+      }, 3500);
+    }
   };
 
   const handleRevokeSession = async (sessionId) => {
@@ -774,8 +842,13 @@ export default function ProfileSettings({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="btn btn-primary" style={{ cursor: 'pointer', fontWeight: 700 }}>
-                Save Notification Preferences
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSavingPrefs || isLoadingPrefs}
+                style={{ cursor: isSavingPrefs ? 'wait' : 'pointer', fontWeight: 700 }}
+              >
+                {isSavingPrefs ? 'Saving Preferences...' : 'Save Notification Preferences'}
               </button>
             </div>
           </form>
