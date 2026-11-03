@@ -70,6 +70,12 @@ export default function CampusGeofence({
       selectedCampus?.polygon ||
       (selectedCampusId.includes('luna') ? DEFAULT_LUNA_POLYGON : DEFAULT_MAIN_POLYGON)
   );
+  const [polygonBufferM, setPolygonBufferM] = useState(0);
+  const basePolygonRef = useRef(
+    selectedCampus?.polygonCoords ||
+      selectedCampus?.polygon ||
+      (selectedCampusId.includes('luna') ? DEFAULT_LUNA_POLYGON : DEFAULT_MAIN_POLYGON)
+  );
   const [enforceGeofence, setEnforceGeofence] = useState(
     selectedCampus?.enforceGeofence !== false
   );
@@ -198,6 +204,31 @@ export default function CampusGeofence({
     ];
   };
 
+  // Helper: applies centroid expansion/contraction buffer in meters to a base polygon
+  const applyPolygonBuffer = (baseCoords, bufferMeters) => {
+    if (!baseCoords || baseCoords.length < 3) return baseCoords;
+    if (bufferMeters === 0) return baseCoords;
+
+    const [cLat, cLng] = calculatePolygonCentroid(baseCoords);
+    return baseCoords.map(([lat, lng]) => {
+      const distM = calculateHaversineDistanceMeters(cLat, cLng, lat, lng);
+      if (distM <= 1) return [lat, lng];
+      const newDistM = Math.max(5, distM + bufferMeters);
+      const ratio = newDistM / distM;
+      return [
+        parseFloat((cLat + (lat - cLat) * ratio).toFixed(6)),
+        parseFloat((cLng + (lng - cLng) * ratio).toFixed(6)),
+      ];
+    });
+  };
+
+  // Handler: expands or contracts polygon uniformly from centroid
+  const handlePolygonBufferChange = (newBuffer) => {
+    setPolygonBufferM(newBuffer);
+    const updated = applyPolygonBuffer(basePolygonRef.current, newBuffer);
+    setPolygonCoords(updated);
+  };
+
   // Heuristic spatial lookup for Ormoc City Barangays based on coordinates
   const lookupOrmocBarangay = (lat, lng) => {
     const nLat = parseFloat(lat);
@@ -305,6 +336,13 @@ export default function CampusGeofence({
             }));
             setCampuses(normalized);
             saveCampusGeofences(normalized);
+            const curr = normalized.find((c) => c.id === selectedCampusId) || normalized[0];
+            if (curr && (curr.polygonCoords || curr.polygon)) {
+              const poly = curr.polygonCoords || curr.polygon;
+              basePolygonRef.current = poly;
+              setPolygonBufferM(0);
+              setPolygonCoords(poly);
+            }
           }
         }
       } catch (err) {
@@ -346,6 +384,8 @@ export default function CampusGeofence({
         ? DEFAULT_LUNA_POLYGON
         : DEFAULT_MAIN_POLYGON;
       const poly = selectedCampus.polygonCoords || selectedCampus.polygon || defaultPoly;
+      basePolygonRef.current = poly;
+      setPolygonBufferM(0);
       setPolygonCoords(poly);
       setEnforceGeofence(selectedCampus.enforceGeofence !== false);
     }
@@ -521,6 +561,8 @@ export default function CampusGeofence({
             parseFloat(newPos.lat.toFixed(6)),
             parseFloat(newPos.lng.toFixed(6)),
           ];
+          basePolygonRef.current = updated;
+          setPolygonBufferM(0);
           setPolygonCoords(updated);
 
           // Update latitude and longitude form state to the polygon centroid
@@ -706,39 +748,54 @@ export default function CampusGeofence({
     ).addTo(map);
     locatePolylineRef.current = line;
 
-    // Verification Ping Marker
+    // Verification Ping Teardrop Pin Marker
     const isOk = log.isValid;
-    const pingIconSvg = isOk
-      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`
-      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    const pinColor = isOk ? '#059669' : '#dc2626';
 
-    const pingIcon = L.divIcon({
-      className: 'evsu-ping-marker',
+    const teardropPinIcon = L.divIcon({
+      className: 'evsu-locate-pin-marker',
       html: `
         <div style="
-          background: ${isOk ? '#059669' : '#dc2626'};
-          color: #ffffff;
-          padding: 5px 10px;
-          border-radius: 14px;
-          font-size: 11px;
-          font-weight: 700;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-          border: 2px solid #ffffff;
+          position: relative;
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 6px;
-          white-space: nowrap;
-          transform: translate(-50%, -50%);
+          transform: translate(-50%, -100%);
+          cursor: pointer;
+          user-select: none;
         ">
-          ${pingIconSvg}
-          <span>${log.name}</span>
+          <svg width="24" height="32" viewBox="0 0 22 30" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));">
+            <path d="M11 0C4.92 0 0 4.92 0 11C0 19.5 11 30 11 30C11 30 22 19.5 22 11C22 4.92 17.08 0 11 0Z" 
+                  fill="${pinColor}" 
+                  stroke="#ffffff" 
+                  stroke-width="1.8" 
+                  stroke-linejoin="round"/>
+            <circle cx="11" cy="11" r="5" fill="#ffffff" />
+            <circle cx="11" cy="11" r="3" fill="${pinColor}" />
+          </svg>
+
+          <div style="
+            margin-top: 1px;
+            background: rgba(15, 23, 42, 0.92);
+            color: #ffffff;
+            padding: 1px 7px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            pointer-events: none;
+          ">
+            ${log.name}
+          </div>
         </div>
       `,
       iconSize: [0, 0],
       iconAnchor: [0, 0],
     });
 
-    const pingMarker = L.marker([logLat, logLng], { icon: pingIcon }).addTo(map);
+    const pingMarker = L.marker([logLat, logLng], { icon: teardropPinIcon }).addTo(map);
     pingMarker
       .bindPopup(
         `<div style="font-family: inherit; font-size: 12px; line-height: 1.5;">
@@ -760,6 +817,25 @@ export default function CampusGeofence({
 
     // Scroll up to map smoothly
     mapContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  // 7. Cancel focus and return to campus center view
+  const handleCancelFocus = () => {
+    const map = mapInstanceRef.current;
+    setActiveLocatePing(null);
+
+    if (locateMarkerRef.current && map) {
+      map.removeLayer(locateMarkerRef.current);
+      locateMarkerRef.current = null;
+    }
+    if (locatePolylineRef.current && map) {
+      map.removeLayer(locatePolylineRef.current);
+      locatePolylineRef.current = null;
+    }
+
+    if (map && latitude && longitude) {
+      map.panTo([parseFloat(latitude), parseFloat(longitude)], { duration: 0.6 });
+    }
   };
 
   // Recenter map button — pans smoothly without changing the user's zoom level
@@ -825,6 +901,8 @@ export default function CampusGeofence({
       console.warn('Backend geofence update warning:', err.message);
     }
 
+    basePolygonRef.current = polygonCoords;
+    setPolygonBufferM(0);
     setCampuses(updatedList);
     saveCampusGeofences(updatedList);
     onSave(updatedList);
@@ -915,6 +993,8 @@ export default function CampusGeofence({
     const defaultPoly = selectedCampusId.includes('luna')
       ? DEFAULT_LUNA_POLYGON
       : DEFAULT_MAIN_POLYGON;
+    basePolygonRef.current = defaultPoly;
+    setPolygonBufferM(0);
     setPolygonCoords(defaultPoly);
     const [cLat, cLng] = calculatePolygonCentroid(defaultPoly);
     setLatitude(cLat);
@@ -930,6 +1010,8 @@ export default function CampusGeofence({
       parseFloat((last[1] + 0.0006).toFixed(6)),
     ];
     const updated = [...polygonCoords, newCorner];
+    basePolygonRef.current = updated;
+    setPolygonBufferM(0);
     setPolygonCoords(updated);
     const [cLat, cLng] = calculatePolygonCentroid(updated);
     setLatitude(cLat);
@@ -943,6 +1025,8 @@ export default function CampusGeofence({
       return;
     }
     const updated = polygonCoords.slice(0, -1);
+    basePolygonRef.current = updated;
+    setPolygonBufferM(0);
     setPolygonCoords(updated);
     const [cLat, cLng] = calculatePolygonCentroid(updated);
     setLatitude(cLat);
@@ -1320,6 +1404,29 @@ export default function CampusGeofence({
               >
                 <Crosshair size={13} /> Recenter
               </button>
+
+              {/* Cancel Focus Button */}
+              {activeLocatePing && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={handleCancelFocus}
+                  title="Cancel focus and return to campus view"
+                  style={{
+                    padding: '5px 9px',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: '#fee2e2',
+                    color: '#b91c1c',
+                    border: '1px solid #fecaca',
+                    fontWeight: 700,
+                  }}
+                >
+                  <X size={13} /> Cancel Focus
+                </button>
+              )}
 
               {/* Zoom In / Out */}
               <div style={{ display: 'flex', gap: '2px' }}>
@@ -1777,8 +1884,114 @@ export default function CampusGeofence({
                   ))}
                 </div>
 
-                <div className="muted" style={{ fontSize: '11px', marginTop: '6px' }}>
-                  Drag the white circle handles on the map to trace the exact property boundaries.
+                {/* Centroid Boundary Buffer / Expansion Slider (Option A) */}
+                <div
+                  style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--line)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    <label
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '12.5px',
+                        margin: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        color: 'var(--ink-900)',
+                      }}
+                    >
+                      <Maximize2 size={13} color="var(--brand-700)" />
+                      Centroid Boundary Buffer (Expansion)
+                    </label>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: polygonBufferM === 0 ? 'var(--ink-700)' : 'var(--brand-700)',
+                      }}
+                    >
+                      {polygonBufferM === 0
+                        ? 'Original (0m)'
+                        : polygonBufferM > 0
+                        ? `+${polygonBufferM}m outward`
+                        : `${polygonBufferM}m inward`}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'center',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <input
+                      type="number"
+                      min="-50"
+                      max="200"
+                      step="5"
+                      value={polygonBufferM}
+                      onChange={(e) =>
+                        handlePolygonBufferChange(parseInt(e.target.value, 10) || 0)
+                      }
+                      className="form-control"
+                      style={{ width: '80px', height: '30px', fontSize: '12px', padding: '2px 6px' }}
+                    />
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {[-20, 0, 15, 30, 50, 100].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          className={`btn btn-sm ${
+                            polygonBufferM === preset ? 'btn-primary' : ''
+                          }`}
+                          onClick={() => handlePolygonBufferChange(preset)}
+                          style={{
+                            padding: '4px 7px',
+                            fontSize: '10.5px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {preset === 0 ? 'Original' : preset > 0 ? `+${preset}m` : `${preset}m`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="-40"
+                    max="150"
+                    step="5"
+                    value={polygonBufferM}
+                    onChange={(e) =>
+                      handlePolygonBufferChange(parseInt(e.target.value, 10) || 0)
+                    }
+                    style={{
+                      width: '100%',
+                      accentColor: 'var(--brand-700)',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <div className="muted" style={{ fontSize: '11px', marginTop: '4px' }}>
+                    Stretches all boundary corners outward from the center while preserving the exact property shape and proportions.
+                  </div>
+                </div>
+
+                <div className="muted" style={{ fontSize: '11px', marginTop: '8px' }}>
+                  Drag the white circle handles on the map to trace the exact property boundaries, or use the buffer slider to expand uniformly.
                 </div>
               </div>
             )}
@@ -2007,6 +2220,30 @@ export default function CampusGeofence({
               <RefreshCw size={13} className={isLoadingVerifications ? 'spin' : ''} />
               <span>Refresh</span>
             </button>
+
+            {/* Cancel Focus Button */}
+            {activeLocatePing && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={handleCancelFocus}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  height: '34px',
+                  padding: '0 12px',
+                  color: '#b91c1c',
+                  borderColor: '#fca5a5',
+                  background: '#fef2f2',
+                  fontWeight: 600,
+                }}
+                title="Cancel active map focus and clear submission pin"
+              >
+                <X size={13} />
+                <span>Cancel Focus</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -2132,27 +2369,51 @@ export default function CampusGeofence({
                         </span>
                       </td>
                       <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          onClick={() => handleLocateOnMap(log)}
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '11.5px',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            background: isCurrentLocate ? 'var(--brand-700)' : '#ffffff',
-                            color: isCurrentLocate ? '#ffffff' : 'var(--brand-700)',
-                            border: '1px solid var(--brand-700)',
-                            fontWeight: 600,
-                          }}
-                          title="Fly map to employee's GPS coordinates"
-                        >
-                          <MapPin size={12} />
-                          <span>{isCurrentLocate ? 'Focused' : 'Locate'}</span>
-                        </button>
+                        {isCurrentLocate ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={handleCancelFocus}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '11.5px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #fca5a5',
+                              fontWeight: 700,
+                            }}
+                            title="Cancel focus and clear submission pin from map"
+                          >
+                            <X size={12} />
+                            <span>Cancel Focus</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => handleLocateOnMap(log)}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '11.5px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#ffffff',
+                              color: 'var(--brand-700)',
+                              border: '1px solid var(--brand-700)',
+                              fontWeight: 600,
+                            }}
+                            title="Fly map to employee's GPS coordinates"
+                          >
+                            <MapPin size={12} />
+                            <span>Locate</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
