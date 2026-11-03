@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Check, Archive, X, Building2, ClipboardList, RotateCcw, ChevronDown, ChevronUp, Copy, Shield } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
@@ -53,7 +53,9 @@ export default function AdministratorManagement({
             fullName: u.full_name,
             email: u.email,
             role: u.role,
-            department: u.department ? u.department.name : 'HRMDO Office',
+            department: (u.department && typeof u.department === 'object' && u.department.name)
+              ? u.department.name
+              : (u.department_name || 'HRMDO Office'),
             status: u.is_archived ? 'Archived' : u.is_active ? 'Active' : 'Inactive',
             contactNumber: u.contact_number || '+63 9XX XXX XXXX',
           }));
