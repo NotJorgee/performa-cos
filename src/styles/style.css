@@ -1332,3 +1332,13 @@ textarea.form-control { resize: vertical; min-height: 90px; }
   .lv2-h1 { font-size: 1.4em; }
   .lv2-input { font-size: 16px; }
 }
+
+/* Disarm intrusive browser autofill coloring */
+.lv2-input:-webkit-autofill,
+.lv2-input:-webkit-autofill:hover, 
+.lv2-input:-webkit-autofill:focus, 
+.lv2-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: var(--ink-900) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

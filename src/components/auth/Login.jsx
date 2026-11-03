@@ -12,7 +12,7 @@ export default function Login({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(false);
   const [errorMessage, setErrorMessage] = useState(externalErrorMessage);
   const [isLoading, setIsLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -124,7 +124,11 @@ export default function Login({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} id="loginForm">
+            <form onSubmit={handleSubmit} id="loginForm" autoComplete="off">
+              {/* Disarm aggressive browser credential prefilling */}
+              <input type="text" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+              <input type="password" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+
               {/* Email Field */}
               <div className="lv2-field">
                 <label htmlFor="loginEmail">Institutional Email</label>
@@ -135,9 +139,9 @@ export default function Login({
                     id="loginEmail"
                     name="email"
                     placeholder="name@evsu.edu.ph"
-                    autoComplete="username"
+                    autoComplete="off"
+                    data-lpignore="true"
                     required
-                    autoFocus
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -160,7 +164,8 @@ export default function Login({
                     id="loginPassword"
                     name="password"
                     placeholder="••••••••••"
-                    autoComplete="current-password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
                     required
                     value={password}
                     onChange={(e) => {
