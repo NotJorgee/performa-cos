@@ -1,170 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
 import { Download, Check, Archive, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
 import { getComparativeTrajectory, ComparativeTrajectoryBadge } from '../../utils/comparativeAnalytics';
 
 export default function ReportGenerator({
-  employees = [
-    {
-      id: 1,
-      idNumber: 'G10222026JMR',
-      fullName: 'Jorge Mikhael Gubantes',
-      email: 'jorge.gubantes@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 3,
-      avgScore: 90.8,
-      latestScore: 92.4,
-      previousScore: 88.6,
-      latestRating: 'Outstanding',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      idNumber: 'R10222026IJM',
-      fullName: 'Ian Joseph Ranoco',
-      email: 'ian.ranoco@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 3,
-      avgScore: 87.2,
-      latestScore: 88.6,
-      previousScore: 88.2,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 7,
-      idNumber: 'A10222026MTR',
-      fullName: 'Mark Anthony Reyes',
-      email: 'mark.reyes@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 2,
-      avgScore: 89.2,
-      latestScore: 89.2,
-      previousScore: 89.2,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      idNumber: 'P10222026JLP',
-      fullName: 'Jeramae Pace',
-      email: 'jeramae.pace@evsu.edu.ph',
-      department: 'Library Office',
-      college: 'Administrative and Support Services',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 2,
-      avgScore: 78.5,
-      latestScore: 78.5,
-      previousScore: 81.2,
-      latestRating: 'Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      idNumber: 'M10222026CBM',
-      fullName: 'Carlos Mendoza',
-      email: 'carlos.mendoza@evsu.edu.ph',
-      department: 'Maintenance/Janitorial (MESO) Office',
-      college: 'Physical Plant and General Services',
-      cosCategory: 'Maintenance/Janitorial',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 4,
-      avgScore: 68.0,
-      latestScore: 68.0,
-      previousScore: 71.5,
-      latestRating: 'Needs Improvement',
-      status: 'Active',
-    },
-    {
-      id: 5,
-      idNumber: 'E10222026ABC',
-      fullName: 'Elena Santos',
-      email: 'elena.santos@evsu.edu.ph',
-      department: 'Engineering Department',
-      college: 'College of Engineering',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 2,
-      avgScore: 54.0,
-      latestScore: 54.0,
-      previousScore: 58.0,
-      latestRating: 'Unsatisfactory',
-      status: 'Active',
-    },
-    {
-      id: 6,
-      idNumber: 'D10222026XYZ',
-      fullName: 'Danilo Cruz',
-      email: 'danilo.cruz@evsu.edu.ph',
-      department: 'Technology Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2026',
-      contractEndDate: 'Apr 22, 2027',
-      totalContracts: 3,
-      avgScore: 84.0,
-      latestScore: 84.0,
-      previousScore: 82.5,
-      latestRating: 'Very Satisfactory',
-      status: 'Active',
-    },
-    {
-      id: 8,
-      idNumber: 'C10222025ABC',
-      fullName: 'Clarisse Villamor',
-      email: 'clarisse.villamor@evsu.edu.ph',
-      department: 'Computer Studies Department',
-      college: 'College of Technology',
-      cosCategory: 'Administrative',
-      dateAppointed: 'Oct 22, 2025',
-      contractEndDate: 'Apr 22, 2026',
-      totalContracts: 1,
-      avgScore: 82.0,
-      latestScore: 82.0,
-      previousScore: null,
-      latestRating: 'Satisfactory',
-      status: 'Archived',
-    },
-    {
-      id: 9,
-      idNumber: 'R10222025XYZ',
-      fullName: 'Ramon Bautista',
-      email: 'ramon.bautista@evsu.edu.ph',
-      department: 'Engineering Department',
-      college: 'College of Engineering',
-      cosCategory: 'Maintenance/Janitorial',
-      dateAppointed: 'Oct 22, 2025',
-      contractEndDate: 'Apr 22, 2026',
-      totalContracts: 2,
-      avgScore: 76.5,
-      latestScore: 76.5,
-      previousScore: 75.0,
-      latestRating: 'Satisfactory',
-      status: 'Archived',
-    },
-  ],
+  employees: propEmployees = [],
   departments = [
-    'Computer Studies Department',
+    'Disbursing / Cashier Office',
+    'HRMDO Office',
+    'School Clinic',
+    'IPDO Office',
+    'Research Office',
+    'Sports And Development Office',
+    'Quality Assurance & Accreditation Office',
     'Technology Department',
-    'Engineering Department',
+    'Guidance Office',
+    'Extension Service Office',
     'Education Department',
+    'Procurement Office',
+    'IGP Office',
+    'Campus Director Office',
+    'Computer Studies Department',
+    'SASO Office',
+    'Engineering Department',
+    'Administrative and Finance',
+    'Hospitality & Tourism Management',
     'Library Office',
+    'Registrar Office',
     'Maintenance/Janitorial (MESO) Office',
   ],
   departmentName = null,
@@ -174,6 +37,52 @@ export default function ReportGenerator({
 }) {
   const deptScope = restrictDepartment || departmentName;
   const isDeptRestricted = Boolean(deptScope);
+
+  const [employees, setEmployees] = useState(propEmployees);
+  const [isLoading, setIsLoading] = useState(propEmployees.length === 0);
+
+  useEffect(() => {
+    if (propEmployees && propEmployees.length > 0) {
+      setEmployees(propEmployees);
+      return;
+    }
+    let isMounted = true;
+    setIsLoading(true);
+    api.users
+      .list({ is_archived: null })
+      .then((users) => {
+        if (!isMounted) return;
+        if (Array.isArray(users)) {
+          const mapped = users.map((u) => ({
+            id: u.id,
+            idNumber: u.employee_id_number || 'N/A',
+            fullName: u.full_name,
+            email: u.email,
+            department: (u.department && typeof u.department === 'object' && u.department.name) ? u.department.name : (u.department_name || 'HRMDO Office'),
+            college: u.department?.college || 'Academic Unit',
+            cosCategory: u.cos_category || 'Administrative',
+            dateAppointed: u.date_appointed || 'N/A',
+            contractEndDate: u.contract_end_date || 'N/A',
+            totalContracts: u.total_contracts || 0,
+            avgScore: null,
+            latestScore: null,
+            previousScore: null,
+            latestRating: null,
+            status: u.is_archived ? 'Archived' : u.is_active ? 'Active' : 'Inactive',
+          }));
+          setEmployees(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn('API users fetch notice in ReportGenerator:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [propEmployees]);
 
   const [selectedEmp, setSelectedEmp] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -500,8 +409,10 @@ export default function ReportGenerator({
             ))}
             {activeEmployees.length === 0 && (
               <tr>
-                <td colSpan={isDeptRestricted ? 6 : 8} className="muted" style={{ padding: '28px', textAlign: 'center' }}>
-                  No active personnel records matching search criteria.
+                <td colSpan={isDeptRestricted ? 6 : 8} className="muted" style={{ padding: '36px 16px', textAlign: 'center' }}>
+                  {isLoading
+                    ? 'Loading personnel records from database...'
+                    : 'No personnel records matching search criteria.'}
                 </td>
               </tr>
             )}

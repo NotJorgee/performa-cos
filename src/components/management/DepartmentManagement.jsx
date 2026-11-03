@@ -28,62 +28,14 @@ const EVSU_DEPT_PRESETS = [
 ];
 
 export default function DepartmentManagement({
-  departments = [
-    {
-      id: 1,
-      name: 'Computer Studies Department',
-      college: 'College of Technology',
-      collegeCode: 'COT',
-      employeeCount: 12,
-      activeEvaluations: 3,
-    },
-    {
-      id: 2,
-      name: 'Technology Department',
-      college: 'College of Technology',
-      collegeCode: 'COT',
-      employeeCount: 8,
-      activeEvaluations: 1,
-    },
-    {
-      id: 3,
-      name: 'Library Office',
-      college: 'Administrative and Support Services',
-      collegeCode: 'ADMIN',
-      employeeCount: 5,
-      activeEvaluations: 0,
-    },
-    {
-      id: 4,
-      name: 'Engineering Department',
-      college: 'College of Engineering',
-      collegeCode: 'COE',
-      employeeCount: 10,
-      activeEvaluations: 2,
-    },
-    {
-      id: 5,
-      name: 'Education Department',
-      college: 'College of Education',
-      collegeCode: 'COED',
-      employeeCount: 6,
-      activeEvaluations: 1,
-    },
-    {
-      id: 6,
-      name: 'HRMDO Office',
-      college: 'Administrative and Support Services',
-      collegeCode: 'ADMIN',
-      employeeCount: 4,
-      activeEvaluations: 0,
-    },
-  ],
+  departments = [],
   onAddDepartment = () => {},
   onUpdateDepartment = () => {},
   onDeleteDepartment = () => {},
   onBack = null,
 }) {
   const [deptList, setDeptList] = useState(departments);
+  const [isLoading, setIsLoading] = useState(departments.length === 0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [settingsDept, setSettingsDept] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
@@ -91,6 +43,7 @@ export default function DepartmentManagement({
 
   useEffect(() => {
     let isMounted = true;
+    setIsLoading(true);
     api.departments
       .list()
       .then((depts) => {
@@ -108,6 +61,9 @@ export default function DepartmentManagement({
       })
       .catch((err) => {
         console.warn('API departments fetch notice:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
     return () => {
       isMounted = false;
@@ -352,8 +308,10 @@ export default function DepartmentManagement({
             ))}
             {filteredDepts.length === 0 && (
               <tr>
-                <td colSpan="5" className="muted" style={{ padding: '24px', textAlign: 'center' }}>
-                  {deptList.length === 0
+                <td colSpan="5" className="muted" style={{ padding: '36px 16px', textAlign: 'center' }}>
+                  {isLoading
+                    ? 'Loading official EVSU departments from database...'
+                    : deptList.length === 0
                     ? 'No departments configured. Click "+ Add Department" to add one.'
                     : 'No departments matching search criteria.'}
                 </td>
