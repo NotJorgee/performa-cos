@@ -47,14 +47,21 @@ def submit_dar(
         active_campuses = db.query(models.CampusGeofence).filter(models.CampusGeofence.enforce_geofence == True).all()
         if active_campuses:
             for campus in active_campuses:
-                dist = calculate_haversine_distance_meters(
-                    report.latitude, report.longitude,
-                    campus.latitude, campus.longitude,
-                )
-                if dist <= campus.radius_meters:
-                    is_valid_geofence = True
-                    verified_campus = campus.name
-                    break
+                from .geofence import is_point_in_polygon
+                if campus.boundary_type == "polygon" and campus.polygon_coords and len(campus.polygon_coords) >= 3:
+                    if is_point_in_polygon(report.latitude, report.longitude, campus.polygon_coords):
+                        is_valid_geofence = True
+                        verified_campus = campus.name
+                        break
+                else:
+                    dist = calculate_haversine_distance_meters(
+                        report.latitude, report.longitude,
+                        campus.latitude, campus.longitude,
+                    )
+                    if dist <= campus.radius_meters:
+                        is_valid_geofence = True
+                        verified_campus = campus.name
+                        break
         else:
             # Fallback to config settings
             dist_main = calculate_haversine_distance_meters(

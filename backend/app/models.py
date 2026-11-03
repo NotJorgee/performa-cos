@@ -266,6 +266,8 @@ class CampusGeofence(Base):
     latitude = Column(Float, nullable=False, default=11.0065)
     longitude = Column(Float, nullable=False, default=124.6075)
     radius_meters = Column(Float, nullable=False, default=500.0)
+    boundary_type = Column(String(50), default="radius")  # 'radius' | 'polygon'
+    polygon_coords = Column(JSON, nullable=True)  # List of [lat, lng] vertices
     enforce_geofence = Column(Boolean, default=True)
     is_primary = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

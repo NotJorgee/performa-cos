@@ -27,6 +27,8 @@ class CampusGeofenceBase(BaseModel):
     latitude: float
     longitude: float
     radiusM: float
+    boundaryType: Optional[str] = "radius"  # 'radius' | 'polygon'
+    polygonCoords: Optional[List[List[float]]] = None
     enforceGeofence: bool = True
     isPrimary: bool = False
 
@@ -42,6 +44,8 @@ class CampusGeofenceCreate(BaseModel):
     latitude: float
     longitude: float
     radiusM: float
+    boundaryType: Optional[str] = "radius"
+    polygonCoords: Optional[List[List[float]]] = None
     enforceGeofence: bool = True
     isPrimary: bool = False
 
@@ -63,7 +67,7 @@ class VerificationLogOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Haversine Calculation Helper
+# Haversine & Ray-Casting Polygon Calculation Helpers
 # ---------------------------------------------------------------------------
 def calculate_haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculates great-circle distance in meters between two GPS coordinates."""
@@ -79,9 +83,42 @@ def calculate_haversine_distance_meters(lat1: float, lon1: float, lat2: float, l
     return R * c
 
 
+def is_point_in_polygon(lat: float, lon: float, polygon: Optional[List[List[float]]]) -> bool:
+    """Ray-casting algorithm for 2D Point-in-Polygon check."""
+    if not polygon or len(polygon) < 3:
+        return False
+    inside = False
+    n = len(polygon)
+    p1x, p1y = polygon[0][0], polygon[0][1]
+    for i in range(1, n + 1):
+        p2x, p2y = polygon[i % n][0], polygon[i % n][1]
+        if (lon > min(p1y, p2y)) and (lon <= max(p1y, p2y)) and (lat <= max(p1x, p2x)):
+            if p1y != p2y:
+                xinters = (lon - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+            if p1x == p2x or lat <= xinters:
+                inside = not inside
+        p1x, p1y = p2x, p2y
+    return inside
+
+
 # ---------------------------------------------------------------------------
 # Default Campuses Seeder
 # ---------------------------------------------------------------------------
+DEFAULT_MAIN_POLYGON = [
+    [11.0085, 124.6058],
+    [11.0088, 124.6090],
+    [11.0052, 124.6095],
+    [11.0046, 124.6065],
+    [11.0060, 124.6050],
+]
+
+DEFAULT_LUNA_POLYGON = [
+    [11.0625, 124.6120],
+    [11.0628, 124.6152],
+    [11.0592, 124.6155],
+    [11.0588, 124.6122],
+]
+
 DEFAULT_CAMPUSES_SEED = [
     {
         "id": "evsu_ormoc_main",
@@ -91,6 +128,8 @@ DEFAULT_CAMPUSES_SEED = [
         "latitude": 11.0065,
         "longitude": 124.6075,
         "radius_meters": 500.0,
+        "boundary_type": "radius",
+        "polygon_coords": DEFAULT_MAIN_POLYGON,
         "enforce_geofence": True,
         "is_primary": True,
     },
@@ -102,6 +141,8 @@ DEFAULT_CAMPUSES_SEED = [
         "latitude": 11.0607,
         "longitude": 124.6137,
         "radius_meters": 500.0,
+        "boundary_type": "radius",
+        "polygon_coords": DEFAULT_LUNA_POLYGON,
         "enforce_geofence": True,
         "is_primary": False,
     },
@@ -134,6 +175,7 @@ def get_campus_geofences(
     
     result = []
     for c in campuses:
+        fallback_poly = DEFAULT_MAIN_POLYGON if "main" in c.id.lower() else DEFAULT_LUNA_POLYGON
         result.append(
             CampusGeofenceBase(
                 id=c.id,
@@ -143,6 +185,8 @@ def get_campus_geofences(
                 latitude=c.latitude,
                 longitude=c.longitude,
                 radiusM=c.radius_meters,
+                boundaryType=c.boundary_type or "radius",
+                polygonCoords=c.polygon_coords or fallback_poly,
                 enforceGeofence=c.enforce_geofence,
                 isPrimary=c.is_primary,
             )
@@ -173,6 +217,8 @@ def update_campus_geofences_batch(
             existing.latitude = item.latitude
             existing.longitude = item.longitude
             existing.radius_meters = item.radiusM
+            existing.boundary_type = item.boundaryType or "radius"
+            existing.polygon_coords = item.polygonCoords
             existing.enforce_geofence = item.enforceGeofence
             existing.is_primary = item.isPrimary
         else:
@@ -184,6 +230,8 @@ def update_campus_geofences_batch(
                 latitude=item.latitude,
                 longitude=item.longitude,
                 radius_meters=item.radiusM,
+                boundary_type=item.boundaryType or "radius",
+                polygon_coords=item.polygonCoords,
                 enforce_geofence=item.enforceGeofence,
                 is_primary=item.isPrimary,
             )
@@ -232,6 +280,8 @@ def update_single_geofence(
             latitude=payload.latitude,
             longitude=payload.longitude,
             radius_meters=payload.radiusM,
+            boundary_type=payload.boundaryType or "radius",
+            polygon_coords=payload.polygonCoords,
             enforce_geofence=payload.enforceGeofence,
             is_primary=payload.isPrimary,
         )
@@ -243,6 +293,10 @@ def update_single_geofence(
         campus.latitude = payload.latitude
         campus.longitude = payload.longitude
         campus.radius_meters = payload.radiusM
+        if payload.boundaryType:
+            campus.boundary_type = payload.boundaryType
+        if payload.polygonCoords is not None:
+            campus.polygon_coords = payload.polygonCoords
         campus.enforce_geofence = payload.enforceGeofence
 
     db.commit()
@@ -252,10 +306,11 @@ def update_single_geofence(
         db=db,
         action="UPDATE_CAMPUS_GEOFENCE",
         target_scope=campus.name,
-        details=f"Updated geofence for {campus.name}: Lat {campus.latitude}, Lng {campus.longitude}, Radius {campus.radius_meters}m, Enforce={campus.enforce_geofence}",
+        details=f"Updated geofence for {campus.name}: Lat {campus.latitude}, Lng {campus.longitude}, Type={campus.boundary_type}, Radius={campus.radius_meters}m, Enforce={campus.enforce_geofence}",
         user=current_user,
     )
 
+    fallback_poly = DEFAULT_MAIN_POLYGON if "main" in campus.id.lower() else DEFAULT_LUNA_POLYGON
     return CampusGeofenceBase(
         id=campus.id,
         name=campus.name,
@@ -264,6 +319,8 @@ def update_single_geofence(
         latitude=campus.latitude,
         longitude=campus.longitude,
         radiusM=campus.radius_meters,
+        boundaryType=campus.boundary_type or "radius",
+        polygonCoords=campus.polygon_coords or fallback_poly,
         enforceGeofence=campus.enforce_geofence,
         isPrimary=campus.is_primary,
     )

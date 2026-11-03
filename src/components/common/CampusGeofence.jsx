@@ -27,11 +27,14 @@ import {
   Map as MapIcon,
   Globe,
   Radio,
+  RotateCcw,
 } from 'lucide-react';
 import {
   getCampusGeofences,
   saveCampusGeofences,
   calculateHaversineDistanceMeters,
+  DEFAULT_MAIN_POLYGON,
+  DEFAULT_LUNA_POLYGON,
 } from '../../utils/campusGeofence';
 import { api } from '../../services/api';
 
@@ -55,6 +58,13 @@ export default function CampusGeofence({
   const [latitude, setLatitude] = useState(selectedCampus?.latitude || 11.0065);
   const [longitude, setLongitude] = useState(selectedCampus?.longitude || 124.6075);
   const [radiusM, setRadiusM] = useState(selectedCampus?.radiusM || 500);
+  const [boundaryType, setBoundaryType] = useState(
+    selectedCampus?.boundaryType || 'radius'
+  );
+  const [polygonCoords, setPolygonCoords] = useState(
+    selectedCampus?.polygon ||
+      (selectedCampusId.includes('luna') ? DEFAULT_LUNA_POLYGON : DEFAULT_MAIN_POLYGON)
+  );
   const [enforceGeofence, setEnforceGeofence] = useState(
     selectedCampus?.enforceGeofence !== false
   );
@@ -79,6 +89,7 @@ export default function CampusGeofence({
     latitude: 11.0065,
     longitude: 124.6075,
     radiusM: 500,
+    boundaryType: 'radius',
     enforceGeofence: true,
   });
 
@@ -162,6 +173,8 @@ export default function CampusGeofence({
   const streetsTileRef = useRef(null);
   const satelliteTileRef = useRef(null);
   const perimeterCircleRef = useRef(null);
+  const polygonRef = useRef(null);
+  const vertexMarkersRef = useRef([]);
   const campusMarkersRef = useRef([]);
   const locateMarkerRef = useRef(null);
   const locatePolylineRef = useRef(null);
@@ -212,7 +225,12 @@ export default function CampusGeofence({
       setLocationNote(selectedCampus.locationNote || '');
       setLatitude(selectedCampus.latitude);
       setLongitude(selectedCampus.longitude);
-      setRadiusM(selectedCampus.radiusM);
+      setRadiusM(selectedCampus.radiusM || 500);
+      setBoundaryType(selectedCampus.boundaryType || 'radius');
+      const defaultPoly = selectedCampus.id.includes('luna')
+        ? DEFAULT_LUNA_POLYGON
+        : DEFAULT_MAIN_POLYGON;
+      setPolygonCoords(selectedCampus.polygon || defaultPoly);
       setEnforceGeofence(selectedCampus.enforceGeofence !== false);
     }
   }, [selectedCampusId, campuses]);
@@ -220,7 +238,7 @@ export default function CampusGeofence({
   // 3. Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return; // already initialized
+    if (mapInstanceRef.current) return;
 
     const initialLat = parseFloat(latitude) || 11.0065;
     const initialLng = parseFloat(longitude) || 124.6075;
@@ -294,7 +312,7 @@ export default function CampusGeofence({
     }
   }, [mapLayerType]);
 
-  // 5. Update Center Marker & Perimeter Circle
+  // 5. Update Center Marker & Perimeter Geometry (Circle or Polygon)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -305,68 +323,162 @@ export default function CampusGeofence({
 
     if (isNaN(numLat) || isNaN(numLng)) return;
 
-    // Fly to new center smoothly when selected campus changes
+    // Smoothly pan to new center
     map.flyTo([numLat, numLng], 16, { duration: 0.8 });
 
-    // Remove existing perimeter circle
+    // Clean up previous circle, polygon, and vertex handles
     if (perimeterCircleRef.current) {
       map.removeLayer(perimeterCircleRef.current);
+      perimeterCircleRef.current = null;
     }
+    if (polygonRef.current) {
+      map.removeLayer(polygonRef.current);
+      polygonRef.current = null;
+    }
+    vertexMarkersRef.current.forEach((m) => map.removeLayer(m));
+    vertexMarkersRef.current = [];
 
-    // Draw active perimeter circle
-    const circle = L.circle([numLat, numLng], {
-      color: enforceGeofence ? '#991b1b' : '#64748b',
-      fillColor: enforceGeofence ? '#b91c1c' : '#94a3b8',
-      fillOpacity: enforceGeofence ? 0.22 : 0.12,
-      weight: 2.5,
-      dashArray: '6, 6',
-      radius: numRadius,
-    }).addTo(map);
+    // Render based on boundary type
+    if (boundaryType === 'polygon' && polygonCoords && polygonCoords.length >= 3) {
+      // Draw Polygon
+      const poly = L.polygon(polygonCoords, {
+        color: enforceGeofence ? '#991b1b' : '#64748b',
+        fillColor: enforceGeofence ? '#b91c1c' : '#94a3b8',
+        fillOpacity: enforceGeofence ? 0.22 : 0.12,
+        weight: 2.5,
+        dashArray: '6, 6',
+      }).addTo(map);
 
-    circle.bindPopup(
-      `<div style="font-family: inherit; font-size: 12.5px;">
-        <b style="color: #800000;">${campusName}</b><br/>
-        <b>Perimeter Radius:</b> ${numRadius}m<br/>
-        <b>Center:</b> ${numLat.toFixed(5)}° N, ${numLng.toFixed(5)}° E<br/>
-        <b>Enforcement:</b> ${enforceGeofence ? '<span style="color:#15803d; font-weight:700;">Active</span>' : '<span style="color:#b91c1c; font-weight:700;">Paused</span>'}
-      </div>`
-    );
+      poly.bindPopup(
+        `<div style="font-family: inherit; font-size: 12.5px;">
+          <b style="color: #800000;">${campusName} (Campus Property Boundary)</b><br/>
+          <b>Geometry:</b> Closed Polygon (${polygonCoords.length} Boundary Corners)<br/>
+          <b>Center:</b> ${numLat.toFixed(5)}° N, ${numLng.toFixed(5)}° E<br/>
+          <b>Enforcement:</b> ${enforceGeofence ? '<span style="color:#15803d; font-weight:700;">Active</span>' : '<span style="color:#b91c1c; font-weight:700;">Paused</span>'}
+        </div>`
+      );
 
-    perimeterCircleRef.current = circle;
+      polygonRef.current = poly;
+
+      // Add draggable white circular corner handles
+      polygonCoords.forEach((coord, idx) => {
+        const handleIcon = L.divIcon({
+          className: 'polygon-corner-handle',
+          html: `
+            <div style="
+              width: 14px;
+              height: 14px;
+              background: #ffffff;
+              border: 3px solid #800000;
+              border-radius: 50%;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+              cursor: crosshair;
+              transform: translate(-50%, -50%);
+            "></div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
+        });
+
+        const handleMarker = L.marker(coord, {
+          icon: handleIcon,
+          draggable: true,
+        }).addTo(map);
+
+        handleMarker.on('drag', (e) => {
+          const newPos = e.target.getLatLng();
+          const updated = [...polygonCoords];
+          updated[idx] = [
+            parseFloat(newPos.lat.toFixed(6)),
+            parseFloat(newPos.lng.toFixed(6)),
+          ];
+          poly.setLatLngs(updated);
+        });
+
+        handleMarker.on('dragend', (e) => {
+          const newPos = e.target.getLatLng();
+          const updated = [...polygonCoords];
+          updated[idx] = [
+            parseFloat(newPos.lat.toFixed(6)),
+            parseFloat(newPos.lng.toFixed(6)),
+          ];
+          setPolygonCoords(updated);
+        });
+
+        vertexMarkersRef.current.push(handleMarker);
+      });
+    } else {
+      // Draw Radial Circle
+      const circle = L.circle([numLat, numLng], {
+        color: enforceGeofence ? '#991b1b' : '#64748b',
+        fillColor: enforceGeofence ? '#b91c1c' : '#94a3b8',
+        fillOpacity: enforceGeofence ? 0.22 : 0.12,
+        weight: 2.5,
+        dashArray: '6, 6',
+        radius: numRadius,
+      }).addTo(map);
+
+      circle.bindPopup(
+        `<div style="font-family: inherit; font-size: 12.5px;">
+          <b style="color: #800000;">${campusName}</b><br/>
+          <b>Perimeter Radius:</b> ${numRadius}m<br/>
+          <b>Center:</b> ${numLat.toFixed(5)}° N, ${numLng.toFixed(5)}° E<br/>
+          <b>Enforcement:</b> ${enforceGeofence ? '<span style="color:#15803d; font-weight:700;">Active</span>' : '<span style="color:#b91c1c; font-weight:700;">Paused</span>'}
+        </div>`
+      );
+
+      perimeterCircleRef.current = circle;
+    }
 
     // Clear previous campus markers
     campusMarkersRef.current.forEach((m) => map.removeLayer(m));
     campusMarkersRef.current = [];
 
-    // Add pins for all campuses
+    // Render crisp SVG Teardrop Map Pins for each campus
     campuses.forEach((camp) => {
       const isCurrent = camp.id === selectedCampusId;
       const cLat = isCurrent ? numLat : parseFloat(camp.latitude);
       const cLng = isCurrent ? numLng : parseFloat(camp.longitude);
 
-      const pinIcon = L.divIcon({
-        className: 'evsu-campus-marker',
+      const pinColor = isCurrent ? '#800000' : '#1e293b';
+
+      const teardropPinIcon = L.divIcon({
+        className: 'evsu-teardrop-pin',
         html: `
           <div style="
-            background: ${isCurrent ? '#800000' : '#1e293b'};
-            color: #ffffff;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11.5px;
-            font-weight: 700;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.45);
-            border: 2px solid ${isCurrent ? '#fbbf24' : '#cbd5e1'};
+            position: relative;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 6px;
-            white-space: nowrap;
             transform: translate(-50%, -100%);
             cursor: ${isCurrent ? 'grab' : 'pointer'};
             user-select: none;
           ">
-            <span>🏛️</span>
-            <span>${camp.shortName || camp.name}</span>
-            ${isCurrent ? '<span style="font-size: 10px; background: rgba(251, 191, 36, 0.25); color: #fef08a; padding: 1px 5px; border-radius: 10px;">Drag</span>' : ''}
+            <svg width="34" height="46" viewBox="0 0 34 46" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));">
+              <path d="M17 0C7.61 0 0 7.61 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.61 26.39 0 17 0Z" 
+                    fill="${pinColor}" 
+                    stroke="#ffffff" 
+                    stroke-width="2.2" 
+                    stroke-linejoin="round"/>
+              <circle cx="17" cy="17" r="7.5" fill="#ffffff" />
+              <circle cx="17" cy="17" r="4.5" fill="${isCurrent ? '#f59e0b' : pinColor}" />
+            </svg>
+
+            <div style="
+              margin-top: 2px;
+              background: rgba(15, 23, 42, 0.9);
+              color: #ffffff;
+              padding: 2px 7px;
+              border-radius: 6px;
+              font-size: 11px;
+              font-weight: 700;
+              white-space: nowrap;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              border: 1px solid rgba(255, 255, 255, 0.3);
+              pointer-events: none;
+            ">
+              ${camp.shortName || camp.name}
+            </div>
           </div>
         `,
         iconSize: [0, 0],
@@ -374,18 +486,12 @@ export default function CampusGeofence({
       });
 
       const marker = L.marker([cLat, cLng], {
-        icon: pinIcon,
+        icon: teardropPinIcon,
         draggable: isCurrent,
         autoPan: true,
       }).addTo(map);
 
       if (isCurrent) {
-        marker.bindTooltip('✋ Drag pin to reposition campus center', {
-          permanent: false,
-          direction: 'top',
-          offset: [0, -32],
-        });
-
         marker.on('drag', (e) => {
           const newPos = e.target.getLatLng();
           if (perimeterCircleRef.current) {
@@ -408,7 +514,17 @@ export default function CampusGeofence({
 
       campusMarkersRef.current.push(marker);
     });
-  }, [latitude, longitude, radiusM, enforceGeofence, selectedCampusId, campuses, campusName]);
+  }, [
+    latitude,
+    longitude,
+    radiusM,
+    boundaryType,
+    polygonCoords,
+    enforceGeofence,
+    selectedCampusId,
+    campuses,
+    campusName,
+  ]);
 
   // 6. Handle "Locate on Map" for verification row
   const handleLocateOnMap = (log) => {
@@ -528,6 +644,9 @@ export default function CampusGeofence({
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radiusM: parseInt(radiusM, 10),
+      boundaryType,
+      polygon: polygonCoords,
+      polygonCoords,
       enforceGeofence,
       isPrimary: selectedCampus?.isPrimary || false,
     };
@@ -538,7 +657,18 @@ export default function CampusGeofence({
 
     try {
       if (api?.geofences?.updateSingle) {
-        await api.geofences.updateSingle(selectedCampusId, updatedCampus);
+        await api.geofences.updateSingle(selectedCampusId, {
+          name: campusName,
+          shortName,
+          locationNote,
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          radiusM: parseInt(radiusM, 10),
+          boundaryType,
+          polygonCoords,
+          enforceGeofence,
+          isPrimary: selectedCampus?.isPrimary || false,
+        });
       }
     } catch (err) {
       console.warn('Backend geofence update warning:', err.message);
@@ -549,8 +679,9 @@ export default function CampusGeofence({
     onSave(updatedList);
     setIsSaving(false);
 
+    const modeLabel = boundaryType === 'polygon' ? 'Property Polygon' : `${radiusM}m radius`;
     setToastMsg(
-      `Geofence perimeter for "${campusName}" saved successfully (${radiusM}m radius applied).`
+      `Geofence perimeter for "${campusName}" saved successfully (${modeLabel} applied).`
     );
     setTimeout(() => setToastMsg(null), 4500);
   };
@@ -567,6 +698,8 @@ export default function CampusGeofence({
       latitude: parseFloat(newCampusData.latitude),
       longitude: parseFloat(newCampusData.longitude),
       radiusM: parseInt(newCampusData.radiusM, 10),
+      boundaryType: newCampusData.boundaryType || 'radius',
+      polygon: DEFAULT_MAIN_POLYGON,
       enforceGeofence: newCampusData.enforceGeofence,
       isPrimary: false,
     };
@@ -592,6 +725,7 @@ export default function CampusGeofence({
       latitude: 11.0065,
       longitude: 124.6075,
       radiusM: 500,
+      boundaryType: 'radius',
       enforceGeofence: true,
     });
     setToastMsg(`Added "${newCampus.name}" to authorized geofence sites.`);
@@ -623,6 +757,34 @@ export default function CampusGeofence({
     setSelectedCampusId(updatedList[0].id);
     setToastMsg(`Removed campus site "${toDelete?.name}".`);
     setTimeout(() => setToastMsg(null), 4500);
+  };
+
+  // Reset polygon to default campus bounds
+  const handleResetPolygon = () => {
+    const defaultPoly = selectedCampusId.includes('luna')
+      ? DEFAULT_LUNA_POLYGON
+      : DEFAULT_MAIN_POLYGON;
+    setPolygonCoords(defaultPoly);
+  };
+
+  // Add extra corner to polygon
+  const handleAddPolygonCorner = () => {
+    if (!polygonCoords || polygonCoords.length === 0) return;
+    const last = polygonCoords[polygonCoords.length - 1];
+    const newCorner = [
+      parseFloat((last[0] + 0.0006).toFixed(6)),
+      parseFloat((last[1] + 0.0006).toFixed(6)),
+    ];
+    setPolygonCoords([...polygonCoords, newCorner]);
+  };
+
+  // Remove last corner
+  const handleRemovePolygonCorner = () => {
+    if (polygonCoords.length <= 3) {
+      alert('A polygon boundary must contain at least 3 corner vertices.');
+      return;
+    }
+    setPolygonCoords(polygonCoords.slice(0, -1));
   };
 
   // Refresh verifications
@@ -843,7 +1005,7 @@ export default function CampusGeofence({
                     }}
                   >
                     <span className="badge" style={{ background: '#e2e8f0', color: '#1e293b', padding: '2px 8px' }}>
-                      {camp.radiusM}m radius
+                      {camp.boundaryType === 'polygon' ? '⬡ Polygon' : `${camp.radiusM || 500}m radius`}
                     </span>
                     <span
                       className="badge"
@@ -927,7 +1089,7 @@ export default function CampusGeofence({
                   {campusName} GIS Perimeter
                 </b>
                 <span className="muted" style={{ fontSize: '12px', marginLeft: '6px' }}>
-                  ({radiusM}m live boundary overlay)
+                  ({boundaryType === 'polygon' ? `⬡ ${polygonCoords.length}-point custom polygon` : `${radiusM}m live radius overlay`})
                 </span>
               </div>
             </div>
@@ -1061,7 +1223,7 @@ export default function CampusGeofence({
               </span>
               <span>&bull;</span>
               <span>
-                <b>Perimeter Area:</b> ~{coverageAreaKm2} km²
+                <b>Perimeter Mode:</b> {boundaryType === 'polygon' ? `Custom Polygon (${polygonCoords.length} points)` : `~${coverageAreaKm2} km² Circular Buffer`}
               </span>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1084,9 +1246,6 @@ export default function CampusGeofence({
                     <AlertTriangle size={13} /> Geofence Enforcement Paused
                   </>
                 )}
-              </span>
-              <span className="muted" style={{ fontSize: '11px' }}>
-                (💡 Drag the campus pin or click map to reposition center)
               </span>
             </div>
           </div>
@@ -1214,79 +1373,215 @@ export default function CampusGeofence({
               </div>
             </div>
 
-            <div className="form-group" style={{ marginBottom: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label
-                  htmlFor="radiusInput"
-                  style={{ fontWeight: 600, fontSize: '13px', margin: 0 }}
-                >
-                  Geofence Radius (meters)
-                </label>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-700)' }}>
-                  {radiusM} meters
-                </span>
-              </div>
-              
+            {/* Boundary Geometry Shape Mode Switcher */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontWeight: 600, fontSize: '13px', display: 'block', marginBottom: '6px' }}>
+                Perimeter Boundary Geometry
+              </label>
               <div
                 style={{
-                  display: 'flex',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
                   gap: '8px',
-                  alignItems: 'center',
-                  marginBottom: '10px',
+                  background: '#f1f5f9',
+                  padding: '4px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--line)',
                 }}
               >
-                <input
-                  id="radiusInput"
-                  className="form-control"
-                  type="number"
-                  min="100"
-                  max="5000"
-                  step="25"
-                  required
-                  value={radiusM}
-                  onChange={(e) => setRadiusM(e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                <div style={{ display: 'flex', gap: '5px' }}>
-                  {[300, 500, 750, 1000].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      className={`btn btn-sm ${
-                        parseInt(radiusM, 10) === preset ? 'btn-primary' : ''
-                      }`}
-                      onClick={() => setRadiusM(preset)}
-                      style={{
-                        padding: '6px 10px',
-                        fontSize: '11.5px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {preset}m
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="2000"
-                step="25"
-                value={radiusM}
-                onChange={(e) => setRadiusM(e.target.value)}
-                style={{
-                  width: '100%',
-                  accentColor: 'var(--brand-700)',
-                  cursor: 'pointer',
-                }}
-              />
-              <div
-                className="muted"
-                style={{ fontSize: '12px', marginTop: '4px' }}
-              >
-                Perimeter circle expands in real-time on the map above. Standard campus setting is ~500m.
+                <button
+                  type="button"
+                  onClick={() => setBoundaryType('radius')}
+                  style={{
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    background: boundaryType === 'radius' ? '#ffffff' : 'transparent',
+                    color: boundaryType === 'radius' ? 'var(--brand-700)' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    boxShadow: boundaryType === 'radius' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>⚪</span> Radial Buffer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBoundaryType('polygon')}
+                  style={{
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    background: boundaryType === 'polygon' ? '#ffffff' : 'transparent',
+                    color: boundaryType === 'polygon' ? 'var(--brand-700)' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    boxShadow: boundaryType === 'polygon' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>⬡</span> Property Polygon
+                </button>
               </div>
             </div>
+
+            {/* Mode-Specific Settings: Radial Buffer Mode */}
+            {boundaryType === 'radius' && (
+              <div className="form-group" style={{ marginBottom: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label
+                    htmlFor="radiusInput"
+                    style={{ fontWeight: 600, fontSize: '13px', margin: 0 }}
+                  >
+                    Geofence Radius (meters)
+                  </label>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand-700)' }}>
+                    {radiusM} meters
+                  </span>
+                </div>
+                
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'center',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <input
+                    id="radiusInput"
+                    className="form-control"
+                    type="number"
+                    min="100"
+                    max="5000"
+                    step="25"
+                    required
+                    value={radiusM}
+                    onChange={(e) => setRadiusM(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    {[300, 500, 750, 1000].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        className={`btn btn-sm ${
+                          parseInt(radiusM, 10) === preset ? 'btn-primary' : ''
+                        }`}
+                        onClick={() => setRadiusM(preset)}
+                        style={{
+                          padding: '6px 10px',
+                          fontSize: '11.5px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {preset}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="100"
+                  max="2000"
+                  step="25"
+                  value={radiusM}
+                  onChange={(e) => setRadiusM(e.target.value)}
+                  style={{
+                    width: '100%',
+                    accentColor: 'var(--brand-700)',
+                    cursor: 'pointer',
+                  }}
+                />
+                <div
+                  className="muted"
+                  style={{ fontSize: '12px', marginTop: '4px' }}
+                >
+                  Perimeter circle expands in real-time on the map above. Standard campus setting is ~500m.
+                </div>
+              </div>
+            )}
+
+            {/* Mode-Specific Settings: Custom Property Polygon Mode */}
+            {boundaryType === 'polygon' && (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  marginBottom: '18px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <b style={{ fontSize: '12.5px', color: 'var(--ink-900)' }}>
+                    Boundary Vertices ({polygonCoords.length} Corners)
+                  </b>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={handleAddPolygonCorner}
+                      style={{ padding: '3px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                    >
+                      <Plus size={11} /> Corner
+                    </button>
+                    {polygonCoords.length > 3 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={handleRemovePolygonCorner}
+                        style={{ padding: '3px 8px', fontSize: '11px', color: '#b91c1c' }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={handleResetPolygon}
+                      title="Reset to default campus property lot"
+                      style={{ padding: '3px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                    >
+                      <RotateCcw size={11} /> Reset
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    maxHeight: '110px',
+                    overflowY: 'auto',
+                    fontSize: '11.5px',
+                    fontFamily: 'monospace',
+                    color: 'var(--ink-700)',
+                    background: '#ffffff',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    padding: '6px 8px',
+                  }}
+                >
+                  {polygonCoords.map((coord, idx) => (
+                    <div key={idx} style={{ padding: '2px 0' }}>
+                      Corner #{idx + 1}: {coord[0].toFixed(5)}° N, {coord[1].toFixed(5)}° E
+                    </div>
+                  ))}
+                </div>
+
+                <div className="muted" style={{ fontSize: '11px', marginTop: '6px' }}>
+                  Drag the white circle handles on the map to trace the exact property boundaries.
+                </div>
+              </div>
+            )}
 
             <div
               style={{
@@ -1398,7 +1693,7 @@ export default function CampusGeofence({
             ~{avgDistance}m
           </div>
           <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-            Well within 500m safe perimeter
+            Well within safe campus perimeter
           </div>
         </div>
 
@@ -1838,26 +2133,44 @@ export default function CampusGeofence({
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '18px' }}>
+              <div className="form-group" style={{ marginBottom: '14px' }}>
                 <label style={{ fontWeight: 600, fontSize: '13px' }}>
-                  Radius (meters)
+                  Perimeter Geometry Type
                 </label>
-                <input
-                  type="number"
-                  min="100"
-                  max="5000"
-                  step="25"
+                <select
                   className="form-control"
-                  required
-                  value={newCampusData.radiusM}
+                  value={newCampusData.boundaryType}
                   onChange={(e) =>
-                    setNewCampusData({
-                      ...newCampusData,
-                      radiusM: e.target.value,
-                    })
+                    setNewCampusData({ ...newCampusData, boundaryType: e.target.value })
                   }
-                />
+                >
+                  <option value="radius">Radial Buffer (Radius in meters)</option>
+                  <option value="polygon">Custom Property Polygon</option>
+                </select>
               </div>
+
+              {newCampusData.boundaryType === 'radius' && (
+                <div className="form-group" style={{ marginBottom: '18px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '13px' }}>
+                    Radius (meters)
+                  </label>
+                  <input
+                    type="number"
+                    min="100"
+                    max="5000"
+                    step="25"
+                    className="form-control"
+                    required
+                    value={newCampusData.radiusM}
+                    onChange={(e) =>
+                      setNewCampusData({
+                        ...newCampusData,
+                        radiusM: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              )}
 
               <div
                 style={{
