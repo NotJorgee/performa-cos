@@ -84,7 +84,7 @@ export default function HRDashboard({
           <div
             className="quick-access-value"
             style={{
-              color: 'var(--amber-600)',
+              color: expiringCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
               fontSize: '24px',
               fontWeight: 800,
             }}
@@ -112,7 +112,7 @@ export default function HRDashboard({
           <div
             className="quick-access-value"
             style={{
-              color: 'var(--amber-600)',
+              color: pendingHrEvalCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
               fontSize: '24px',
               fontWeight: 800,
             }}

@@ -101,7 +101,7 @@ export default function DeptHeadDashboard({
           <div
             className="quick-access-value"
             style={{
-              color: 'var(--amber-600)',
+              color: pendingCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
               fontSize: '24px',
               fontWeight: 800,
             }}
