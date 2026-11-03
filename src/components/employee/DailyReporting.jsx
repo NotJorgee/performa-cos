@@ -1,23 +1,18 @@
-import React, { useState } from 'react';
-import { Check, AlertTriangle, Lightbulb, Camera, MapPin } from 'lucide-react';
-import { verifyCoordinatesAgainstCampuses } from '../../utils/campusGeofence';
+import React, { useState, useEffect } from 'react';
+import { Check, AlertTriangle, Camera, MapPin, ArrowLeft } from 'lucide-react';
+import {
+  verifyCoordinatesAgainstCampuses,
+  saveCampusGeofences,
+  getCampusGeofences,
+  DEFAULT_MAIN_POLYGON,
+} from '../../utils/campusGeofence';
 import { api } from '../../services/api';
-
-const AUTOCOMPLETE_SUGGESTIONS = [
-  'Assisted students with enrollment queries and clearance routing',
-  'Organized departmental filing system and digitized physical records',
-  'Conducted computer laboratory hardware inspection and terminal check',
-  'Diagnosed and resolved network connectivity issues on lab PCs',
-  'Prepared conference room and multimedia equipment for academic meeting',
-  'Dispatched official communications to university offices and college deans',
-  'Sanitized and disinfected classrooms and departmental common areas',
-  'Inspected physical plant facilities and reported maintenance repair tickets',
-];
 
 export default function DailyReporting({
   onBack = null,
   onSubmitDar = () => {},
 }) {
+  const [campuses, setCampuses] = useState(() => getCampusGeofences());
   const [jobDescription, setJobDescription] = useState('');
   const [workAccomplished, setWorkAccomplished] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -28,10 +23,38 @@ export default function DailyReporting({
   const [geoError, setGeoError] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
 
-  // Predictive text autocomplete for Job Description (FR-06)
-  const filteredSuggestions = AUTOCOMPLETE_SUGGESTIONS.filter(
-    (item) => jobDescription && item.toLowerCase().includes(jobDescription.toLowerCase()) && item !== jobDescription
-  );
+  // Sync active campus geofences from backend database on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchCampuses() {
+      try {
+        if (api?.geofences?.list) {
+          const remoteCampuses = await api.geofences.list();
+          if (isMounted && Array.isArray(remoteCampuses) && remoteCampuses.length > 0) {
+            const normalized = remoteCampuses.map((c) => ({
+              ...c,
+              shortName: c.short_name || c.shortName || c.name,
+              locationNote: c.location_note || c.locationNote || '',
+              radiusM: Number(c.radius_meters || c.radiusM || 500),
+              boundaryType: c.boundary_type || c.boundaryType || 'radius',
+              polygonCoords: c.polygon_coords || c.polygonCoords || c.polygon || DEFAULT_MAIN_POLYGON,
+              polygon: c.polygon_coords || c.polygonCoords || c.polygon || DEFAULT_MAIN_POLYGON,
+              enforceGeofence: c.enforce_geofence !== undefined ? c.enforce_geofence : true,
+              isPrimary: !!c.is_primary,
+            }));
+            setCampuses(normalized);
+            saveCampusGeofences(normalized);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync latest geofence sites from backend:', err.message);
+      }
+    }
+    fetchCampuses();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handlePhotoSelect = (e) => {
     const file = e.target.files[0];
@@ -63,14 +86,20 @@ export default function DailyReporting({
       async (pos) => {
         const { latitude, longitude } = pos.coords;
 
-        // Multi-Campus Geofence verification (EVSU Ormoc Main Campus or EVSU Luna Campus)
-        const verification = verifyCoordinatesAgainstCampuses(latitude, longitude);
+        // Multi-Campus Geofence verification against dynamic campuses list
+        const verification = verifyCoordinatesAgainstCampuses(latitude, longitude, campuses);
 
         if (!verification.isValid) {
+          const activeList = (campuses && campuses.length > 0 ? campuses : getCampusGeofences()).filter(
+            (c) => c.enforceGeofence !== false
+          );
+          const siteNames = activeList.map((c) => c.shortName || c.name).join(', ') || 'authorized campus sites';
           const nearestKm = (verification.nearestDistanceM / 1000).toFixed(1);
-          const nearestName = verification.nearestCampus ? verification.nearestCampus.shortName : 'campus';
+          const nearestName = verification.nearestCampus
+            ? verification.nearestCampus.shortName || verification.nearestCampus.name
+            : 'campus';
           setGeoError(
-            `Out of Bounds: Daily Accomplishment Reports must be submitted while physically present at either EVSU Ormoc Main Campus or EVSU Luna Campus. (Nearest: ${nearestName} is ~${nearestKm} km away).`
+            `Out of Bounds: Daily Accomplishment Reports must be submitted while physically present at an authorized campus site (${siteNames}). (Nearest: ${nearestName} is ~${nearestKm} km away).`
           );
           setIsSubmitting(false);
           return;
@@ -150,8 +179,13 @@ export default function DailyReporting({
           </p>
         </div>
         {onBack && (
-          <button type="button" className="btn btn-sm" onClick={onBack}>
-            ← Back to Dashboard
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={onBack}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+          >
+            <ArrowLeft size={14} /> Back to Dashboard
           </button>
         )}
       </div>
@@ -177,7 +211,7 @@ export default function DailyReporting({
             New Daily Accomplishment Entry
           </div>
 
-          <form onSubmit={handleFormSubmit}>
+          <form onSubmit={handleFormSubmit} autoComplete="off">
             <div className="form-group">
               <label>Submission Date &amp; Time (Locked)</label>
               <input
@@ -188,48 +222,24 @@ export default function DailyReporting({
               />
             </div>
 
-            {/* Predictive Text Autocomplete for Job Description (FR-06) */}
-            <div className="form-group" style={{ position: 'relative' }}>
+            <div className="form-group">
               <label htmlFor="jobDescInput">
                 Job Description <span style={{ color: 'var(--red-600)' }}>*</span>
               </label>
               <input
                 id="jobDescInput"
+                name="job_description_input"
                 className="form-control"
                 type="text"
                 required
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 placeholder="e.g. Conducted computer laboratory maintenance..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
               />
-              {filteredSuggestions.length > 0 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    background: '#fff',
-                    border: '1px solid var(--line)',
-                    borderRadius: '6px',
-                    boxShadow: 'var(--shadow)',
-                    zIndex: 20,
-                    maxHeight: '160px',
-                    overflowY: 'auto',
-                  }}
-                >
-                  {filteredSuggestions.map((s, idx) => (
-                    <div
-                      key={idx}
-                      style={{ padding: '8px 12px', fontSize: '12.5px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      onClick={() => setJobDescription(s)}
-                    >
-                      <Lightbulb size={13} color="var(--brand-700)" />
-                      <span>{s}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="form-group">
@@ -238,9 +248,13 @@ export default function DailyReporting({
               </label>
               <textarea
                 id="workAccomplished"
+                name="work_accomplished_input"
                 className="form-control"
                 rows="4"
                 required
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="Detail the work outputs, procedures executed, or targets completed..."
                 value={workAccomplished}
                 onChange={(e) => setWorkAccomplished(e.target.value)}
@@ -252,8 +266,12 @@ export default function DailyReporting({
                 <label htmlFor="quantityField">Quantity / Output Units</label>
                 <input
                   id="quantityField"
+                  name="quantity_input"
                   className="form-control"
                   type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder="e.g. 24 units, 15 files"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
@@ -263,8 +281,12 @@ export default function DailyReporting({
                 <label htmlFor="remarksField">Remarks</label>
                 <input
                   id="remarksField"
+                  name="remarks_input"
                   className="form-control"
                   type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder="Optional notes or status"
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
