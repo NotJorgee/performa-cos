@@ -179,6 +179,7 @@ export default function CampusGeofence({
   const activeCampusMarkerRef = useRef(null);
   const locateMarkerRef = useRef(null);
   const locatePolylineRef = useRef(null);
+  const lastCampusIdRef = useRef(selectedCampusId);
 
   // Helper: calculate geometric centroid of polygon coordinates
   const calculatePolygonCentroid = (coords) => {
@@ -329,8 +330,11 @@ export default function CampusGeofence({
 
     if (isNaN(numLat) || isNaN(numLng)) return;
 
-    // Smoothly pan to new center
-    map.flyTo([numLat, numLng], 16, { duration: 0.8 });
+    // Only pan if switching to a different campus site entirely; never auto-zoom out during editing
+    if (lastCampusIdRef.current !== selectedCampusId) {
+      lastCampusIdRef.current = selectedCampusId;
+      map.flyTo([numLat, numLng], map.getZoom() || 16, { duration: 0.8 });
+    }
 
     // Clean up previous circle, polygon, and vertex handles
     if (perimeterCircleRef.current) {
@@ -636,11 +640,11 @@ export default function CampusGeofence({
     mapContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  // Recenter map button
+  // Recenter map button — pans smoothly without changing the user's zoom level
   const handleRecenter = () => {
     const map = mapInstanceRef.current;
     if (map) {
-      map.flyTo([parseFloat(latitude), parseFloat(longitude)], 16, { duration: 0.8 });
+      map.panTo([parseFloat(latitude), parseFloat(longitude)], { duration: 0.5 });
     }
   };
 
