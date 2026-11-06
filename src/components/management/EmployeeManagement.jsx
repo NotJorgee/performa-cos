@@ -32,7 +32,9 @@ export default function EmployeeManagement({
             fullName: u.full_name,
             jobTitle: u.job_title || 'Admin Aide',
             email: u.email,
-            department: u.department ? u.department.name : 'Unassigned',
+            department: (u.department && typeof u.department === 'object' && u.department.name)
+              ? u.department.name
+              : (typeof u.department === 'string' ? u.department : (u.department_name || 'Unassigned')),
             college: u.department?.college || 'Administrative Services',
             cosCategory: u.cos_category || 'Administrative',
             dateAppointed: u.date_appointed

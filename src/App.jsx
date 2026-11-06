@@ -367,16 +367,11 @@ export default function App() {
       {/* Department Head Modules (SRS Section 8.1) */}
       {currentUser.role === 'Department Head' && (
         <>
-          {currentView === 'pending_evaluations' && (
-            <PendingEvaluations
-              departmentName={currentUser.department}
-              onBack={() => setCurrentView('dashboard')}
-            />
-          )}
-          {currentView === 'intent_review' && (
+          {(currentView === 'pending_evaluations' || currentView === 'intent_review') && (
             <IntentReview
               departmentName={currentUser.department}
               onBack={() => setCurrentView('dashboard')}
+              onNavigate={setCurrentView}
             />
           )}
           {(currentView === 'employee_records' ||

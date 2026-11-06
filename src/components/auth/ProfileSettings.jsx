@@ -42,6 +42,10 @@ export default function ProfileSettings({
 }) {
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'security' | 'notifications' | 'sessions'
 
+  const userDept = typeof currentUser.department === 'object' && currentUser.department !== null
+    ? (currentUser.department.name || 'Computer Studies Department')
+    : (currentUser.department || 'Computer Studies Department');
+
   // Editable Contact State
   const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '+63 912 345 6789');
   const [alternateEmail, setAlternateEmail] = useState('');
@@ -419,7 +423,7 @@ export default function ProfileSettings({
                 <div className="muted" style={{ fontSize: '13px', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
                   <span>{currentUser.jobTitle || (currentUser.role === 'COS Employee' ? 'Admin Aide' : currentUser.role)}</span>
                   <span>•</span>
-                  <span>{currentUser.department}</span>
+                  <span>{userDept}</span>
                   <span>•</span>
                   <span>EVSU — Ormoc Campus</span>
                 </div>
@@ -516,7 +520,7 @@ export default function ProfileSettings({
                   <Lock size={12} color="var(--ink-400)" />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '3px', color: 'var(--ink-900)' }}>
-                  {currentUser.department}
+                  {userDept}
                 </div>
               </div>
 

@@ -6,6 +6,8 @@ export default function AiPerformanceAnalysis({
   totalDarEntries = 84,
   employeeName = '',
   action = null,
+  scrollable = false,
+  maxHeight = 'calc(100vh - 120px)',
 }) {
   if (!aiSummary) return null;
 
@@ -44,8 +46,10 @@ export default function AiPerformanceAnalysis({
         background: '#fff',
         border: '1px solid var(--line)',
         borderRadius: '12px',
-        padding: '20px 22px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        ...(scrollable ? { maxHeight: maxHeight, overflow: 'hidden' } : {}),
       }}
     >
       {/* Header with Sparkles & Confidence */}
@@ -53,9 +57,10 @@ export default function AiPerformanceAnalysis({
         className="flex-between"
         style={{
           borderBottom: '1px solid var(--line)',
-          paddingBottom: '14px',
-          marginBottom: '18px',
+          padding: '16px 20px',
+          background: '#ffffff',
           alignItems: 'center',
+          flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -69,16 +74,17 @@ export default function AiPerformanceAnalysis({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
             <Sparkles size={18} />
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-900)' }}>
+            <div style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--ink-900)' }}>
               AI Performance Summary (Daily Reports)
             </div>
-            <div className="muted" style={{ fontSize: '12px' }}>
-              Generated from {totalDarEntries} verified daily accomplishment reports for {employeeName || 'staff'}
+            <div className="muted" style={{ fontSize: '11.5px' }}>
+              Generated from {totalDarEntries} verified DARs for {employeeName || 'staff'}
             </div>
           </div>
         </div>
@@ -95,7 +101,16 @@ export default function AiPerformanceAnalysis({
       </div>
 
       {/* Vertical Stack: 4 Structured Dimensions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div
+        className={scrollable ? 'ai-summary-scroll' : ''}
+        style={{
+          padding: '18px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          ...(scrollable ? { overflowY: 'auto', flex: 1 } : {}),
+        }}
+      >
         {/* 1. Monthly Accomplishments */}
         <div
           style={{

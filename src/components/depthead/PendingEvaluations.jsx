@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, FileText } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
 import MonthlyReport from '../employee/MonthlyReport';
@@ -66,7 +66,7 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
       )
     );
     onSubmitSupervisorScore({ employeeId: selectedEmpId, ...evalData });
-    setSavedDraftToast(`Performance appraisal for ${activeEmployee?.fullName || 'employee'} submitted successfully! Forwarded to HRMO.`);
+    setSavedDraftToast(`Performance evaluation for ${activeEmployee?.fullName || 'employee'} submitted successfully! Forwarded to HRMO.`);
     setTimeout(() => setSavedDraftToast(null), 4000);
     setSelectedEmpId(null);
   };
@@ -79,7 +79,7 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
           <div>
             <h1 style={{ margin: 0 }}>
               {selectedEmpId && activeEmployee
-                ? `${isReadOnlyEval ? 'View Evaluation' : 'Performance Appraisal'}: ${activeEmployee.fullName}`
+                ? `${isReadOnlyEval ? 'View Evaluation' : 'Performance Evaluation'}: ${activeEmployee.fullName}`
                 : departmentName}
             </h1>
           </div>
@@ -246,25 +246,40 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
             </div>
 
             {/* RIGHT PANEL: Vertical AI DAR Performance Analysis */}
-            <div style={{ position: 'sticky', top: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'sticky', top: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <AiPerformanceAnalysis
+                aiSummary={activeEmployee.aiSummary}
+                totalDarEntries={activeEmployee.totalDarEntries}
+                employeeName={activeEmployee.fullName}
+                scrollable={true}
+                maxHeight="calc(100vh - 160px)"
+              />
+
+              <div>
                 <button
                   type="button"
                   className="btn btn-sm btn-primary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 6px rgba(122, 12, 46, 0.15)',
+                  }}
                   onClick={() => {
                     setViewingFullDoc(true);
                     setDocOrigin('appraisal');
                   }}
                 >
-                  View Full Compiled MAR →
+                  <FileText size={15} /> View Full Compiled MAR →
                 </button>
               </div>
-
-              <AiPerformanceAnalysis
-                aiSummary={activeEmployee.aiSummary}
-                totalDarEntries={activeEmployee.totalDarEntries}
-                employeeName={activeEmployee.fullName}
-              />
             </div>
           </div>
         </div>
@@ -277,7 +292,7 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
           employeeName={activeEmployee.fullName}
           department={departmentName}
           initialRecords={activeEmployee.marRecords}
-          backLabel={docOrigin === 'table' ? 'Back to Subordinates List' : 'Back to Performance Appraisal'}
+          backLabel={docOrigin === 'table' ? 'Back to Subordinates List' : 'Back to Performance Evaluation'}
           onBack={() => {
             setViewingFullDoc(false);
             if (docOrigin === 'table') {

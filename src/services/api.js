@@ -248,6 +248,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(scoreData),
       }),
+    submitEmployeeScore: (empId, scoreData) =>
+      request(`/evaluations/employee/${empId}/score`, {
+        method: 'POST',
+        body: JSON.stringify(scoreData),
+      }),
     fastTrackReject: (evalId, rejectionData) =>
       request(`/evaluations/${evalId}/fast-track-reject`, {
         method: 'POST',

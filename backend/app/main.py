@@ -252,12 +252,21 @@ def submit_evaluation_score(
     if not ev:
         raise HTTPException(status_code=404, detail="Evaluation record not found.")
 
-    if payload.evaluator_role == "Immediate Supervisor":
-        ev.supervisor_score = payload.raw_score
-    elif payload.evaluator_role == "Peer":
-        ev.peer_score = payload.raw_score
-    elif payload.evaluator_role == "HRMO":
-        ev.hrmo_score = payload.raw_score
+    # Universal Immediate Supervisor Evaluation (100% Definitive Score)
+    ev.supervisor_score = payload.raw_score
+    ev.final_score = payload.raw_score
+    ev.supervisor_id = current_user.id
+
+    if ev.final_score >= 90:
+        ev.rating_label = "Outstanding"
+    elif ev.final_score >= 70:
+        ev.rating_label = "Very Satisfactory"
+    elif ev.final_score >= 50:
+        ev.rating_label = "Satisfactory"
+    elif ev.final_score >= 30:
+        ev.rating_label = "Needs Improvement"
+    else:
+        ev.rating_label = "Unsatisfactory"
 
     if payload.strengths:
         ev.qualitative_strengths = payload.strengths
@@ -266,29 +275,71 @@ def submit_evaluation_score(
     if payload.dimension_scores:
         ev.dimension_scores = payload.dimension_scores
 
-    # 50/20/30 Formula: Final = (Supervisor * 0.50) + (Peer * 0.20) + (HRMO * 0.30)
-    if ev.supervisor_score is not None and ev.peer_score is not None and ev.hrmo_score is not None:
-        weighted = (ev.supervisor_score * 0.50) + (ev.peer_score * 0.20) + (ev.hrmo_score * 0.30)
-        ev.final_score = round(weighted, 2)
-        if ev.final_score >= 90:
-            ev.rating_label = "Outstanding"
-        elif ev.final_score >= 80:
-            ev.rating_label = "Very Satisfactory"
-        elif ev.final_score >= 70:
-            ev.rating_label = "Satisfactory"
-        else:
-            ev.rating_label = "Needs Improvement"
-        ev.status = "Completed"
-    else:
-        ev.status = "Pending HR Review" if (ev.supervisor_score and ev.peer_score) else "Open"
-
+    ev.status = "Completed"
     db.commit()
     db.refresh(ev)
     return {
-        "message": f"Score recorded for {payload.evaluator_role}",
+        "message": "Performance evaluation successfully recorded by Immediate Supervisor.",
         "supervisor_score": ev.supervisor_score,
-        "peer_score": ev.peer_score,
-        "hrmo_score": ev.hrmo_score,
+        "final_score": ev.final_score,
+        "rating_label": ev.rating_label,
+        "status": ev.status,
+    }
+
+
+@app.post("/api/evaluations/employee/{employee_id}/score")
+def submit_employee_evaluation_score(
+    employee_id: int,
+    payload: schemas.EvaluationScoreSubmit,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    ev = (
+        db.query(models.EvaluationRecord)
+        .filter(models.EvaluationRecord.employee_id == employee_id)
+        .order_by(models.EvaluationRecord.id.desc())
+        .first()
+    )
+    if not ev or ev.status == "Completed":
+        ev = models.EvaluationRecord(
+            period=datetime.datetime.utcnow().strftime("Evaluation Cycle %Y"),
+            employee_id=employee_id,
+            supervisor_id=current_user.id,
+            status="Open",
+        )
+        db.add(ev)
+        db.commit()
+        db.refresh(ev)
+
+    ev.supervisor_score = payload.raw_score
+    ev.final_score = payload.raw_score
+    ev.supervisor_id = current_user.id
+
+    if ev.final_score >= 90:
+        ev.rating_label = "Outstanding"
+    elif ev.final_score >= 70:
+        ev.rating_label = "Very Satisfactory"
+    elif ev.final_score >= 50:
+        ev.rating_label = "Satisfactory"
+    elif ev.final_score >= 30:
+        ev.rating_label = "Needs Improvement"
+    else:
+        ev.rating_label = "Unsatisfactory"
+
+    if payload.strengths:
+        ev.qualitative_strengths = payload.strengths
+    if payload.recommendations:
+        ev.qualitative_recommendations = payload.recommendations
+    if payload.dimension_scores:
+        ev.dimension_scores = payload.dimension_scores
+
+    ev.status = "Completed"
+    db.commit()
+    db.refresh(ev)
+    return {
+        "message": "Performance evaluation successfully recorded by Immediate Supervisor.",
+        "evaluation_id": ev.id,
+        "supervisor_score": ev.supervisor_score,
         "final_score": ev.final_score,
         "rating_label": ev.rating_label,
         "status": ev.status,
@@ -326,7 +377,12 @@ def list_renewals(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    return db.query(models.RenewalApplication).all()
+    query = db.query(models.RenewalApplication)
+    if current_user.role == "Department Head" and current_user.department_id:
+        query = query.join(models.UserAccount, models.RenewalApplication.employee_id == models.UserAccount.id).filter(
+            models.UserAccount.department_id == current_user.department_id
+        )
+    return query.order_by(models.RenewalApplication.id.desc()).all()
 
 
 @app.post("/api/renewals", response_model=schemas.RenewalApplicationOut, status_code=status.HTTP_201_CREATED)
@@ -350,6 +406,25 @@ def submit_renewal(
         submitted_at=now,
     )
     db.add(renewal)
+
+    # Automatically initialize EvaluationRecord for Immediate Supervisor
+    existing_eval = (
+        db.query(models.EvaluationRecord)
+        .filter(
+            models.EvaluationRecord.employee_id == current_user.id,
+            models.EvaluationRecord.period == payload.period,
+        )
+        .first()
+    )
+    if not existing_eval:
+        db.add(
+            models.EvaluationRecord(
+                period=payload.period,
+                employee_id=current_user.id,
+                status="Open",
+            )
+        )
+
     db.commit()
     db.refresh(renewal)
 

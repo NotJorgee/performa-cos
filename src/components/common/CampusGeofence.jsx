@@ -2211,7 +2211,7 @@ export default function CampusGeofence({
                         </div>
                       </td>
                       <td style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
-                        {log.department}
+                        {typeof log.department === 'object' && log.department !== null ? (log.department.name || 'Unassigned') : (log.department || 'Unassigned')}
                       </td>
                       <td>
                         <span

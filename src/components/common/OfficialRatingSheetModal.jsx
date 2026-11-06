@@ -133,7 +133,7 @@ function SingleRatingSheet({
                   borderBottom: '1px solid #000',
                 }}
               >
-                <b>Department:</b> {employee.department || '—'}
+                <b>Department:</b> {typeof employee?.department === 'object' && employee?.department !== null ? (employee.department.name || '—') : (employee?.department || '—')}
               </td>
             </tr>
             <tr>
@@ -300,7 +300,7 @@ function SingleRatingSheet({
         </tbody>
       </table>
 
-      {/* V. COMMENTS AND RECOMMENDATIONS Section */}
+      {/* COMMENTS AND RECOMMENDATIONS Section */}
       <div
         style={{
           border: '2px solid #000',
@@ -316,7 +316,7 @@ function SingleRatingSheet({
             marginBottom: '8px',
           }}
         >
-          V. COMMENTS AND RECOMMENDATIONS
+          COMMENTS AND RECOMMENDATIONS
         </div>
 
         <div style={{ marginBottom: '12px' }}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Official EVSU Ormoc Campus Employee Performance Rating Criteria (Universal 6 Criteria)
 export const EVSU_PERFORMANCE_CRITERIA = [
@@ -102,47 +102,44 @@ export const EVSU_RECOMMENDATIONS = [
   },
 ];
 
-// Official University HR Performance Interpretation & System Recommendation (0 – 100% scale)
+// Calibrated University HR Performance Interpretation (Centering 2, 4, 6, 8, 10 Likert rating tiers)
+// Note: Recommendation is strictly manual input by supervisor; no system recommendation is emitted.
 export const getPerformanceInterpretation = (score) => {
   const num = Number(score) || 0;
   if (num >= 90) {
     return {
-      scoreRange: '90 – 100',
+      scoreRange: '90.0 – 100.0',
       interpretation: 'Outstanding',
-      recommendation: 'Recommended for Renewal',
       color: '#16a34a',
       bg: '#f0fdf4',
       border: '#bbf7d0',
       badgeClass: 'badge-completed',
     };
   }
-  if (num >= 80) {
+  if (num >= 70) {
     return {
-      scoreRange: '80 – 89',
+      scoreRange: '70.0 – 89.9',
       interpretation: 'Very Satisfactory',
-      recommendation: 'Recommended for Renewal',
       color: '#2563eb',
       bg: '#eff6ff',
       border: '#bfdbfe',
       badgeClass: 'badge-completed',
     };
   }
-  if (num >= 70) {
+  if (num >= 50) {
     return {
-      scoreRange: '70 – 79',
+      scoreRange: '50.0 – 69.9',
       interpretation: 'Satisfactory',
-      recommendation: 'Recommended with Conditions',
       color: '#0284c7',
       bg: '#f0f9ff',
       border: '#bae6fd',
       badgeClass: 'badge-completed',
     };
   }
-  if (num >= 60) {
+  if (num >= 30) {
     return {
-      scoreRange: '60 – 69',
+      scoreRange: '30.0 – 49.9',
       interpretation: 'Needs Improvement',
-      recommendation: 'Recommended with Conditions',
       color: '#d97706',
       bg: '#fffbeb',
       border: '#fde68a',
@@ -150,9 +147,8 @@ export const getPerformanceInterpretation = (score) => {
     };
   }
   return {
-    scoreRange: 'Below 60',
+    scoreRange: 'Below 30.0',
     interpretation: 'Unsatisfactory',
-    recommendation: 'Not Recommended for Renewal',
     color: '#dc2626',
     bg: '#fef2f2',
     border: '#fecaca',
@@ -166,7 +162,7 @@ export default function DynamicRubric({
   evaluatorRole = 'Immediate Supervisor', // 'Immediate Supervisor' | 'Peer' | 'HRMO'
   initialScores = {},
   initialStrengths = '',
-  initialRecommendation = 'Recommended for Renewal',
+  initialRecommendation = '',
   onSaveDraft = () => {},
   onSubmit = () => {},
   readOnly = false,
@@ -174,14 +170,10 @@ export default function DynamicRubric({
 }) {
   const criteria = EVSU_PERFORMANCE_CRITERIA;
 
-  const [scores, setScores] = useState(initialScores);
-  const [strengths, setStrengths] = useState(initialStrengths);
-  const [recommendation, setRecommendation] = useState(initialRecommendation);
-
-  const handleScoreClick = (itemId, val) => {
-    if (readOnly) return;
-    setScores((prev) => ({ ...prev, [itemId]: val }));
-  };
+  const defaultStrengths = initialStrengths || 'Demonstrates consistent and commendable execution of contracted departmental deliverables.';
+  const [scores, setScores] = useState(initialScores || {});
+  const [strengths, setStrengths] = useState(defaultStrengths);
+  const [recommendation, setRecommendation] = useState(initialRecommendation || 'Recommended for Renewal');
 
   const totalItems = criteria.length; // 6 criteria
   const scoredCount = Object.keys(scores).filter((k) =>
@@ -199,10 +191,52 @@ export default function DynamicRubric({
   const currentInterpretation =
     scoredCount > 0 ? getPerformanceInterpretation(scaledScore) : null;
 
-  const isComplete =
-    scoredCount === totalItems &&
-    strengths.trim().length > 0 &&
-    !!recommendation;
+  const hasProgress = Object.keys(scores).length > 0 || (strengths && strengths !== defaultStrengths);
+
+  const onSaveDraftRef = useRef(onSaveDraft);
+  useEffect(() => {
+    onSaveDraftRef.current = onSaveDraft;
+  }, [onSaveDraft]);
+
+  // Auto-save whenever rubric scoring or qualitative feedback is modified
+  useEffect(() => {
+    if (readOnly) return;
+    if (hasProgress && onSaveDraftRef.current) {
+      onSaveDraftRef.current({
+        scores,
+        strengths,
+        recommendation,
+        rawSum,
+        scaledScore,
+        scoredCount,
+        hasProgress: true,
+      });
+    }
+  }, [scores, strengths, recommendation, rawSum, scaledScore, scoredCount, readOnly, hasProgress]);
+
+  // Flush auto-save on component unmount (e.g. user clicks back button or navigates away)
+  useEffect(() => {
+    return () => {
+      if (!readOnly && hasProgress && onSaveDraftRef.current) {
+        onSaveDraftRef.current({
+          scores,
+          strengths,
+          recommendation,
+          rawSum,
+          scaledScore,
+          scoredCount,
+          hasProgress: true,
+        });
+      }
+    };
+  }, [readOnly, hasProgress, scores, strengths, recommendation, rawSum, scaledScore, scoredCount]);
+
+  const handleScoreClick = (itemId, val) => {
+    if (readOnly) return;
+    setScores((prev) => ({ ...prev, [itemId]: val }));
+  };
+
+  const isComplete = scoredCount === totalItems && !!recommendation;
 
   return (
     <div className="dynamic-rubric">
@@ -526,7 +560,7 @@ export default function DynamicRubric({
         </table>
       </div>
 
-      {/* V. COMMENTS AND RECOMMENDATIONS */}
+      {/* COMMENTS AND RECOMMENDATIONS */}
       <div
         className="card"
         style={{
@@ -546,7 +580,7 @@ export default function DynamicRubric({
             letterSpacing: '0.4px',
           }}
         >
-          V. COMMENTS AND RECOMMENDATIONS
+          COMMENTS AND RECOMMENDATIONS
         </h3>
 
         {/* Strengths of the Employee / Areas for Improvement */}
@@ -636,17 +670,17 @@ export default function DynamicRubric({
       {!readOnly && (
         <div
           className="flex-between"
-          style={{ paddingTop: '10px', borderTop: '1px solid var(--line)' }}
+          style={{ paddingTop: '14px', borderTop: '1px solid var(--line)', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}
         >
-          <button
-            type="button"
-            className="btn"
-            onClick={() =>
-              onSaveDraft({ scores, strengths, recommendation, rawSum, scaledScore })
-            }
-          >
-            Save as Draft
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {!isComplete && (
+              <span className="muted" style={{ fontSize: '12.5px' }}>
+                {scoredCount < totalItems
+                  ? `Score all criteria (${scoredCount}/${totalItems}) to submit`
+                  : 'Please select a recommendation to submit'}
+              </span>
+            )}
+          </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
@@ -654,7 +688,13 @@ export default function DynamicRubric({
               className="btn btn-primary"
               disabled={!isComplete}
               onClick={() =>
-                onSubmit({ scores, strengths, recommendation, rawSum, scaledScore })
+                onSubmit({
+                  scores,
+                  strengths: strengths.trim() || 'Demonstrates consistent and commendable execution of contracted departmental deliverables.',
+                  recommendation,
+                  rawSum,
+                  scaledScore,
+                })
               }
             >
               Submit Evaluation

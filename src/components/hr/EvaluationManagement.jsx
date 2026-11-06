@@ -36,7 +36,9 @@ export default function EvaluationManagement({
             renewalId: r?.id,
             fullName: u.fullName || u.full_name || 'COS Personnel',
             employeeId: u.idNumber || u.employee_id_number || `EMP-${u.id}`,
-            department: u.department || 'Department',
+            department: (u.department && typeof u.department === 'object' && u.department.name)
+              ? u.department.name
+              : (typeof u.department === 'string' ? u.department : (u.department_name || 'Department')),
             role: u.jobTitle || u.job_title || 'COS Employee',
             routingStatus,
             finalContractRemarks: r?.mar_narrative || '',
@@ -964,7 +966,7 @@ export default function EvaluationManagement({
                   <div>
                     <b style={{ color: 'var(--green-700)', fontSize: '13.5px' }}>Resolution C: Overrule &amp; Authorize Evaluation</b>
                     <p className="muted" style={{ margin: '2px 0 0', fontSize: '12px' }}>
-                      Disputes or resolves the non-renewal in administrative conference. Clears employee for standard 50/20/30 triad evaluation.
+                      Disputes or resolves the non-renewal in administrative conference. Clears employee for standard Immediate Supervisor performance evaluation.
                     </p>
                   </div>
                   <button
@@ -1203,7 +1205,7 @@ export default function EvaluationManagement({
                   }}
                 >
                   <div>
-                    <span className="muted" style={{ fontSize: '12px' }}>Final Composite Grade (50/20/30 Triad):</span>
+                    <span className="muted" style={{ fontSize: '12px' }}>Immediate Supervisor Evaluation Rating (100%):</span>
                     <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--primary)' }}>
                       {(finalizeEmp.evaluationScores?.finalGrade || 89.3).toFixed(2)} / 100
                       <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px', color: 'var(--green-700)' }}>
@@ -1212,7 +1214,7 @@ export default function EvaluationManagement({
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <span className="muted" style={{ fontSize: '11.5px' }}>Appraisal Interpretation:</span>
+                    <span className="muted" style={{ fontSize: '11.5px' }}>Evaluation Interpretation:</span>
                     <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--brand-700)' }}>
                       {finalizeEmp.evaluationScores?.interpretation || 'Very Satisfactory'}
                     </div>
@@ -1260,7 +1262,7 @@ export default function EvaluationManagement({
                 </div>
               )}
 
-              {/* Supervisor Appraisal & Renewal Recommendation Review Card */}
+              {/* Supervisor Evaluation & Renewal Recommendation Review Card */}
               <div
                 style={{
                   background: '#f8fafc',
@@ -1291,7 +1293,7 @@ export default function EvaluationManagement({
                     }}
                   >
                     <Award size={16} style={{ color: 'var(--primary)' }} />
-                    Supervisor Appraisal &amp; Renewal Recommendation:
+                    Supervisor Evaluation &amp; Renewal Recommendation:
                   </div>
                   <span
                     className="badge"

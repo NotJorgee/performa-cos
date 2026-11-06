@@ -482,10 +482,10 @@ def get_executive_analytics(
     # 4. University-Wide CSC Rating Distribution
     rating_distribution = [
         {"label": "Outstanding (90 – 100)", "count": 6, "pct": 22.2, "color": "#16a34a"},
-        {"label": "Very Satisfactory (80 – 89)", "count": 17, "pct": 63.0, "color": "#2563eb"},
-        {"label": "Satisfactory (70 – 79)", "count": 3, "pct": 11.1, "color": "#0284c7"},
-        {"label": "Needs Improvement (60 – 69)", "count": 1, "pct": 3.7, "color": "#f59e0b"},
-        {"label": "Unsatisfactory (Below 60)", "count": 0, "pct": 0.0, "color": "#dc2626"},
+        {"label": "Very Satisfactory (70 – 89.9)", "count": 17, "pct": 63.0, "color": "#2563eb"},
+        {"label": "Satisfactory (50 – 69.9)", "count": 3, "pct": 11.1, "color": "#0284c7"},
+        {"label": "Needs Improvement (30 – 49.9)", "count": 1, "pct": 3.7, "color": "#f59e0b"},
+        {"label": "Unsatisfactory (Below 30)", "count": 0, "pct": 0.0, "color": "#dc2626"},
     ]
 
     return {

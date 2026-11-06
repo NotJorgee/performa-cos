@@ -20,13 +20,17 @@ export default function MonthlyReport({
   employeeName = 'Jorge Mikhael Gubantes',
   department = 'Computer Studies Department',
   onBack = null,
-  backLabel = 'Back to Performance Appraisal',
+  backLabel = 'Back to Renewals & Evaluations',
   onNavigate = null,
   onDownload = null,
   downloadLabel = 'Print / Save MAR (PDF)',
   cyclePeriod = null,
   initialRecords = null,
 }) {
+  const safeDeptName = typeof department === 'object' && department !== null
+    ? (department.name || 'Computer Studies Department')
+    : (department || 'Computer Studies Department');
+
   const [records, setRecords] = useState(Array.isArray(initialRecords) ? initialRecords : []);
   const [isLoading, setIsLoading] = useState(!Array.isArray(initialRecords));
   const [fetchError, setFetchError] = useState(null);
@@ -143,7 +147,7 @@ export default function MonthlyReport({
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '10pt', borderBottom: '1px solid #000', paddingBottom: '6px' }}>
           <div><strong>Employee:</strong> {employeeName}</div>
-          <div><strong>Department:</strong> {department}</div>
+          <div><strong>Department:</strong> {safeDeptName}</div>
           <div><strong>Status:</strong> Contract of Service (COS)</div>
         </div>
       </div>
@@ -153,7 +157,7 @@ export default function MonthlyReport({
         <div>
           <h1 style={{ margin: '0 0 6px', fontSize: '24px' }}>Accumulated MAR Logs</h1>
           <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-            {department} &mdash; Official monthly compilation of verified daily accomplishment reports for <b>{employeeName}</b>
+            {safeDeptName} &mdash; Official monthly compilation of verified daily accomplishment reports for <b>{employeeName}</b>
             {cyclePeriod ? ` (${cyclePeriod})` : ''}.
           </p>
         </div>
@@ -433,7 +437,7 @@ export default function MonthlyReport({
           <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontWeight: 700, fontSize: '10pt' }}>
             DEPARTMENT HEAD
           </div>
-          <div style={{ fontSize: '9pt', color: '#444' }}>{department}</div>
+          <div style={{ fontSize: '9pt', color: '#444' }}>{safeDeptName}</div>
         </div>
 
         <div style={{ width: '30%', textAlign: 'center' }}>

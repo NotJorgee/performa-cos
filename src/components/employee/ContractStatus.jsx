@@ -56,7 +56,9 @@ export default function ContractStatus({
 
   const [contractDetails, setContractDetails] = useState({
     employeeName: currentUser?.fullName || currentUser?.full_name || 'COS Personnel',
-    department: currentUser?.department || currentUser?.department_name || 'Computer Studies Department',
+    department: typeof currentUser?.department === 'object' && currentUser?.department !== null
+      ? (currentUser.department.name || 'Computer Studies Department')
+      : (currentUser?.department || currentUser?.department_name || 'Computer Studies Department'),
     cosCategory: currentUser?.cosCategory || currentUser?.category || 'Administrative',
     startDate: formatDisplayDate(initialRawStart),
     endDate: formatDisplayDate(initialRawEnd),
