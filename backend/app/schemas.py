@@ -164,6 +164,7 @@ class DailyReportCreate(BaseModel):
     work_accomplished: Optional[str] = None
     quantity: Optional[str] = None
     photo_evidence_url: Optional[str] = None
+    photo_hash: Optional[str] = None
     tasks: Optional[List[DarTaskItem]] = None
 
 
@@ -175,6 +176,7 @@ class DailyReportOut(BaseModel):
     is_geofence_verified: bool
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    photo_hash: Optional[str] = None
     remarks: Optional[str] = None
     tasks: Optional[List[Any]] = None
     created_at: Optional[datetime.datetime] = None

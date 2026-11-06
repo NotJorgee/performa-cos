@@ -730,7 +730,7 @@ export default function CampusGeofence({
     const pingMarker = L.marker([logLat, logLng], { icon: teardropPinIcon }).addTo(map);
     pingMarker
       .bindPopup(
-        `<div style="font-family: inherit; font-size: 12px; line-height: 1.5;">
+        `<div style="font-family: inherit; font-size: 12px; line-height: 1.5; min-width: 200px; max-width: 270px;">
           <b style="color: ${log.isValid ? '#059669' : '#dc2626'}; font-size: 13px;">${log.isValid ? 'Verified Submission' : 'Out of Bounds Submission'}</b><br/>
           <b>Personnel:</b> ${log.name}<br/>
           <b>Department:</b> ${log.department}<br/>
@@ -738,6 +738,7 @@ export default function CampusGeofence({
           <b>GPS Spot:</b> ${logLat.toFixed(5)}° N, ${logLng.toFixed(5)}° E<br/>
           <b>Distance to Center:</b> ${log.distance}<br/>
           <b>Campus:</b> ${log.campusSite}
+          ${log.photoEvidenceUrl ? `<div style="margin-top: 8px;"><b style="display:block; font-size: 11px; margin-bottom: 3px; color: #475569;">Geotagged Evidence:</b><a href="${log.photoEvidenceUrl}" target="_blank" rel="noopener noreferrer"><img src="${log.photoEvidenceUrl}" alt="DAR Proof" style="width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;" /></a></div>` : ''}
         </div>`
       )
       .openPopup();

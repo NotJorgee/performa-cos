@@ -273,10 +273,11 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
       {/* VIEW 3: COMPILED MONTHLY ACCOMPLISHMENT REPORT (FULL PAGE VIEW) */}
       {selectedEmpId && activeEmployee && viewingFullDoc && (
         <MonthlyReport
+          employeeId={selectedEmpId}
           employeeName={activeEmployee.fullName}
           department={departmentName}
           initialRecords={activeEmployee.marRecords}
-          backLabel={docOrigin === 'table' ? '← Back to Subordinates List' : '← Back to Performance Appraisal'}
+          backLabel={docOrigin === 'table' ? 'Back to Subordinates List' : 'Back to Performance Appraisal'}
           onBack={() => {
             setViewingFullDoc(false);
             if (docOrigin === 'table') {

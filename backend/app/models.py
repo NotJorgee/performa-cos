@@ -86,6 +86,7 @@ class DailyAccomplishmentReport(Base):
     is_geofence_verified = Column(Boolean, default=False)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    photo_hash = Column(String(64), nullable=True, index=True)
     remarks = Column(Text, nullable=True)
     tasks = Column(JSON, nullable=True)  # JSON array of tasks, quantities, photo evidence URLs
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

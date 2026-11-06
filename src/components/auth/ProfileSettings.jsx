@@ -62,6 +62,7 @@ export default function ProfileSettings({
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // Notification Preferences State
   const [deadlineAlerts, setDeadlineAlerts] = useState(true);
@@ -196,6 +197,8 @@ export default function ProfileSettings({
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg(null);
+    setToastMsg(null);
+
     if (newPassword.length < 8) {
       setErrorMsg('New password must be at least 8 characters long.');
       return;
@@ -205,26 +208,29 @@ export default function ProfileSettings({
       return;
     }
     if (strengthScore < 3) {
-      setErrorMsg('Please choose a stronger password matching the security criteria.');
+      setErrorMsg('Please choose a stronger password matching the security criteria (at least 3 criteria satisfied).');
       return;
     }
 
+    setIsUpdatingPassword(true);
     try {
-      if (currentUser?.id) {
-        await api.users.changePassword(currentUser.id, currentPassword, newPassword);
+      const targetId = currentUser?.id || api?.auth?.getCurrentUser()?.id || 'me';
+      await api.users.changePassword(targetId, currentPassword, newPassword);
+
+      if (typeof onChangePassword === 'function') {
+        onChangePassword({ currentPassword, newPassword });
       }
-      onChangePassword({ currentPassword, newPassword });
+
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setToastMsg('Password successfully updated.');
+      setTimeout(() => setToastMsg(null), 4000);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to update password.');
+    } finally {
+      setIsUpdatingPassword(false);
     }
-    setTimeout(() => {
-      setToastMsg(null);
-      setErrorMsg(null);
-    }, 3500);
   };
 
   const handleNotificationSubmit = async (e) => {
@@ -621,6 +627,13 @@ export default function ProfileSettings({
               Ensure your new password meets the security requirements below. Your password is encrypted and stored securely.
             </p>
 
+            {errorMsg && activeTab === 'security' && (
+              <div className="flash flash-danger" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={16} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handlePasswordSubmit}>
               <div className="form-group" style={{ marginBottom: '14px' }}>
                 <label style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase' }}>
@@ -755,8 +768,13 @@ export default function ProfileSettings({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="submit" className="btn btn-primary" style={{ cursor: 'pointer', fontWeight: 700 }}>
-                  Update Password
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isUpdatingPassword}
+                  style={{ cursor: isUpdatingPassword ? 'not-allowed' : 'pointer', fontWeight: 700 }}
+                >
+                  {isUpdatingPassword ? 'Updating Password...' : 'Update Password'}
                 </button>
               </div>
             </form>

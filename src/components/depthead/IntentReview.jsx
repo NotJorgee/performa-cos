@@ -150,10 +150,11 @@ export default function IntentReview({
   if (viewingMarEmp) {
     return (
       <MonthlyReport
+        employeeId={viewingMarEmp.id || viewingMarEmp.userId}
         employeeName={viewingMarEmp.fullName}
         department={viewingMarEmp.department}
         onBack={() => setViewingMarEmp(null)}
-        backLabel="← Back to Intent Review"
+        backLabel="Back to Intent Review"
       />
     );
   }

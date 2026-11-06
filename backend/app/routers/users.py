@@ -310,6 +310,33 @@ def restore_user(
     return {"message": f"User '{user.full_name}' restored successfully.", "user_id": user_id}
 
 
+@router.patch("/me/password")
+def change_own_password(
+    payload: schemas.UserChangePassword,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Change currently authenticated user's own password."""
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password does not match.")
+
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
+
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()
+
+    log_audit(
+        db=db,
+        action="PASSWORD_RESET_COMPLETED",
+        target_scope=f"User #{current_user.id} ({current_user.email})",
+        operation_details="Account credentials updated via authenticated profile security settings.",
+        user=current_user,
+    )
+
+    return {"message": "Password updated successfully."}
+
+
 @router.patch("/{user_id}/password")
 def change_password(
     user_id: int,

@@ -27,7 +27,7 @@ import {
 } from '../../utils/comparativeAnalytics';
 
 // Department Head (Immediate Supervisor) Mapping Helper
-export const getDepartmentSupervisor = (department) => {
+const getDepartmentSupervisor = (department) => {
   const norm = (department || '').toLowerCase();
   if (norm.includes('computer studies')) return 'Dr. Roberto Santos';
   if (norm.includes('technology')) return 'Engr. Juan Perez';
@@ -179,7 +179,7 @@ export const getScoreInterpretationAndRecommendation = (score) => {
 };
 
 // Helper to distribute a percentage score (0-100) across 6 rubric criteria (0-10 scale each, totaling max 60 pts)
-export const generateCriteriaScores = (scorePercent) => {
+const generateCriteriaScores = (scorePercent) => {
   const scaled = Math.min(60, Math.max(0, Math.round(((Number(scorePercent) || 85) / 100) * 60)));
   const base = Math.min(10, Math.floor(scaled / 6));
   let rem = scaled - base * 6;
@@ -797,10 +797,11 @@ Generated Timestamp: ${new Date().toLocaleString()}
     return (
       <div>
         <MonthlyReport
+          employeeId={employee.id}
           employeeName={employee.fullName}
           department={employee.department}
           cyclePeriod={viewingMarCycle.periodDates}
-          backLabel="← Back to Historical Evaluations"
+          backLabel="Back to Historical Evaluations"
           onBack={() => setViewingMarCycle(null)}
           onDownload={() => handleDownloadPdf('mar', viewingMarCycle)}
           downloadLabel="Download MAR (PDF)"

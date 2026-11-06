@@ -155,11 +155,13 @@ export const api = {
       request(`/users/${userId}/restore`, {
         method: 'PATCH',
       }),
-    changePassword: (userId, current_password, new_password) =>
-      request(`/users/${userId}/password`, {
+    changePassword: (userId, current_password, new_password) => {
+      const endpoint = userId && userId !== 'me' ? `/users/${userId}/password` : '/users/me/password';
+      return request(endpoint, {
         method: 'PATCH',
         body: JSON.stringify({ current_password, new_password }),
-      }),
+      });
+    },
   },
 
   // Invitation Management

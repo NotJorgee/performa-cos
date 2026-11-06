@@ -183,14 +183,7 @@ export default function AppLayout({
             </a>
           )}
 
-          {/* Role-Unified Burger Menu: View Profile, Account Settings, Logout */}
-          <a
-            href="#view-profile"
-            onClick={(e) => { e.preventDefault(); handleNavClick('view_profile'); }}
-            className={`nav-item ${currentPath === 'view_profile' ? 'active' : ''}`}
-          >
-            <span className="icon"><User size={17} /></span> View Profile
-          </a>
+          {/* Role-Unified Burger Menu: Account Settings, Logout */}
           <a
             href="#account-settings"
             onClick={(e) => { e.preventDefault(); handleNavClick('account_settings'); }}

@@ -64,6 +64,8 @@ class VerificationLogOut(BaseModel):
     distanceMeters: float
     status: str
     isValid: bool
+    photoEvidenceUrl: Optional[str] = None
+    photoHash: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -414,6 +416,13 @@ def get_recent_geofence_verifications(
 
         status_label = "Verified In-Bounds" if dar.is_geofence_verified else "Out of Bounds / Flagged"
 
+        # Extract photo evidence URL from tasks json if available
+        photo_url = None
+        if dar.tasks and isinstance(dar.tasks, list) and len(dar.tasks) > 0 and isinstance(dar.tasks[0], dict):
+            photos = dar.tasks[0].get("photos") or []
+            if photos and len(photos) > 0:
+                photo_url = photos[0]
+
         logs.append(
             VerificationLogOut(
                 id=dar.id,
@@ -429,6 +438,8 @@ def get_recent_geofence_verifications(
                 distanceMeters=min_dist,
                 status=status_label,
                 isValid=bool(dar.is_geofence_verified),
+                photoEvidenceUrl=photo_url,
+                photoHash=dar.photo_hash,
             )
         )
 

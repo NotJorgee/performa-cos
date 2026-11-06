@@ -332,17 +332,19 @@ export default function App() {
         <>
           {currentView === 'daily_report' && (
             <DailyReporting
+              currentUser={currentUser}
               onNavigate={setCurrentView}
               onBack={() => setCurrentView('dashboard')}
             />
           )}
           {currentView === 'monthly_report' && (
             <MonthlyReport
-              onNavigate={setCurrentView}
+              employeeId={currentUser.id}
               employeeName={currentUser.fullName}
               department={currentUser.department}
+              onNavigate={setCurrentView}
               onBack={() => setCurrentView('dashboard')}
-              backLabel="← Back to Dashboard"
+              backLabel="Back to Dashboard"
             />
           )}
           {currentView === 'contract_status' && (

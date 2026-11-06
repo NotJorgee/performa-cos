@@ -80,6 +80,22 @@ def submit_dar(
                 is_valid_geofence = True
                 verified_campus = "EVSU Ormoc — Luna Campus"
 
+    # Duplicate photo hash check (anti-spoofing / anti-replay)
+    if report.photo_hash:
+        existing = (
+            db.query(models.DailyAccomplishmentReport)
+            .filter(
+                models.DailyAccomplishmentReport.user_id == current_user.id,
+                models.DailyAccomplishmentReport.photo_hash == report.photo_hash,
+            )
+            .first()
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Duplicate photo evidence detected: This exact photo was already submitted for an accomplishment report. Live, unique photo documentation is required for each task.",
+            )
+
     # Normalize tasks structure:
     tasks_data = []
     if report.tasks and len(report.tasks) > 0:
@@ -104,6 +120,7 @@ def submit_dar(
         is_geofence_verified=is_valid_geofence,
         latitude=report.latitude,
         longitude=report.longitude,
+        photo_hash=report.photo_hash,
         remarks=(
             f"[{verified_campus}] {report.remarks}"
             if verified_campus and report.remarks
