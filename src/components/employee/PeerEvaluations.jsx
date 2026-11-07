@@ -76,7 +76,6 @@ export default function PeerEvaluations({
               <thead>
                 <tr>
                   <th>Assigned Colleague</th>
-                  <th>Category</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
@@ -90,9 +89,6 @@ export default function PeerEvaluations({
                         <b>{peer.targetName}</b>
                         <div className="muted" style={{ fontSize: '12px' }}>ID: {peer.employeeIdNumber}</div>
                         <div className="muted" style={{ fontSize: '11px' }}>{peer.department}</div>
-                      </td>
-                      <td>
-                        <span className="badge badge-dept">{peer.cosCategory}</span>
                       </td>
                       <td>
                         <span className={`badge badge-${isDone ? 'completed' : 'inprogress'}`}>
@@ -127,7 +123,7 @@ export default function PeerEvaluations({
                 Peer Evaluation for: {activePeer.targetName}
               </div>
               <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
-                Assignment: <b>{activePeer.cosCategory}</b> &nbsp;·&nbsp; Weight: <b>20% Peer Review Score</b>
+                Department: <b>{activePeer.department}</b> &nbsp;·&nbsp; Weight: <b>20% Peer Review Score</b>
               </p>
             </div>
             <span className="badge badge-completed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -136,7 +132,6 @@ export default function PeerEvaluations({
           </div>
 
           <DynamicRubric
-            cosCategory={activePeer.cosCategory}
             evaluatorRole="Peer"
             onSubmit={handleSubmitScore}
           />

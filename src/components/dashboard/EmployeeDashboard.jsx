@@ -20,8 +20,6 @@ export default function EmployeeDashboard({
 
     department: 'Computer Studies Department',
 
-    cosCategory: 'Administrative',
-
   },
 
   metrics: propMetrics = null,

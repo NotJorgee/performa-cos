@@ -1289,10 +1289,6 @@ export default function EmployeeRecordView({
 
     department: 'Computer Studies Department',
 
-    college: 'College of Technology',
-
-    cosCategory: 'Administrative',
-
     dateAppointed: 'Oct 22, 2026',
 
     contractEndDate: 'Apr 22, 2027',
@@ -1393,10 +1389,6 @@ Full Name: ${employee.fullName}
 Institutional Email: ${employee.email}
 
 Department: ${employee.department}
-
-College: ${employee.college || 'College of Technology'}
-
-COS Category: ${employee.cosCategory}
 
 Contract Cycle Period: ${cycle.periodDates}
 
@@ -1826,12 +1818,6 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                 </span>
 
-                <span className="badge badge-dept" style={{ padding: '3px 8px' }}>
-
-                  {employee.cosCategory}
-
-                </span>
-
                 <span className="badge badge-completed" style={{ padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
 
                   <Check size={12} /> Official Evaluation Archived
@@ -2071,8 +2057,6 @@ Generated Timestamp: ${new Date().toLocaleString()}
             <DynamicRubric
 
               key={`${viewingEvalCycle.id}_${activeEvaluatorTab}`}
-
-              cosCategory={employee.cosCategory || 'Administrative'}
 
               employeeJobTitle={employee.jobTitle || 'Admin Aide'}
 
@@ -2992,28 +2976,6 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-
-            <div style={{ background: '#f8fafc', padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--line)' }}>
-
-              <span className="muted" style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700 }}>
-
-                COS Category
-
-              </span>
-
-              <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '2px' }}>
-
-                <span className="badge badge-unassigned" style={{ fontSize: '12px', padding: '3px 8px' }}>
-
-                  {employee.cosCategory}
-
-                </span>
-
-              </div>
-
-            </div>
-
-
 
             <div style={{ background: '#f8fafc', padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--line)' }}>
 

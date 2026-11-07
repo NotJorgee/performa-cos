@@ -36,7 +36,6 @@ const getSafeDeptName = (dept, fallback = 'Computer Studies Department') => {
 
 export default function IntentReview({
   departmentName = 'Computer Studies Department',
-  collegeName = 'College of Technology',
   onBack = null,
   onNavigate = null,
   onEndorseEmployee = () => {},
@@ -323,7 +322,6 @@ export default function IntentReview({
               return (
                 <DynamicRubric
                   key={evaluatingEmp.id}
-                  cosCategory="Universal"
                   evaluatorRole="Immediate Supervisor"
                   readOnly={evaluatingEmp.isReadOnly}
                   initialScores={currentDraft.scores || evaluatingEmp.submittedScores || {}}

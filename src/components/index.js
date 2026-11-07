@@ -34,6 +34,7 @@ export { default as HRDashboard } from './dashboard/HRDashboard';
 export { default as ExecutiveAnalytics } from './analytics/ExecutiveAnalytics';
 export { default as EvaluationManagement } from './hr/EvaluationManagement';
 export { default as HREvaluationsProxy } from './hr/HREvaluationsProxy';
+export { default as UserManagement } from './management/UserManagement';
 export { default as EmployeeManagement } from './management/EmployeeManagement';
 export { default as EmployeeRecordView } from './management/EmployeeRecordView';
 export { default as AdministratorManagement } from './management/AdministratorManagement';

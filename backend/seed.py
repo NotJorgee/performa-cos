@@ -99,7 +99,6 @@ def seed():
                 role=HR_ACCOUNT["role"],
                 job_title=HR_ACCOUNT["job_title"],
                 department_id=dept_id,
-                cos_category="Administrative",
                 date_appointed=datetime.date.today(),
                 is_active=True,
                 is_archived=False,

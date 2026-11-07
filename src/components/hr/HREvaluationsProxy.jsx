@@ -147,7 +147,6 @@ export default function HREvaluationsProxy({
               </div>
               <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
                 Department: <b>{activeRecord.department}</b> &nbsp;·&nbsp;
-                Category: <b>{activeRecord.cosCategory}</b> &nbsp;·&nbsp;
                 Weight: <b>30% HR Compliance</b>
               </p>
             </div>
@@ -156,7 +155,6 @@ export default function HREvaluationsProxy({
           {/* Dynamic Rubric */}
           <div className="card">
             <DynamicRubric
-              cosCategory={activeRecord.cosCategory}
               evaluatorRole="HRMO"
               onSubmit={handleRubricSubmit}
             />

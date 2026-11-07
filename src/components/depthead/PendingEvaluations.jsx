@@ -16,7 +16,6 @@ const DEFAULT_SUBMITTED_SCORES = {
 
 export default function PendingEvaluations({
   departmentName = 'Computer Studies Department',
-  collegeName = 'College of Technology',
   onBack = null,
   metrics = {
     totalSubordinates: 0,
@@ -234,7 +233,6 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
               </div>
               <DynamicRubric
                 key={`${activeEmployee.id}_${isReadOnlyEval ? 'ro' : 'edit'}`}
-                cosCategory={activeEmployee.cosCategory}
                 evaluatorRole="Immediate Supervisor"
                 readOnly={isReadOnlyEval}
                 initialScores={activeEmployee.submittedScores || (isReadOnlyEval ? DEFAULT_SUBMITTED_SCORES : {})}

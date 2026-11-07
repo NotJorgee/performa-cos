@@ -59,7 +59,6 @@ export default function ContractStatus({
     department: typeof currentUser?.department === 'object' && currentUser?.department !== null
       ? (currentUser.department.name || 'Computer Studies Department')
       : (currentUser?.department || currentUser?.department_name || 'Computer Studies Department'),
-    cosCategory: currentUser?.cosCategory || currentUser?.category || 'Administrative',
     startDate: formatDisplayDate(initialRawStart),
     endDate: formatDisplayDate(initialRawEnd),
     rawStartDate: initialRawStart,
@@ -94,7 +93,6 @@ export default function ContractStatus({
             ...prev,
             employeeName: data.employeeName || currentUser?.fullName || prev.employeeName,
             department: data.department || currentUser?.department || prev.department,
-            cosCategory: data.cosCategory || currentUser?.cosCategory || prev.cosCategory,
             startDate: data.contractStartDate ? formatDisplayDate(data.contractStartDate) : formatDisplayDate(rawStart),
             endDate: data.contractEndDate ? formatDisplayDate(data.contractEndDate) : formatDisplayDate(rawEnd),
             rawStartDate: rawStart,

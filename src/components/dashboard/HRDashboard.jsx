@@ -52,8 +52,6 @@ export default function HRDashboard({
 
       totalAdministrators: 0,
 
-      activeColleges: 0,
-
       darSubmittedToday: 0,
 
       pendingEvaluations: 0,
@@ -284,128 +282,25 @@ export default function HRDashboard({
 
 
 
-        {/* Panel 5: Employee Management */}
-
+        {/* Panel 5: User Management (Consolidated Departments, Supervisors, and Personnel) */}
         <div
-
           className="quick-access-card"
-
-          onClick={() => onNavigate('employee_management')}
-
-          title="Click to manage COS personnel directory and account invitations"
-
+          onClick={() => onNavigate('user_management')}
+          title="Click to manage university departments, immediate supervisors, and COS personnel"
         >
-
           <div className="quick-access-top">
-
-            <span className="quick-access-label">Employee Management</span>
-
+            <span className="quick-access-label">User Management</span>
             <div className="quick-access-icon">
-
               <Users size={22} color="var(--brand-700)" />
-
             </div>
-
           </div>
-
           <div className="quick-access-value text-lg">
-
-            Manage COS Personnel
-
+            Departments &amp; Users
           </div>
-
           <div className="quick-access-link">
-
-            <span>COS directory &amp; accounts</span>
-
+            <span>Roster, supervisors &amp; directory</span>
             <ArrowRight size={14} />
-
           </div>
-
-        </div>
-
-
-
-        {/* Panel 6: Administrator Management */}
-
-        <div
-
-          className="quick-access-card"
-
-          onClick={() => onNavigate('administrator_management')}
-
-          title="Click to manage permanent university staff accounts (Dept Heads & HR accounts)"
-
-        >
-
-          <div className="quick-access-top">
-
-            <span className="quick-access-label">Administrator Management</span>
-
-            <div className="quick-access-icon">
-
-              <ShieldCheck size={22} color="var(--brand-700)" />
-
-            </div>
-
-          </div>
-
-          <div className="quick-access-value text-lg">
-
-            Manage Administrators
-
-          </div>
-
-          <div className="quick-access-link">
-
-            <span>Dept Heads &amp; HR accounts</span>
-
-            <ArrowRight size={14} />
-
-          </div>
-
-        </div>
-
-
-
-        {/* Panel 7: Department Management */}
-
-        <div
-
-          className="quick-access-card"
-
-          onClick={() => onNavigate('department_management')}
-
-          title="Click to configure university departments and colleges"
-
-        >
-
-          <div className="quick-access-top">
-
-            <span className="quick-access-label">Department Management</span>
-
-            <div className="quick-access-icon">
-
-              <Building2 size={22} color="var(--brand-700)" />
-
-            </div>
-
-          </div>
-
-          <div className="quick-access-value text-lg">
-
-            Manage Departments
-
-          </div>
-
-          <div className="quick-access-link">
-
-            <span>Colleges &amp; departments</span>
-
-            <ArrowRight size={14} />
-
-          </div>
-
         </div>
 
       </div>

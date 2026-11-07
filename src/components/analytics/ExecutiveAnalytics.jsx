@@ -69,7 +69,7 @@ export default function ExecutiveAnalytics({
       },
       {
         id: 'engineering',
-        name: 'College of Engineering',
+        name: 'Engineering Department',
         code: 'ENGG',
         color: '#2563eb', // Blue
         points: [75.0, 76.2, 75.8, 76.5, 77.4, 78.0, 76.8, 77.2, 77.6, 77.9, 78.0, 78.2],
@@ -99,7 +99,7 @@ export default function ExecutiveAnalytics({
       },
       {
         id: 'engineering',
-        name: 'College of Engineering',
+        name: 'Engineering Department',
         code: 'ENGG',
         color: '#2563eb',
         points: [73.5, 74.2, 73.8, 74.6, 75.2, 75.8, 74.8, 75.2, 75.6, 76.0, 76.2, 76.5],
@@ -112,7 +112,6 @@ export default function ExecutiveAnalytics({
     {
       rank: 1,
       name: 'Computer Studies Department',
-      college: 'College of Technology',
       headcount: 12,
       avgScore: 89.1,
       statusLabel: 'Very Satisfactory',
@@ -125,7 +124,6 @@ export default function ExecutiveAnalytics({
     {
       rank: 2,
       name: 'Mechanical Engineering Department',
-      college: 'College of Engineering',
       headcount: 8,
       avgScore: 86.4,
       statusLabel: 'Very Satisfactory',
@@ -138,7 +136,6 @@ export default function ExecutiveAnalytics({
     {
       rank: 3,
       name: 'Civil Engineering Department',
-      college: 'College of Engineering',
       headcount: 10,
       avgScore: 84.8,
       statusLabel: 'Very Satisfactory',
@@ -151,7 +148,6 @@ export default function ExecutiveAnalytics({
     {
       rank: 4,
       name: 'University Library Services',
-      college: 'Academic Support Division',
       headcount: 6,
       avgScore: 83.2,
       statusLabel: 'Very Satisfactory',
@@ -164,7 +160,6 @@ export default function ExecutiveAnalytics({
     {
       rank: 5,
       name: 'Management & Extension Services (MESO)',
-      college: 'Administration Office',
       headcount: 5,
       avgScore: 78.5,
       statusLabel: 'Satisfactory',
@@ -224,7 +219,7 @@ export default function ExecutiveAnalytics({
       ratingLabel: 'Very Satisfactory',
       darsVerified: 72,
       retentionStatus: 'Recommended for Renewal',
-      highlight: 'High milestone throughput in hardware diagnostics across College of Technology laboratories.',
+      highlight: 'High milestone throughput in hardware diagnostics across Computer Studies Department laboratories.',
     },
   ];
 
@@ -260,11 +255,10 @@ export default function ExecutiveAnalytics({
       ['Total Assessed Personnel', `${totalAssessed} COS Subordinates`],
       [],
       ['DEPARTMENT PERFORMANCE LEADERBOARD'],
-      ['Rank', 'Department', 'College / Division', 'COS Headcount', 'Avg Score', 'Rating', 'Eval Completion %'],
+      ['Rank', 'Department', 'COS Headcount', 'Avg Score', 'Rating', 'Eval Completion %'],
       ...departmentLeaderboard.map((d) => [
         d.rank,
         `"${d.name}"`,
-        `"${d.college}"`,
         d.headcount,
         d.avgScore,
         d.statusLabel,
@@ -389,7 +383,7 @@ export default function ExecutiveAnalytics({
         <div className="flex-between" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '18px' }}>
           <div>
             <h2 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)' }}>
-              Yearly Performance Trend by College &amp; Division
+              Yearly Performance Trend by Department &amp; Office
             </h2>
             <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
               Annual deliverable quality and evaluation performance trajectories across calendar months (Scale: 70 – 100).
@@ -622,7 +616,7 @@ export default function ExecutiveAnalytics({
                 </div>
               </div>
               <span className="badge badge-confirmed" style={{ fontSize: '11px', padding: '3px 8px' }}>
-                Top 5 Colleges
+                Top 5 Departments &amp; Offices
               </span>
             </div>
 
@@ -663,7 +657,7 @@ export default function ExecutiveAnalytics({
                           {dept.name}
                         </div>
                         <div className="muted" style={{ fontSize: '12px' }}>
-                          {dept.college} • {dept.headcount} COS Personnel
+                          {dept.headcount} COS Personnel
                         </div>
                       </div>
                     </div>

@@ -30,7 +30,6 @@ export default function ProfileSettings({
     role: 'COS Employee',
     department: 'Computer Studies Department',
     jobTitle: 'Admin Aide',
-    cosCategory: 'Administrative',
     employeeIdNumber: 'G10222026JMR',
     contactNumber: '+63 912 345 6789',
     avatarUrl: null,
@@ -52,7 +51,7 @@ export default function ProfileSettings({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [officeLocation, setOfficeLocation] = useState(
     currentUser.role === 'Department Head'
-      ? 'College of Technology, Rm 204'
+      ? 'Computer Studies Department, Rm 204'
       : currentUser.role === 'HR Personnel'
       ? 'HRMDO Central Office, Administration Bldg'
       : 'CSD Office Staff Station, Tech Bldg'

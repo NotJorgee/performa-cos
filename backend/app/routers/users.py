@@ -111,7 +111,6 @@ def create_user_manual(
         password_hash=hash_password(payload.password),
         role=payload.role,
         department_id=payload.department_id,
-        cos_category=payload.cos_category or "Administrative",
         job_title=payload.job_title,
         contact_number=payload.contact_number,
         date_appointed=payload.date_appointed or datetime.date.today(),
@@ -197,8 +196,6 @@ def admin_update_user(
         user.role = payload.role
     if payload.department_id is not None:
         user.department_id = payload.department_id
-    if payload.cos_category is not None:
-        user.cos_category = payload.cos_category
 
     db.commit()
     db.refresh(user)

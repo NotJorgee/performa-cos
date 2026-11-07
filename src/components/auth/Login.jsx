@@ -48,7 +48,6 @@ export default function Login({
         departmentId: user.departmentId,
         jobTitle: user.jobTitle || user.role,
         employeeIdNumber: user.employeeIdNumber,
-        cosCategory: user.cosCategory,
         avatarUrl: user.avatarUrl,
         initials: user.fullName
           ? user.fullName

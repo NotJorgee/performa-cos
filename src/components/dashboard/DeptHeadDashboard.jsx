@@ -8,7 +8,6 @@ export default function DeptHeadDashboard({
   currentUser = {
     fullName: 'Department Head',
     department: 'Computer Studies Department',
-    college: 'College of Technology',
   },
   metrics: propMetrics = null,
   onNavigate = () => {},

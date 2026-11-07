@@ -14,9 +14,9 @@ export default function AiPerformanceAnalysis({
   const {
     confidenceScore = 94,
     monthlyAccomplishments = [
-      'Successfully maintained 100% technical resolution uptime for 24 lab workstations in College of Technology.',
+      'Successfully maintained 100% technical resolution uptime for 24 lab workstations in Computer Studies Department.',
       'Digitally processed and validated 150 student clearance forms within institutional turnaround limits.',
-      'Configured and calibrated 12 multimedia audiovisual terminals for college academic assemblies.',
+      'Configured and calibrated 12 multimedia audiovisual terminals for department academic assemblies.',
       'Spearheaded student query backlog clearance and automated laboratory terminal inventory logs.',
     ],
     workTrends = [

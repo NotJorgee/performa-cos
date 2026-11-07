@@ -157,7 +157,6 @@ export const getPerformanceInterpretation = (score) => {
 };
 
 export default function DynamicRubric({
-  cosCategory = 'Administrative',
   employeeJobTitle = 'Admin Aide',
   evaluatorRole = 'Immediate Supervisor', // 'Immediate Supervisor' | 'Peer' | 'HRMO'
   initialScores = {},

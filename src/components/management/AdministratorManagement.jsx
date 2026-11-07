@@ -686,7 +686,7 @@ export default function AdministratorManagement({
                     value={editJobTitle}
                     onChange={(e) => setEditJobTitle(e.target.value)}
                     style={{ fontSize: '13px' }}
-                    placeholder="e.g. Department Head, College Dean, HRMO Officer"
+                    placeholder="e.g. Department Head, Immediate Supervisor, HRMO Officer"
                   />
                 </div>
 

@@ -35,8 +35,6 @@ export default function EmployeeManagement({
             department: (u.department && typeof u.department === 'object' && u.department.name)
               ? u.department.name
               : (typeof u.department === 'string' ? u.department : (u.department_name || 'Unassigned')),
-            college: u.department?.college || 'Administrative Services',
-            cosCategory: u.cos_category || 'Administrative',
             dateAppointed: u.date_appointed
               ? new Date(u.date_appointed).toLocaleDateString('en-US', {
                   month: 'short',
@@ -100,17 +98,6 @@ export default function EmployeeManagement({
   const [inviteDept, setInviteDept] = useState(departments[0] || 'Computer Studies Department');
   const [createdInvite, setCreatedInvite] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
-
-  // Auto-category mapping: Every department EXCEPT maintenance is Administrative
-  const isMaintenanceDept = (dept) => {
-    if (!dept) return false;
-    const lower = dept.toLowerCase();
-    return lower.includes('maintenance') || lower.includes('janitorial') || lower.includes('meso');
-  };
-
-  const getComputedCategory = (dept) => {
-    return isMaintenanceDept(dept) ? 'Maintenance/Janitorial' : 'Administrative';
-  };
 
   // Contract length is strictly 6 months from appointed date (SRS Section 2.1)
   const calculateContractEndDate = (dateStr) => {
@@ -239,10 +226,6 @@ export default function EmployeeManagement({
 
     const prevDept = settingsEmp.department;
     const newDept = transferDept;
-    const newCategory = getComputedCategory(newDept);
-    const newCollege = isMaintenanceDept(newDept)
-      ? 'Physical Plant and General Services'
-      : 'Administrative and Support Services';
 
     setEmployeeList((prev) =>
       prev.map((emp) =>
@@ -250,8 +233,6 @@ export default function EmployeeManagement({
           ? {
               ...emp,
               department: newDept,
-              college: newCollege,
-              cosCategory: newCategory,
             }
           : emp
       )
@@ -262,8 +243,6 @@ export default function EmployeeManagement({
         ? {
             ...prev,
             department: newDept,
-            college: newCollege,
-            cosCategory: newCategory,
           }
         : null
     );
@@ -282,7 +261,6 @@ export default function EmployeeManagement({
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    const assignedCategory = getComputedCategory(selectedDept);
     const computedEndDate = calculateContractEndDate(dateAppointed);
     const existingIds = employeeList.map((emp) => emp.idNumber).filter(Boolean);
     const generatedIdNumber = generateEvsuEmployeeId(fullName, dateAppointed || new Date(), existingIds);
@@ -294,10 +272,6 @@ export default function EmployeeManagement({
       jobTitle: jobTitle.trim() || 'Admin Aide',
       email,
       department: selectedDept,
-      college: isMaintenanceDept(selectedDept)
-        ? 'Physical Plant and General Services'
-        : 'Administrative and Support Services',
-      cosCategory: assignedCategory,
       dateAppointed: formatDisplayDate(dateAppointed),
       contractEndDate: computedEndDate,
       latestScore: null,
@@ -313,7 +287,6 @@ export default function EmployeeManagement({
         role: 'COS Employee',
         job_title: jobTitle.trim() || 'Admin Aide',
         date_appointed: dateAppointed || null,
-        cos_category: assignedCategory,
       });
       newEmployee.id = res.id;
       newEmployee.idNumber = res.employee_id_number;
@@ -489,7 +462,7 @@ export default function EmployeeManagement({
                 <th>ID Number</th>
                 <th>Full Name</th>
                 <th>Department</th>
-                <th>COS Category</th>
+                <th>Position</th>
                 <th>Appointed</th>
                 <th>Contract End</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
@@ -509,7 +482,7 @@ export default function EmployeeManagement({
                   </td>
                   <td>{emp.department}</td>
                   <td>
-                    <span className="badge badge-unassigned">{emp.cosCategory}</span>
+                    <span>{emp.jobTitle || 'Admin Aide'}</span>
                   </td>
                   <td>
                     <span style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
@@ -606,7 +579,7 @@ export default function EmployeeManagement({
                   <th>ID Number</th>
                   <th>Full Name</th>
                   <th>Department</th>
-                  <th>COS Category</th>
+                  <th>Position</th>
                   <th>Created</th>
                   <th>Contract End</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
@@ -626,7 +599,7 @@ export default function EmployeeManagement({
                     </td>
                     <td>{emp.department}</td>
                     <td>
-                      <span className="badge badge-unassigned">{emp.cosCategory}</span>
+                      <span>{emp.jobTitle || 'Admin Aide'}</span>
                     </td>
                     <td>
                       <span style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
@@ -963,7 +936,7 @@ export default function EmployeeManagement({
                     />
                   </div>
 
-                  {/* Department with Auto-Assigned Category (COS Category selection removed) */}
+                  {/* Department */}
                   <div className="form-group">
                     <label>
                       Department <span style={{ color: 'var(--red-600)' }}>*</span>
@@ -979,22 +952,6 @@ export default function EmployeeManagement({
                         </option>
                       ))}
                     </select>
-                    <div
-                      style={{
-                        marginTop: '6px',
-                        fontSize: '12px',
-                        color: 'var(--ink-500)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
-                    >
-                      <span>COS Category:</span>
-                      <span className="badge badge-unassigned" style={{ fontSize: '11px', padding: '2px 8px' }}>
-                        {getComputedCategory(selectedDept)}
-                      </span>
-                      <span className="muted">(Auto-assigned based on department)</span>
-                    </div>
                   </div>
 
                   {/* Date Appointed with Auto-Calculated 6-Month Contract Expiry (Contract End Date input removed) */}
@@ -1213,7 +1170,7 @@ export default function EmployeeManagement({
                 Department Transfer &amp; Reassignment
               </div>
               <p className="muted" style={{ fontSize: '13px', margin: '0 0 12px', lineHeight: 1.45 }}>
-                Reassign this COS employee to another university department. As department transfers are an HR-level administrative prerogative, executing this transfer immediately updates their department assignment, college, and evaluation routing.
+                Reassign this COS employee to another university department. As department transfers are an HR-level administrative prerogative, executing this transfer immediately updates their department assignment and evaluation routing.
               </p>
 
               {transferSuccessMsg && (

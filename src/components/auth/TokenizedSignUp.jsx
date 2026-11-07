@@ -238,7 +238,6 @@ export default function TokenizedSignUp({
         contract_start_date: contractStartDate,
         password: pwd,
         role: isCos ? 'COS Employee' : adminRole,
-        cos_category: isCos ? 'Administrative' : null,
         job_title: (isCos ? cosJobPosition : adminJobPosition).trim(),
         contact_number: (isCos ? cosPhone : adminPhone).trim(),
       };

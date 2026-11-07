@@ -159,7 +159,6 @@ def export_csv_archive(
         "Email",
         "Role",
         "Department",
-        "COS Category",
         "Job Title",
         "Date Appointed",
         "Contract Start",
@@ -178,7 +177,6 @@ def export_csv_archive(
             u.email,
             u.role,
             dept_name,
-            u.cos_category or "",
             u.job_title or "",
             u.date_appointed.isoformat() if u.date_appointed else "",
             u.contract_start_date.isoformat() if u.contract_start_date else "",
@@ -191,14 +189,12 @@ def export_csv_archive(
 
     # 2. Departments
     writer.writerow(["=== TABLE: DEPARTMENTS ==="])
-    writer.writerow(["ID", "Department Name", "College", "College Code", "Latitude", "Longitude", "Radius Meters"])
+    writer.writerow(["ID", "Department Name", "Latitude", "Longitude", "Radius Meters"])
     depts = db.query(models.Department).order_by(models.Department.id.asc()).all()
     for d in depts:
         writer.writerow([
             d.id,
             d.name,
-            d.college or "",
-            d.college_code or "",
             d.latitude or "",
             d.longitude or "",
             d.radius_meters or "",
@@ -346,9 +342,9 @@ def export_sql_dump(
     sql_lines.append(f"-- Departments ({len(depts)} records)")
     for d in depts:
         sql_lines.append(
-            f"INSERT INTO department (id, name, college, college_code, latitude, longitude, radius_meters) "
-            f"VALUES ({d.id}, {escape_sql(d.name)}, {escape_sql(d.college)}, {escape_sql(d.college_code)}, {escape_sql(d.latitude)}, {escape_sql(d.longitude)}, {escape_sql(d.radius_meters)}) "
-            f"ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, college = EXCLUDED.college, college_code = EXCLUDED.college_code;"
+            f"INSERT INTO department (id, name, latitude, longitude, radius_meters) "
+            f"VALUES ({d.id}, {escape_sql(d.name)}, {escape_sql(d.latitude)}, {escape_sql(d.longitude)}, {escape_sql(d.radius_meters)}) "
+            f"ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;"
         )
     sql_lines.append("")
 
@@ -369,8 +365,8 @@ def export_sql_dump(
     sql_lines.append(f"-- User Accounts ({len(users)} records)")
     for u in users:
         sql_lines.append(
-            f"INSERT INTO user_account (id, employee_id_number, full_name, email, password_hash, role, department_id, cos_category, date_appointed, contract_start_date, contract_end_date, is_active, is_archived, job_title, contact_number, alternate_email, office_location) "
-            f"VALUES ({u.id}, {escape_sql(u.employee_id_number)}, {escape_sql(u.full_name)}, {escape_sql(u.email)}, {escape_sql(u.password_hash)}, {escape_sql(u.role)}, {escape_sql(u.department_id)}, {escape_sql(u.cos_category)}, {escape_sql(u.date_appointed)}, {escape_sql(u.contract_start_date)}, {escape_sql(u.contract_end_date)}, {escape_sql(u.is_active)}, {escape_sql(u.is_archived)}, {escape_sql(u.job_title)}, {escape_sql(u.contact_number)}, {escape_sql(u.alternate_email)}, {escape_sql(u.office_location)}) "
+            f"INSERT INTO user_account (id, employee_id_number, full_name, email, password_hash, role, department_id, date_appointed, contract_start_date, contract_end_date, is_active, is_archived, job_title, contact_number, alternate_email, office_location) "
+            f"VALUES ({u.id}, {escape_sql(u.employee_id_number)}, {escape_sql(u.full_name)}, {escape_sql(u.email)}, {escape_sql(u.password_hash)}, {escape_sql(u.role)}, {escape_sql(u.department_id)}, {escape_sql(u.date_appointed)}, {escape_sql(u.contract_start_date)}, {escape_sql(u.contract_end_date)}, {escape_sql(u.is_active)}, {escape_sql(u.is_archived)}, {escape_sql(u.job_title)}, {escape_sql(u.contact_number)}, {escape_sql(u.alternate_email)}, {escape_sql(u.office_location)}) "
             f"ON CONFLICT (id) DO NOTHING;"
         )
     sql_lines.append("")

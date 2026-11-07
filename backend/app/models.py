@@ -39,7 +39,7 @@ class UserAccount(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), nullable=False, default="COS Employee")  # 'COS Employee' | 'Department Head' | 'HR Personnel'
     department_id = Column(Integer, ForeignKey("department.id"), nullable=True)
-    cos_category = Column(String(100), default="Administrative")  # 'Administrative' | 'Technical' | 'Faculty'
+    cos_category = Column(String(100), nullable=True, default=None)
     date_appointed = Column(Date, nullable=True)
     contract_start_date = Column(Date, nullable=True)
     contract_end_date = Column(Date, nullable=True)

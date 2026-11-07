@@ -40,8 +40,6 @@ export default function ReportGenerator({
             fullName: u.full_name,
             email: u.email,
             department: (u.department && typeof u.department === 'object' && u.department.name) ? u.department.name : (u.department_name || 'HRMDO Office'),
-            college: u.department?.college || 'Academic Unit',
-            cosCategory: u.cos_category || 'Administrative',
             dateAppointed: u.date_appointed || 'N/A',
             contractEndDate: u.contract_end_date || 'N/A',
             totalContracts: u.total_contracts || 0,
@@ -68,7 +66,6 @@ export default function ReportGenerator({
   const [selectedEmp, setSelectedEmp] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState(deptScope || 'All');
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [showArchived, setShowArchived] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
 
@@ -102,13 +99,7 @@ export default function ReportGenerator({
       selectedDept === 'All' ||
       emp.department === selectedDept;
 
-    const matchesCategory =
-      selectedCategory === 'All' ||
-      (selectedCategory === 'Maintenance/Janitorial'
-        ? (emp.cosCategory || '').toLowerCase().includes('maintenance') || (emp.cosCategory || '').toLowerCase().includes('janitorial')
-        : emp.cosCategory === selectedCategory);
-
-    return matchesSearch && matchesDept && matchesCategory;
+    return matchesSearch && matchesDept;
   });
 
   // Separate active employees (for primary table) and archived employees (for revealed table below)
@@ -121,8 +112,6 @@ export default function ReportGenerator({
       'Full Name',
       'Institutional Email',
       'Department',
-      'College',
-      'COS Category',
       'Total Contracts',
       'Avg Score',
       'Latest Score',
@@ -138,8 +127,6 @@ export default function ReportGenerator({
         `"${emp.fullName}"`,
         `"${emp.email}"`,
         `"${emp.department}"`,
-        `"${emp.college || ''}"`,
-        `"${emp.cosCategory}"`,
         emp.totalContracts || 1,
         emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
         emp.latestScore || 'N/A',
@@ -269,21 +256,6 @@ export default function ReportGenerator({
                 </select>
               </div>
             )}
-
-            {!isDeptRestricted && (
-              <div style={{ minWidth: '160px' }}>
-                <select
-                  className="form-control"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  style={{ fontSize: '13.5px' }}
-                >
-                  <option value="All">All Categories</option>
-                  <option value="Administrative">Administrative</option>
-                  <option value="Maintenance/Janitorial">Maintenance/Janitorial</option>
-                </select>
-              </div>
-            )}
           </div>
         </div>
 
@@ -294,7 +266,6 @@ export default function ReportGenerator({
               <th>ID Number</th>
               <th>Full Name</th>
               {!isDeptRestricted && <th>Department</th>}
-              {!isDeptRestricted && <th>COS Category</th>}
               <th>Total Contracts</th>
               <th>Avg Score</th>
               <th>Latest Score & Trajectory</th>
@@ -314,11 +285,6 @@ export default function ReportGenerator({
                   </div>
                 </td>
                 {!isDeptRestricted && <td>{emp.department}</td>}
-                {!isDeptRestricted && (
-                  <td>
-                    <span className="badge badge-unassigned">{emp.cosCategory}</span>
-                  </td>
-                )}
                 <td>
                   <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
                     {emp.totalContracts ?? 0}
@@ -458,7 +424,6 @@ export default function ReportGenerator({
                   <th>ID Number</th>
                   <th>Full Name</th>
                   {!isDeptRestricted && <th>Department</th>}
-                  {!isDeptRestricted && <th>COS Category</th>}
                   <th>Total Contracts</th>
                   <th>Avg Score</th>
                   <th>Latest Score & Trajectory</th>
@@ -476,11 +441,6 @@ export default function ReportGenerator({
                       <div className="muted" style={{ fontSize: '12px' }}>{emp.email}</div>
                     </td>
                     {!isDeptRestricted && <td>{emp.department}</td>}
-                    {!isDeptRestricted && (
-                      <td>
-                        <span className="badge badge-unassigned">{emp.cosCategory}</span>
-                      </td>
-                    )}
                     <td>
                       <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
                         {emp.totalContracts ?? 0}

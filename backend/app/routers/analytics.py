@@ -43,14 +43,8 @@ def get_hr_dashboard_metrics(
         .count()
     )
 
-    # 3. Active Departments & Colleges
+    # 3. Active Departments
     total_departments = db.query(models.Department).count()
-    active_colleges = (
-        db.query(func.count(func.distinct(models.Department.college)))
-        .filter(models.Department.college.isnot(None))
-        .scalar()
-        or 1
-    )
 
     # 4. DARs Submitted Today
     dar_today = (
@@ -103,7 +97,7 @@ def get_hr_dashboard_metrics(
         "totalEmployees": total_employees,
         "totalAdministrators": total_administrators,
         "totalDepartments": total_departments,
-        "activeColleges": active_colleges,
+        "activeDepartments": total_departments,
         "darSubmittedToday": dar_today,
         "pendingEvaluations": pending_evals,
         "marReportsSubmitted": verified_dars,
@@ -212,7 +206,6 @@ def get_employee_dashboard_metrics(
         "pendingPeerReviews": 0,
         "department": current_user.department.name if current_user.department else "Computer Studies Department",
         "employeeName": current_user.full_name,
-        "cosCategory": current_user.cos_category or "Administrative",
     }
 
 
@@ -224,12 +217,12 @@ def get_executive_analytics(
 ):
     """
     High-level institutional executive analytics:
-    - 12-Month Calendar Year Trend Curves per College/Division
+    - 12-Month Calendar Year Trend Curves per Department & Office
     - Ranked Department Performance Leaderboard with real COS headcounts
     - Outstanding Employees Spotlight with real database COS personnel
     - CSC-aligned Institutional Rating Distribution
     """
-    # 1. 12-Month Trajectory Series by College & Division
+    # 1. 12-Month Trajectory Series by Department & Office
     yearly_trend_data = {
         "2026": [
             {
@@ -255,7 +248,7 @@ def get_executive_analytics(
             },
             {
                 "id": "engineering",
-                "name": "College of Engineering",
+                "name": "Engineering Department",
                 "code": "ENGG",
                 "color": "#2563eb",
                 "points": [75.0, 76.2, 75.8, 76.5, 77.4, 78.0, 76.8, 77.2, 77.6, 77.9, 78.0, 78.2],
@@ -285,7 +278,7 @@ def get_executive_analytics(
             },
             {
                 "id": "engineering",
-                "name": "College of Engineering",
+                "name": "Engineering Department",
                 "code": "ENGG",
                 "color": "#2563eb",
                 "points": [73.5, 74.2, 73.8, 74.6, 75.2, 75.8, 74.8, 75.2, 75.6, 76.0, 76.2, 76.5],
@@ -311,7 +304,6 @@ def get_executive_analytics(
         {
             "id": 15,
             "name": "Computer Studies Department",
-            "college": "College of Technology",
             "base_headcount": 12,
             "avg_score": 89.1,
             "status_label": "Very Satisfactory",
@@ -323,7 +315,6 @@ def get_executive_analytics(
         {
             "id": 17,
             "name": "Mechanical Engineering Department",
-            "college": "College of Engineering",
             "base_headcount": 8,
             "avg_score": 86.4,
             "status_label": "Very Satisfactory",
@@ -335,7 +326,6 @@ def get_executive_analytics(
         {
             "id": 8,
             "name": "Civil Engineering Department",
-            "college": "College of Engineering",
             "base_headcount": 10,
             "avg_score": 84.8,
             "status_label": "Very Satisfactory",
@@ -347,7 +337,6 @@ def get_executive_analytics(
         {
             "id": 20,
             "name": "University Library Services",
-            "college": "Academic Support Division",
             "base_headcount": 6,
             "avg_score": 83.2,
             "status_label": "Very Satisfactory",
@@ -359,7 +348,6 @@ def get_executive_analytics(
         {
             "id": 22,
             "name": "Management & Extension Services (MESO)",
-            "college": "Administration Office",
             "base_headcount": 5,
             "avg_score": 78.5,
             "status_label": "Satisfactory",
@@ -381,7 +369,6 @@ def get_executive_analytics(
         department_leaderboard.append({
             "rank": rank,
             "name": dept["name"],
-            "college": dept["college"],
             "headcount": headcount,
             "avgScore": dept["avg_score"],
             "statusLabel": dept["status_label"],
@@ -424,7 +411,7 @@ def get_executive_analytics(
             "name": user.full_name,
             "empId": user.employee_id_number or f"G{user.id:04d}",
             "department": user.department.name if user.department else "Computer Studies Department",
-            "role": user.job_title or f"COS {user.cos_category or 'Technical'} Assistant",
+            "role": user.job_title or "COS Personnel",
             "score": 92.4,
             "ratingLabel": "Outstanding",
             "darsVerified": display_dars,
@@ -468,7 +455,7 @@ def get_executive_analytics(
             "ratingLabel": "Very Satisfactory",
             "darsVerified": 72,
             "retentionStatus": "Recommended for Renewal",
-            "highlight": "High milestone throughput in hardware diagnostics across College of Technology laboratories.",
+            "highlight": "High milestone throughput in hardware diagnostics across Computer Studies Department laboratories.",
         },
     ]
 

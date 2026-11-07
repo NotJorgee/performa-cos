@@ -30,8 +30,6 @@ export default function DepartmentManagement({
           const mapped = depts.map((d) => ({
             id: d.id,
             name: d.name,
-            college: d.college || 'Academic Services',
-            collegeCode: d.college_code || 'EVSU',
             employeeCount: d.employee_count ?? d.employeeCount ?? 0,
             activeEvaluations: d.active_evaluations ?? d.activeEvaluations ?? 0,
           }));
@@ -52,23 +50,16 @@ export default function DepartmentManagement({
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [collegeFilter, setCollegeFilter] = useState('');
 
   // Add form fields
   const [newDeptName, setNewDeptName] = useState('');
-  const [newCollege, setNewCollege] = useState('College of Technology');
-  const [newCollegeCode, setNewCollegeCode] = useState('COT');
 
   // Edit settings form fields
   const [editDeptName, setEditDeptName] = useState('');
-  const [editCollege, setEditCollege] = useState('');
-  const [editCollegeCode, setEditCollegeCode] = useState('');
 
   const openDeptSettings = (dept) => {
     setSettingsDept(dept);
     setEditDeptName(dept.name);
-    setEditCollege(dept.college);
-    setEditCollegeCode(dept.collegeCode);
     setDeleteError(null);
   };
 
@@ -79,8 +70,6 @@ export default function DepartmentManagement({
     let newDept = {
       id: Date.now(),
       name: newDeptName.trim(),
-      college: newCollege.trim(),
-      collegeCode: newCollegeCode.trim(),
       employeeCount: 0,
       activeEvaluations: 0,
     };
@@ -88,8 +77,6 @@ export default function DepartmentManagement({
     try {
       const res = await api.departments.create({
         name: newDeptName.trim(),
-        college: newCollege.trim(),
-        college_code: newCollegeCode.trim(),
       });
       newDept.id = res.id;
       setToastMsg(`Department "${newDept.name}" created in database.`);
@@ -112,15 +99,11 @@ export default function DepartmentManagement({
     const updated = {
       ...settingsDept,
       name: editDeptName.trim(),
-      college: editCollege.trim(),
-      collegeCode: editCollegeCode.trim(),
     };
 
     try {
       await api.departments.update(settingsDept.id, {
         name: editDeptName.trim(),
-        college: editCollege.trim(),
-        college_code: editCollegeCode.trim(),
       });
       setToastMsg(`Department "${updated.name}" updated in database.`);
     } catch (err) {
@@ -162,16 +145,8 @@ export default function DepartmentManagement({
     }
   };
 
-  const colleges = Array.from(new Set(deptList.map((d) => d.college).filter(Boolean)));
-
   const filteredDepts = deptList.filter((d) => {
-    const matchesSearch =
-      !searchTerm ||
-      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.college.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (d.collegeCode && d.collegeCode.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCollege = !collegeFilter || d.college === collegeFilter;
-    return matchesSearch && matchesCollege;
+    return !searchTerm || d.name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   return (
@@ -181,7 +156,7 @@ export default function DepartmentManagement({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Department Management</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Configure university colleges, academic departments, and institutional administrative offices.
+            Configure academic departments and institutional administrative offices.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -207,24 +182,11 @@ export default function DepartmentManagement({
         <input
           className="form-control"
           type="text"
-          placeholder="Search by department name, college, or code..."
+          placeholder="Search by department name..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ flex: 2 }}
         />
-        <select
-          className="form-control"
-          value={collegeFilter}
-          onChange={(e) => setCollegeFilter(e.target.value)}
-          style={{ flex: 1.2 }}
-        >
-          <option value="">All Colleges / Scopes</option>
-          {colleges.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
         <button
           className="btn btn-primary"
           type="button"
@@ -241,7 +203,6 @@ export default function DepartmentManagement({
           <thead>
             <tr>
               <th>Department Name</th>
-              <th>College / Scope</th>
               <th>Personnel</th>
               <th>Ongoing Evaluations</th>
               <th style={{ textAlign: 'right' }}>Action</th>
@@ -252,9 +213,6 @@ export default function DepartmentManagement({
               <tr key={d.id}>
                 <td>
                   <b>{d.name}</b>
-                </td>
-                <td>
-                  {d.college} ({d.collegeCode})
                 </td>
                 <td>
                   <span style={{ fontWeight: 700, color: d.employeeCount > 0 ? 'var(--ink-900)' : 'var(--ink-500)' }}>
@@ -342,14 +300,8 @@ export default function DepartmentManagement({
               }}
             >
               <div>
-                <span className="emp-id-chip" style={{ marginBottom: '4px', display: 'inline-block' }}>
-                  {settingsDept.collegeCode}
-                </span>
                 <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>
                   {settingsDept.name}
-                </div>
-                <div className="muted" style={{ fontSize: '12px' }}>
-                  {settingsDept.college}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -393,35 +345,6 @@ export default function DepartmentManagement({
                     <option key={p} value={p} />
                   ))}
                 </datalist>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="editCollegeInput">
-                    College / Institutional Unit <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <input
-                    id="editCollegeInput"
-                    className="form-control"
-                    type="text"
-                    required
-                    value={editCollege}
-                    onChange={(e) => setEditCollege(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="editCollegeCodeInput">
-                    College Code <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <input
-                    id="editCollegeCodeInput"
-                    className="form-control"
-                    type="text"
-                    required
-                    value={editCollegeCode}
-                    onChange={(e) => setEditCollegeCode(e.target.value)}
-                  />
-                </div>
               </div>
 
               <div style={{ marginBottom: '22px' }}>
@@ -538,31 +461,6 @@ export default function DepartmentManagement({
                     <option key={p} value={p} />
                   ))}
                 </datalist>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="newCollege">College / Unit</label>
-                  <input
-                    id="newCollege"
-                    className="form-control"
-                    type="text"
-                    required
-                    value={newCollege}
-                    onChange={(e) => setNewCollege(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="newCollegeCode">College Code</label>
-                  <input
-                    id="newCollegeCode"
-                    className="form-control"
-                    type="text"
-                    required
-                    value={newCollegeCode}
-                    onChange={(e) => setNewCollegeCode(e.target.value)}
-                  />
-                </div>
               </div>
 
               <div className="flex-between" style={{ marginTop: '16px' }}>

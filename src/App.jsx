@@ -24,6 +24,7 @@ import {
   ExecutiveAnalytics,
   EvaluationManagement,
   HREvaluationsProxy,
+  UserManagement,
   EmployeeManagement,
   AdministratorManagement,
   DepartmentManagement,
@@ -402,20 +403,12 @@ export default function App() {
               onBack={() => setCurrentView('dashboard')}
             />
           )}
-          {currentView === 'employee_management' && (
-            <EmployeeManagement
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
-            />
-          )}
-          {currentView === 'administrator_management' && (
-            <AdministratorManagement
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
-            />
-          )}
-          {currentView === 'department_management' && (
-            <DepartmentManagement
+          {(currentView === 'user_management' ||
+            currentView === 'employee_management' ||
+            currentView === 'administrator_management' ||
+            currentView === 'department_management') && (
+            <UserManagement
+              currentUser={currentUser}
               onNavigate={setCurrentView}
               onBack={() => setCurrentView('dashboard')}
             />

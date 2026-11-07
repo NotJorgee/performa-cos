@@ -22,7 +22,7 @@ class RegisterRequest(BaseModel):
     password: str
     role: Optional[str] = None
     department_id: Optional[int] = None
-    cos_category: Optional[str] = "Administrative"
+    cos_category: Optional[str] = None
     job_title: Optional[str] = None
     contact_number: Optional[str] = None
     first_name: Optional[str] = None
@@ -88,7 +88,7 @@ class UserAccountBase(BaseModel):
     email: EmailStr
     role: str = "COS Employee"
     department_id: Optional[int] = None
-    cos_category: Optional[str] = "Administrative"
+    cos_category: Optional[str] = None
     job_title: Optional[str] = None
     contact_number: Optional[str] = None
     alternate_email: Optional[str] = None
