@@ -192,7 +192,10 @@ def get_employee_dashboard_metrics(
         .order_by(models.RenewalApplication.id.desc())
         .first()
     )
-    intent_status = latest_renewal.status if latest_renewal else "Open for Intent Confirmation"
+    if days_until_expiration > 30:
+        intent_status = "Contract Active"
+    else:
+        intent_status = latest_renewal.status if latest_renewal else "Open for Intent Confirmation"
 
     return {
         "contractStartDate": contract_start.strftime("%B %d, %Y") if contract_start else "Not Specified",
@@ -222,71 +225,225 @@ def get_executive_analytics(
     - Outstanding Employees Spotlight with real database COS personnel
     - CSC-aligned Institutional Rating Distribution
     """
-    # 1. 12-Month Trajectory Series by Department & Office
-    yearly_trend_data = {
-        "2026": [
+    # 1. Monthly Calendar Timeline (Jan – Dec, with Nov as current active evaluation month)
+    months = [
+        {"id": "jan", "key": "jan", "label": "Jan", "fullName": "January", "monthIndex": 0, "status": "Completed"},
+        {"id": "feb", "key": "feb", "label": "Feb", "fullName": "February", "monthIndex": 1, "status": "Completed"},
+        {"id": "mar", "key": "mar", "label": "Mar", "fullName": "March", "monthIndex": 2, "status": "Completed"},
+        {"id": "apr", "key": "apr", "label": "Apr", "fullName": "April", "monthIndex": 3, "status": "Completed"},
+        {"id": "may", "key": "may", "label": "May", "fullName": "May", "monthIndex": 4, "status": "Completed"},
+        {"id": "jun", "key": "jun", "label": "Jun", "fullName": "June", "monthIndex": 5, "status": "Completed"},
+        {"id": "jul", "key": "jul", "label": "Jul", "fullName": "July", "monthIndex": 6, "status": "Completed"},
+        {"id": "aug", "key": "aug", "label": "Aug", "fullName": "August", "monthIndex": 7, "status": "Completed"},
+        {"id": "sep", "key": "sep", "label": "Sep", "fullName": "September", "monthIndex": 8, "status": "Completed"},
+        {"id": "oct", "key": "oct", "label": "Oct", "fullName": "October", "monthIndex": 9, "status": "Completed"},
+        {"id": "nov", "key": "nov", "label": "Nov", "fullName": "November", "monthIndex": 10, "status": "Active", "isActive": True},
+        {"id": "dec", "key": "dec", "label": "Dec", "fullName": "December", "monthIndex": 11, "status": "Upcoming"},
+    ]
+    evaluation_periods = months  # backward compatibility alias
+
+    # Domain Trajectories across 11 Months (Jan through Nov Active)
+    domain_trajectories = [
+        {
+            "id": "academic",
+            "name": "Academic Departments",
+            "code": "ACAD",
+            "color": "#2563eb",
+            "points": [84.2, 85.0, 84.6, 85.8, 86.2, 87.4, 86.8, 87.5, 88.2, 88.9, 89.4],
+            "deptCount": 5,
+        },
+        {
+            "id": "administrative",
+            "name": "Administrative & Fiscal Services",
+            "code": "ADMIN",
+            "color": "#800020",
+            "points": [82.0, 82.5, 82.8, 83.4, 84.0, 84.6, 84.0, 84.8, 85.2, 85.8, 86.4],
+            "deptCount": 5,
+        },
+        {
+            "id": "student_services",
+            "name": "Student Support & Services",
+            "code": "STUDENT",
+            "color": "#059669",
+            "points": [80.5, 81.2, 81.6, 82.2, 82.8, 83.5, 83.0, 83.6, 84.0, 84.3, 84.8],
+            "deptCount": 5,
+        },
+        {
+            "id": "extension_operations",
+            "name": "Extension & Operations",
+            "code": "EXT/OPS",
+            "color": "#7c3aed",
+            "points": [78.6, 79.4, 79.8, 80.5, 81.2, 82.0, 81.4, 82.2, 82.6, 83.0, 83.4],
+            "deptCount": 7,
+        },
+    ]
+
+    # Department-Level Trajectories grouped by Domain across 11 Months
+    department_trajectories = {
+        "academic": [
             {
-                "id": "technology",
-                "name": "Technology / CSD",
-                "code": "TECH",
-                "color": "#d97706",
-                "points": [84.2, 85.0, 83.8, 85.6, 87.2, 88.5, 87.0, 87.8, 88.6, 89.2, 89.4, 89.6],
+                "id": 15,
+                "name": "Computer Studies Department",
+                "code": "CSD",
+                "color": "#2563eb",
+                "points": [84.5, 85.2, 84.8, 86.0, 86.5, 87.6, 87.0, 87.8, 88.4, 89.1, 89.6],
             },
             {
-                "id": "sdo_library",
-                "name": "Student Dev / Library",
-                "code": "SDO",
-                "color": "#7c3aed",
-                "points": [80.5, 81.8, 81.2, 82.5, 83.1, 83.8, 82.4, 83.0, 83.5, 83.7, 83.8, 83.9],
-            },
-            {
-                "id": "research",
-                "name": "Research & MESO",
-                "code": "RESEARCH",
-                "color": "#059669",
-                "points": [78.2, 79.0, 81.4, 80.6, 79.8, 81.2, 80.0, 80.5, 81.0, 81.5, 81.1, 80.9],
-            },
-            {
-                "id": "engineering",
+                "id": 17,
                 "name": "Engineering Department",
                 "code": "ENGG",
-                "color": "#2563eb",
-                "points": [75.0, 76.2, 75.8, 76.5, 77.4, 78.0, 76.8, 77.2, 77.6, 77.9, 78.0, 78.2],
+                "color": "#0284c7",
+                "points": [82.8, 83.4, 83.0, 84.2, 84.6, 85.5, 85.0, 85.6, 86.0, 86.4, 86.8],
+            },
+            {
+                "id": 8,
+                "name": "Technology Department",
+                "code": "TECH",
+                "color": "#0d9488",
+                "points": [81.2, 82.0, 81.6, 82.6, 83.0, 84.0, 83.5, 84.2, 84.8, 85.0, 85.4],
+            },
+            {
+                "id": 11,
+                "name": "Education Department",
+                "code": "EDUC",
+                "color": "#4f46e5",
+                "points": [80.5, 81.2, 80.8, 82.0, 82.5, 83.4, 83.0, 83.8, 84.2, 84.6, 85.0],
+            },
+            {
+                "id": 19,
+                "name": "Hospitality & Tourism Management",
+                "code": "HTM",
+                "color": "#0891b2",
+                "points": [79.8, 80.6, 80.2, 81.2, 81.8, 82.6, 82.2, 83.0, 83.6, 83.9, 84.2],
             },
         ],
-        "2025": [
+        "administrative": [
             {
-                "id": "technology",
-                "name": "Technology / CSD",
-                "code": "TECH",
-                "color": "#d97706",
-                "points": [80.2, 81.0, 80.5, 81.8, 82.5, 83.4, 82.0, 82.8, 83.2, 83.8, 84.0, 84.5],
+                "id": 18,
+                "name": "Administrative and Finance",
+                "code": "ADMIN/FIN",
+                "color": "#800020",
+                "points": [82.2, 82.8, 83.0, 83.6, 84.2, 84.8, 84.4, 85.0, 85.6, 86.2, 86.8],
             },
             {
-                "id": "sdo_library",
-                "name": "Student Dev / Library",
-                "code": "SDO",
-                "color": "#7c3aed",
-                "points": [77.5, 78.4, 78.0, 79.2, 79.8, 80.5, 79.5, 80.0, 80.4, 80.8, 81.0, 81.2],
+                "id": 14,
+                "name": "Campus Director Office",
+                "code": "CDO",
+                "color": "#991b1b",
+                "points": [81.8, 82.4, 82.6, 83.2, 83.8, 84.4, 84.0, 84.6, 85.2, 85.8, 86.4],
             },
             {
-                "id": "research",
-                "name": "Research & MESO",
-                "code": "RESEARCH",
+                "id": 1,
+                "name": "Disbursing / Cashier Office",
+                "code": "CASHIER",
+                "color": "#b91c1c",
+                "points": [81.0, 81.6, 81.8, 82.4, 83.0, 83.6, 83.2, 83.8, 84.5, 85.0, 85.6],
+            },
+            {
+                "id": 2,
+                "name": "HRMDO Office",
+                "code": "HRMDO",
+                "color": "#c026d3",
+                "points": [82.5, 83.0, 83.4, 84.0, 84.6, 85.2, 84.8, 85.5, 86.0, 86.6, 87.2],
+            },
+            {
+                "id": 12,
+                "name": "Procurement Office",
+                "code": "PROCURE",
+                "color": "#a21caf",
+                "points": [80.2, 80.8, 81.2, 81.8, 82.4, 83.0, 82.6, 83.4, 84.0, 84.5, 85.0],
+            },
+        ],
+        "student_services": [
+            {
+                "id": 20,
+                "name": "Library Office",
+                "code": "LIBRARY",
                 "color": "#059669",
-                "points": [76.0, 76.8, 78.5, 77.8, 77.2, 78.4, 77.5, 78.0, 78.5, 79.0, 78.6, 78.4],
+                "points": [81.5, 82.0, 82.4, 83.0, 83.5, 84.2, 83.8, 84.5, 85.0, 85.5, 86.0],
             },
             {
-                "id": "engineering",
-                "name": "Engineering Department",
-                "code": "ENGG",
-                "color": "#2563eb",
-                "points": [73.5, 74.2, 73.8, 74.6, 75.2, 75.8, 74.8, 75.2, 75.6, 76.0, 76.2, 76.5],
+                "id": 16,
+                "name": "SASO Office",
+                "code": "SASO",
+                "color": "#16a34a",
+                "points": [80.5, 81.2, 81.5, 82.0, 82.6, 83.4, 83.0, 83.6, 84.2, 84.7, 85.1],
+            },
+            {
+                "id": 3,
+                "name": "School Clinic",
+                "code": "CLINIC",
+                "color": "#10b981",
+                "points": [79.8, 80.4, 80.8, 81.4, 82.0, 82.6, 82.2, 82.8, 83.4, 83.9, 84.3],
+            },
+            {
+                "id": 9,
+                "name": "Guidance Office",
+                "code": "GUIDANCE",
+                "color": "#14b8a6",
+                "points": [79.2, 79.8, 80.2, 80.8, 81.4, 82.2, 81.8, 82.5, 83.0, 83.5, 83.9],
+            },
+            {
+                "id": 21,
+                "name": "Registrar Office",
+                "code": "REGISTRAR",
+                "color": "#047857",
+                "points": [80.0, 80.6, 81.0, 81.6, 82.2, 83.0, 82.5, 83.2, 83.8, 84.2, 84.7],
+            },
+        ],
+        "extension_operations": [
+            {
+                "id": 22,
+                "name": "Maintenance/Janitorial (MESO) Office",
+                "code": "MESO",
+                "color": "#7c3aed",
+                "points": [79.5, 80.2, 80.6, 81.2, 81.8, 82.6, 82.0, 82.8, 83.2, 83.7, 84.2],
+            },
+            {
+                "id": 10,
+                "name": "Extension Service Office",
+                "code": "EXTENSION",
+                "color": "#6d28d9",
+                "points": [78.8, 79.4, 79.8, 80.4, 81.0, 81.8, 81.2, 82.0, 82.5, 83.0, 83.6],
+            },
+            {
+                "id": 5,
+                "name": "Research Office",
+                "code": "RESEARCH",
+                "color": "#9333ea",
+                "points": [79.0, 79.6, 80.0, 80.6, 81.2, 82.0, 81.5, 82.2, 82.8, 83.3, 83.8],
+            },
+            {
+                "id": 6,
+                "name": "Sports And Development Office",
+                "code": "SPORTS",
+                "color": "#8b5cf6",
+                "points": [78.2, 78.8, 79.2, 79.8, 80.4, 81.2, 80.8, 81.5, 82.0, 82.5, 83.0],
+            },
+            {
+                "id": 7,
+                "name": "Quality Assurance & Accreditation Office",
+                "code": "QA/QAAO",
+                "color": "#a855f7",
+                "points": [80.0, 80.6, 81.0, 81.8, 82.4, 83.2, 82.8, 83.5, 84.0, 84.5, 84.9],
+            },
+            {
+                "id": 4,
+                "name": "IPDO Office",
+                "code": "IPDO",
+                "color": "#6366f1",
+                "points": [77.8, 78.4, 78.8, 79.4, 80.0, 80.8, 80.4, 81.0, 81.6, 82.1, 82.6],
+            },
+            {
+                "id": 13,
+                "name": "IGP Office",
+                "code": "IGP",
+                "color": "#7e22ce",
+                "points": [77.2, 77.8, 78.2, 78.8, 79.4, 80.2, 79.8, 80.5, 81.0, 81.5, 82.0],
             },
         ],
     }
-
-    trend_series = yearly_trend_data.get(year, yearly_trend_data["2026"])
+    trend_series = domain_trajectories
 
     # 2. Query Department Headcounts from Database
     dept_counts = dict(
@@ -314,7 +471,7 @@ def get_executive_analytics(
         },
         {
             "id": 17,
-            "name": "Mechanical Engineering Department",
+            "name": "Engineering Department",
             "base_headcount": 8,
             "avg_score": 86.4,
             "status_label": "Very Satisfactory",
@@ -325,7 +482,7 @@ def get_executive_analytics(
         },
         {
             "id": 8,
-            "name": "Civil Engineering Department",
+            "name": "Technology Department",
             "base_headcount": 10,
             "avg_score": 84.8,
             "status_label": "Very Satisfactory",
@@ -336,7 +493,7 @@ def get_executive_analytics(
         },
         {
             "id": 20,
-            "name": "University Library Services",
+            "name": "Library Office",
             "base_headcount": 6,
             "avg_score": 83.2,
             "status_label": "Very Satisfactory",
@@ -347,7 +504,7 @@ def get_executive_analytics(
         },
         {
             "id": 22,
-            "name": "Management & Extension Services (MESO)",
+            "name": "Maintenance/Janitorial (MESO) Office",
             "base_headcount": 5,
             "avg_score": 78.5,
             "status_label": "Satisfactory",
@@ -480,8 +637,12 @@ def get_executive_analytics(
         "institutionalAverage": 86.4,
         "institutionalRating": "Very Satisfactory",
         "totalAssessed": 27,
+        "months": months,
+        "evaluationPeriods": months,
+        "activeMonthIndex": 10,
         "trendSeries": trend_series,
-        "yearlyTrendData": yearly_trend_data,
+        "domainTrajectories": domain_trajectories,
+        "departmentTrajectories": department_trajectories,
         "departmentLeaderboard": department_leaderboard,
         "outstandingEmployees": outstanding_employees,
         "ratingDistribution": rating_distribution,

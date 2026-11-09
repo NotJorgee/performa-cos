@@ -9,6 +9,8 @@ import {
   RefreshCw,
   RotateCcw,
   Info,
+  ZoomIn,
+  X,
 } from 'lucide-react';
 import {
   verifyCoordinatesAgainstCampuses,
@@ -38,6 +40,7 @@ export default function DailyReporting({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [geoError, setGeoError] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -435,7 +438,7 @@ export default function DailyReporting({
                 Live Photo Evidence <span style={{ color: 'var(--red-600)' }}>*</span>
               </label>
               <p className="muted" style={{ fontSize: '12px', marginTop: 0, marginBottom: '12px' }}>
-                Capture live photo evidence of your completed task. Physical presence within campus grounds will be verified and stamped with an official Style 2 geotag badge.
+                Capture live photo evidence of your completed task. Physical presence within campus grounds will be verified and stamped with an geotag badge.
               </p>
 
               {/* Viewfinder Field: State 1 (No photo yet) vs State 2 (Photo captured & displayed) */}
@@ -505,8 +508,9 @@ export default function DailyReporting({
                     position: 'relative',
                   }}
                 >
-                  {/* Photo Display Viewport */}
+                  {/* Photo Display Viewport (Clickable to inspect clarity) */}
                   <div
+                    onClick={() => !isGeotagging && setIsPreviewModalOpen(true)}
                     style={{
                       position: 'relative',
                       textAlign: 'center',
@@ -515,7 +519,9 @@ export default function DailyReporting({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      cursor: isGeotagging ? 'default' : 'pointer',
                     }}
+                    title="Click or tap to inspect photo clarity"
                   >
                     <img
                       src={photoPreview}
@@ -550,7 +556,7 @@ export default function DailyReporting({
                       >
                         <RefreshCw size={30} className="spin" style={{ color: '#38bdf8' }} />
                         <span style={{ fontWeight: 700, fontSize: '14.5px' }}>
-                          Reading GPS &amp; Stamping Style 2 Geotag...
+                          Reading GPS &amp; Stamping Geotag...
                         </span>
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>
                           Please keep your browser active
@@ -558,11 +564,40 @@ export default function DailyReporting({
                       </div>
                     )}
 
+                    {/* Inspection Hint Pill */}
+                    {!isGeotagging && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '10px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          backgroundColor: 'rgba(15, 23, 42, 0.82)',
+                          color: '#ffffff',
+                          padding: '5px 12px',
+                          borderRadius: '20px',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          pointerEvents: 'none',
+                          backdropFilter: 'blur(4px)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                        }}
+                      >
+                        <ZoomIn size={13} /> Tap photo to inspect
+                      </div>
+                    )}
+
                     {/* Floating Retake Photo Button */}
                     {!isGeotagging && (
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
                         style={{
                           position: 'absolute',
                           top: '12px',
@@ -599,7 +634,7 @@ export default function DailyReporting({
                     )}
                   </div>
 
-                  {/* Geotag & Metadata Footer Bar */}
+                  {/* Geotag Verification Status Bar (Security-Hardened: Coordinates, Accuracy & Fingerprint Omitted) */}
                   <div
                     style={{
                       backgroundColor: 'var(--surface-50, #f8fafc)',
@@ -610,90 +645,64 @@ export default function DailyReporting({
                     }}
                   >
                     {geotagMeta ? (
-                      <>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            flexWrap: 'wrap',
-                            gap: '8px',
-                            marginBottom: '8px',
-                          }}
-                        >
-                          {geotagMeta.isGeofenceValid ? (
-                            <span
-                              className="badge badge-completed"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                fontSize: '12px',
-                                padding: '4px 10px',
-                              }}
-                            >
-                              <ShieldCheck size={14} /> Verified On-Campus ({geotagMeta.campusName})
-                            </span>
-                          ) : (
-                            <span
-                              className="badge badge-warning"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                fontSize: '12px',
-                                padding: '4px 10px',
-                              }}
-                            >
-                              <AlertTriangle size={14} /> Out of Bounds (~
-                              {((geotagMeta.nearestDistanceM || 0) / 1000).toFixed(1)} km from campus)
-                            </span>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="btn btn-sm"
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '8px',
+                        }}
+                      >
+                        {geotagMeta.isGeofenceValid ? (
+                          <span
+                            className="badge badge-completed"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',
-                              padding: '4px 10px',
                               fontSize: '12px',
+                              padding: '5px 12px',
+                              fontWeight: 700,
                             }}
                           >
-                            <RotateCcw size={12} /> Retake
-                          </button>
-                        </div>
+                            <ShieldCheck size={14} /> Verified On-Campus ({geotagMeta.campusName})
+                          </span>
+                        ) : (
+                          <span
+                            className="badge badge-warning"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontSize: '12px',
+                              padding: '5px 12px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <AlertTriangle size={14} /> Out of Bounds (~
+                            {((geotagMeta.nearestDistanceM || 0) / 1000).toFixed(1)} km from campus)
+                          </span>
+                        )}
 
-                        <div
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="btn btn-sm"
                           style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                            gap: '6px',
-                            fontSize: '11.5px',
-                            color: 'var(--ink-600, #475569)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
                           }}
                         >
-                          <div>
-                            <strong>Coordinates:</strong> {geotagMeta.latitude?.toFixed(5)}° N,{' '}
-                            {geotagMeta.longitude?.toFixed(5)}° E
-                          </div>
-                          <div>
-                            <strong>Accuracy:</strong>{' '}
-                            {geotagMeta.accuracy ? `±${Math.round(geotagMeta.accuracy)}m` : 'Standard'}
-                          </div>
-                          <div style={{ gridColumn: '1 / -1' }}>
-                            <strong>Fingerprint (SHA-256):</strong>{' '}
-                            <code style={{ fontSize: '11px', background: '#e2e8f0', padding: '2px 5px', borderRadius: '4px' }}>
-                              {geotagMeta.hash}
-                            </code>
-                          </div>
-                        </div>
-                      </>
+                          <RotateCcw size={12} /> Retake
+                        </button>
+                      </div>
                     ) : (
                       <div className="muted" style={{ fontSize: '12px' }}>
-                        Photo evidence captured. Stamping Style 2 corner badge and calculating anti-spoofing fingerprint...
+                        Photo evidence captured. Verifying campus geofence and stamping geotag badge...
                       </div>
                     )}
                   </div>
@@ -727,6 +736,99 @@ export default function DailyReporting({
           </form>
         </div>
       </div>
+
+      {/* Photo Evidence Fullscreen Lightbox / Inspector Modal */}
+      {isPreviewModalOpen && photoPreview && (
+      <div
+        onClick={() => setIsPreviewModalOpen(false)}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.92)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          cursor: 'zoom-out',
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: '100%',
+            maxWidth: '960px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '10px',
+            color: '#ffffff',
+            cursor: 'default',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Camera size={18} color="#38bdf8" />
+            <span style={{ fontSize: '14.5px', fontWeight: 700 }}>Inspect Photo Evidence</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsPreviewModalOpen(false)}
+            style={{
+              background: 'rgba(255, 255, 255, 0.15)',
+              border: 'none',
+              color: '#ffffff',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'background 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)')}
+            title="Close Preview"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            maxWidth: '960px',
+            maxHeight: 'calc(100vh - 120px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.75)',
+            backgroundColor: '#000000',
+            cursor: 'default',
+          }}
+        >
+          <img
+            src={photoPreview}
+            alt="Live DAR Evidence Inspection"
+            style={{
+              maxWidth: '100%',
+              maxHeight: 'calc(100vh - 140px)',
+              objectFit: 'contain',
+              display: 'block',
+            }}
+          />
+        </div>
+        <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '10px', textAlign: 'center' }}>
+          Tap anywhere outside or press the close button to return
+        </div>
+      </div>
+    )}
     </div>
   );
 }

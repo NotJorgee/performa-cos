@@ -111,8 +111,14 @@ export default function Login({
           {/* Right Column: Sign In Card */}
           <div className="lv2-right">
             <img src={evsuSeal} alt="EVSU Seal" className="lv2-mark-mobile" />
-            <h1 className="lv2-h1">Sign in</h1>
-            <p className="lv2-sub">Use the email address the university gave you.</p>
+            <h1 className="lv2-h1">
+              <span className="lv2-brand-desktop">Sign in</span>
+              <span className="lv2-brand-mobile">PerformaCOS</span>
+            </h1>
+            <p className="lv2-sub">
+              <span className="lv2-brand-desktop">Use the email address the university gave you.</span>
+              <span className="lv2-brand-mobile">Eastern Visayas State University</span>
+            </p>
 
             {/* Legit Warning Alert */}
             {errorMessage && (

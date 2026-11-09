@@ -10,6 +10,7 @@ from sqlalchemy import or_
 from ..database import get_db
 from .. import models, schemas
 from ..auth import get_current_user, hash_password, verify_password
+from .auth import _add_six_months
 from ..id_generator import generate_evsu_employee_id
 from .audit import log_audit
 
@@ -104,6 +105,11 @@ def create_user_manual(
             contract_start_date=payload.date_appointed or datetime.date.today(),
         )
 
+    start_date = payload.contract_start_date or payload.date_appointed or datetime.date.today()
+    contract_end_date = payload.contract_end_date
+    if payload.role == "COS Employee" and not contract_end_date:
+        contract_end_date = _add_six_months(start_date)
+
     new_user = models.UserAccount(
         employee_id_number=emp_id,
         full_name=payload.full_name,
@@ -114,10 +120,11 @@ def create_user_manual(
         job_title=payload.job_title,
         contact_number=payload.contact_number,
         date_appointed=payload.date_appointed or datetime.date.today(),
-        contract_end_date=payload.contract_end_date,
+        contract_start_date=start_date if payload.role == "COS Employee" else None,
+        contract_end_date=contract_end_date,
         is_active=payload.is_active,
         is_archived=False,
-        total_contracts=0,
+        total_contracts=1 if payload.role == "COS Employee" else 0,
     )
     db.add(new_user)
     db.flush()
@@ -196,6 +203,10 @@ def admin_update_user(
         user.role = payload.role
     if payload.department_id is not None:
         user.department_id = payload.department_id
+    if payload.contract_start_date is not None:
+        user.contract_start_date = payload.contract_start_date
+    if payload.contract_end_date is not None:
+        user.contract_end_date = payload.contract_end_date
 
     db.commit()
     db.refresh(user)
@@ -204,7 +215,7 @@ def admin_update_user(
         db=db,
         action="ADMIN_PROFILE_UPDATE",
         target_scope=f"User #{user.id} ({user.full_name})",
-        operation_details=f"Administrative profile updated (Role: {user.role}, Dept ID: {user.department_id}, Title: {user.job_title}).",
+        operation_details=f"Administrative profile updated (Role: {user.role}, Dept ID: {user.department_id}, Title: {user.job_title}, Contract: {user.contract_start_date} to {user.contract_end_date}).",
         user=current_user,
     )
 

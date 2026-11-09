@@ -175,6 +175,12 @@ def list_user_notifications(
             action_label = "Manage Renewals" if "renewal" in (n.category or "") else "Open Mediation"
         elif n.action_view == "hr_evaluations_proxy":
             action_label = "Input HR Scores"
+        elif n.action_view in ("employee_attendance", "my_attendance", "leave_filing", "my_leaves"):
+            action_label = "View Leave Status" if "leave" in (n.category or "") else "Open Attendance"
+        elif n.action_view in ("department_attendance", "department_leaves", "subordinate_leaves"):
+            action_label = "Review Leave" if "leave" in (n.category or "") else "Open Attendance"
+        elif n.action_view in ("campus_attendance", "campus_leaves"):
+            action_label = "View Campus Leaves" if "leave" in (n.category or "") else "Open Attendance"
 
         formatted.append({
             "id": n.id,

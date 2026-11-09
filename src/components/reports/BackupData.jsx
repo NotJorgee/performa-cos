@@ -9,7 +9,6 @@ import {
   Building2,
   MapPin,
   Clock,
-  RotateCcw,
   ShieldCheck,
   AlertTriangle,
 } from 'lucide-react';
@@ -119,30 +118,17 @@ export default function BackupData({ onBack = null }) {
             Generate and export authenticated copies of Eastern Visayas State University COS records for regulatory compliance, disaster recovery, and offline archiving.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {onBack && (
           <button
             className="btn btn-sm"
             type="button"
-            onClick={loadStatsAndHistory}
-            disabled={isLoading}
+            onClick={onBack}
             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            title="Refresh database volume statistics"
           >
-            <RotateCcw size={13} />
-            <span>Refresh Stats</span>
+            <ArrowLeft size={14} />
+            <span>Back to Dashboard</span>
           </button>
-          {onBack && (
-            <button
-              className="btn btn-sm"
-              type="button"
-              onClick={onBack}
-              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <ArrowLeft size={14} />
-              <span>Back to Dashboard</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       <Toast

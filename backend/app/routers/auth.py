@@ -22,13 +22,15 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 def _add_six_months(d: datetime.date) -> datetime.date:
+    """Calculates standard 6-month COS contract end date inclusive (e.g. July 5, 2026 -> Jan 4, 2027)."""
     month = d.month + 6
     year = d.year + (month - 1) // 12
     month = ((month - 1) % 12) + 1
     is_leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
     days_in_month = [31, 29 if is_leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     day = min(d.day, days_in_month[month - 1])
-    return datetime.date(year, month, day)
+    target = datetime.date(year, month, day)
+    return target - datetime.timedelta(days=1)
 
 
 def _build_user_response(user: models.UserAccount) -> dict:
@@ -48,6 +50,10 @@ def _build_user_response(user: models.UserAccount) -> dict:
         "dateAppointed": user.date_appointed.isoformat() if user.date_appointed else None,
         "contractStartDate": start_date.isoformat() if start_date else None,
         "contractEndDate": user.contract_end_date.isoformat() if user.contract_end_date else None,
+        "contactNumber": user.contact_number or "",
+        "alternateEmail": user.alternate_email or "",
+        "emergencyContact": user.emergency_contact or "",
+        "officeLocation": user.office_location or "",
     }
 
 

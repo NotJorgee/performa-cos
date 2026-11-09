@@ -103,7 +103,6 @@ export default function VerifyOtp({
               </div>
             </form>
 
-            <div className="auth-footer">Secured with EVSU Authentication &amp; OTP Layer</div>
           </div>
         </div>
       </div>

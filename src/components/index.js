@@ -16,6 +16,7 @@ export { default as FastTrackModal } from './common/FastTrackModal';
 export { default as CampusGeofenceModal } from './common/CampusGeofenceModal';
 export { default as CampusGeofence } from './common/CampusGeofence';
 export { default as AiPerformanceAnalysis } from './common/AiPerformanceAnalysis';
+export { default as HistoricalAttendanceRoster } from './common/HistoricalAttendanceRoster';
 
 // 1. COS Employee GUI Modules (SRS Section 8.1)
 export { default as EmployeeDashboard } from './dashboard/EmployeeDashboard';
@@ -23,17 +24,23 @@ export { default as DailyReporting } from './employee/DailyReporting';
 export { default as MonthlyReport } from './employee/MonthlyReport';
 export { default as ContractStatus } from './employee/ContractStatus';
 export { default as PeerEvaluations } from './employee/PeerEvaluations';
+export { default as EmployeeAttendance } from './employee/EmployeeAttendance';
+export { default as AttendanceLogs } from './employee/AttendanceLogs';
 
 // 2. Department Head GUI Modules (SRS Section 8.1)
 export { default as DeptHeadDashboard } from './dashboard/DeptHeadDashboard';
 export { default as PendingEvaluations } from './depthead/PendingEvaluations';
 export { default as IntentReview } from './depthead/IntentReview';
+export { default as DepartmentAttendance } from './depthead/DepartmentAttendance';
 
 // 3. HR Personnel GUI Modules (SRS Section 8.1)
 export { default as HRDashboard } from './dashboard/HRDashboard';
 export { default as ExecutiveAnalytics } from './analytics/ExecutiveAnalytics';
 export { default as EvaluationManagement } from './hr/EvaluationManagement';
+export { default as EvaluationSettings } from './hr/EvaluationSettings';
+export { default as EvaluationFormEditor } from './hr/EvaluationFormEditor';
 export { default as HREvaluationsProxy } from './hr/HREvaluationsProxy';
+export { default as CampusAttendance } from './hr/CampusAttendance';
 export { default as UserManagement } from './management/UserManagement';
 export { default as EmployeeManagement } from './management/EmployeeManagement';
 export { default as EmployeeRecordView } from './management/EmployeeRecordView';

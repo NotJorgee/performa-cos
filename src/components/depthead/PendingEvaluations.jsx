@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, FileText } from 'lucide-react';
 import DynamicRubric from '../common/DynamicRubric';
 import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
 import MonthlyReport from '../employee/MonthlyReport';
 import Toast from '../common/Toast';
+import api from '../../services/api';
 
 const DEFAULT_SUBMITTED_SCORES = {
   job_knowledge: 10,
@@ -35,6 +36,27 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
   const [docOrigin, setDocOrigin] = useState('appraisal'); // 'appraisal' | 'table'
   const [isReadOnlyEval, setIsReadOnlyEval] = useState(false);
   const [savedDraftToast, setSavedDraftToast] = useState(null);
+
+  useEffect(() => {
+    if (!selectedEmpId) return;
+    api.attendance.getEmployeeStats(selectedEmpId).then((stats) => {
+      if (stats) {
+        setSubordinateList((prev) =>
+          prev.map((s) =>
+            s.id === selectedEmpId
+              ? {
+                  ...s,
+                  aiSummary: {
+                    ...(s.aiSummary || {}),
+                    attendanceStats: stats,
+                  },
+                }
+              : s
+          )
+        );
+      }
+    }).catch(() => {});
+  }, [selectedEmpId]);
 
   // Filter out any employees whose contract renewal is finished (Active Contract / Completed)
   // Only pending evaluations remain in this panel
@@ -116,7 +138,7 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
               Departmental COS Personnel &amp; Evaluation Status
             </div>
             <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
-              Monitor subordinate contract lifecycles, track ongoing evaluation stages, and view compiled monthly accomplishment reports.
+              Monitor subordinate contract lifecycles, track ongoing evaluation stages, and view accumulated accomplishment reports.
             </p>
           </div>
           {pendingSubordinates.length === 0 ? (
@@ -275,7 +297,7 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
                     setDocOrigin('appraisal');
                   }}
                 >
-                  <FileText size={15} /> View Full Compiled MAR →
+                  <FileText size={15} /> View Accumulated DAR Logs →
                 </button>
               </div>
             </div>

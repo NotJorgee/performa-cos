@@ -177,6 +177,28 @@ export default function IntentReview({
     );
   };
 
+  const handleOpenEvaluation = async (candidate, isReadOnly = false) => {
+    setEvaluatingEmp({ ...candidate, isReadOnly });
+    try {
+      const stats = await api.attendance.getEmployeeStats(candidate.id);
+      if (stats) {
+        setEvaluatingEmp((prev) =>
+          prev && prev.id === candidate.id
+            ? {
+                ...prev,
+                aiSummary: {
+                  ...prev.aiSummary,
+                  attendanceStats: stats,
+                },
+              }
+            : prev
+        );
+      }
+    } catch (err) {
+      console.warn('Attendance stats load notice:', err.message);
+    }
+  };
+
   const handleBackFromEvaluation = () => {
     setEvaluatingEmp(null);
   };
@@ -363,7 +385,7 @@ export default function IntentReview({
                 }}
                 onClick={() => setViewingMarEmp(evaluatingEmp)}
               >
-                <FileText size={15} /> View Full Compiled MAR →
+                <FileText size={15} /> View Accumulated DAR Logs →
               </button>
             </div>
           </div>
@@ -572,10 +594,10 @@ export default function IntentReview({
                         cursor: 'pointer',
                       }}
                       onClick={() => setViewingMarEmp(candidate)}
-                      title="Inspect full monthly accomplishment report logs"
+                      title="Inspect full accumulated accomplishment report logs"
                     >
                       <FileText size={16} color="#1d4ed8" />
-                      <span>View Compiled MAR ({candidate.totalDarEntries} tasks)</span>
+                      <span>View Accumulated DARs ({candidate.totalDarEntries} tasks)</span>
                     </button>
 
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -612,7 +634,7 @@ export default function IntentReview({
                               padding: '8px 16px',
                             }}
                             onClick={() => {
-                              setEvaluatingEmp({ ...candidate, isReadOnly: false });
+                              handleOpenEvaluation(candidate, false);
                             }}
                           >
                             <ClipboardCheck size={16} />
@@ -634,7 +656,7 @@ export default function IntentReview({
                             borderColor: 'var(--line)',
                           }}
                           onClick={() => {
-                            setEvaluatingEmp({ ...candidate, isReadOnly: true });
+                            handleOpenEvaluation(candidate, true);
                           }}
                         >
                           <ClipboardCheck size={16} />

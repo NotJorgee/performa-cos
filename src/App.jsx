@@ -15,14 +15,20 @@ import {
   MonthlyReport,
   ContractStatus,
   PeerEvaluations,
+  EmployeeAttendance,
+  AttendanceLogs,
   // Department Head GUI Modules (SRS Section 8.1)
   DeptHeadDashboard,
   PendingEvaluations,
   IntentReview,
+  DepartmentAttendance,
   // HR Personnel GUI Modules (SRS Section 8.1)
   HRDashboard,
   ExecutiveAnalytics,
   EvaluationManagement,
+  EvaluationSettings,
+  EvaluationFormEditor,
+  CampusAttendance,
   HREvaluationsProxy,
   UserManagement,
   EmployeeManagement,
@@ -35,30 +41,21 @@ import {
 } from './components';
 import { getInitialNotifications } from './utils/notificationsData';
 import { api } from './services/api';
+import { clearAllPerformaCache } from './utils/swrCache';
+
+// Helper to parse active route from URL hash
+const parseHashView = () => {
+  if (typeof window === 'undefined') return 'dashboard';
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  const clean = raw.split('?')[0];
+  if (!clean || ['login', 'signup', 'forgot', 'otp', 'reset_pw'].includes(clean)) {
+    return 'dashboard';
+  }
+  return clean;
+};
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
-
-  // Check for invitation token in URL query parameter (?token=... or ?invite=...)
-  const [inviteToken, setInviteToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('token') || params.get('invite') || '';
-    }
-    return '';
-  });
-
-  const [authView, setAuthView] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('token') || params.get('invite')) {
-        return 'signup';
-      }
-    }
-    return 'login';
-  }); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
-  
-  // Initialize state from existing localStorage token/user if present
+  // Initialize auth state from existing localStorage token/user if present
   const storedUser = api.auth.getCurrentUser();
   const hasToken = Boolean(localStorage.getItem('performa_token'));
 
@@ -84,6 +81,10 @@ export default function App() {
         dateAppointed: storedUser.dateAppointed || null,
         contractStartDate: storedUser.contractStartDate || null,
         contractEndDate: storedUser.contractEndDate || null,
+        contactNumber: storedUser.contactNumber || '',
+        alternateEmail: storedUser.alternateEmail || '',
+        emergencyContact: storedUser.emergencyContact || '',
+        officeLocation: storedUser.officeLocation || '',
       };
     }
     return {
@@ -96,6 +97,69 @@ export default function App() {
       avatarUrl: null,
     };
   });
+
+  // Check for invitation token in URL query parameter (?token=... or ?invite=...)
+  const [inviteToken, setInviteToken] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token') || params.get('invite') || '';
+    }
+    return '';
+  });
+
+  const [authView, setAuthView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('token') || params.get('invite')) {
+        return 'signup';
+      }
+    }
+    return 'login';
+  }); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
+
+  const [currentView, setCurrentView] = useState(() => parseHashView());
+
+  // Centralized navigation handler syncing React state with browser history & URL hash
+  const navigateTo = useCallback((viewPath, replace = false) => {
+    const target = viewPath || 'dashboard';
+    setCurrentView(target);
+    if (typeof window !== 'undefined') {
+      const targetHash = `#/${target}`;
+      if (window.location.hash !== targetHash) {
+        if (replace) {
+          window.history.replaceState(null, '', targetHash);
+        } else {
+          window.history.pushState(null, '', targetHash);
+        }
+      }
+    }
+  }, []);
+
+  // Browser Back (←) and Forward (→) history synchronization
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleHashSync = () => {
+      const targetView = parseHashView();
+      setCurrentView(targetView);
+    };
+
+    window.addEventListener('hashchange', handleHashSync);
+    window.addEventListener('popstate', handleHashSync);
+
+    // Ensure valid URL hash on initial authenticated mount
+    if (typeof window !== 'undefined') {
+      const activeHash = window.location.hash.replace(/^#\/?/, '').trim().split('?')[0];
+      if (!activeHash || ['login', 'signup', 'forgot', 'otp', 'reset_pw'].includes(activeHash)) {
+        window.history.replaceState(null, '', `#/${currentView}`);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashSync);
+      window.removeEventListener('popstate', handleHashSync);
+    };
+  }, [isAuthenticated, currentView]);
 
   // Password recovery flow states
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -193,13 +257,23 @@ export default function App() {
       setNotifications(getInitialNotifications(roleStr));
     }
     setIsAuthenticated(true);
-    setCurrentView('dashboard');
+    const initialView = parseHashView();
+    setCurrentView(initialView);
+    // Replace login in browser history with authenticated dashboard/view (prevents Back to login)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#/${initialView}`);
+    }
   };
 
   const handleLogout = () => {
     api.auth.logout();
+    clearAllPerformaCache();
     setIsAuthenticated(false);
     setAuthView('login');
+    // Security Boundary: replace URL with login so Back button cannot reopen session
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '#/login');
+    }
   };
 
   const handleForgotSubmit = async (email) => {
@@ -307,7 +381,7 @@ export default function App() {
       notifications={notifications}
       onMarkAsRead={handleMarkAsRead}
       onMarkAllAsRead={handleMarkAllAsRead}
-      onNavigate={(path) => setCurrentView(path)}
+      onNavigate={(path) => navigateTo(path)}
       onLogout={handleLogout}
     >
       {/* ========================================================
@@ -316,16 +390,16 @@ export default function App() {
 
       {/* Universal Dashboard */}
       {currentView === 'dashboard' && currentUser.role === 'COS Employee' && (
-        <EmployeeDashboard currentUser={currentUser} onNavigate={setCurrentView} />
+        <EmployeeDashboard currentUser={currentUser} onNavigate={navigateTo} />
       )}
       {currentView === 'dashboard' && currentUser.role === 'Department Head' && (
         <DeptHeadDashboard
           currentUser={currentUser}
-          onNavigate={setCurrentView}
+          onNavigate={navigateTo}
         />
       )}
       {currentView === 'dashboard' && currentUser.role === 'HR Personnel' && (
-        <HRDashboard currentUser={currentUser} onNavigate={setCurrentView} />
+        <HRDashboard currentUser={currentUser} onNavigate={navigateTo} />
       )}
 
       {/* COS Employee Modules (SRS Section 8.1) */}
@@ -334,8 +408,8 @@ export default function App() {
           {currentView === 'daily_report' && (
             <DailyReporting
               currentUser={currentUser}
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {currentView === 'monthly_report' && (
@@ -343,23 +417,48 @@ export default function App() {
               employeeId={currentUser.id}
               employeeName={currentUser.fullName}
               department={currentUser.department}
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
               backLabel="Back to Dashboard"
             />
           )}
           {currentView === 'contract_status' && (
             <ContractStatus
               currentUser={currentUser}
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {currentView === 'peer_evaluations' && (
             <PeerEvaluations
               departmentName={currentUser.department}
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
+            />
+          )}
+          {(currentView === 'employee_attendance' ||
+            currentView === 'my_attendance' ||
+            currentView === 'leave_filing' ||
+            currentView === 'my_leaves') && (
+            <EmployeeAttendance
+              currentUser={currentUser}
+              onBack={() => navigateTo('dashboard')}
+              onNavigate={navigateTo}
+              initialTab={
+                currentView === 'leave_filing' ||
+                currentView === 'my_leaves' ||
+                currentView === 'my_attendance'
+                  ? 'leaves'
+                  : 'dtr'
+              }
+            />
+          )}
+          {currentView === 'attendance_logs' && (
+            <AttendanceLogs
+              currentUser={currentUser}
+              onBack={() => navigateTo('employee_attendance')}
+              onNavigate={navigateTo}
+              backLabel="Back to Attendance Clock-In"
             />
           )}
         </>
@@ -371,8 +470,21 @@ export default function App() {
           {(currentView === 'pending_evaluations' || currentView === 'intent_review') && (
             <IntentReview
               departmentName={currentUser.department}
-              onBack={() => setCurrentView('dashboard')}
-              onNavigate={setCurrentView}
+              onBack={() => navigateTo('dashboard')}
+              onNavigate={navigateTo}
+            />
+          )}
+          {(currentView === 'department_attendance' ||
+            currentView === 'department_leaves' ||
+            currentView === 'subordinate_leaves') && (
+            <DepartmentAttendance
+              currentUser={currentUser}
+              onBack={() => navigateTo('dashboard')}
+              initialTab={
+                currentView === 'department_leaves' || currentView === 'subordinate_leaves'
+                  ? 'leaves'
+                  : 'radar'
+              }
             />
           )}
           {(currentView === 'employee_records' ||
@@ -381,8 +493,8 @@ export default function App() {
             <ReportGenerator
               restrictDepartment={currentUser.department}
               departmentName={currentUser.department}
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
         </>
@@ -393,14 +505,36 @@ export default function App() {
         <>
           {currentView === 'evaluation_management' && (
             <EvaluationManagement
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
+            />
+          )}
+          {(currentView === 'evaluation_settings' ||
+            currentView === 'evaluation_form_editor' ||
+            currentView === 'contract_adjuster' ||
+            currentView === 'contract_length') && (
+            <EvaluationSettings
+              currentUser={currentUser}
+              initialTab={
+                currentView === 'contract_adjuster' || currentView === 'contract_length'
+                  ? 'contract_length'
+                  : 'form_editor'
+              }
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
+            />
+          )}
+          {(currentView === 'campus_attendance' || currentView === 'campus_leaves') && (
+            <CampusAttendance
+              currentUser={currentUser}
+              onBack={() => navigateTo('dashboard')}
+              initialTab={currentView === 'campus_leaves' ? 'leaves' : 'overview'}
             />
           )}
           {currentView === 'hr_evaluations_proxy' && (
             <HREvaluationsProxy
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {(currentView === 'user_management' ||
@@ -409,32 +543,32 @@ export default function App() {
             currentView === 'department_management') && (
             <UserManagement
               currentUser={currentUser}
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {currentView === 'executive_analytics' && (
             <ExecutiveAnalytics
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {(currentView === 'report_generator' || currentView === 'employee_records') && (
             <ReportGenerator
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {currentView === 'audit_trail' && (
             <AuditTrail
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
           {currentView === 'backup_data' && (
             <BackupData
-              onNavigate={setCurrentView}
-              onBack={() => setCurrentView('dashboard')}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
             />
           )}
         </>
@@ -443,7 +577,7 @@ export default function App() {
       {/* Institutional Campus Geofence Page (Universal for HR & Dept Heads) */}
       {currentView === 'campus_geofence' && (
         <CampusGeofence
-          onBack={() => setCurrentView('dashboard')}
+          onBack={() => navigateTo('dashboard')}
         />
       )}
 
@@ -455,7 +589,7 @@ export default function App() {
         <ProfileSettings
           currentUser={currentUser}
           initialTab={currentView}
-          onBack={() => setCurrentView('dashboard')}
+          onBack={() => navigateTo('dashboard')}
         />
       )}
 
@@ -468,8 +602,8 @@ export default function App() {
           onMarkAllAsRead={handleMarkAllAsRead}
           onDeleteNotification={handleDeleteNotification}
           onRefreshNotifications={refreshNotifications}
-          onNavigate={setCurrentView}
-          onBack={() => setCurrentView('dashboard')}
+          onNavigate={navigateTo}
+          onBack={() => navigateTo('dashboard')}
         />
       )}
     </AppLayout>

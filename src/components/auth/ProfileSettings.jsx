@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
+import AvatarCropModal from './AvatarCropModal';
 
 export default function ProfileSettings({
   currentUser = {
@@ -31,7 +32,10 @@ export default function ProfileSettings({
     department: 'Computer Studies Department',
     jobTitle: 'Admin Aide',
     employeeIdNumber: 'G10222026JMR',
-    contactNumber: '+63 912 345 6789',
+    contactNumber: '',
+    alternateEmail: '',
+    emergencyContact: '',
+    officeLocation: '',
     avatarUrl: null,
   },
   initialTab = 'profile',
@@ -45,18 +49,38 @@ export default function ProfileSettings({
     ? (currentUser.department.name || 'Computer Studies Department')
     : (currentUser.department || 'Computer Studies Department');
 
-  // Editable Contact State
-  const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '+63 912 345 6789');
-  const [alternateEmail, setAlternateEmail] = useState('');
-  const [emergencyContact, setEmergencyContact] = useState('');
-  const [officeLocation, setOfficeLocation] = useState(
-    currentUser.role === 'Department Head'
-      ? 'Computer Studies Department, Rm 204'
-      : currentUser.role === 'HR Personnel'
-      ? 'HRMDO Central Office, Administration Bldg'
-      : 'CSD Office Staff Station, Tech Bldg'
-  );
+  // Editable Contact State (Authentic user data - zero mock defaults)
+  const [contactNumber, setContactNumber] = useState(currentUser.contactNumber || '');
+  const [alternateEmail, setAlternateEmail] = useState(currentUser.alternateEmail || '');
+  const [emergencyContact, setEmergencyContact] = useState(currentUser.emergencyContact || '');
+  const [officeLocation, setOfficeLocation] = useState(currentUser.officeLocation || '');
+
+  // Synchronize authentic saved contact info from backend API on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadFreshProfile() {
+      try {
+        const me = await api.auth.getMe();
+        if (isMounted && me) {
+          if (me.contactNumber !== undefined) setContactNumber(me.contactNumber || '');
+          if (me.alternateEmail !== undefined) setAlternateEmail(me.alternateEmail || '');
+          if (me.emergencyContact !== undefined) setEmergencyContact(me.emergencyContact || '');
+          if (me.officeLocation !== undefined) setOfficeLocation(me.officeLocation || '');
+          if (me.avatarUrl) setAvatarPreview(me.avatarUrl);
+        }
+      } catch (err) {
+        // Retain initial currentUser state if offline
+      }
+    }
+    loadFreshProfile();
+    return () => { isMounted = false; };
+  }, []);
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState(null);
+  const [avatarBlob, setAvatarBlob] = useState(null);
+  const [isPendingAvatarChange, setIsPendingAvatarChange] = useState(false);
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
   // Password Security State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -71,7 +95,6 @@ export default function ProfileSettings({
   const [deadlineAlerts, setDeadlineAlerts] = useState(true);
   const [contractNotices, setContractNotices] = useState(true);
   const [approvalAlerts, setApprovalAlerts] = useState(true);
-  const [smsAlerts, setSmsAlerts] = useState(true);
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
   const [isSavingPrefs, setIsSavingPrefs] = useState(false);
 
@@ -85,7 +108,6 @@ export default function ProfileSettings({
           if (typeof prefs.deadline_alerts === 'boolean') setDeadlineAlerts(prefs.deadline_alerts);
           if (typeof prefs.contract_notices === 'boolean') setContractNotices(prefs.contract_notices);
           if (typeof prefs.approval_alerts === 'boolean') setApprovalAlerts(prefs.approval_alerts);
-          if (typeof prefs.sms_alerts === 'boolean') setSmsAlerts(prefs.sms_alerts);
         }
       } catch (err) {
         console.error('Failed to load notification preferences:', err);
@@ -169,32 +191,67 @@ export default function ProfileSettings({
   };
 
   const handleProfileSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    setIsSubmittingProfile(true);
+    setErrorMsg(null);
+    setToastMsg(null);
     try {
+      let finalAvatarUrl = avatarPreview;
+      if (avatarBlob) {
+        try {
+          const uploadRes = await api.uploads.uploadAvatar(avatarBlob);
+          if (uploadRes && uploadRes.url) {
+            finalAvatarUrl = uploadRes.url;
+            setAvatarPreview(finalAvatarUrl);
+          }
+        } catch (uploadErr) {
+          console.warn('Avatar bucket upload fallback to local data URL:', uploadErr);
+        }
+      }
+
       if (currentUser?.id) {
         await api.users.updateContact(currentUser.id, {
           contact_number: contactNumber,
           alternate_email: alternateEmail,
           emergency_contact: emergencyContact,
           office_location: officeLocation,
-          avatar_url: avatarPreview,
+          avatar_url: finalAvatarUrl,
         });
+      }
+      // Synchronize performa_user in localStorage
+      const stored = api.auth.getCurrentUser();
+      if (stored) {
+        localStorage.setItem(
+          'performa_user',
+          JSON.stringify({
+            ...stored,
+            contactNumber,
+            alternateEmail,
+            emergencyContact,
+            officeLocation,
+            avatarUrl: finalAvatarUrl,
+          })
+        );
       }
       onUpdateProfile({
         contactNumber,
         alternateEmail,
         emergencyContact,
         officeLocation,
-        avatarUrl: avatarPreview,
+        avatarUrl: finalAvatarUrl,
       });
-      setToastMsg('Personal contact information updated successfully.');
+      setAvatarBlob(null);
+      setIsPendingAvatarChange(false);
+      setToastMsg('Profile and photo updated successfully.');
     } catch (err) {
       setErrorMsg(err.message || 'Failed to update contact information.');
+    } finally {
+      setIsSubmittingProfile(false);
+      setTimeout(() => {
+        setToastMsg(null);
+        setErrorMsg(null);
+      }, 3500);
     }
-    setTimeout(() => {
-      setToastMsg(null);
-      setErrorMsg(null);
-    }, 3500);
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -244,7 +301,6 @@ export default function ProfileSettings({
         deadline_alerts: deadlineAlerts,
         contract_notices: contractNotices,
         approval_alerts: approvalAlerts,
-        sms_alerts: smsAlerts,
       });
       setToastMsg('Notification & communication preferences saved successfully.');
     } catch (err) {
@@ -280,13 +336,38 @@ export default function ProfileSettings({
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
+  const handleAvatarSelect = (e) => {
+    const file = e.target.files && e.target.files[0];
     if (file) {
-      setAvatarPreview(URL.createObjectURL(file));
-      setToastMsg('Profile avatar updated.');
-      setTimeout(() => setToastMsg(null), 3000);
+      if (!file.type.startsWith('image/')) {
+        setErrorMsg('Please select a valid image file (JPEG, PNG, or WebP).');
+        setTimeout(() => setErrorMsg(null), 3500);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setRawImageSrc(reader.result);
+        setCropModalOpen(true);
+      };
+      reader.readAsDataURL(file);
     }
+    e.target.value = '';
+  };
+
+  const handleCropComplete = ({ dataUrl, blob }) => {
+    setAvatarPreview(dataUrl);
+    setAvatarBlob(blob);
+    setIsPendingAvatarChange(true);
+    setToastMsg('Photo cropped. Click "Save Profile Changes" below to submit changes.');
+    setTimeout(() => setToastMsg(null), 4500);
+  };
+
+  const handleRemovePhoto = () => {
+    setAvatarPreview(null);
+    setAvatarBlob(null);
+    setIsPendingAvatarChange(true);
+    setToastMsg('Profile photo removed. Click "Save Profile Changes" below to submit.');
+    setTimeout(() => setToastMsg(null), 4000);
   };
 
   const getRoleBadge = (role) => {
@@ -333,13 +414,12 @@ export default function ProfileSettings({
         }}
       />
 
-      {/* Universal 4-Tab Navigation */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '22px', flexWrap: 'wrap' }}>
+      {/* Universal 4-Tab Navigation (Responsive Horizontal Touch Strip for Mobile) */}
+      <div className="responsive-tab-strip">
         <button
           type="button"
           className={`btn ${activeTab === 'profile' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('profile')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
         >
           <User size={15} /> Profile Overview
         </button>
@@ -347,7 +427,6 @@ export default function ProfileSettings({
           type="button"
           className={`btn ${activeTab === 'security' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('security')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
         >
           <Key size={15} /> Security &amp; Credentials
         </button>
@@ -355,7 +434,6 @@ export default function ProfileSettings({
           type="button"
           className={`btn ${activeTab === 'notifications' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('notifications')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
         >
           <Bell size={15} /> Notifications &amp; Alerts
         </button>
@@ -363,7 +441,6 @@ export default function ProfileSettings({
           type="button"
           className={`btn ${activeTab === 'sessions' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('sessions')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
         >
           <Laptop size={15} /> Active Sessions
         </button>
@@ -428,7 +505,7 @@ export default function ProfileSettings({
                 </div>
               </div>
 
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <label
                   className="btn btn-sm"
                   style={{
@@ -441,14 +518,37 @@ export default function ProfileSettings({
                   }}
                 >
                   Change Photo
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    style={{ display: 'none' }}
+                    onChange={handleAvatarSelect}
+                  />
                 </label>
+                {isPendingAvatarChange && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    disabled={isSubmittingProfile}
+                    onClick={handleProfileSubmit}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Check size={14} /> {isSubmittingProfile ? 'Saving...' : 'Save Photo'}
+                  </button>
+                )}
                 {avatarPreview && (
                   <button
                     type="button"
                     className="btn btn-sm"
-                    style={{ marginLeft: '8px', color: 'var(--red-600)', cursor: 'pointer' }}
-                    onClick={() => setAvatarPreview(null)}
+                    style={{ color: 'var(--red-600)', cursor: 'pointer' }}
+                    onClick={handleRemovePhoto}
                   >
                     Remove
                   </button>
@@ -557,7 +657,7 @@ export default function ProfileSettings({
                     type="text"
                     required
                     style={{ fontSize: '13.5px' }}
-                    placeholder="+63 9XX XXX XXXX"
+                    placeholder="Enter mobile number"
                     value={contactNumber}
                     onChange={(e) => setContactNumber(e.target.value)}
                   />
@@ -571,7 +671,7 @@ export default function ProfileSettings({
                     className="form-control"
                     type="email"
                     style={{ fontSize: '13.5px' }}
-                    placeholder="personal@gmail.com"
+                    placeholder="Enter alternate email"
                     value={alternateEmail}
                     onChange={(e) => setAlternateEmail(e.target.value)}
                   />
@@ -587,7 +687,7 @@ export default function ProfileSettings({
                     className="form-control"
                     type="text"
                     style={{ fontSize: '13.5px' }}
-                    placeholder="e.g. Maria Clara Ramos (+63 917 111 2233)"
+                    placeholder="Enter emergency contact person & phone"
                     value={emergencyContact}
                     onChange={(e) => setEmergencyContact(e.target.value)}
                   />
@@ -601,16 +701,26 @@ export default function ProfileSettings({
                     className="form-control"
                     type="text"
                     style={{ fontSize: '13.5px' }}
-                    placeholder="e.g. Technology Bldg, Room 204"
+                    placeholder="Enter office / room location"
                     value={officeLocation}
                     onChange={(e) => setOfficeLocation(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="submit" className="btn btn-primary" style={{ cursor: 'pointer', fontWeight: 700 }}>
-                  Save Contact Information
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {isPendingAvatarChange && (
+                  <span style={{ fontSize: '12px', color: 'var(--brand-700)', fontWeight: 600 }}>
+                    Unsaved cropped photo ready
+                  </span>
+                )}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmittingProfile}
+                  style={{ cursor: 'pointer', fontWeight: 700 }}
+                >
+                  {isSubmittingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
                 </button>
               </div>
             </form>
@@ -810,8 +920,8 @@ export default function ProfileSettings({
             )}
           </div>
 
-          {/* Role-Specific Institutional Guidance Banner */}
-          {currentUser.role === 'COS Employee' ? (
+          {/* Role-Specific Institutional Guidance Banner (COS Employee Only) */}
+          {currentUser.role === 'COS Employee' && (
             <div
               style={{
                 marginBottom: '20px',
@@ -830,27 +940,6 @@ export default function ProfileSettings({
                   Mandatory University Compliance Policy
                 </b>
                 In accordance with EVSU HRMO Contract of Service (COS) guidelines, institutional alerts for contract expiration, renewal intent windows, monthly report cut-offs, and evaluation milestones are statutory requirements and cannot be disabled by personnel.
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                marginBottom: '20px',
-                padding: '14px 16px',
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-              }}
-            >
-              <Bell size={20} color="#15803d" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div style={{ fontSize: '12.5px', lineHeight: 1.5, color: '#166534' }}>
-                <b style={{ display: 'block', marginBottom: '2px' }}>
-                  Smart Renewal Rollup Active
-                </b>
-                To prevent notification inbox flooding during end-of-term contract renewal windows, multiple subordinate renewal submissions occurring on the same day are automatically consolidated into single batch notifications.
               </div>
             </div>
           )}
@@ -950,36 +1039,6 @@ export default function ProfileSettings({
                 </div>
               </label>
 
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px',
-                  cursor: currentUser.role === 'COS Employee' ? 'not-allowed' : 'pointer',
-                  opacity: currentUser.role === 'COS Employee' ? 0.9 : 1,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  disabled={currentUser.role === 'COS Employee'}
-                  checked={currentUser.role === 'COS Employee' ? true : smsAlerts}
-                  onChange={(e) => setSmsAlerts(e.target.checked)}
-                  style={{ marginTop: '3px', width: '16px', height: '16px' }}
-                />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <b style={{ fontSize: '13.5px', color: 'var(--ink-900)' }}>SMS Urgent Alerts</b>
-                    {currentUser.role === 'COS Employee' && (
-                      <span className="badge badge-confirmed" style={{ fontSize: '10px', padding: '1px 6px' }}>
-                        Mandatory
-                      </span>
-                    )}
-                  </div>
-                  <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                    Dispatch critical time-sensitive notices directly to verified phone: {contactNumber}.
-                  </div>
-                </div>
-              </label>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1130,6 +1189,16 @@ export default function ProfileSettings({
           </div>
         </div>
       )}
+      {/* Interactive Avatar Crop Modal */}
+      <AvatarCropModal
+        isOpen={cropModalOpen}
+        imageSrc={rawImageSrc}
+        onClose={() => {
+          setCropModalOpen(false);
+          setRawImageSrc(null);
+        }}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

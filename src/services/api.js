@@ -189,11 +189,12 @@ export const api = {
       const qs = query.toString();
       return request(`/dar${qs ? `?${qs}` : ''}`);
     },
-    monthly: (userId = null, monthName = null, year = null) => {
+    monthly: (userId = null, monthName = null, year = null, cutoff = null) => {
       const query = new URLSearchParams();
       if (userId) query.append('user_id', userId);
       if (monthName) query.append('month_name', monthName);
       if (year) query.append('year', year);
+      if (cutoff && cutoff !== 'all') query.append('cutoff', cutoff);
       const qs = query.toString();
       return request(`/dar/monthly${qs ? `?${qs}` : ''}`);
     },
@@ -243,6 +244,10 @@ export const api = {
   // Multi-Level Evaluation (50/20/30) (UC-01, UC-04, UC-05, UC-06)
   evaluations: {
     list: () => request('/evaluations'),
+    start: (empId) =>
+      request(`/evaluations/employee/${empId}/start`, {
+        method: 'POST',
+      }),
     submitScore: (evalId, scoreData) =>
       request(`/evaluations/${evalId}/score`, {
         method: 'POST',
@@ -257,6 +262,20 @@ export const api = {
       request(`/evaluations/${evalId}/fast-track-reject`, {
         method: 'POST',
         body: JSON.stringify(rejectionData),
+      }),
+  },
+
+  // Evaluation Rubric Templates (Phase 5)
+  evaluationTemplates: {
+    getActive: () => request('/evaluation-templates/active'),
+    publish: (data) =>
+      request('/evaluation-templates', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    resetToDefault: () =>
+      request('/evaluation-templates/reset', {
+        method: 'POST',
       }),
   },
 
@@ -406,6 +425,37 @@ export const api = {
       }
       return { blob, filename };
     },
+  },
+
+  attendance: {
+    getTodayStatus: () => request('/attendance/today'),
+    timeIn: (data) => request('/attendance/time-in', { method: 'POST', body: JSON.stringify(data) }),
+    timeOut: (data) => request('/attendance/time-out', { method: 'POST', body: JSON.stringify(data) }),
+    getDepartmentRoster: (date = null, params = {}) => {
+      const q = new URLSearchParams();
+      if (date) q.append('date', date);
+      if (typeof params === 'object') {
+        if (params.department_id) q.append('department_id', params.department_id);
+        if (params.department_name) q.append('department_name', params.department_name);
+      } else if (typeof params === 'number') {
+        q.append('department_id', params);
+      }
+      const qs = q.toString();
+      return request(`/attendance/department-roster${qs ? `?${qs}` : ''}`);
+    },
+    getCampusOverview: (date = null) => request(`/attendance/campus-overview${date ? `?date=${date}` : ''}`),
+    getEmployeeStats: (empId) => request(`/attendance/employee/${empId}/stats`),
+    getPayrollPacket: (params = {}) => {
+      const qs = new URLSearchParams(params).toString();
+      return request(`/attendance/payroll-packet${qs ? `?${qs}` : ''}`);
+    },
+  },
+
+  leaves: {
+    apply: (data) => request('/attendance/leaves/apply', { method: 'POST', body: JSON.stringify(data) }),
+    getMyRequests: () => request('/attendance/leaves/my-requests'),
+    getDepartmentQueue: () => request('/attendance/leaves/department-queue'),
+    review: (leaveId, data) => request(`/attendance/leaves/${leaveId}/review`, { method: 'PUT', body: JSON.stringify(data) }),
   },
 };
 

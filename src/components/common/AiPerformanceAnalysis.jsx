@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, TrendingUp, ListChecks, Zap, Sparkles } from 'lucide-react';
+import { Award, TrendingUp, ListChecks, Zap, Sparkles, Clock } from 'lucide-react';
 
 export default function AiPerformanceAnalysis({
   aiSummary = null,
@@ -38,6 +38,7 @@ export default function AiPerformanceAnalysis({
       reliabilityIndex: 'High Reliability',
       qualityAssessment: 'Zero error backlog; high-quality output on all tasks',
     },
+    attendanceStats = null,
   } = aiSummary;
 
   return (
@@ -276,6 +277,81 @@ export default function AiPerformanceAnalysis({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* 5. Daily Attendance & Punctuality Radar (Attendance Scoring Criterion) */}
+        <div
+          style={{
+            background: '#fafbfc',
+            borderRadius: '10px',
+            border: '1px solid var(--line)',
+            padding: '14px 16px',
+            marginTop: '14px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '12px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--brand-700, #7a0c2e)',
+                fontWeight: 700,
+                fontSize: '13.5px',
+              }}
+            >
+              <Clock size={17} />
+              <span>5. Attendance &amp; Punctuality Radar</span>
+            </div>
+            <span
+              className="badge badge-completed"
+              style={{ fontSize: '11px', padding: '2px 8px' }}
+            >
+              {attendanceStats?.punctuality_rate ?? 98}% On-Time
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '10px',
+              marginBottom: '10px',
+            }}
+          >
+            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
+              <div className="muted" style={{ fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 600 }}>Days Present</div>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--green-700)', marginTop: '2px' }}>
+                {attendanceStats?.on_time_days ?? 60} days
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
+              <div className="muted" style={{ fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 600 }}>Tardiness (Late)</div>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: (attendanceStats?.late_days ?? 1) > 0 ? 'var(--amber-600)' : 'var(--ink-900)', marginTop: '2px' }}>
+                {attendanceStats?.late_days ?? 1} day(s)
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
+              <div className="muted" style={{ fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 600 }}>Approved Leaves</div>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--brand-700)', marginTop: '2px' }}>
+                {attendanceStats?.total_approved_leaves ?? 2} day(s)
+              </div>
+            </div>
+          </div>
+
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ink-700)', lineHeight: '1.45' }}>
+            {attendanceStats?.ai_attendance_summary ||
+              'Maintained consistent on-time attendance with compliance to university shift hours and official leave clearance.'}
+          </p>
         </div>
       </div>
     </div>

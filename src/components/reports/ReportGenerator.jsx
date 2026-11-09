@@ -5,7 +5,12 @@ import Toast from '../common/Toast';
 import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
 import { getComparativeTrajectory, ComparativeTrajectoryBadge } from '../../utils/comparativeAnalytics';
 
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import {
+  EVSU_DEPARTMENTS,
+  EVSU_DEPARTMENT_DOMAINS,
+  EVSU_DEPARTMENT_GROUPS,
+  getDepartmentDomain,
+} from '../../utils/departments';
 
 export default function ReportGenerator({
   employees: propEmployees = [],
@@ -43,6 +48,11 @@ export default function ReportGenerator({
             dateAppointed: u.date_appointed || 'N/A',
             contractEndDate: u.contract_end_date || 'N/A',
             totalContracts: u.total_contracts || 0,
+            contactNumber: u.contact_number || '',
+            officeLocation: u.office_location || '',
+            alternateEmail: u.alternate_email || '',
+            emergencyContact: u.emergency_contact || '',
+            avatarUrl: u.avatar_url || null,
             avgScore: null,
             latestScore: null,
             previousScore: null,
@@ -240,19 +250,27 @@ export default function ReportGenerator({
                 <b style={{ color: 'var(--ink-900)' }}>{deptScope}</b>
               </div>
             ) : (
-              <div style={{ minWidth: '200px' }}>
+              <div style={{ minWidth: '220px' }}>
                 <select
                   className="form-control"
                   value={selectedDept}
                   onChange={(e) => setSelectedDept(e.target.value)}
-                  style={{ fontSize: '13.5px' }}
+                  style={{ fontSize: '13px' }}
                 >
-                  <option value="All">All Departments</option>
-                  {departments.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
+                  <option value="All">All Campus Units ({departments.length})</option>
+                  {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+                    const groupDepts = grp.departments.filter((d) => departments.includes(d));
+                    if (groupDepts.length === 0) return null;
+                    return (
+                      <optgroup key={grp.key} label={grp.name}>
+                        {groupDepts.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
                 </select>
               </div>
             )}
@@ -284,7 +302,26 @@ export default function ReportGenerator({
                     {emp.email}
                   </div>
                 </td>
-                {!isDeptRestricted && <td>{emp.department}</td>}
+                {!isDeptRestricted && (
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--ink-900)' }}>{emp.department}</div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        background: getDepartmentDomain(emp.department).style.bg,
+                        color: getDepartmentDomain(emp.department).style.text,
+                        border: `1px solid ${getDepartmentDomain(emp.department).style.border}`,
+                        marginTop: '3px',
+                      }}
+                    >
+                      {getDepartmentDomain(emp.department).shortName}
+                    </span>
+                  </td>
+                )}
                 <td>
                   <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
                     {emp.totalContracts ?? 0}
@@ -440,7 +477,26 @@ export default function ReportGenerator({
                       <b>{emp.fullName}</b>
                       <div className="muted" style={{ fontSize: '12px' }}>{emp.email}</div>
                     </td>
-                    {!isDeptRestricted && <td>{emp.department}</td>}
+                    {!isDeptRestricted && (
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--ink-900)' }}>{emp.department}</div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        background: getDepartmentDomain(emp.department).style.bg,
+                        color: getDepartmentDomain(emp.department).style.text,
+                        border: `1px solid ${getDepartmentDomain(emp.department).style.border}`,
+                        marginTop: '3px',
+                      }}
+                    >
+                      {getDepartmentDomain(emp.department).shortName}
+                    </span>
+                  </td>
+                )}
                     <td>
                       <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-900)' }}>
                         {emp.totalContracts ?? 0}

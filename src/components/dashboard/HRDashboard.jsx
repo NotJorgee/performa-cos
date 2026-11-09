@@ -1,313 +1,180 @@
 import React, { useState, useEffect } from 'react';
-
 import {
-
   Clock,
-
-  FileSpreadsheet,
-
-  Users,
-
-  ShieldCheck,
-
   Building2,
-
-  FileText,
-
   TrendingUp,
-
+  FileText,
+  Users,
   ArrowRight,
-
 } from 'lucide-react';
-
 import evsuSeal from '../../assets/images/evsu-seal.png';
-
 import { getFullFirstName } from '../../utils/nameHelper';
-
 import api from '../../services/api';
-
-
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function HRDashboard({
-
   currentUser = {
-
     fullName: 'HR Officer',
-
     department: 'HRMDO Office',
-
   },
-
   metrics: propMetrics = null,
-
   onNavigate = () => {},
-
 }) {
-
-  const [metrics, setMetrics] = useState(
-
-    propMetrics || {
-
-      totalEmployees: 0,
-
-      totalAdministrators: 0,
-
-      darSubmittedToday: 0,
-
-      pendingEvaluations: 0,
-
-      marReportsSubmitted: 0,
-
-      completionRate: 0,
-
-      nearingExpiration: 0,
-
-    }
-
-  );
-
-
+  const cacheKey = `hr_dashboard_metrics_${currentUser?.id || 'me'}`;
+  // SWR Instant 0ms perceived load time from cache
+  const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKey));
 
   useEffect(() => {
-
     if (propMetrics) {
-
       setMetrics(propMetrics);
-
+      setCachedData(cacheKey, propMetrics);
       return;
-
     }
-
     const fetchMetrics = async () => {
-
       try {
-
         const data = await api.analytics.getHRDashboard();
-
         setMetrics(data);
-
+        setCachedData(cacheKey, data);
       } catch (err) {
-
         console.error('Failed to load HR dashboard analytics:', err);
-
       }
-
     };
-
     fetchMetrics();
-
-  }, [propMetrics]);
-
-
+  }, [propMetrics, cacheKey]);
 
   const expiringCount = metrics?.nearingExpiration ?? 0;
-
-  const pendingHrEvalCount = metrics?.pendingEvaluations ?? 0;
-
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'HR Officer');
 
-
-
   return (
-
     <div>
-
-      {/* Hero Banner matching UI reference photo */}
-
+      {/* Hero Banner */}
       <div className="hero-banner" style={{ marginBottom: '24px' }}>
-
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
-
         <div>
-
           <h1>Welcome, {fullFirstName}</h1>
-
           <p>
-
             {(typeof currentUser.department === 'object' && currentUser.department !== null ? (currentUser.department.name || 'HRMDO Office') : (currentUser.department || 'HRMDO Office'))} | Eastern Visayas State University Ormoc Campus
-
           </p>
-
         </div>
-
       </div>
 
-
-
-      {/* 4-Column Module Panels Grid */}
-
-      <div className="quick-access-grid">
-
+      {/* Category Panels Grid (Standardized Stat-Card System matching Dept Head & Employee) */}
+      <div className="stat-grid stat-grid-4">
         {/* Panel 1: Evaluation Management */}
-
         <div
-
-          className="quick-access-card"
-
+          className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('evaluation_management')}
-
           title="Click to manage Individualized Contract Expiration & Routing"
-
         >
-
-          <div className="quick-access-top">
-
-            <span className="quick-access-label">Evaluation Management</span>
-
-            <div className="quick-access-icon">
-
-              <Clock size={22} color="var(--brand-700)" />
-
-            </div>
-
+          <div className="stat-top">
+            <span className="stat-label">Evaluation Management</span>
+            <span className="stat-icon">
+              <Clock size={18} />
+            </span>
           </div>
-
           <div
-
-            className="quick-access-value"
-
+            className="stat-value"
             style={{
-
-              color: expiringCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
-
               fontSize: '24px',
-
-              fontWeight: 800,
-
+              color: expiringCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
             }}
-
           >
-
-            {expiringCount} Expiring Soon
-
+            {metrics ? (
+              `${expiringCount} Expiring Soon`
+            ) : (
+              <span className="skeleton-shimmer" style={{ width: '130px', height: '24px' }} />
+            )}
           </div>
-
-          <div className="quick-access-link">
-
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>Contract lifecycles &amp; routing</span>
-
             <ArrowRight size={14} />
-
           </div>
-
         </div>
 
-
-
-
-
-
-
-        {/* Panel 3: Executive Analytics (HR Only) */}
-
+        {/* Panel 2: Campus Attendance */}
         <div
-
-          className="quick-access-card"
-
-          onClick={() => onNavigate('executive_analytics')}
-
-          title="Click to view high-level institutional performance trends and executive analytics"
-
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('campus_attendance')}
+          title="Click to view live campus attendance headcount, department roll call, and campus leaves"
         >
-
-          <div className="quick-access-top">
-
-            <span className="quick-access-label">Executive Analytics</span>
-
-            <div className="quick-access-icon">
-
-              <TrendingUp size={22} color="var(--brand-700)" />
-
-            </div>
-
+          <div className="stat-top">
+            <span className="stat-label">Attendance</span>
+            <span className="stat-icon">
+              <Building2 size={18} />
+            </span>
           </div>
-
-          <div className="quick-access-value text-lg">
-
-            Performance Overview
-
+          <div className="stat-value" style={{ fontSize: '22px' }}>
+            Campus Attendance
           </div>
-
-          <div className="quick-access-link">
-
-            <span>Institutional trends &amp; insights</span>
-
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Live roll call &amp; leave radar</span>
             <ArrowRight size={14} />
-
           </div>
-
         </div>
 
-
+        {/* Panel 3: Executive Analytics */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('executive_analytics')}
+          title="Click to view high-level institutional performance trends and executive analytics"
+        >
+          <div className="stat-top">
+            <span className="stat-label">Executive Analytics</span>
+            <span className="stat-icon">
+              <TrendingUp size={18} />
+            </span>
+          </div>
+          <div className="stat-value" style={{ fontSize: '22px' }}>
+            Performance Overview
+          </div>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Institutional trends &amp; insights</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
 
         {/* Panel 4: Employee Records */}
-
         <div
-
-          className="quick-access-card"
-
+          className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('report_generator')}
-
           title="Click to view personnel records, past MARs, and evaluation reports"
-
         >
-
-          <div className="quick-access-top">
-
-            <span className="quick-access-label">Employee Records</span>
-
-            <div className="quick-access-icon">
-
-              <FileText size={22} color="var(--brand-700)" />
-
-            </div>
-
+          <div className="stat-top">
+            <span className="stat-label">Employee Records</span>
+            <span className="stat-icon">
+              <FileText size={18} />
+            </span>
           </div>
-
-          <div className="quick-access-value text-lg">
-
+          <div className="stat-value" style={{ fontSize: '24px', fontWeight: 800 }}>
             Past MARs &amp; Records
-
           </div>
-
-          <div className="quick-access-link">
-
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>COS records &amp; evaluations</span>
-
             <ArrowRight size={14} />
-
           </div>
-
         </div>
 
-
-
-        {/* Panel 5: User Management (Consolidated Departments, Supervisors, and Personnel) */}
+        {/* Panel 5: User Management */}
         <div
-          className="quick-access-card"
+          className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('user_management')}
           title="Click to manage university departments, immediate supervisors, and COS personnel"
         >
-          <div className="quick-access-top">
-            <span className="quick-access-label">User Management</span>
-            <div className="quick-access-icon">
-              <Users size={22} color="var(--brand-700)" />
-            </div>
+          <div className="stat-top">
+            <span className="stat-label">User Management</span>
+            <span className="stat-icon">
+              <Users size={18} />
+            </span>
           </div>
-          <div className="quick-access-value text-lg">
+          <div className="stat-value" style={{ fontSize: '22px' }}>
             Departments &amp; Users
           </div>
-          <div className="quick-access-link">
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>Roster, supervisors &amp; directory</span>
             <ArrowRight size={14} />
           </div>
         </div>
-
       </div>
-
     </div>
-
   );
-
 }
-

@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Check, Archive, X, UserPlus, RotateCcw, ChevronDown, ChevronUp, Copy, Shield, User } from 'lucide-react';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import {
+  EVSU_DEPARTMENTS,
+  EVSU_DEPARTMENT_DOMAINS,
+  EVSU_DEPARTMENT_GROUPS,
+  getDepartmentDomain,
+} from '../../utils/departments';
 import Toast from '../common/Toast';
 
 export default function EmployeeManagement({
@@ -103,24 +108,42 @@ export default function EmployeeManagement({
   const calculateContractEndDate = (dateStr) => {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
+    let d;
     if (parts.length === 3) {
       const year = parseInt(parts[0], 10);
       const month = parseInt(parts[1], 10) - 1;
       const day = parseInt(parts[2], 10);
-      const d = new Date(year, month + 6, day);
-      return d.toLocaleDateString('en-US', {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-      });
+      d = new Date(year, month + 6, day);
+    } else {
+      d = new Date(dateStr);
+      d.setMonth(d.getMonth() + 6);
     }
-    const d = new Date(dateStr);
-    d.setMonth(d.getMonth() + 6);
+    d.setDate(d.getDate() - 1); // 6 months inclusive (e.g. July 5 -> Jan 4)
     return d.toLocaleDateString('en-US', {
       month: 'short',
       day: '2-digit',
       year: 'numeric',
     });
+  };
+
+  const calculateRawEndDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    let d;
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      d = new Date(year, month + 6, day);
+    } else {
+      d = new Date(dateStr);
+      d.setMonth(d.getMonth() + 6);
+    }
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dayStr}`;
   };
 
   const formatDisplayDate = (dateStr) => {
@@ -280,6 +303,7 @@ export default function EmployeeManagement({
     };
 
     try {
+      const computedRawEnd = calculateRawEndDate(dateAppointed);
       const res = await api.users.create({
         full_name: fullName.trim(),
         email: email.trim(),
@@ -287,6 +311,8 @@ export default function EmployeeManagement({
         role: 'COS Employee',
         job_title: jobTitle.trim() || 'Admin Aide',
         date_appointed: dateAppointed || null,
+        contract_start_date: dateAppointed || null,
+        contract_end_date: computedRawEnd,
       });
       newEmployee.id = res.id;
       newEmployee.idNumber = res.employee_id_number;
@@ -393,12 +419,20 @@ export default function EmployeeManagement({
           onChange={(e) => setDeptFilter(e.target.value)}
           style={{ flex: 1.2 }}
         >
-          <option value="">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
+          <option value="">All Campus Units ({departments.length})</option>
+          {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+            const groupDepts = grp.departments.filter((d) => departments.includes(d));
+            if (groupDepts.length === 0) return null;
+            return (
+              <optgroup key={grp.key} label={grp.name}>
+                {groupDepts.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
         </select>
         <button
           className="btn btn-primary"
@@ -480,7 +514,24 @@ export default function EmployeeManagement({
                       {emp.jobTitle ? `${emp.jobTitle} • ` : ''}{emp.email}
                     </div>
                   </td>
-                  <td>{emp.department}</td>
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--ink-900)' }}>{emp.department}</div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        background: getDepartmentDomain(emp.department).style.bg,
+                        color: getDepartmentDomain(emp.department).style.text,
+                        border: `1px solid ${getDepartmentDomain(emp.department).style.border}`,
+                        marginTop: '3px',
+                      }}
+                    >
+                      {getDepartmentDomain(emp.department).shortName}
+                    </span>
+                  </td>
                   <td>
                     <span>{emp.jobTitle || 'Admin Aide'}</span>
                   </td>
@@ -597,7 +648,24 @@ export default function EmployeeManagement({
                         {emp.jobTitle ? `${emp.jobTitle} • ` : ''}{emp.email}
                       </div>
                     </td>
-                    <td>{emp.department}</td>
+                    <td>
+                    <div style={{ fontWeight: 600, color: 'var(--ink-900)' }}>{emp.department}</div>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        background: getDepartmentDomain(emp.department).style.bg,
+                        color: getDepartmentDomain(emp.department).style.text,
+                        border: `1px solid ${getDepartmentDomain(emp.department).style.border}`,
+                        marginTop: '3px',
+                      }}
+                    >
+                      {getDepartmentDomain(emp.department).shortName}
+                    </span>
+                  </td>
                     <td>
                       <span>{emp.jobTitle || 'Admin Aide'}</span>
                     </td>

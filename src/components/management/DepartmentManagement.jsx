@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Settings, Check, AlertTriangle, X, Trash2, Lock } from 'lucide-react';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import {
+  EVSU_DEPARTMENTS,
+  EVSU_DEPARTMENT_DOMAINS,
+  EVSU_DEPARTMENT_GROUPS,
+  getDepartmentDomain,
+} from '../../utils/departments';
 
 const EVSU_DEPT_PRESETS = EVSU_DEPARTMENTS;
 
@@ -30,6 +35,7 @@ export default function DepartmentManagement({
           const mapped = depts.map((d) => ({
             id: d.id,
             name: d.name,
+            domain: d.domain || d.college || null,
             employeeCount: d.employee_count ?? d.employeeCount ?? 0,
             activeEvaluations: d.active_evaluations ?? d.activeEvaluations ?? 0,
           }));
@@ -50,16 +56,40 @@ export default function DepartmentManagement({
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState('ALL');
+
+  // Dynamic functional domain counts based on current department list
+  const domainCounts = useMemo(() => {
+    const counts = {
+      ALL: deptList.length,
+      academic: 0,
+      administrative: 0,
+      student_services: 0,
+      extension_operations: 0,
+      research_operations: 0,
+    };
+    deptList.forEach((d) => {
+      const dom = getDepartmentDomain(d.name, d.domain);
+      if (counts[dom.key] !== undefined) {
+        counts[dom.key] += 1;
+      }
+    });
+    return counts;
+  }, [deptList]);
 
   // Add form fields
   const [newDeptName, setNewDeptName] = useState('');
+  const [newDeptDomain, setNewDeptDomain] = useState('academic');
 
   // Edit settings form fields
   const [editDeptName, setEditDeptName] = useState('');
+  const [editDeptDomain, setEditDeptDomain] = useState('academic');
 
   const openDeptSettings = (dept) => {
     setSettingsDept(dept);
     setEditDeptName(dept.name);
+    const dom = getDepartmentDomain(dept.name, dept.domain);
+    setEditDeptDomain(dom.key);
     setDeleteError(null);
   };
 
@@ -70,6 +100,7 @@ export default function DepartmentManagement({
     let newDept = {
       id: Date.now(),
       name: newDeptName.trim(),
+      domain: newDeptDomain,
       employeeCount: 0,
       activeEvaluations: 0,
     };
@@ -77,9 +108,12 @@ export default function DepartmentManagement({
     try {
       const res = await api.departments.create({
         name: newDeptName.trim(),
+        domain: newDeptDomain,
+        college: newDeptDomain,
       });
       newDept.id = res.id;
-      setToastMsg(`Department "${newDept.name}" created in database.`);
+      if (res.domain || res.college) newDept.domain = res.domain || res.college;
+      setToastMsg(`Department "${newDept.name}" created under ${getDepartmentDomain(newDept.name, newDept.domain).name}.`);
     } catch (err) {
       console.warn('API create department notice:', err);
       setToastMsg(`Department "${newDept.name}" added locally.`);
@@ -88,6 +122,7 @@ export default function DepartmentManagement({
     setDeptList([newDept, ...deptList]);
     onAddDepartment(newDept);
     setNewDeptName('');
+    setNewDeptDomain('academic');
     setShowAddModal(false);
     setTimeout(() => setToastMsg(null), 4500);
   };
@@ -99,13 +134,16 @@ export default function DepartmentManagement({
     const updated = {
       ...settingsDept,
       name: editDeptName.trim(),
+      domain: editDeptDomain,
     };
 
     try {
       await api.departments.update(settingsDept.id, {
         name: editDeptName.trim(),
+        domain: editDeptDomain,
+        college: editDeptDomain,
       });
-      setToastMsg(`Department "${updated.name}" updated in database.`);
+      setToastMsg(`Department "${updated.name}" updated successfully.`);
     } catch (err) {
       console.warn('API update department notice:', err);
       setToastMsg(`Department settings updated for "${updated.name}".`);
@@ -146,7 +184,14 @@ export default function DepartmentManagement({
   };
 
   const filteredDepts = deptList.filter((d) => {
-    return !searchTerm || d.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const dom = getDepartmentDomain(d.name, d.domain);
+    const matchesDomain = selectedDomain === 'ALL' || dom.key === selectedDomain;
+    const matchesSearch =
+      !searchTerm ||
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dom.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dom.shortName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesDomain && matchesSearch;
   });
 
   return (
@@ -156,7 +201,7 @@ export default function DepartmentManagement({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Department Management</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Configure academic departments and institutional administrative offices.
+            Configure academic departments and institutional administrative offices organized by functional domains.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -178,11 +223,11 @@ export default function DepartmentManagement({
       )}
 
       {/* Filter Row with Add Department on Same Level */}
-      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
+      <div className="filter-row" style={{ display: 'flex', gap: '12px', marginBottom: '14px', alignItems: 'center' }}>
         <input
           className="form-control"
           type="text"
-          placeholder="Search by department name..."
+          placeholder="Search by department name or functional domain..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ flex: 2 }}
@@ -197,56 +242,135 @@ export default function DepartmentManagement({
         </button>
       </div>
 
-      {/* Departments Roster Table without Geofence Boundary Column */}
+      {/* Functional Domain Filter Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '16px',
+          overflowX: 'auto',
+          paddingBottom: '4px',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-sm"
+          style={{
+            fontWeight: 700,
+            fontSize: '12.5px',
+            borderRadius: '20px',
+            padding: '6px 14px',
+            whiteSpace: 'nowrap',
+            background: selectedDomain === 'ALL' ? 'var(--burgundy, #800020)' : '#ffffff',
+            color: selectedDomain === 'ALL' ? '#ffffff' : 'var(--ink-700)',
+            border: '1px solid ' + (selectedDomain === 'ALL' ? 'var(--burgundy, #800020)' : 'var(--line)'),
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onClick={() => setSelectedDomain('ALL')}
+        >
+          All Units ({domainCounts.ALL})
+        </button>
+        {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+          const isSelected = selectedDomain === grp.key;
+          return (
+            <button
+              key={grp.key}
+              type="button"
+              className="btn btn-sm"
+              style={{
+                fontWeight: 700,
+                fontSize: '12.5px',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                whiteSpace: 'nowrap',
+                background: isSelected ? grp.style.text : '#ffffff',
+                color: isSelected ? '#ffffff' : grp.style.text,
+                border: `1px solid ${isSelected ? grp.style.text : grp.style.border}`,
+                boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onClick={() => setSelectedDomain(grp.key)}
+            >
+              {grp.name} ({domainCounts[grp.key] || 0})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Departments Roster Table with Domain Badges */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
             <tr>
               <th>Department Name</th>
+              <th>Functional Domain</th>
               <th>Personnel</th>
               <th>Ongoing Evaluations</th>
               <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {filteredDepts.map((d) => (
-              <tr key={d.id}>
-                <td>
-                  <b>{d.name}</b>
-                </td>
-                <td>
-                  <span style={{ fontWeight: 700, color: d.employeeCount > 0 ? 'var(--ink-900)' : 'var(--ink-500)' }}>
-                    {d.employeeCount}
-                  </span>{' '}
-                  <span className="muted" style={{ fontSize: '12px' }}>
-                    {d.employeeCount === 1 ? 'personnel' : 'personnel'}
-                  </span>
-                </td>
-                <td>
-                  {d.activeEvaluations > 0 ? (
-                    <span className="badge badge-inprogress">{d.activeEvaluations} Ongoing</span>
-                  ) : (
-                    <span className="muted">None</span>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    className="btn btn-sm"
-                    type="button"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => openDeptSettings(d)}
-                    title={`Edit Settings - ${d.name}`}
-                  >
-                    <Settings size={14} /> Settings
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filteredDepts.map((d) => {
+              const dom = getDepartmentDomain(d.name, d.domain);
+              return (
+                <tr key={d.id}>
+                  <td>
+                    <b>{d.name}</b>
+                  </td>
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: dom.style.bg,
+                        color: dom.style.text,
+                        border: `1px solid ${dom.style.border}`,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {dom.shortName}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: 700, color: d.employeeCount > 0 ? 'var(--ink-900)' : 'var(--ink-500)' }}>
+                      {d.employeeCount}
+                    </span>{' '}
+                    <span className="muted" style={{ fontSize: '12px' }}>
+                      personnel
+                    </span>
+                  </td>
+                  <td>
+                    {d.activeEvaluations > 0 ? (
+                      <span className="badge badge-inprogress">{d.activeEvaluations} Ongoing</span>
+                    ) : (
+                      <span className="muted">None</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn btn-sm"
+                      type="button"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => openDeptSettings(d)}
+                      title={`Edit Settings - ${d.name}`}
+                    >
+                      <Settings size={14} /> Settings
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {filteredDepts.length === 0 && (
               <tr>
                 <td colSpan="5" className="muted" style={{ padding: '36px 16px', textAlign: 'center' }}>
@@ -254,7 +378,7 @@ export default function DepartmentManagement({
                     ? 'Loading official EVSU departments from database...'
                     : deptList.length === 0
                     ? 'No departments configured. Click "+ Add Department" to add one.'
-                    : 'No departments matching search criteria.'}
+                    : 'No departments matching the selected domain or search criteria.'}
                 </td>
               </tr>
             )}
@@ -303,6 +427,22 @@ export default function DepartmentManagement({
                 <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink)' }}>
                   {settingsDept.name}
                 </div>
+                <div style={{ marginTop: '4px' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      background: getDepartmentDomain(settingsDept.name, editDeptDomain).style.bg,
+                      color: getDepartmentDomain(settingsDept.name, editDeptDomain).style.text,
+                      border: `1px solid ${getDepartmentDomain(settingsDept.name, editDeptDomain).style.border}`,
+                    }}
+                  >
+                    {getDepartmentDomain(settingsDept.name, editDeptDomain).shortName}
+                  </span>
+                </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span className="badge badge-dept" style={{ display: 'block', marginBottom: '4px' }}>
@@ -327,7 +467,7 @@ export default function DepartmentManagement({
                 Department Configuration
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label htmlFor="editDeptNameInput">
                   Department Name <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
@@ -338,13 +478,42 @@ export default function DepartmentManagement({
                   required
                   list="editDeptPresets"
                   value={editDeptName}
-                  onChange={(e) => setEditDeptName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditDeptName(val);
+                    if (EVSU_DEPT_PRESETS.includes(val)) {
+                      setEditDeptDomain(getDepartmentDomain(val).key);
+                    }
+                  }}
                 />
                 <datalist id="editDeptPresets">
                   {EVSU_DEPT_PRESETS.map((p) => (
                     <option key={p} value={p} />
                   ))}
                 </datalist>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label htmlFor="editDeptDomainSelect">
+                  Functional Domain / Classification <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <select
+                  id="editDeptDomainSelect"
+                  className="form-control"
+                  value={editDeptDomain}
+                  onChange={(e) => setEditDeptDomain(e.target.value)}
+                  style={{ fontSize: '13.5px' }}
+                  required
+                >
+                  {EVSU_DEPARTMENT_GROUPS.map((grp) => (
+                    <option key={grp.key} value={grp.key}>
+                      {grp.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: '11.5px' }}>
+                  Assign or change this department's campus governance domain.
+                </p>
               </div>
 
               <div style={{ marginBottom: '22px' }}>
@@ -444,8 +613,8 @@ export default function DepartmentManagement({
               </button>
             </div>
             <form onSubmit={handleAddSubmit}>
-              <div className="form-group">
-                <label htmlFor="newDeptName">Department Name</label>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label htmlFor="newDeptName">Department Name <span style={{ color: 'var(--red-600)' }}>*</span></label>
                 <input
                   id="newDeptName"
                   className="form-control"
@@ -454,13 +623,43 @@ export default function DepartmentManagement({
                   list="deptPresets"
                   placeholder="Select or type a department name"
                   value={newDeptName}
-                  onChange={(e) => setNewDeptName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewDeptName(val);
+                    if (val.trim()) {
+                      const detected = getDepartmentDomain(val);
+                      setNewDeptDomain(detected.key);
+                    }
+                  }}
                 />
                 <datalist id="deptPresets">
                   {EVSU_DEPT_PRESETS.map((p) => (
                     <option key={p} value={p} />
                   ))}
                 </datalist>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label htmlFor="newDeptDomainSelect">
+                  Functional Domain / Classification <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <select
+                  id="newDeptDomainSelect"
+                  className="form-control"
+                  value={newDeptDomain}
+                  onChange={(e) => setNewDeptDomain(e.target.value)}
+                  style={{ fontSize: '13.5px' }}
+                  required
+                >
+                  {EVSU_DEPARTMENT_GROUPS.map((grp) => (
+                    <option key={grp.key} value={grp.key}>
+                      {grp.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: '11.5px' }}>
+                  Select the institutional domain for this unit.
+                </p>
               </div>
 
               <div className="flex-between" style={{ marginTop: '16px' }}>

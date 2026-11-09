@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   MapPin,
@@ -10,6 +10,8 @@ import {
   Menu,
   Bell,
   ArrowRight,
+  FileText,
+  Sliders,
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getInitialNotifications } from '../../utils/notificationsData';
@@ -33,6 +35,23 @@ export default function AppLayout({
   // Sidebar only pops up when pressing the menu button (Off-canvas drawer)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+
+  // Close notifications on outside click or mobile touch
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handleOutsideClick = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [notifOpen]);
 
   // In-system notifications state (uses prop if available, otherwise role-based defaults)
   const [localNotifications, setLocalNotifications] = useState(() =>
@@ -150,6 +169,7 @@ export default function AppLayout({
             )}
           </a>
 
+
           {/* Institutional Campus Geofence Page (HR Only) */}
           {currentUser.role === 'HR Personnel' && (
             <a
@@ -180,6 +200,17 @@ export default function AppLayout({
               className={`nav-item ${currentPath === 'backup_data' ? 'active' : ''}`}
             >
               <span className="icon"><Database size={17} /></span> Backup Data
+            </a>
+          )}
+
+          {/* Evaluation Settings (HR Only) */}
+          {currentUser.role === 'HR Personnel' && (
+            <a
+              href="#evaluation-settings"
+              onClick={(e) => { e.preventDefault(); handleNavClick('evaluation_settings'); }}
+              className={`nav-item ${currentPath === 'evaluation_settings' || currentPath === 'evaluation_form_editor' ? 'active' : ''}`}
+            >
+              <span className="icon"><Sliders size={17} /></span> Evaluation Settings
             </a>
           )}
 
@@ -229,7 +260,14 @@ export default function AppLayout({
             </span>
 
             {/* Notification Bell with Red Badge Count */}
-            <div className="notif-wrap" style={{ position: 'relative' }}>
+            <div className="notif-wrap" ref={notifRef} style={{ position: 'relative' }}>
+              {/* Dimmed mobile overlay backdrop for click-outside dismissal */}
+              {notifOpen && (
+                <div
+                  className="notif-backdrop-mobile"
+                  onClick={() => setNotifOpen(false)}
+                />
+              )}
               <button
                 type="button"
                 className="bell"
@@ -255,7 +293,7 @@ export default function AppLayout({
                     )}
                   </div>
 
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: 'min(360px, 60vh)', overflowY: 'auto' }}>
                     {notifications.map((n) => (
                       <div
                         key={n.id}

@@ -52,6 +52,7 @@ class ResetPasswordRequest(BaseModel):
 class DepartmentBase(BaseModel):
     name: str
     college: Optional[str] = None
+    domain: Optional[str] = None
     college_code: Optional[str] = None
     latitude: Optional[float] = 11.0065
     longitude: Optional[float] = 124.6075
@@ -65,6 +66,7 @@ class DepartmentCreate(DepartmentBase):
 class DepartmentUpdate(BaseModel):
     name: Optional[str] = None
     college: Optional[str] = None
+    domain: Optional[str] = None
     college_code: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -73,6 +75,7 @@ class DepartmentUpdate(BaseModel):
 
 class DepartmentOut(DepartmentBase):
     id: int
+    domain: Optional[str] = None
     employee_count: int = 0
     active_evaluations: int = 0
     created_at: Optional[datetime.datetime] = None
@@ -140,7 +143,8 @@ class UserAdminUpdate(BaseModel):
     job_title: Optional[str] = None
     role: Optional[str] = None
     department_id: Optional[int] = None
-    cos_category: Optional[str] = None
+    contract_start_date: Optional[datetime.date] = None
+    contract_end_date: Optional[datetime.date] = None
 
 
 # --- DAR Schemas ---
@@ -190,6 +194,9 @@ class MonthlyReportRecordOut(BaseModel):
     dateSubmitted: str
     month: str
     year: str
+    logDate: Optional[str] = None
+    day: Optional[int] = None
+    cutoff: Optional[str] = None
     jobDescription: str
     workAccomplished: str
     quantity: str
@@ -369,4 +376,38 @@ class NotificationCreate(BaseModel):
     message: str
     category: Optional[str] = "system"
     action_view: Optional[str] = None
+
+
+# --- Evaluation Template Schemas ---
+class EvaluationTemplateCreate(BaseModel):
+    template_key: Optional[str] = "evsu_default_template"
+    title: str
+    subtitle: Optional[str] = None
+    instructions: Optional[str] = None
+    version: Optional[str] = "v1.0"
+    criteria: List[Any]
+    rating_scale: Optional[List[Any]] = None
+    qualitative_prompts: Optional[Any] = None
+    recommendations: Optional[List[Any]] = None
+
+
+class EvaluationTemplateOut(BaseModel):
+    id: int
+    template_key: str
+    title: str
+    subtitle: Optional[str] = None
+    instructions: Optional[str] = None
+    version: Optional[str] = None
+    is_active: bool
+    criteria: List[Any]
+    rating_scale: Optional[List[Any]] = None
+    qualitative_prompts: Optional[Any] = None
+    recommendations: Optional[List[Any]] = None
+    created_by_id: Optional[int] = None
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+
 

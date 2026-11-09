@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../services/api';
+import AttendanceLogs from '../employee/AttendanceLogs';
 
 import {
 
@@ -29,6 +31,7 @@ import {
   ShieldAlert,
 
   Printer,
+  Calendar,
 
   X,
 
@@ -1173,9 +1176,12 @@ export const getEmployeeHistoricalEvaluations = (emp) => {
 
 
 
-  // 3. Fallback for any other employee: dynamically derive 1 or 2 cycles from employee.latestScore and previousScore
+  // 3. Fallback for any other employee: dynamically derive cycles ONLY if actual scores exist
+  if (emp.latestScore === null || emp.latestScore === undefined || !emp.latestScore || Number(emp.latestScore) <= 0) {
+    return [];
+  }
 
-  const latestScore = Number(emp.latestScore) || 85.0;
+  const latestScore = Number(emp.latestScore);
 
   const previousScore = emp.previousScore !== null && emp.previousScore !== undefined ? Number(emp.previousScore) : null;
 
@@ -1301,13 +1307,13 @@ export default function EmployeeRecordView({
 
     status: 'Active',
 
-    contactNumber: '+63 912 345 6789',
+    contactNumber: '',
 
-    officeLocation: 'Technology Bldg, Room 204',
+    officeLocation: '',
 
-    alternateEmail: 'jorge.gubantes@gmail.com',
+    alternateEmail: '',
 
-    emergencyContact: 'Maria Clara Ramos (+63 917 111 2233)',
+    emergencyContact: '',
 
   },
 
@@ -1323,6 +1329,7 @@ export default function EmployeeRecordView({
   const [toastMsg, setToastMsg] = useState(null);
 
   const [viewingMarCycle, setViewingMarCycle] = useState(null);
+  const [viewingAttendanceCycle, setViewingAttendanceCycle] = useState(null);
 
   const [viewingEvalCycle, setViewingEvalCycle] = useState(null);
 
@@ -1346,9 +1353,49 @@ export default function EmployeeRecordView({
 
 
 
-  // Dynamically resolve the employee's historical evaluations matching their actual demo scoring
+  // Load real completed evaluation records from API for this employee if available
+  const [dbEvaluations, setDbEvaluations] = useState(null);
 
-  const historicalEvaluations = getEmployeeHistoricalEvaluations(employee);
+  useEffect(() => {
+    let isMounted = true;
+    if (employee?.id) {
+      api.evaluations.list()
+        .then((records) => {
+          if (!isMounted || !Array.isArray(records)) return;
+          const userRecords = records.filter(
+            (r) => r.employee_id === employee.id && r.status === 'Completed'
+          );
+          if (userRecords.length > 0) {
+            setDbEvaluations(
+              userRecords.map((r) => ({
+                id: r.id,
+                periodDates: r.period || 'Contract Evaluation Cycle',
+                supervisorScore: r.supervisor_score ?? (r.final_score || 0),
+                peerScore: r.peer_score ?? (r.final_score || 0),
+                hrmoScore: r.hrmo_score ?? (r.final_score || 0),
+                finalGrade: r.final_score || 0,
+                interpretation: r.rating_label || 'Satisfactory',
+                marCount: 0,
+                strengths: r.qualitative_strengths || 'Performance targets completed.',
+                recommendation: r.qualitative_recommendations || 'Recommended for Renewal',
+              }))
+            );
+          } else {
+            setDbEvaluations([]);
+          }
+        })
+        .catch(() => {
+          if (isMounted) setDbEvaluations([]);
+        });
+    }
+    return () => { isMounted = false; };
+  }, [employee?.id]);
+
+  // Dynamically resolve the employee's historical evaluations matching their actual demo scoring
+  const staticEvaluations = getEmployeeHistoricalEvaluations(employee);
+  const historicalEvaluations = (dbEvaluations && dbEvaluations.length > 0)
+    ? dbEvaluations
+    : (dbEvaluations !== null ? [] : staticEvaluations);
 
 
 
@@ -1582,142 +1629,41 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-  // 1. VIEW MAR PAGE
-
-  if (viewingMarCycle) {
-
+    // 1. VIEW ATTENDANCE LOGS PAGE
+  if (viewingAttendanceCycle) {
     return (
-
       <div>
-
-        <MonthlyReport
-
+        <AttendanceLogs
+          currentUser={currentUser}
           employeeId={employee.id}
-
           employeeName={employee.fullName}
-
-          department={employee.department}
-
-          cyclePeriod={viewingMarCycle.periodDates}
-
-          backLabel="Back to Historical Evaluations"
-
-          onBack={() => setViewingMarCycle(null)}
-
-          onDownload={() => handleDownloadPdf('mar', viewingMarCycle)}
-
-          downloadLabel="Download MAR (PDF)"
-
+          backLabel="Back to Personnel Record"
+          onBack={() => setViewingAttendanceCycle(null)}
         />
-
       </div>
-
     );
-
   }
 
-
+  // 1.5 VIEW MAR PAGE
+  if (viewingMarCycle) {
+    return (
+      <div>
+        <MonthlyReport
+          employeeId={employee.id}
+          employeeName={employee.fullName}
+          department={employee.department}
+          cyclePeriod={viewingMarCycle.periodDates}
+          backLabel="Back to Personnel Record"
+          onBack={() => setViewingMarCycle(null)}
+          onDownload={() => handleDownloadPdf('mar', viewingMarCycle)}
+          downloadLabel="Download DAR Report (PDF)"
+        />
+      </div>
+    );
+  }
 
   // 2. VIEW EVALUATION PAGE (Triad Evaluation with Evaluator Switcher)
-
   if (viewingEvalCycle) {
-
-    // Current Evaluator Configuration (HR has full identity visibility for all raters)
-
-    const getActiveEvalDetails = () => {
-
-      switch (activeEvaluatorTab) {
-
-        case 'cos':
-
-          return {
-
-            title: 'COS Peer Evaluation',
-
-            weight: '20% Triad Weight',
-
-            evaluator: 'Peer Evaluator (Anonymized)',
-
-            position: 'COS Colleague',
-
-            role: 'Peer',
-
-            score: viewingEvalCycle.peerScore,
-
-            rawScore: Math.round((viewingEvalCycle.peerScore / 100) * 60),
-
-            scores: generateCriteriaScores(viewingEvalCycle.peerScore),
-
-            strengths:
-
-              'Excellent team collaboration. Actively assists colleagues during peak enrollment periods and maintains positive, respectful communication across all tasks.',
-
-            recommendation: 'Recommended for Renewal',
-
-          };
-
-        case 'hr':
-
-          return {
-
-            title: 'HRMO Institutional Evaluation',
-
-            weight: '30% Triad Weight',
-
-            evaluator: 'Dr. Maria Clara Ramos',
-
-            position: 'HRMO Officer',
-
-            role: 'HRMO',
-
-            score: viewingEvalCycle.hrmoScore,
-
-            rawScore: Math.round((viewingEvalCycle.hrmoScore / 100) * 60),
-
-            scores: generateCriteriaScores(viewingEvalCycle.hrmoScore),
-
-            strengths:
-
-              'Consistently fulfilled contracted task deliverables and verified monthly accomplishment reports with high documentation accuracy.',
-
-            recommendation: 'Recommended for Renewal',
-
-          };
-
-        case 'depthead':
-
-        default:
-
-          return {
-
-            title: 'Immediate Supervisor Evaluation',
-
-            weight: '50% Triad Weight',
-
-            evaluator: getDepartmentSupervisor(employee.department),
-
-            position: 'Department Head',
-
-            role: 'Immediate Supervisor',
-
-            score: viewingEvalCycle.supervisorScore,
-
-            rawScore: Math.round((viewingEvalCycle.supervisorScore / 100) * 60),
-
-            scores: generateCriteriaScores(viewingEvalCycle.supervisorScore),
-
-            strengths: viewingEvalCycle.strengths,
-
-            recommendation: viewingEvalCycle.recommendation,
-
-          };
-
-      }
-
-    };
-
-
-
     const currentEval = getActiveEvalDetails();
 
 
@@ -3075,7 +3021,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap' }}>
 
-                {employee.contactNumber || '+63 912 345 6789'}
+                {employee.contactNumber || 'Not provided'}
 
               </span>
 
@@ -3103,7 +3049,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
 
-                {employee.officeLocation || 'Technology Bldg, Room 204'}
+                {employee.officeLocation || 'Not provided'}
 
               </span>
 
@@ -3131,7 +3077,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
 
-                {employee.alternateEmail || `${(employee.email || 'personal').split('@')[0]}@gmail.com`}
+                {employee.alternateEmail || 'Not provided'}
 
               </span>
 
@@ -3159,7 +3105,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <span style={{ fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'block' }}>
 
-                {employee.emergencyContact || 'Maria Clara Ramos (+63 917 111 2233)'}
+                {employee.emergencyContact || 'Not provided'}
 
               </span>
 
@@ -3465,7 +3411,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         </div>
 
-      ) : (
+      ) : historicalEvaluations.length === 1 ? (
 
         <div className="card" style={{ marginBottom: '22px', padding: '18px 22px', background: '#fafbfc', border: '1px solid var(--line)' }}>
 
@@ -3489,7 +3435,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         </div>
 
-      )}
+      ) : null}
 
 
 
@@ -3515,6 +3461,13 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
+        {historicalEvaluations.length === 0 ? (
+          <div style={{ padding: '36px 20px', textAlign: 'center', background: '#fafbfc' }}>
+            <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
+              No completed performance evaluations on record for this personnel yet.
+            </p>
+          </div>
+        ) : (
         <table className="data-table">
 
           <thead>
@@ -3527,7 +3480,8 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <th>Interpretation</th>
 
-              <th style={{ textAlign: 'center' }}>MARs Document</th>
+              <th style={{ textAlign: 'center' }}>Attendance Logs</th>
+              <th style={{ textAlign: 'center' }}>DARs Document</th>
 
               <th style={{ textAlign: 'center' }}>Evaluation Record</th>
 
@@ -3612,37 +3566,38 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 </td>
 
                 <td style={{ textAlign: 'center' }}>
-
                   <button
-
                     type="button"
-
                     className="btn btn-sm btn-primary"
-
                     style={{
-
                       display: 'inline-flex',
-
                       alignItems: 'center',
-
                       gap: '5px',
-
                       fontSize: '12.5px',
-
                       cursor: 'pointer',
-
                     }}
-
-                    onClick={() => setViewingMarCycle(evalItem)}
-
-                    title={`View Compiled MAR for ${evalItem.periodDates}`}
-
+                    onClick={() => setViewingAttendanceCycle(evalItem)}
+                    title={`View Attendance Logs for ${evalItem.periodDates}`}
                   >
-
-                    <FileText size={13} /> View MAR
-
+                    <Calendar size={13} /> View Attendance
                   </button>
-
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setViewingMarCycle(evalItem)}
+                    title={`View Accumulated DARs for ${evalItem.periodDates}`}
+                  >
+                    <FileText size={13} /> View DARs
+                  </button>
                 </td>
 
                 <td style={{ textAlign: 'center' }}>
@@ -3692,6 +3647,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
           </tbody>
 
         </table>
+        )}
 
       </div>
 

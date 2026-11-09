@@ -29,6 +29,8 @@ from .routers.notifications import router as notifications_router
 from .routers.sessions import router as sessions_router
 from .routers.geofence import router as geofence_router
 from .routers.backup import router as backup_router
+from .routers.templates import router as templates_router
+from .routers.attendance import router as attendance_router
 from .routers.audit import log_audit
 
 # Initialize FastAPI App
@@ -59,10 +61,16 @@ app.include_router(notifications_router)
 app.include_router(sessions_router)
 app.include_router(geofence_router)
 app.include_router(backup_router)
+app.include_router(templates_router)
+app.include_router(attendance_router)
 
 
 @app.on_event("startup")
 async def startup_event():
+    try:
+        models.Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[startup] Table creation check: {e}")
     try:
         ensure_buckets_exist()
     except Exception as e:
@@ -138,6 +146,7 @@ def list_departments(
     results = []
     for d in departments:
         d_out = schemas.DepartmentOut.model_validate(d)
+        d_out.domain = d.college
         d_out.employee_count = user_counts.get(d.id, 0)
         d_out.active_evaluations = active_eval_counts.get(d.id, 0)
         results.append(d_out)
@@ -159,11 +168,17 @@ def create_department(
     if existing:
         raise HTTPException(status_code=400, detail="Department with this name already exists.")
 
-    new_dept = models.Department(**dept.model_dump())
+    dept_data = dept.model_dump()
+    if dept_data.get("domain") and not dept_data.get("college"):
+        dept_data["college"] = dept_data["domain"]
+    dept_data.pop("domain", None)
+    new_dept = models.Department(**dept_data)
     db.add(new_dept)
     db.commit()
     db.refresh(new_dept)
-    return new_dept
+    res = schemas.DepartmentOut.model_validate(new_dept)
+    res.domain = new_dept.college
+    return res
 
 
 @app.patch("/api/departments/{dept_id}", response_model=schemas.DepartmentOut)
@@ -187,7 +202,9 @@ def update_department(
             raise HTTPException(status_code=400, detail="Department with this name already exists.")
         dept.name = dept_update.name
 
-    if dept_update.college is not None:
+    if dept_update.domain is not None:
+        dept.college = dept_update.domain
+    elif dept_update.college is not None:
         dept.college = dept_update.college
     if dept_update.college_code is not None:
         dept.college_code = dept_update.college_code
@@ -367,6 +384,111 @@ def fast_track_reject(
 
     db.commit()
     return {"message": "Fast-track rejection recorded on official grounds.", "status": ev.status}
+
+
+@app.post("/api/evaluations/employee/{employee_id}/start")
+def start_employee_evaluation(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    HR Personnel or Department Head initiates/opens the evaluation cycle for an employee.
+    Ensures an EvaluationRecord exists with status 'Open' and dispatches in-app notifications.
+    """
+    if current_user.role not in ["HR Personnel", "Department Head"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only HR Personnel or Department Heads can initiate evaluations.",
+        )
+
+    emp = db.query(models.UserAccount).filter(models.UserAccount.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    ev = (
+        db.query(models.EvaluationRecord)
+        .filter(models.EvaluationRecord.employee_id == employee_id)
+        .order_by(models.EvaluationRecord.id.desc())
+        .first()
+    )
+
+    now = datetime.datetime.utcnow()
+    cycle_period = now.strftime("Evaluation Cycle %Y")
+    renewal = (
+        db.query(models.RenewalApplication)
+        .filter(models.RenewalApplication.employee_id == employee_id)
+        .order_by(models.RenewalApplication.id.desc())
+        .first()
+    )
+    if renewal and renewal.period:
+        cycle_period = renewal.period
+
+    if not ev or ev.status == "Completed":
+        ev = models.EvaluationRecord(
+            period=cycle_period,
+            employee_id=employee_id,
+            status="Open",
+            created_at=now,
+        )
+        db.add(ev)
+    else:
+        ev.status = "Open"
+
+    if renewal and renewal.status in ["Submitted", "Pending Initiation"]:
+        renewal.status = "Under Review"
+
+    dept_head = (
+        db.query(models.UserAccount)
+        .filter(
+            models.UserAccount.role == "Department Head",
+            models.UserAccount.department_id == emp.department_id,
+            models.UserAccount.is_archived == False,
+        )
+        .first()
+    )
+    if dept_head:
+        db.add(
+            models.Notification(
+                user_id=dept_head.id,
+                title="Performance Evaluation Initiated",
+                message=f"Performance evaluation for {emp.full_name} has been initiated and opened for supervisory scoring.",
+                category="evaluation",
+                is_read=False,
+                action_view="intent_review",
+                created_at=now,
+            )
+        )
+
+    db.add(
+        models.Notification(
+            user_id=emp.id,
+            title="Performance Evaluation Cycle Opened",
+            message="Your performance evaluation cycle is now underway with your Immediate Supervisor.",
+            category="evaluation",
+            is_read=False,
+            action_view="contract_status",
+            created_at=now,
+        )
+    )
+
+    log_audit(
+        db=db,
+        action="EVALUATION_INITIATED",
+        target_scope=f"User #{emp.id} ({emp.full_name})",
+        operation_details=f"Initiated performance evaluation for {emp.full_name} ({cycle_period}).",
+        user=current_user,
+    )
+
+    db.commit()
+    db.refresh(ev)
+
+    return {
+        "message": f"Evaluation initiated for {emp.full_name}",
+        "evaluation_id": ev.id,
+        "status": ev.status,
+        "period": ev.period,
+    }
 
 
 # ==========================================
@@ -715,6 +837,13 @@ def finalize_contract_renewal(
     is_renewed = payload.decision == "Yes"
     renewal.hrmo_approval = "Approved" if is_renewed else "Declined"
     renewal.status = "Approved" if is_renewed else "Declined"
+
+    if is_renewed:
+        emp.total_contracts = (emp.total_contracts or 0) + 1
+        from .routers.auth import _add_six_months
+        new_start = (emp.contract_end_date + datetime.timedelta(days=1)) if emp.contract_end_date else datetime.date.today()
+        emp.contract_start_date = new_start
+        emp.contract_end_date = _add_six_months(new_start)
 
     now = datetime.datetime.utcnow()
     decision_label = "RENEWED (6-Month Term Extension)" if is_renewed else "DO NOT RENEW (Contract Conclusion)"

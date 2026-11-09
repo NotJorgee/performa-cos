@@ -22,6 +22,14 @@ class Department(Base):
     radius_meters = Column(Float, nullable=True, default=500.0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    @property
+    def domain(self):
+        return self.college
+
+    @domain.setter
+    def domain(self, val):
+        self.college = val
+
     # Relationships
     users = relationship("UserAccount", back_populates="department")
 
@@ -52,7 +60,7 @@ class UserAccount(Base):
     alternate_email = Column(String(255), nullable=True)
     emergency_contact = Column(String(255), nullable=True)
     office_location = Column(String(255), nullable=True)
-    avatar_url = Column(String(500), nullable=True)
+    avatar_url = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False)
     total_contracts = Column(Integer, default=0)
 
@@ -273,3 +281,81 @@ class CampusGeofence(Base):
     is_primary = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+
+# ---------------------------------------------------------------------------
+# EvaluationTemplate (Dynamic Rubric Matrix Configuration)
+# ---------------------------------------------------------------------------
+class EvaluationTemplate(Base):
+    __tablename__ = "evaluation_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_key = Column(String(100), default="evsu_default_template", index=True)
+    title = Column(String(255), nullable=False)
+    subtitle = Column(String(255), nullable=True)
+    instructions = Column(Text, nullable=True)
+    version = Column(String(50), default="v1.0")
+    is_active = Column(Boolean, default=True, index=True)
+    criteria = Column(JSON, nullable=False)  # Array of { id, title, description }
+    rating_scale = Column(JSON, nullable=True)  # Array of { rating, label, desc, color, bg, border }
+    qualitative_prompts = Column(JSON, nullable=True)
+    recommendations = Column(JSON, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("user_account.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# AttendanceLog (Daily Clock-In / Clock-Out & Campus Geofence Punch)
+# ---------------------------------------------------------------------------
+class AttendanceLog(Base):
+    __tablename__ = "attendance_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user_account.id"), nullable=False, index=True)
+    log_date = Column(Date, nullable=False, index=True)
+    time_in = Column(DateTime, nullable=True)
+    time_out = Column(DateTime, nullable=True)
+    shift_type = Column(String(50), default="ADMINISTRATIVE")  # 'ADMINISTRATIVE' (8am-5pm) | 'MAINTENANCE' (7am-5pm)
+    status = Column(String(50), default="ON_TIME")  # 'ON_TIME' | 'LATE' | 'UNDERTIME' | 'HALF_DAY' | 'OVERTIME' | 'ON_LEAVE' | 'ABSENT'
+    is_geofence_verified = Column(Boolean, default=False)
+    in_latitude = Column(Float, nullable=True)
+    in_longitude = Column(Float, nullable=True)
+    out_latitude = Column(Float, nullable=True)
+    out_longitude = Column(Float, nullable=True)
+    geofence_site_name = Column(String(255), nullable=True)
+    minutes_late = Column(Integer, default=0)
+    undertime_minutes = Column(Integer, default=0)
+    is_overtime = Column(Boolean, default=False)  # True for Saturday work
+    overtime_hours = Column(Float, default=0.0)
+    remarks = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    user = relationship("UserAccount", foreign_keys=[user_id])
+
+
+# ---------------------------------------------------------------------------
+# LeaveRequest (COS Leave Application & Dept Head Approval Workflow)
+# ---------------------------------------------------------------------------
+class LeaveRequest(Base):
+    __tablename__ = "leave_request"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user_account.id"), nullable=False, index=True)
+    department_id = Column(Integer, ForeignKey("department.id"), nullable=True)
+    leave_type = Column(String(100), nullable=False)  # 'Sick Leave' | 'Emergency Leave' | 'Official Business (OB)' | 'Bereavement' | 'Leave Without Pay'
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    days_count = Column(Integer, default=1)
+    reason = Column(Text, nullable=False)
+    attachment_url = Column(String(500), nullable=True)
+    status = Column(String(50), default="PENDING_DEPT_HEAD")  # 'PENDING_DEPT_HEAD' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+    reviewed_by_id = Column(Integer, ForeignKey("user_account.id"), nullable=True)
+    review_notes = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    user = relationship("UserAccount", foreign_keys=[user_id])
+    department = relationship("Department", foreign_keys=[department_id])
+    reviewer = relationship("UserAccount", foreign_keys=[reviewed_by_id])

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Building2,
@@ -27,7 +27,12 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import {
+  EVSU_DEPARTMENTS,
+  EVSU_DEPARTMENT_DOMAINS,
+  EVSU_DEPARTMENT_GROUPS,
+  getDepartmentDomain,
+} from '../../utils/departments';
 
 export default function UserManagement({
   currentUser: propCurrentUser = null,
@@ -69,6 +74,7 @@ export default function UserManagement({
   // Search & Filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'unassigned' | 'archived'
+  const [selectedDomainFilter, setSelectedDomainFilter] = useState('ALL');
   const [expandedDeptIds, setExpandedDeptIds] = useState(new Set());
   const [activeTab, setActiveTab] = useState('departments'); // 'departments' | 'hr_admins'
 
@@ -81,9 +87,11 @@ export default function UserManagement({
 
   // Add Department Form
   const [newDeptName, setNewDeptName] = useState('');
+  const [newDeptDomain, setNewDeptDomain] = useState('academic');
 
   // Edit Department Form
   const [editDeptName, setEditDeptName] = useState('');
+  const [editDeptDomain, setEditDeptDomain] = useState('academic');
   const [deptDeleteError, setDeptDeleteError] = useState(null);
 
   // User Settings Form
@@ -227,11 +235,36 @@ export default function UserManagement({
     });
   };
 
-  // Filter departments based on search query and status
+  // Dynamic functional domain counts
+  const deptDomainCounts = useMemo(() => {
+    const counts = {
+      ALL: structuredDepartments.length,
+      academic: 0,
+      administrative: 0,
+      student_services: 0,
+      extension_operations: 0,
+      research_operations: 0,
+    };
+    structuredDepartments.forEach((d) => {
+      const dom = getDepartmentDomain(d.name, d.domain || d.college);
+      if (counts[dom.key] !== undefined) {
+        counts[dom.key] += 1;
+      }
+    });
+    return counts;
+  }, [structuredDepartments]);
+
+  // Filter departments based on search query, domain, and status
   const filteredDepartments = structuredDepartments.filter((dept) => {
+    // 1. Match Domain Filter
+    const dom = getDepartmentDomain(dept.name, dept.domain || dept.college);
+    if (selectedDomainFilter !== 'ALL' && dom.key !== selectedDomainFilter) {
+      return false;
+    }
+
     const query = searchTerm.toLowerCase().trim();
 
-    // 1. Match Status / Staffing Filter
+    // 2. Match Status / Staffing Filter
     if (statusFilter === 'active') {
       const hasActive = dept.activeCount > 0 || Boolean(dept.supervisor);
       if (!hasActive) return false;
@@ -241,11 +274,13 @@ export default function UserManagement({
       if (dept.archivedCount === 0) return false;
     }
 
-    // 2. Match Search Query
+    // 3. Match Search Query
     if (!query) return true;
 
-    // Check if department name matches
+    // Check if department name or domain matches
     const deptMatch = dept.name.toLowerCase().includes(query);
+    const domainMatch =
+      dom.name.toLowerCase().includes(query) || dom.shortName.toLowerCase().includes(query);
 
     // Check if supervisor matches
     const supervisorMatch =
@@ -263,7 +298,7 @@ export default function UserManagement({
         p.job_title?.toLowerCase().includes(query)
     );
 
-    return deptMatch || supervisorMatch || personnelMatch;
+    return deptMatch || domainMatch || supervisorMatch || personnelMatch;
   });
 
   // Auto-expand departments when searching
@@ -286,6 +321,8 @@ export default function UserManagement({
     e.stopPropagation();
     setSettingsDept(dept);
     setEditDeptName(dept.name);
+    const dom = getDepartmentDomain(dept.name, dept.domain || dept.college);
+    setEditDeptDomain(dom.key);
     setDeptDeleteError(null);
   };
 
@@ -296,6 +333,8 @@ export default function UserManagement({
     try {
       await api.departments.update(settingsDept.id, {
         name: editDeptName.trim(),
+        domain: editDeptDomain,
+        college: editDeptDomain,
       });
       showToast(`Department "${editDeptName.trim()}" updated successfully.`);
       setSettingsDept(null);
@@ -339,16 +378,20 @@ export default function UserManagement({
     try {
       await api.departments.create({
         name: newDeptName.trim(),
+        domain: newDeptDomain,
+        college: newDeptDomain,
       });
       showToast(`Department "${newDeptName.trim()}" created successfully.`);
       setShowAddDeptModal(false);
       setNewDeptName('');
+      setNewDeptDomain('academic');
       loadData();
     } catch (err) {
       console.warn('Create department error:', err);
       showToast(`Department "${newDeptName.trim()}" added.`);
       setShowAddDeptModal(false);
       setNewDeptName('');
+      setNewDeptDomain('academic');
       loadData();
     }
   };
@@ -862,6 +905,66 @@ export default function UserManagement({
         </div>
       </div>
 
+      {/* Functional Domain Filter Tabs */}
+      {activeTab === 'departments' && (
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '16px',
+            overflowX: 'auto',
+            paddingBottom: '4px',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{
+              fontWeight: 700,
+              fontSize: '12px',
+              borderRadius: '20px',
+              padding: '6px 14px',
+              whiteSpace: 'nowrap',
+              background: selectedDomainFilter === 'ALL' ? 'var(--burgundy, #800020)' : '#ffffff',
+              color: selectedDomainFilter === 'ALL' ? '#ffffff' : 'var(--ink-700)',
+              border: '1px solid ' + (selectedDomainFilter === 'ALL' ? 'var(--burgundy, #800020)' : 'var(--line)'),
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onClick={() => setSelectedDomainFilter('ALL')}
+          >
+            All Units ({deptDomainCounts.ALL})
+          </button>
+          {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+            const isSelected = selectedDomainFilter === grp.key;
+            return (
+              <button
+                key={grp.key}
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  whiteSpace: 'nowrap',
+                  background: isSelected ? grp.style.text : '#ffffff',
+                  color: isSelected ? '#ffffff' : grp.style.text,
+                  border: `1px solid ${isSelected ? grp.style.text : grp.style.border}`,
+                  boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onClick={() => setSelectedDomainFilter(grp.key)}
+              >
+                {grp.name} ({deptDomainCounts[grp.key] || 0})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Hybrid Table Dropdown (Department Roster) */}
       {activeTab === 'departments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -965,9 +1068,25 @@ export default function UserManagement({
                     </div>
 
                     <div>
-                      <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-900)' }}>
-                        {dept.name}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                          {dept.name}
+                        </span>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '1px 8px',
+                            borderRadius: '12px',
+                            background: getDepartmentDomain(dept.name, dept.domain || dept.college).style.bg,
+                            color: getDepartmentDomain(dept.name, dept.domain || dept.college).style.text,
+                            border: `1px solid ${getDepartmentDomain(dept.name, dept.domain || dept.college).style.border}`,
+                          }}
+                        >
+                          {getDepartmentDomain(dept.name, dept.domain || dept.college).shortName}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1875,7 +1994,7 @@ export default function UserManagement({
                 </div>
               )}
 
-              <div className="form-group" style={{ marginBottom: '20px' }}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '13px', fontWeight: 700 }}>
                   Department Name <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
@@ -1886,6 +2005,28 @@ export default function UserManagement({
                   onChange={(e) => setEditDeptName(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 700 }}>
+                  Functional Domain / Classification <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <select
+                  className="form-control"
+                  value={editDeptDomain}
+                  onChange={(e) => setEditDeptDomain(e.target.value)}
+                  style={{ fontSize: '13.5px' }}
+                  required
+                >
+                  {EVSU_DEPARTMENT_GROUPS.map((grp) => (
+                    <option key={grp.key} value={grp.key}>
+                      {grp.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: '11.5px' }}>
+                  Assign or change this department's campus governance domain.
+                </p>
               </div>
 
               <div
@@ -1948,7 +2089,7 @@ export default function UserManagement({
             </div>
 
             <form onSubmit={handleCreateDepartment}>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '13px', fontWeight: 700 }}>
                   Department Name <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
@@ -1957,9 +2098,38 @@ export default function UserManagement({
                   className="form-control"
                   placeholder="e.g. Information Technology Department"
                   value={newDeptName}
-                  onChange={(e) => setNewDeptName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewDeptName(val);
+                    if (val.trim()) {
+                      const detected = getDepartmentDomain(val);
+                      setNewDeptDomain(detected.key);
+                    }
+                  }}
                   required
                 />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 700 }}>
+                  Functional Domain / Classification <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <select
+                  className="form-control"
+                  value={newDeptDomain}
+                  onChange={(e) => setNewDeptDomain(e.target.value)}
+                  style={{ fontSize: '13.5px' }}
+                  required
+                >
+                  {EVSU_DEPARTMENT_GROUPS.map((grp) => (
+                    <option key={grp.key} value={grp.key}>
+                      {grp.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: '11.5px' }}>
+                  Select the campus governance domain for this new unit.
+                </p>
               </div>
 
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -2188,12 +2358,22 @@ export default function UserManagement({
                     onChange={(e) => setTransferDeptId(e.target.value)}
                     required
                   >
-                    <option value="">Select Department...</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
+                    <option value="">Select Destination Department...</option>
+                    {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+                      const groupDepts = departments.filter((d) =>
+                        grp.departments.includes(d.name)
+                      );
+                      if (groupDepts.length === 0) return null;
+                      return (
+                        <optgroup key={grp.key} label={grp.name}>
+                          {groupDepts.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -2374,11 +2554,21 @@ export default function UserManagement({
                       value={inviteDeptName}
                       onChange={(e) => setInviteDeptName(e.target.value)}
                     >
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.name}>
-                          {d.name}
-                        </option>
-                      ))}
+                      {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+                        const groupDepts = departments.filter((d) =>
+                          grp.departments.includes(d.name)
+                        );
+                        if (groupDepts.length === 0) return null;
+                        return (
+                          <optgroup key={grp.key} label={grp.name}>
+                            {groupDepts.map((d) => (
+                              <option key={d.id} value={d.name}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>

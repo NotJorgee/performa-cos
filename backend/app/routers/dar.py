@@ -170,11 +170,16 @@ def get_monthly_accomplishment_report(
     user_id: Optional[int] = None,
     month_name: Optional[str] = None,
     year: Optional[int] = None,
+    cutoff: Optional[str] = Query("all", pattern="^(1st_half|2nd_half|full_month|all)$"),
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """
-    Returns aggregated MAR records matching the exact format required by MonthlyReport.jsx.
+    Returns aggregated DAR accomplishment records matching the exact format required by Accumulated DAR logs.
+    Supports quincena cutoff filtering:
+    - 1st_half: Days 1 to 15
+    - 2nd_half: Days 16 to end of month
+    - full_month / all: All days of target month/year
     """
     target_user_id = user_id or current_user.id
     if current_user.role == "COS Employee" and target_user_id != current_user.id:
@@ -199,11 +204,19 @@ def get_monthly_accomplishment_report(
     for r in records:
         rec_month = month_names[r.log_date.month - 1]
         rec_year = str(r.log_date.year)
+        rec_day = r.log_date.day
+        rec_cutoff = "1st_half" if rec_day <= 15 else "2nd_half"
 
         if month_name and month_name != "All Months" and rec_month.lower() != month_name.lower():
             continue
 
+        if cutoff == "1st_half" and rec_day > 15:
+            continue
+        if cutoff == "2nd_half" and rec_day < 16:
+            continue
+
         date_str = r.created_at.strftime("%b %d, %Y, %I:%M %p") if r.created_at else r.log_date.strftime("%b %d, %Y")
+        log_date_str = r.log_date.strftime("%Y-%m-%d")
         tasks = r.tasks or []
 
         if tasks:
@@ -220,6 +233,9 @@ def get_monthly_accomplishment_report(
                         dateSubmitted=date_str,
                         month=rec_month,
                         year=rec_year,
+                        logDate=log_date_str,
+                        day=rec_day,
+                        cutoff=rec_cutoff,
                         jobDescription=t.get("title") or t.get("jobDescription") or "Task Log",
                         workAccomplished=t.get("workAccomplished") or "",
                         quantity=t.get("quantity") or "1 unit",
@@ -236,6 +252,9 @@ def get_monthly_accomplishment_report(
                     dateSubmitted=date_str,
                     month=rec_month,
                     year=rec_year,
+                    logDate=log_date_str,
+                    day=rec_day,
+                    cutoff=rec_cutoff,
                     jobDescription="Daily Log",
                     workAccomplished=r.remarks or "",
                     quantity="1 day",

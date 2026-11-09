@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, FileText, ArrowRight } from 'lucide-react';
+import { UserCheck, FileText, ArrowRight, Clock } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function DeptHeadDashboard({
   currentUser = {
@@ -12,31 +13,27 @@ export default function DeptHeadDashboard({
   metrics: propMetrics = null,
   onNavigate = () => {},
 }) {
-  const [metrics, setMetrics] = useState(
-    propMetrics || {
-      totalSubordinates: 0,
-      pendingReviews: 0,
-      pendingIntents: 0,
-      avgScore: 0,
-      ratingLabel: 'Active Department',
-    }
-  );
+  const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}`;
+  // SWR Instant 0ms perceived load time from cache
+  const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKey));
 
   useEffect(() => {
     if (propMetrics) {
       setMetrics(propMetrics);
+      setCachedData(cacheKey, propMetrics);
       return;
     }
     const fetchMetrics = async () => {
       try {
         const data = await api.analytics.getDeptHeadDashboard();
         setMetrics(data);
+        setCachedData(cacheKey, data);
       } catch (err) {
         console.error('Failed to load Dept Head dashboard analytics:', err);
       }
     };
     fetchMetrics();
-  }, [propMetrics]);
+  }, [propMetrics, cacheKey]);
 
   const pendingIntentsCount = metrics?.pendingIntents ?? 0;
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Department Head');
@@ -60,7 +57,7 @@ export default function DeptHeadDashboard({
       </div>
 
       {/* Category Panels (matching COS Employee & rest of system) */}
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+      <div className="stat-grid stat-grid-3">
         {/* Panel 1: Renewals & Evaluations (Consolidated) */}
         <div
           className="card stat-card stat-card-clickable"
@@ -80,7 +77,11 @@ export default function DeptHeadDashboard({
               color: pendingIntentsCount > 0 ? 'var(--amber-600)' : 'var(--ink-900)',
             }}
           >
-            {pendingIntentsCount} {pendingIntentsCount === 1 ? 'Pending Renewal' : 'Pending Renewals'}
+            {metrics ? (
+              `${pendingIntentsCount} ${pendingIntentsCount === 1 ? 'Pending Renewal' : 'Pending Renewals'}`
+            ) : (
+              <span className="skeleton-shimmer" style={{ width: '130px', height: '24px' }} />
+            )}
           </div>
           <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span>Review renewals &amp; evaluate</span>
@@ -88,7 +89,28 @@ export default function DeptHeadDashboard({
           </div>
         </div>
 
-        {/* Panel 2: Department Employee Records */}
+        {/* Panel 2: Attendance & Leave Management */}
+        <div
+          className="card stat-card stat-card-clickable"
+          onClick={() => onNavigate('department_attendance')}
+          title="Click to monitor subordinate arrival, verify daily accomplishment (DAR), and approve leaves"
+        >
+          <div className="stat-top">
+            <span className="stat-label">Attendance</span>
+            <span className="stat-icon">
+              <Clock size={18} />
+            </span>
+          </div>
+          <div className="stat-value" style={{ fontSize: '22px' }}>
+            Staff Attendance Radar
+          </div>
+          <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Check arrival, DAR &amp; leaves</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        {/* Panel 3: Department Employee Records */}
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('employee_records')}

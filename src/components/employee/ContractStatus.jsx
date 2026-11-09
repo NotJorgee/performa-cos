@@ -2,7 +2,7 @@ import Toast from '../common/Toast';
 import React, { useState, useEffect } from 'react';
 import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../services/api';
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import { EVSU_DEPARTMENTS, getDepartmentDomain } from '../../utils/departments';
 
 function formatDisplayDate(dateInput) {
   if (!dateInput) return 'Not Specified';
@@ -206,15 +206,29 @@ export default function ContractStatus({
           </div>
           <div>
             <span className="muted" style={{ fontSize: '12px' }}>DEPARTMENT ASSIGNMENT</span>
-            <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>
-              {contract.department}
+            <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span>{contract.department}</span>
+              <span
+                style={{
+                  display: 'inline-block',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '1px 8px',
+                  borderRadius: '10px',
+                  background: getDepartmentDomain(contract.department).style.bg,
+                  color: getDepartmentDomain(contract.department).style.text,
+                  border: `1px solid ${getDepartmentDomain(contract.department).style.border}`,
+                }}
+              >
+                {getDepartmentDomain(contract.department).name}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Intent Action Panel — Only unlocks when <= 30 days left before contract expiration */}
-      {status === 'Open for Intent Confirmation' && isExpiringSoon && (
+      {isExpiringSoon && (status === 'Open for Intent Confirmation' || status === 'Contract Active') && (
         <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--brand-border)', background: '#fff' }}>
           <div className="card-title" style={{ color: 'var(--brand-700)' }}>
             Contract Renewal Action Required
@@ -239,7 +253,7 @@ export default function ContractStatus({
       )}
 
       {/* Contract Active / Notice when > 30 days left */}
-      {status === 'Open for Intent Confirmation' && !isExpiringSoon && (
+      {!isExpiringSoon && (
         <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--line)', background: '#fafbfc' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
             <div
@@ -272,16 +286,16 @@ export default function ContractStatus({
       )}
 
       {/* Confirmed State Feedback */}
-      {status === 'Renewal Intent Confirmed' && (
+      {isExpiringSoon && status === 'Renewal Intent Confirmed' && (
         <div className="card" style={{ border: '1px solid #bfe8cd', background: 'var(--green-50)', marginBottom: '20px' }}>
           <div className="flex-between" style={{ alignItems: 'flex-start' }}>
             <div>
               <div className="card-title" style={{ color: '#0f6b32', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Check size={20} />
-                Renewal Intent Confirmed &amp; AI MAR Synthesized
+                Renewal Intent Confirmed &amp; AI DAR Synthesized
               </div>
               <p style={{ margin: '0 0 8px', fontSize: '13.5px' }}>
-                All {contract.totalDarsLogged} DAR logs have been successfully aggregated into your Monthly Accomplishment Report.
+                All {contract.totalDarsLogged} DAR logs have been successfully aggregated into your Accomplishment Report.
                 Concurrent evaluation routing is now active:
               </p>
               <ul style={{ margin: '0 0 12px', paddingLeft: '20px', fontSize: '13px', lineHeight: 1.6 }}>
@@ -302,6 +316,23 @@ export default function ContractStatus({
             >
               Change Decision
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Approved State Feedback */}
+      {isExpiringSoon && status === 'Approved' && (
+        <div className="card" style={{ border: '1px solid #bfe8cd', background: 'var(--green-50)', marginBottom: '20px' }}>
+          <div className="flex-between" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <div className="card-title" style={{ color: '#0f6b32', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Check size={20} />
+                Contract Renewal Approved
+              </div>
+              <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.5 }}>
+                Your contract renewal has been approved and endorsed by your Department Head and HRMO. Your renewed Contract of Service term is officially finalized.
+              </p>
+            </div>
           </div>
         </div>
       )}

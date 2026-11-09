@@ -18,7 +18,6 @@ import {
   X,
   Search,
   Filter,
-  RefreshCw,
   Eye,
   Crosshair,
   ShieldCheck,
@@ -2089,26 +2088,6 @@ export default function CampusGeofence({
               <option value="Main">Main Campus</option>
               <option value="Luna">Luna Campus</option>
             </select>
-
-            {/* Live refresh button */}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={handleRefreshVerifications}
-              disabled={isLoadingVerifications}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                height: '34px',
-                padding: '0 12px',
-                cursor: isLoadingVerifications ? 'not-allowed' : 'pointer',
-              }}
-              title="Refresh live verification logs from server"
-            >
-              <RefreshCw size={13} className={isLoadingVerifications ? 'spin' : ''} />
-              <span>Refresh</span>
-            </button>
 
             {/* Cancel Focus Button */}
             {activeLocatePing && (

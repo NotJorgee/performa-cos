@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "PerformaCOS Backend API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+    SQL_ECHO: bool = False
     APP_FRONTEND_URL: str = "http://localhost:5173"
 
     # Database

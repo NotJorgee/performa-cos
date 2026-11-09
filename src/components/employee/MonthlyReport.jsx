@@ -6,8 +6,6 @@ import {
   Printer,
   ArrowLeft,
   Calendar,
-  Search,
-  PlusCircle,
   ExternalLink,
   ShieldCheck,
   RefreshCw,
@@ -23,7 +21,7 @@ export default function MonthlyReport({
   backLabel = 'Back to Renewals & Evaluations',
   onNavigate = null,
   onDownload = null,
-  downloadLabel = 'Print / Save MAR (PDF)',
+  downloadLabel = 'Print / Save DAR Report (PDF)',
   cyclePeriod = null,
   initialRecords = null,
 }) {
@@ -35,23 +33,23 @@ export default function MonthlyReport({
   const [isLoading, setIsLoading] = useState(!Array.isArray(initialRecords));
   const [fetchError, setFetchError] = useState(null);
 
-  // Filter States
-  const currentMonthName = new Date().toLocaleString('en-US', { month: 'long' });
-  const currentYearStr = String(new Date().getFullYear());
+  // Quincena & Filter States
+  const now = new Date();
+  const currentMonthName = now.toLocaleString('en-US', { month: 'long' });
+  const currentYearStr = String(now.getFullYear());
 
-  const [selectedMonth, setSelectedMonth] = useState('All Months');
+  const [cutoffPeriod, setCutoffPeriod] = useState('1st_half'); // '1st_half' | '2nd_half' | 'full_month'
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthName);
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
-  const [searchTerm, setSearchTerm] = useState('');
   const [previewPhoto, setPreviewPhoto] = useState(null);
 
-  // Month options list
+  // Standard Calendar Months
   const months = [
-    'All Months',
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
-  // Fetch real accumulated MAR records from backend database
+  // Fetch real accumulated DAR records from backend database
   useEffect(() => {
     // If initialRecords was explicitly passed and valid, use that
     if (Array.isArray(initialRecords) && initialRecords.length > 0) {
@@ -67,7 +65,7 @@ export default function MonthlyReport({
     const targetUser = employeeId || api?.auth?.getCurrentUser()?.id || null;
 
     api.dar
-      .monthly(targetUser)
+      .monthly(targetUser, selectedMonth === 'All Months' ? null : selectedMonth, Number(selectedYear), cutoffPeriod)
       .then((data) => {
         if (!isMounted) return;
         if (Array.isArray(data)) {
@@ -79,7 +77,7 @@ export default function MonthlyReport({
       })
       .catch((err) => {
         if (!isMounted) return;
-        console.warn('Unable to load accumulated MAR records:', err.message);
+        console.warn('Unable to load accumulated DAR records:', err.message);
         setFetchError('Failed to fetch accumulated logs: ' + (err.message || 'Server error'));
         setRecords([]);
         setIsLoading(false);
@@ -88,31 +86,87 @@ export default function MonthlyReport({
     return () => {
       isMounted = false;
     };
-  }, [employeeId, initialRecords]);
+  }, [employeeId, initialRecords, selectedMonth, selectedYear, cutoffPeriod]);
 
-  // Dynamically extract available years from records (or current year)
+  // Generous years list (past 5 years through next year, plus any from data)
   const availableYears = useMemo(() => {
     const yearsSet = new Set(records.map((r) => r.year).filter(Boolean));
-    yearsSet.add(currentYearStr);
-    yearsSet.add('2025');
+    const currentNum = now.getFullYear();
+    for (let y = currentNum - 4; y <= currentNum + 1; y++) {
+      yearsSet.add(String(y));
+    }
     return Array.from(yearsSet).sort().reverse();
-  }, [records, currentYearStr]);
+  }, [records]);
 
-  // Filter records by Month / Year / Search Term
+  // Dynamic Cutoff Label for current selection
+  const cutoffLabel = useMemo(() => {
+    if (selectedMonth === 'All Months') {
+      return `Annual Accomplishment Records (${selectedYear})`;
+    }
+    const monthIdx = months.indexOf(selectedMonth);
+    const daysInMonth = monthIdx >= 0 ? new Date(Number(selectedYear), monthIdx + 1, 0).getDate() : 30;
+
+    if (cutoffPeriod === '1st_half') {
+      return `${selectedMonth} 01–15, ${selectedYear} (1st Quincena)`;
+    }
+    if (cutoffPeriod === '2nd_half') {
+      return `${selectedMonth} 16–${daysInMonth}, ${selectedYear} (2nd Quincena)`;
+    }
+    return `${selectedMonth} 01–${daysInMonth}, ${selectedYear} (Full Month)`;
+  }, [selectedMonth, selectedYear, cutoffPeriod, months]);
+
+  // Check if the selected cutoff period hasn't started yet relative to today
+  const isPeriodFuture = useMemo(() => {
+    const currentYear = now.getFullYear();
+    const currentMonthIdx = now.getMonth();
+    const currentDay = now.getDate();
+
+    const selYear = Number(selectedYear);
+    const selMonthIdx = months.indexOf(selectedMonth);
+
+    if (selYear > currentYear) return true;
+    if (selYear < currentYear) return false;
+
+    if (selMonthIdx > currentMonthIdx) return true;
+    if (selMonthIdx < currentMonthIdx) return false;
+
+    // Same year and month: check if 2nd half has not started
+    if (cutoffPeriod === '2nd_half' && currentDay < 16) {
+      return true;
+    }
+    return false;
+  }, [now, selectedYear, selectedMonth, cutoffPeriod, months]);
+
+  // Filter records by Quincena Cutoff, Month, and Year
   const filteredRecords = useMemo(() => {
     return records.filter((rec) => {
       const matchesMonth = selectedMonth === 'All Months' || rec.month === selectedMonth;
       const matchesYear = !selectedYear || rec.year === selectedYear;
-      const searchLower = searchTerm.trim().toLowerCase();
-      const matchesSearch =
-        !searchLower ||
-        (rec.jobDescription && rec.jobDescription.toLowerCase().includes(searchLower)) ||
-        (rec.workAccomplished && rec.workAccomplished.toLowerCase().includes(searchLower)) ||
-        (rec.remarks && rec.remarks.toLowerCase().includes(searchLower)) ||
-        (rec.campusSite && rec.campusSite.toLowerCase().includes(searchLower));
-      return matchesMonth && matchesYear && matchesSearch;
+
+      // Cutoff verification (1st Half: days 1-15, 2nd Half: days 16-end, Full Month: all)
+      let matchesCutoff = true;
+      if (cutoffPeriod === '1st_half' || cutoffPeriod === '2nd_half') {
+        let dayNum = rec.day;
+        if (dayNum == null && rec.logDate) {
+          const parts = String(rec.logDate).split('-');
+          if (parts.length === 3) dayNum = parseInt(parts[2], 10);
+        }
+        if (dayNum == null && rec.dateSubmitted) {
+          const m = String(rec.dateSubmitted).match(/\b([A-Za-z]{3})\s+(\d{1,2}),\s+(\d{4})/);
+          if (m) dayNum = parseInt(m[2], 10);
+        }
+
+        if (dayNum != null) {
+          if (cutoffPeriod === '1st_half') matchesCutoff = dayNum <= 15;
+          if (cutoffPeriod === '2nd_half') matchesCutoff = dayNum >= 16;
+        } else if (rec.cutoff) {
+          matchesCutoff = rec.cutoff === cutoffPeriod;
+        }
+      }
+
+      return matchesMonth && matchesYear && matchesCutoff;
     });
-  }, [records, selectedMonth, selectedYear, searchTerm]);
+  }, [records, selectedMonth, selectedYear, cutoffPeriod]);
 
   // Handle Print / PDF Export
   const handlePrint = () => {
@@ -139,10 +193,10 @@ export default function MonthlyReport({
         </div>
         <div style={{ textAlign: 'center', marginTop: '10px', borderTop: '2px solid #000', paddingTop: '8px' }}>
           <div style={{ fontSize: '12pt', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Monthly Accomplishment Report (MAR)
+            Individual Accomplishment Report (DAR)
           </div>
           <div style={{ fontSize: '10pt', color: '#333', marginTop: '3px' }}>
-            Coverage Period: <b>{selectedMonth === 'All Months' ? `Annual Calendar (${selectedYear})` : `${selectedMonth} ${selectedYear}`}</b>
+            Coverage Period: <b>{cutoffLabel}</b>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '10pt', borderBottom: '1px solid #000', paddingBottom: '6px' }}>
@@ -155,9 +209,9 @@ export default function MonthlyReport({
       {/* Screen Page Header (Hidden when printing) */}
       <div className="flex-between no-print" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: '24px' }}>Accumulated MAR Logs</h1>
+          <h1 style={{ margin: '0 0 6px', fontSize: '24px' }}>Accumulated DAR Logs</h1>
           <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-            {safeDeptName} &mdash; Official monthly compilation of verified daily accomplishment reports for <b>{employeeName}</b>
+            {safeDeptName} &mdash; Official quincena compilation of verified daily accomplishment reports for <b>{employeeName}</b>
             {cyclePeriod ? ` (${cyclePeriod})` : ''}.
           </p>
         </div>
@@ -187,81 +241,91 @@ export default function MonthlyReport({
         </div>
       </div>
 
-      {/* Filter & Search Bar (Hidden when printing) */}
+      {/* Quincena Window Switcher & Filters (Hidden when printing) */}
       <div className="card no-print" style={{ marginBottom: '20px', padding: '16px 20px' }}>
-        <div className="flex-between" style={{ gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div>
-              <label style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Filter by Month
-              </label>
-              <select
-                className="form-control"
-                style={{ minWidth: '150px', padding: '6px 12px', fontSize: '13.5px' }}
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
+        <div className="flex-between" style={{ gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Spread-out Window Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, fontSize: '13px' }}>Window:</span>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setCutoffPeriod('1st_half')}
+                className={`btn btn-sm ${cutoffPeriod === '1st_half' ? 'btn-active' : ''}`}
+                style={{
+                  background: cutoffPeriod === '1st_half' ? 'var(--brand-700)' : '#f1f5f9',
+                  color: cutoffPeriod === '1st_half' ? '#fff' : 'var(--ink-700)',
+                  fontWeight: 600,
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
               >
-                {months.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Year
-              </label>
-              <select
-                className="form-control"
-                style={{ minWidth: '100px', padding: '6px 12px', fontSize: '13.5px' }}
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
+                1st Half (1st – 15th)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCutoffPeriod('2nd_half')}
+                className={`btn btn-sm ${cutoffPeriod === '2nd_half' ? 'btn-active' : ''}`}
+                style={{
+                  background: cutoffPeriod === '2nd_half' ? 'var(--brand-700)' : '#f1f5f9',
+                  color: cutoffPeriod === '2nd_half' ? '#fff' : 'var(--ink-700)',
+                  fontWeight: 600,
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
               >
-                {availableYears.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+                2nd Half (16th – End)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCutoffPeriod('full_month')}
+                className={`btn btn-sm ${cutoffPeriod === 'full_month' ? 'btn-active' : ''}`}
+                style={{
+                  background: cutoffPeriod === 'full_month' ? 'var(--brand-700)' : '#f1f5f9',
+                  color: cutoffPeriod === 'full_month' ? '#fff' : 'var(--ink-700)',
+                  fontWeight: 600,
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Full Month
+              </button>
             </div>
           </div>
 
-          <div style={{ flex: 1, minWidth: '240px', maxWidth: '340px' }}>
-            <label style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-500)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>
-              Search Logs
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search task, quantity, remarks..."
-                style={{ padding: '6px 12px 6px 32px', fontSize: '13.5px' }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Search
-                size={14}
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-400)' }}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--ink-400)',
-                    padding: '2px',
-                  }}
-                  title="Clear search"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+          {/* Month & Year Selectors */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontWeight: 700, fontSize: '13px' }}>Month:</span>
+            <select
+              className="form-control"
+              style={{ minWidth: '150px', width: 'auto', padding: '6px 12px', fontSize: '13px', cursor: 'pointer' }}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {months.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+
+            <select
+              className="form-control"
+              style={{ minWidth: '95px', width: 'auto', padding: '6px 12px', fontSize: '13px', cursor: 'pointer' }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -277,24 +341,12 @@ export default function MonthlyReport({
         <div className="flex-between no-print" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
           <div>
             <div className="card-title" style={{ margin: 0, fontSize: '16px' }}>
-              {selectedMonth === 'All Months' ? `Accomplishment Roster (${selectedYear})` : `${selectedMonth} ${selectedYear} Task Logs`}
+              Daily Accomplishment Records ({cutoffLabel})
             </div>
             <span className="muted" style={{ fontSize: '12.5px' }}>
-              Showing {filteredRecords.length} of {records.length} logged task accomplishment records
+              Showing {filteredRecords.length} verified task accomplishment record(s)
             </span>
           </div>
-
-          {onNavigate && (
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={() => onNavigate('daily_report')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-            >
-              <PlusCircle size={14} />
-              <span>Log Daily Accomplishment</span>
-            </button>
-          )}
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -315,7 +367,7 @@ export default function MonthlyReport({
                   <td colSpan="6" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--ink-500)' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <RefreshCw size={18} className="spin" />
-                      <span>Loading accumulated monthly accomplishment reports...</span>
+                      <span>Loading accumulated accomplishment reports...</span>
                     </div>
                   </td>
                 </tr>
@@ -378,30 +430,27 @@ export default function MonthlyReport({
               ) : (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--ink-500)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                      <FileText size={32} color="#94a3b8" />
-                      <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--ink-800)' }}>
-                        {records.length === 0
-                          ? 'No Daily Accomplishment Reports Logged'
-                          : 'No Records Matched Selected Month or Query'}
+                    {isPeriodFuture ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <Calendar size={32} color="#94a3b8" />
+                        <div style={{ fontWeight: 600, fontSize: '14.5px', color: 'var(--ink-800)' }}>
+                          Period Has Not Started Yet
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--ink-500)', maxWidth: '440px', lineHeight: 1.5 }}>
+                          This quincena period ({cutoffLabel}) has not started yet. Accomplishments can be logged once this period begins.
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12.5px', color: 'var(--ink-500)', maxWidth: '420px', lineHeight: 1.5 }}>
-                        {records.length === 0
-                          ? 'Accomplishment entries submitted through the Daily Accomplishment Reporting module will automatically compile here in real time.'
-                          : `Try changing your month filter from "${selectedMonth}" or clearing your search term.`}
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <FileText size={32} color="#94a3b8" />
+                        <div style={{ fontWeight: 600, fontSize: '14.5px', color: 'var(--ink-800)' }}>
+                          No Accomplishment Records Logged
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--ink-500)', maxWidth: '440px', lineHeight: 1.5 }}>
+                          No daily accomplishment reports were submitted for this period ({cutoffLabel}).
+                        </div>
                       </div>
-                      {records.length === 0 && onNavigate && (
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          onClick={() => onNavigate('daily_report')}
-                          style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                        >
-                          <PlusCircle size={14} />
-                          <span>Submit Today's Accomplishment</span>
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </td>
                 </tr>
               )}
@@ -416,7 +465,7 @@ export default function MonthlyReport({
               Total entries displayed: <b>{filteredRecords.length}</b> verified logs
             </span>
             <div style={{ fontSize: '12px', color: 'var(--ink-500)' }}>
-              Period: <b>{selectedMonth} {selectedYear}</b>
+              Period: <b>{cutoffLabel}</b>
             </div>
           </div>
         )}

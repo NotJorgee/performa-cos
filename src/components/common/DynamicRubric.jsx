@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getActiveEvaluationTemplate, fetchActiveTemplateFromApi } from '../../utils/evaluationTemplate';
+
+export { getActiveEvaluationTemplate };
 
 // Official EVSU Ormoc Campus Employee Performance Rating Criteria (Universal 6 Criteria)
 export const EVSU_PERFORMANCE_CRITERIA = [
@@ -166,15 +169,38 @@ export default function DynamicRubric({
   onSubmit = () => {},
   readOnly = false,
   hideAlerts = false,
+  criteria: propCriteria = null,
 }) {
-  const criteria = EVSU_PERFORMANCE_CRITERIA;
+  const [template, setTemplate] = useState(() => getActiveEvaluationTemplate());
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchActiveTemplateFromApi()
+      .then((tpl) => {
+        if (isMounted && tpl) setTemplate(tpl);
+      })
+      .catch(() => {});
+
+    const onTemplateUpdated = (e) => {
+      if (e.detail) setTemplate(e.detail);
+    };
+
+    window.addEventListener('performa_template_updated', onTemplateUpdated);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('performa_template_updated', onTemplateUpdated);
+    };
+  }, []);
+
+  const criteria = propCriteria || template.criteria || EVSU_PERFORMANCE_CRITERIA;
 
   const defaultStrengths = initialStrengths || 'Demonstrates consistent and commendable execution of contracted departmental deliverables.';
   const [scores, setScores] = useState(initialScores || {});
   const [strengths, setStrengths] = useState(defaultStrengths);
   const [recommendation, setRecommendation] = useState(initialRecommendation || 'Recommended for Renewal');
 
-  const totalItems = criteria.length; // 6 criteria
+  const totalItems = criteria.length;
+  const maxRawScore = totalItems > 0 ? totalItems * 10 : 60;
   const scoredCount = Object.keys(scores).filter((k) =>
     criteria.some((c) => c.id === k)
   ).length;
@@ -183,10 +209,10 @@ export default function DynamicRubric({
     (acc, curr) => acc + (Number(scores[curr.id]) || 0),
     0
   );
-  // Max raw score is 6 criteria * 10 = 60 points
-  // Scaled percentage out of 100 = (rawSum / 60) * 100 = (rawSum / 6) * 10
+  // Max raw score is totalItems * 10 points
+  // Scaled percentage out of 100 = (rawSum / maxRawScore) * 100
   const scaledScore =
-    scoredCount > 0 ? Math.round(((rawSum / 60) * 100) * 10) / 10 : 0;
+    scoredCount > 0 && maxRawScore > 0 ? Math.round(((rawSum / maxRawScore) * 100) * 10) / 10 : 0;
   const currentInterpretation =
     scoredCount > 0 ? getPerformanceInterpretation(scaledScore) : null;
 

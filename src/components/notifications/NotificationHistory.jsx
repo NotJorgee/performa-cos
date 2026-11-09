@@ -103,6 +103,16 @@ export default function NotificationHistory({
           bg: '#faf5ff',
           border: '#e9d5ff',
         };
+      case 'leave_request':
+      case 'leave_status':
+      case 'leave':
+        return {
+          label: 'Leave Application',
+          badgeClass: 'badge-leave',
+          icon: <FileText size={18} color="var(--brand-700, #7a0c2e)" />,
+          bg: '#f0f9ff',
+          border: '#bae6fd',
+        };
       case 'system':
       default:
         return {
@@ -179,20 +189,6 @@ export default function NotificationHistory({
             </button>
           )}
 
-          {onRefreshNotifications && (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-              onClick={async () => {
-                await onRefreshNotifications();
-                showToast('Notification feed refreshed from server.');
-              }}
-              title="Sync latest notifications from server"
-            >
-              <RotateCcw size={14} /> Refresh
-            </button>
-          )}
 
           {unreadCount > 0 && (
             <button
@@ -273,6 +269,7 @@ export default function NotificationHistory({
                 <option value="dar">Campus DAR</option>
                 <option value="mar">Monthly MAR</option>
                 <option value="records">Personnel Records</option>
+                <option value="leave_request">Leave Applications</option>
                 <option value="system">System Security</option>
               </select>
             </div>

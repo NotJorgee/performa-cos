@@ -143,7 +143,6 @@ export default function ResetNewPassword({
               </button>
             </form>
 
-            <div className="auth-footer">Secured by EVSU Authentication Portal</div>
           </div>
         </div>
       </div>
