@@ -622,7 +622,7 @@ export default function TokenizedSignUp({
                       />
                     </div>
                     <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
-                      Active 6-month contract evaluation cycle.
+                      Active contract evaluation cycle.
                     </span>
                   </div>
                 </div>

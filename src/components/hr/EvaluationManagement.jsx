@@ -266,7 +266,7 @@ export default function EvaluationManagement({
     setFinalizeEmp(emp);
     if (emp.routingStatus === 'Contract Renewed') {
       setHrRenewalDecision('Yes');
-      setHrRenewalRemarks(emp.finalContractRemarks || 'Contract renewed for upcoming 6-month term.');
+      setHrRenewalRemarks(emp.finalContractRemarks || 'Contract renewed for upcoming term.');
     } else if (emp.routingStatus === 'Non-Renewal Finalized') {
       setHrRenewalDecision('No');
       setHrRenewalRemarks(emp.finalContractRemarks || 'Contract expired. Non-renewal finalized.');
@@ -276,7 +276,7 @@ export default function EvaluationManagement({
       setHrRenewalDecision(isRecommended ? 'Yes' : 'No');
       setHrRenewalRemarks(
         isRecommended
-          ? 'Triad evaluation and supervisory endorsement verified. Approved for standard 6-month contract renewal.'
+          ? 'Triad evaluation and supervisory endorsement verified. Approved for contract renewal.'
           : 'Supervisory non-renewal upheld. Contract will conclude at term expiration.'
       );
     }
@@ -309,7 +309,7 @@ export default function EvaluationManagement({
       );
       setToastMsg(
         `Official contract disposition finalized for ${finalizeEmp.fullName}: ${
-          isRenewed ? 'RENEWED (6-Month Extension)' : 'DO NOT RENEW (Contract Closure)'
+          isRenewed ? 'RENEWED (Term Extension)' : 'DO NOT RENEW (Contract Closure)'
         }. Official notices dispatched.`
       );
       loadData();
@@ -1049,7 +1049,7 @@ export default function EvaluationManagement({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Evaluation Management Module</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Track 6-month contract expiration dates, review supervisor recommendations, and finalize renewal decisions for Contract of Service personnel.
+            Track contract expiration dates, review supervisor recommendations, and finalize renewal decisions for Contract of Service personnel.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1085,7 +1085,7 @@ export default function EvaluationManagement({
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)' }}>
           <div className="card-title" style={{ margin: 0 }}>
-            COS Personnel Nearing 6-Month Contract Expiration
+            COS Personnel Nearing Contract Expiration
           </div>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
             Urgent operational reviews are prioritized at the top (Start Evaluation, Finalize Contract, Non-Renewal Mediation, and Offboarding), followed by pending reviews and evaluations in progress.
@@ -1586,7 +1586,7 @@ export default function EvaluationManagement({
                     fontWeight: 600,
                   }}
                 >
-                  <Check size={16} /> Official Record: Contract is RENEWED for upcoming 6-month term.
+                  <Check size={16} /> Official Record: Contract is RENEWED for upcoming term.
                 </div>
               )}
               {finalizeEmp.routingStatus === 'Non-Renewal Finalized' && (
@@ -1763,7 +1763,7 @@ export default function EvaluationManagement({
                         Yes - Renew Contract
                       </b>
                       <p className="muted" style={{ margin: '3px 0 0', fontSize: '12px', lineHeight: 1.4 }}>
-                        Authorize 6-month contract renewal. Forward endorsed recommendation for official university appointment.
+                        Authorize contract renewal. Forward endorsed recommendation for official university appointment.
                       </p>
                     </div>
                   </label>

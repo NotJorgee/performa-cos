@@ -5,7 +5,7 @@ import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, extract
 
 from ..database import get_db
 from ..auth import get_current_user
@@ -212,8 +212,8 @@ def get_employee_dashboard_metrics(
     }
 
 
-SYSTEM_LAUNCH_DATE = datetime.date(2025, 11, 1)
-SYSTEM_LAUNCH_YEAR = 2025
+SYSTEM_LAUNCH_DATE = datetime.date(2026, 11, 1)
+SYSTEM_LAUNCH_YEAR = 2026
 SYSTEM_LAUNCH_MONTH = 11  # November (1-indexed), index 10 (0-indexed)
 
 
@@ -225,30 +225,29 @@ def get_executive_analytics(
 ):
     """
     High-level institutional executive analytics:
-    - 12-Month Calendar Year Trend Curves per Department & Office
-    - Ranked Department Performance Leaderboard with real COS headcounts
-    - Outstanding Employees Spotlight with real database COS personnel
-    - CSC-aligned Institutional Rating Distribution
-    - Cutoff at System Launch Date (November 2025)
-    - Dynamic Year Navigation and Progression
+    - 100% Pure Live Data from Database (No Dummy/Synthetic Data)
+    - Real-time evaluations from models.EvaluationRecord
+    - Real-time department headcounts from models.UserAccount
+    - Real-time accomplishment metrics from models.DailyAccomplishmentReport
+    - Official System Go-Live: November 2026 (Launch Year & Month)
+    - Multi-month reactive breakdown across all 12 calendar months
     """
     today = datetime.date.today()
     current_calendar_year = today.year
-    current_calendar_month = today.month  # 11 for Nov
+    current_calendar_month = today.month  # 11 for November
 
     try:
         selected_year_num = int(year)
     except (ValueError, TypeError):
         selected_year_num = current_calendar_year
 
-    # Dynamic Available Years from Inception to Max(current, requested)
+    # Dynamic Available Years from System Inception (2026) to Current/Selected Year
     highest_year = max(current_calendar_year, selected_year_num)
     available_years = [str(y) for y in range(highest_year, SYSTEM_LAUNCH_YEAR - 1, -1)]
 
     is_launch_year = (selected_year_num == SYSTEM_LAUNCH_YEAR)
     is_current_year = (selected_year_num == current_calendar_year)
     is_historical = (selected_year_num < current_calendar_year)
-    is_future = (selected_year_num > current_calendar_year)
 
     month_specs = [
         ("jan", "Jan", "January"),
@@ -280,7 +279,7 @@ def get_executive_analytics(
             status = "Completed" if is_historical else "Active"
             is_launch_month = True
             is_active = not is_historical
-            contract_type = "System Go-Live"
+            contract_type = "System Go-Live (Active)"
         elif is_current_year:
             if month_number < current_calendar_month:
                 status = "Completed"
@@ -312,281 +311,11 @@ def get_executive_analytics(
             "isActive": is_active,
         })
 
-    evaluation_periods = months
+    # 1. Query Real Active Campus Departments from Database
+    db_departments = db.query(models.Department).order_by(models.Department.id).all()
 
-    # Baseline Trajectories for 2026 (11 active/completed points: Jan through Nov)
-    domain_base = [
-        {
-            "id": "academic",
-            "name": "Academic Departments",
-            "code": "ACAD",
-            "color": "#2563eb",
-            "points_2026": [84.2, 85.0, 84.6, 85.8, 86.2, 87.4, 86.8, 87.5, 88.2, 88.9, 89.4, None],
-            "points_2025": [None, None, None, None, None, None, None, None, None, None, 83.2, 83.8],
-            "deptCount": 5,
-        },
-        {
-            "id": "administrative",
-            "name": "Administrative & Fiscal Services",
-            "code": "ADMIN",
-            "color": "#800020",
-            "points_2026": [82.0, 82.5, 82.8, 83.4, 84.0, 84.6, 84.0, 84.8, 85.2, 85.8, 86.4, None],
-            "points_2025": [None, None, None, None, None, None, None, None, None, None, 81.0, 81.6],
-            "deptCount": 5,
-        },
-        {
-            "id": "student_services",
-            "name": "Student Support & Services",
-            "code": "STUDENT",
-            "color": "#059669",
-            "points_2026": [80.5, 81.2, 81.6, 82.2, 82.8, 83.5, 83.0, 83.6, 84.0, 84.3, 84.8, None],
-            "points_2025": [None, None, None, None, None, None, None, None, None, None, 79.8, 80.4],
-            "deptCount": 5,
-        },
-        {
-            "id": "extension_operations",
-            "name": "Extension & Operations",
-            "code": "EXT/OPS",
-            "color": "#7c3aed",
-            "points_2026": [78.6, 79.4, 79.8, 80.5, 81.2, 82.0, 81.4, 82.2, 82.6, 83.0, 83.4, None],
-            "points_2025": [None, None, None, None, None, None, None, None, None, None, 78.0, 78.5],
-            "deptCount": 7,
-        },
-    ]
-
-    domain_trajectories = []
-    for d in domain_base:
-        if is_launch_year:
-            pts = d["points_2025"]
-        elif is_current_year:
-            pts = d["points_2026"]
-        elif is_historical:
-            pts = d["points_2026"][:11] + [d["points_2026"][10]]
-        else:
-            pts = [None] * 12
-
-        domain_trajectories.append({
-            "id": d["id"],
-            "name": d["name"],
-            "code": d["code"],
-            "color": d["color"],
-            "points": pts,
-            "deptCount": d["deptCount"],
-        })
-
-    # Department-Level Trajectories grouped by Domain
-    raw_dept_trajectories = {
-        "academic": [
-            {
-                "id": 15,
-                "name": "Computer Studies Department",
-                "code": "CSD",
-                "color": "#2563eb",
-                "points_2026": [84.5, 85.2, 84.8, 86.0, 86.5, 87.6, 87.0, 87.8, 88.4, 89.1, 89.6, None],
-                "points_2025": [None]*10 + [83.6, 84.2],
-            },
-            {
-                "id": 17,
-                "name": "Engineering Department",
-                "code": "ENGG",
-                "color": "#0284c7",
-                "points_2026": [82.8, 83.4, 83.0, 84.2, 84.6, 85.5, 85.0, 85.6, 86.0, 86.4, 86.8, None],
-                "points_2025": [None]*10 + [82.0, 82.5],
-            },
-            {
-                "id": 8,
-                "name": "Technology Department",
-                "code": "TECH",
-                "color": "#0d9488",
-                "points_2026": [81.2, 82.0, 81.6, 82.6, 83.0, 84.0, 83.5, 84.2, 84.8, 85.0, 85.4, None],
-                "points_2025": [None]*10 + [80.4, 81.0],
-            },
-            {
-                "id": 11,
-                "name": "Education Department",
-                "code": "EDUC",
-                "color": "#4f46e5",
-                "points_2026": [80.5, 81.2, 80.8, 82.0, 82.5, 83.4, 83.0, 83.8, 84.2, 84.6, 85.0, None],
-                "points_2025": [None]*10 + [79.6, 80.2],
-            },
-            {
-                "id": 19,
-                "name": "Hospitality & Tourism Management",
-                "code": "HTM",
-                "color": "#0891b2",
-                "points_2026": [79.8, 80.6, 80.2, 81.2, 81.8, 82.6, 82.2, 83.0, 83.6, 83.9, 84.2, None],
-                "points_2025": [None]*10 + [78.8, 79.5],
-            },
-        ],
-        "administrative": [
-            {
-                "id": 18,
-                "name": "Administrative and Finance",
-                "code": "ADMIN/FIN",
-                "color": "#800020",
-                "points_2026": [82.2, 82.8, 83.0, 83.6, 84.2, 84.8, 84.4, 85.0, 85.6, 86.2, 86.8, None],
-                "points_2025": [None]*10 + [81.2, 81.8],
-            },
-            {
-                "id": 14,
-                "name": "Campus Director Office",
-                "code": "CDO",
-                "color": "#991b1b",
-                "points_2026": [81.8, 82.4, 82.6, 83.2, 83.8, 84.4, 84.0, 84.6, 85.2, 85.8, 86.4, None],
-                "points_2025": [None]*10 + [80.8, 81.4],
-            },
-            {
-                "id": 1,
-                "name": "Disbursing / Cashier Office",
-                "code": "CASHIER",
-                "color": "#b91c1c",
-                "points_2026": [81.0, 81.6, 81.8, 82.4, 83.0, 83.6, 83.2, 83.8, 84.5, 85.0, 85.6, None],
-                "points_2025": [None]*10 + [80.0, 80.6],
-            },
-            {
-                "id": 2,
-                "name": "HRMDO Office",
-                "code": "HRMDO",
-                "color": "#c026d3",
-                "points_2026": [82.5, 83.0, 83.4, 84.0, 84.6, 85.2, 84.8, 85.5, 86.0, 86.6, 87.2, None],
-                "points_2025": [None]*10 + [81.5, 82.0],
-            },
-            {
-                "id": 12,
-                "name": "Procurement Office",
-                "code": "PROCURE",
-                "color": "#a21caf",
-                "points_2026": [80.2, 80.8, 81.2, 81.8, 82.4, 83.0, 82.6, 83.4, 84.0, 84.5, 85.0, None],
-                "points_2025": [None]*10 + [79.2, 79.8],
-            },
-        ],
-        "student_services": [
-            {
-                "id": 20,
-                "name": "Library Office",
-                "code": "LIBRARY",
-                "color": "#059669",
-                "points_2026": [81.5, 82.0, 82.4, 83.0, 83.5, 84.2, 83.8, 84.5, 85.0, 85.5, 86.0, None],
-                "points_2025": [None]*10 + [80.5, 81.0],
-            },
-            {
-                "id": 16,
-                "name": "SASO Office",
-                "code": "SASO",
-                "color": "#16a34a",
-                "points_2026": [80.5, 81.2, 81.5, 82.0, 82.6, 83.4, 83.0, 83.6, 84.2, 84.7, 85.1, None],
-                "points_2025": [None]*10 + [79.5, 80.0],
-            },
-            {
-                "id": 3,
-                "name": "School Clinic",
-                "code": "CLINIC",
-                "color": "#10b981",
-                "points_2026": [79.8, 80.4, 80.8, 81.4, 82.0, 82.6, 82.2, 82.8, 83.4, 83.9, 84.3, None],
-                "points_2025": [None]*10 + [78.8, 79.4],
-            },
-            {
-                "id": 9,
-                "name": "Guidance Office",
-                "code": "GUIDANCE",
-                "color": "#14b8a6",
-                "points_2026": [79.2, 79.8, 80.2, 80.8, 81.4, 82.2, 81.8, 82.5, 83.0, 83.5, 83.9, None],
-                "points_2025": [None]*10 + [78.2, 78.8],
-            },
-            {
-                "id": 21,
-                "name": "Registrar Office",
-                "code": "REGISTRAR",
-                "color": "#047857",
-                "points_2026": [80.0, 80.6, 81.0, 81.6, 82.2, 83.0, 82.5, 83.2, 83.8, 84.2, 84.7, None],
-                "points_2025": [None]*10 + [79.0, 79.6],
-            },
-        ],
-        "extension_operations": [
-            {
-                "id": 22,
-                "name": "Maintenance/Janitorial (MESO) Office",
-                "code": "MESO",
-                "color": "#7c3aed",
-                "points_2026": [79.5, 80.2, 80.6, 81.2, 81.8, 82.6, 82.0, 82.8, 83.2, 83.7, 84.2, None],
-                "points_2025": [None]*10 + [78.5, 79.0],
-            },
-            {
-                "id": 10,
-                "name": "Extension Service Office",
-                "code": "EXTENSION",
-                "color": "#6d28d9",
-                "points_2026": [78.8, 79.4, 79.8, 80.4, 81.0, 81.8, 81.2, 82.0, 82.5, 83.0, 83.6, None],
-                "points_2025": [None]*10 + [77.8, 78.4],
-            },
-            {
-                "id": 5,
-                "name": "Research Office",
-                "code": "RESEARCH",
-                "color": "#9333ea",
-                "points_2026": [79.0, 79.6, 80.0, 80.6, 81.2, 82.0, 81.5, 82.2, 82.8, 83.3, 83.8, None],
-                "points_2025": [None]*10 + [78.0, 78.6],
-            },
-            {
-                "id": 6,
-                "name": "Sports And Development Office",
-                "code": "SPORTS",
-                "color": "#8b5cf6",
-                "points_2026": [78.2, 78.8, 79.2, 79.8, 80.4, 81.2, 80.8, 81.5, 82.0, 82.5, 83.0, None],
-                "points_2025": [None]*10 + [77.2, 77.8],
-            },
-            {
-                "id": 7,
-                "name": "Quality Assurance & Accreditation Office",
-                "code": "QA/QAAO",
-                "color": "#a855f7",
-                "points_2026": [80.0, 80.6, 81.0, 81.8, 82.4, 83.2, 82.8, 83.5, 84.0, 84.5, 84.9, None],
-                "points_2025": [None]*10 + [79.0, 79.6],
-            },
-            {
-                "id": 4,
-                "name": "IPDO Office",
-                "code": "IPDO",
-                "color": "#6366f1",
-                "points_2026": [77.8, 78.4, 78.8, 79.4, 80.0, 80.8, 80.4, 81.0, 81.6, 82.1, 82.6, None],
-                "points_2025": [None]*10 + [76.8, 77.4],
-            },
-            {
-                "id": 13,
-                "name": "IGP Office",
-                "code": "IGP",
-                "color": "#7e22ce",
-                "points_2026": [77.2, 77.8, 78.2, 78.8, 79.4, 80.2, 79.8, 80.5, 81.0, 81.5, 82.0, None],
-                "points_2025": [None]*10 + [76.2, 76.8],
-            },
-        ],
-    }
-
-    department_trajectories = {}
-    for dom_key, depts in raw_dept_trajectories.items():
-        department_trajectories[dom_key] = []
-        for d in depts:
-            if is_launch_year:
-                pts = d["points_2025"]
-            elif is_current_year:
-                pts = d["points_2026"]
-            elif is_historical:
-                pts = d["points_2026"][:11] + [d["points_2026"][10]]
-            else:
-                pts = [None] * 12
-
-            department_trajectories[dom_key].append({
-                "id": d["id"],
-                "name": d["name"],
-                "code": d["code"],
-                "color": d["color"],
-                "points": pts,
-            })
-
-    trend_series = domain_trajectories
-
-    # 2. Query Department Headcounts from Database
-    dept_counts = dict(
+    # 2. Query Real COS Headcounts per Department from models.UserAccount
+    real_dept_headcounts = dict(
         db.query(models.UserAccount.department_id, func.count(models.UserAccount.id))
         .filter(
             models.UserAccount.role == "COS Employee",
@@ -596,99 +325,47 @@ def get_executive_analytics(
         .all()
     )
 
-    # Base department template aligned with institutional structure
-    dept_templates = [
-        {
-            "id": 15,
-            "name": "Computer Studies Department",
-            "base_headcount": 12,
-            "avg_score": 89.1,
-            "status_label": "Very Satisfactory",
-            "eval_completed": 12,
-            "total_evals": 12,
-            "color": "#15803d",
-            "bg": "#f0fdf4",
-        },
-        {
-            "id": 17,
-            "name": "Engineering Department",
-            "base_headcount": 8,
-            "avg_score": 86.4,
-            "status_label": "Very Satisfactory",
-            "eval_completed": 7,
-            "total_evals": 8,
-            "color": "#15803d",
-            "bg": "#f0fdf4",
-        },
-        {
-            "id": 8,
-            "name": "Technology Department",
-            "base_headcount": 10,
-            "avg_score": 84.8,
-            "status_label": "Very Satisfactory",
-            "eval_completed": 8,
-            "total_evals": 10,
-            "color": "#15803d",
-            "bg": "#f0fdf4",
-        },
-        {
-            "id": 20,
-            "name": "Library Office",
-            "base_headcount": 6,
-            "avg_score": 83.2,
-            "status_label": "Very Satisfactory",
-            "eval_completed": 5,
-            "total_evals": 6,
-            "color": "#15803d",
-            "bg": "#f0fdf4",
-        },
-        {
-            "id": 22,
-            "name": "Maintenance/Janitorial (MESO) Office",
-            "base_headcount": 5,
-            "avg_score": 78.5,
-            "status_label": "Satisfactory",
-            "eval_completed": 4,
-            "total_evals": 5,
-            "color": "#0284c7",
-            "bg": "#f0f9ff",
-        },
-    ]
-
-    department_leaderboard = []
-    for rank, dept in enumerate(dept_templates, start=1):
-        actual_count = dept_counts.get(dept["id"], 0)
-        headcount = max(actual_count, dept["base_headcount"])
-        total_evals = headcount
-        eval_completed = dept["eval_completed"]
-        completion_rate = round((eval_completed / total_evals) * 100, 1) if total_evals > 0 else 100.0
-
-        department_leaderboard.append({
-            "rank": rank,
-            "name": dept["name"],
-            "headcount": headcount,
-            "avgScore": dept["avg_score"],
-            "statusLabel": dept["status_label"],
-            "evalCompletedCount": eval_completed,
-            "totalEvals": total_evals,
-            "completionRate": completion_rate,
-            "badgeColor": dept["color"],
-            "badgeBg": dept["bg"],
-        })
-
-    # 3. Real Outstanding COS Employees from Database
+    # 3. Query Real Active COS Employees from Database
     db_cos_employees = (
         db.query(models.UserAccount)
         .filter(
             models.UserAccount.role == "COS Employee",
             models.UserAccount.is_archived == False,
         )
+        .order_by(models.UserAccount.id)
         .all()
     )
 
-    outstanding_employees = []
+    # Department domain metadata mapping
+    dept_meta = {
+        15: {"code": "CSD", "color": "#2563eb", "domain": "academic"},
+        17: {"code": "ENGG", "color": "#0284c7", "domain": "academic"},
+        8: {"code": "TECH", "color": "#0d9488", "domain": "academic"},
+        11: {"code": "EDUC", "color": "#4f46e5", "domain": "academic"},
+        19: {"code": "HTM", "color": "#0891b2", "domain": "academic"},
+        18: {"code": "ADMIN/FIN", "color": "#800020", "domain": "administrative"},
+        14: {"code": "CDO", "color": "#991b1b", "domain": "administrative"},
+        1: {"code": "CASHIER", "color": "#b91c1c", "domain": "administrative"},
+        2: {"code": "HRMDO", "color": "#c026d3", "domain": "administrative"},
+        12: {"code": "PROCURE", "color": "#a21caf", "domain": "administrative"},
+        20: {"code": "LIBRARY", "color": "#059669", "domain": "student_services"},
+        16: {"code": "SASO", "color": "#16a34a", "domain": "student_services"},
+        3: {"code": "CLINIC", "color": "#10b981", "domain": "student_services"},
+        9: {"code": "GUIDANCE", "color": "#14b8a6", "domain": "student_services"},
+        21: {"code": "REGISTRAR", "color": "#047857", "domain": "student_services"},
+        22: {"code": "MESO", "color": "#7c3aed", "domain": "extension_operations"},
+        10: {"code": "EXTENSION", "color": "#6d28d9", "domain": "extension_operations"},
+        5: {"code": "RESEARCH", "color": "#9333ea", "domain": "extension_operations"},
+        6: {"code": "SPORTS", "color": "#8b5cf6", "domain": "extension_operations"},
+        7: {"code": "QA/QAAO", "color": "#a855f7", "domain": "extension_operations"},
+        4: {"code": "IPDO", "color": "#6366f1", "domain": "extension_operations"},
+        13: {"code": "IGP", "color": "#7e22ce", "domain": "extension_operations"},
+    }
+
+    # Pre-calculate DARs for all COS employees
+    user_dars_map = {}
     for user in db_cos_employees:
-        verified_dars = (
+        v_dars = (
             db.query(models.DailyAccomplishmentReport)
             .filter(
                 models.DailyAccomplishmentReport.user_id == user.id,
@@ -696,101 +373,276 @@ def get_executive_analytics(
             )
             .count()
         )
-        total_dars = (
+        t_dars = (
             db.query(models.DailyAccomplishmentReport)
             .filter(models.DailyAccomplishmentReport.user_id == user.id)
             .count()
         )
-        display_dars = max(verified_dars, total_dars, 12)
+        user_dars_map[user.id] = {"verified": v_dars, "total": t_dars}
 
-        outstanding_employees.append({
-            "id": user.id,
-            "name": user.full_name,
-            "empId": user.employee_id_number or f"G{user.id:04d}",
-            "department": user.department.name if user.department else "Computer Studies Department",
-            "role": user.job_title or "COS Personnel",
-            "score": 92.4,
-            "ratingLabel": "Outstanding",
-            "darsVerified": display_dars,
-            "retentionStatus": "Strongly Recommended for Renewal",
-            "highlight": "Consistent operational reporting fidelity, prompt DAR submission, and proactive technical clearance accomplishment.",
+    monthly_metrics = {}
+    dept_monthly_scores = {d.id: [None] * 12 for d in db_departments}
+
+    # Process all 12 calendar months for reactive month selection
+    for idx in range(12):
+        month_num = idx + 1
+        m_info = months[idx]
+
+        if m_info["isPreLaunch"]:
+            monthly_metrics[str(idx)] = {
+                "monthIndex": idx,
+                "monthLabel": m_info["label"],
+                "monthFullName": m_info["fullName"],
+                "isPreLaunch": True,
+                "institutionalAverage": None,
+                "institutionalRating": "Pre-Deployment Period",
+                "totalAssessed": 0,
+                "departmentLeaderboard": [],
+                "outstandingEmployees": [],
+                "ratingDistribution": [
+                    {"label": "Outstanding (90 – 100)", "count": 0, "pct": 0.0, "color": "#16a34a"},
+                    {"label": "Very Satisfactory (80 – 89.9)", "count": 0, "pct": 0.0, "color": "#2563eb"},
+                    {"label": "Satisfactory (70 – 79.9)", "count": 0, "pct": 0.0, "color": "#0284c7"},
+                    {"label": "Needs Improvement (60 – 69.9)", "count": 0, "pct": 0.0, "color": "#f59e0b"},
+                    {"label": "Unsatisfactory (Below 60)", "count": 0, "pct": 0.0, "color": "#dc2626"},
+                ],
+            }
+            continue
+
+        # Completed evaluations created in this specific month & year
+        month_evals = (
+            db.query(models.EvaluationRecord)
+            .join(models.UserAccount, models.EvaluationRecord.employee_id == models.UserAccount.id)
+            .filter(
+                models.EvaluationRecord.status == "Completed",
+                models.EvaluationRecord.final_score.isnot(None),
+                extract("year", models.EvaluationRecord.created_at) == selected_year_num,
+                extract("month", models.EvaluationRecord.created_at) == month_num,
+            )
+            .all()
+        )
+
+        dept_month_evals = {}
+        emp_month_evals = {}
+        for ev in month_evals:
+            emp = ev.employee
+            if emp and emp.department_id:
+                dept_month_evals.setdefault(emp.department_id, []).append(ev.final_score)
+            emp_month_evals[ev.employee_id] = ev
+
+        all_dept_records = []
+        for dept in db_departments:
+            meta = dept_meta.get(dept.id, {"code": "DEPT", "color": "#64748b", "domain": "extension_operations"})
+            real_headcount = real_dept_headcounts.get(dept.id, 0)
+            scores_in_dept = dept_month_evals.get(dept.id, [])
+
+            if scores_in_dept:
+                avg_score = round(sum(scores_in_dept) / len(scores_in_dept), 1)
+                eval_completed = len(scores_in_dept)
+                if avg_score >= 90:
+                    status_label = "Outstanding"
+                    badge_color = "#15803d"
+                    badge_bg = "#f0fdf4"
+                elif avg_score >= 80:
+                    status_label = "Very Satisfactory"
+                    badge_color = "#15803d"
+                    badge_bg = "#f0fdf4"
+                elif avg_score >= 70:
+                    status_label = "Satisfactory"
+                    badge_color = "#0284c7"
+                    badge_bg = "#f0f9ff"
+                elif avg_score >= 60:
+                    status_label = "Needs Improvement"
+                    badge_color = "#d97706"
+                    badge_bg = "#fffbeb"
+                else:
+                    status_label = "Unsatisfactory"
+                    badge_color = "#dc2626"
+                    badge_bg = "#fef2f2"
+            else:
+                avg_score = None
+                eval_completed = 0
+                status_label = "Awaiting Evaluation" if real_headcount > 0 else "No Active Personnel"
+                badge_color = "#64748b"
+                badge_bg = "#f1f5f9"
+
+            total_evals = real_headcount
+            completion_rate = round((eval_completed / total_evals) * 100, 1) if total_evals > 0 else 0.0
+
+            all_dept_records.append({
+                "id": dept.id,
+                "name": dept.name,
+                "code": meta["code"],
+                "domain": meta["domain"],
+                "color": meta["color"],
+                "headcount": real_headcount,
+                "avgScore": avg_score,
+                "statusLabel": status_label,
+                "evalCompletedCount": eval_completed,
+                "totalEvals": total_evals,
+                "completionRate": completion_rate,
+                "badgeColor": badge_color,
+                "badgeBg": badge_bg,
+            })
+            dept_monthly_scores[dept.id][idx] = avg_score
+
+        all_dept_records.sort(
+            key=lambda d: (
+                d["avgScore"] is not None,
+                d["avgScore"] or 0,
+                d["headcount"],
+                d["evalCompletedCount"],
+            ),
+            reverse=True,
+        )
+        month_leaderboard = [{"rank": r, **d} for r, d in enumerate(all_dept_records[:5], start=1)]
+
+        month_outstanding = []
+        for user in db_cos_employees:
+            d_info = user_dars_map.get(user.id, {"verified": 0, "total": 0})
+            user_eval = emp_month_evals.get(user.id)
+            if user_eval:
+                score = round(user_eval.final_score, 1)
+                rating_label = user_eval.rating_label or ("Outstanding" if score >= 90 else "Very Satisfactory")
+                retention_status = "Recommended for Renewal" if score >= 80 else "Performance Review Required"
+                highlight = user_eval.qualitative_strengths or f"Evaluated with verified score of {score} across institutional triad criteria."
+            else:
+                score = None
+                rating_label = "Awaiting Evaluation"
+                retention_status = "In-Progress Contract Term"
+                highlight = f"Active institutional contributor with {d_info['total']} daily accomplishment task logs submitted for campus operations."
+
+            month_outstanding.append({
+                "id": user.id,
+                "name": user.full_name,
+                "empId": user.employee_id_number or f"G{user.id:04d}",
+                "department": user.department.name if user.department else "Unassigned",
+                "role": user.job_title or "COS Personnel",
+                "score": score,
+                "ratingLabel": rating_label,
+                "darsVerified": d_info["verified"] if d_info["verified"] > 0 else d_info["total"],
+                "retentionStatus": retention_status,
+                "highlight": highlight,
+            })
+
+        total_evaluated = len(month_evals)
+        c_out, c_vsat, c_sat, c_nimp, c_uns = 0, 0, 0, 0, 0
+        total_sum = 0.0
+        for ev in month_evals:
+            s = ev.final_score
+            total_sum += s
+            if s >= 90: c_out += 1
+            elif s >= 80: c_vsat += 1
+            elif s >= 70: c_sat += 1
+            elif s >= 60: c_nimp += 1
+            else: c_uns += 1
+
+        pct_of = lambda c: round((c / total_evaluated) * 100, 1) if total_evaluated > 0 else 0.0
+
+        month_rating_dist = [
+            {"label": "Outstanding (90 – 100)", "count": c_out, "pct": pct_of(c_out), "color": "#16a34a"},
+            {"label": "Very Satisfactory (80 – 89.9)", "count": c_vsat, "pct": pct_of(c_vsat), "color": "#2563eb"},
+            {"label": "Satisfactory (70 – 79.9)", "count": c_sat, "pct": pct_of(c_sat), "color": "#0284c7"},
+            {"label": "Needs Improvement (60 – 69.9)", "count": c_nimp, "pct": pct_of(c_nimp), "color": "#f59e0b"},
+            {"label": "Unsatisfactory (Below 60)", "count": c_uns, "pct": pct_of(c_uns), "color": "#dc2626"},
+        ]
+
+        if total_evaluated > 0:
+            inst_avg = round(total_sum / total_evaluated, 1)
+            inst_rating = (
+                "Outstanding" if inst_avg >= 90
+                else "Very Satisfactory" if inst_avg >= 80
+                else "Satisfactory" if inst_avg >= 70
+                else "Needs Improvement"
+            )
+        else:
+            inst_avg = None
+            inst_rating = "Awaiting Cycle Evaluations"
+
+        monthly_metrics[str(idx)] = {
+            "monthIndex": idx,
+            "monthLabel": m_info["label"],
+            "monthFullName": m_info["fullName"],
+            "isPreLaunch": False,
+            "institutionalAverage": inst_avg,
+            "institutionalRating": inst_rating,
+            "totalAssessed": total_evaluated,
+            "departmentLeaderboard": month_leaderboard,
+            "outstandingEmployees": month_outstanding,
+            "ratingDistribution": month_rating_dist,
+        }
+
+    # Build 12-Month Department Trajectories
+    department_trajectories = {
+        "academic": [],
+        "administrative": [],
+        "student_services": [],
+        "extension_operations": [],
+    }
+    for dept in db_departments:
+        meta = dept_meta.get(dept.id, {"code": "DEPT", "color": "#64748b", "domain": "extension_operations"})
+        dom_key = meta["domain"]
+        pts = dept_monthly_scores[dept.id]
+        department_trajectories[dom_key].append({
+            "id": dept.id,
+            "name": dept.name,
+            "code": meta["code"],
+            "color": meta["color"],
+            "points": pts,
         })
 
-    # Exemplar profiles to augment if fewer than 4 registered COS users in database
-    exemplar_profiles = [
-        {
-            "id": 101,
-            "name": "Ian Joseph Ranoco",
-            "empId": "R10222026IJM",
-            "department": "Computer Studies Department",
-            "role": "COS Admin Aide",
-            "score": 88.6,
-            "ratingLabel": "Very Satisfactory",
-            "darsVerified": 76,
-            "retentionStatus": "Recommended for Renewal",
-            "highlight": "Demonstrates strong organizational skills and dependable support during university accreditation cycles.",
-        },
-        {
-            "id": 102,
-            "name": "Elena Vasquez",
-            "empId": "V10222026ELV",
-            "department": "University Library Services",
-            "role": "COS Records Custodian",
-            "score": 89.6,
-            "ratingLabel": "Very Satisfactory",
-            "darsVerified": 88,
-            "retentionStatus": "Recommended for Renewal",
-            "highlight": "Digitized over 2,400 monograph accession records with 100% verification accuracy.",
-        },
-        {
-            "id": 103,
-            "name": "Mark Anthony Reyes",
-            "empId": "A10222026MTR",
-            "department": "Computer Studies Department",
-            "role": "COS Laboratory Custodian",
-            "score": 89.2,
-            "ratingLabel": "Very Satisfactory",
-            "darsVerified": 72,
-            "retentionStatus": "Recommended for Renewal",
-            "highlight": "High milestone throughput in hardware diagnostics across Computer Studies Department laboratories.",
-        },
+    # Build 12-Month Domain Trajectories
+    domain_meta_list = [
+        {"id": "academic", "name": "Academic Departments", "code": "ACAD", "color": "#2563eb", "count": 5},
+        {"id": "administrative", "name": "Administrative & Fiscal Services", "code": "ADMIN", "color": "#800020", "count": 5},
+        {"id": "student_services", "name": "Student Support & Services", "code": "STUDENT", "color": "#059669", "count": 5},
+        {"id": "extension_operations", "name": "Extension & Operations", "code": "EXT/OPS", "color": "#7c3aed", "count": 7},
     ]
 
-    for ex in exemplar_profiles:
-        if len(outstanding_employees) >= 4:
-            break
-        if not any(e["name"].lower() == ex["name"].lower() for e in outstanding_employees):
-            outstanding_employees.append(ex)
+    domain_trajectories = []
+    for dom in domain_meta_list:
+        depts_in_dom = [d for d in db_departments if dept_meta.get(d.id, {}).get("domain") == dom["id"]]
+        pts = [None] * 12
+        for m_i in range(12):
+            if months[m_i]["isPreLaunch"]:
+                continue
+            scores = [dept_monthly_scores[d.id][m_i] for d in depts_in_dom if dept_monthly_scores[d.id][m_i] is not None]
+            if scores:
+                pts[m_i] = round(sum(scores) / len(scores), 1)
+            else:
+                pts[m_i] = None
 
-    # 4. University-Wide CSC Rating Distribution
-    rating_distribution = [
-        {"label": "Outstanding (90 – 100)", "count": 6, "pct": 22.2, "color": "#16a34a"},
-        {"label": "Very Satisfactory (70 – 89.9)", "count": 17, "pct": 63.0, "color": "#2563eb"},
-        {"label": "Satisfactory (50 – 69.9)", "count": 3, "pct": 11.1, "color": "#0284c7"},
-        {"label": "Needs Improvement (30 – 49.9)", "count": 1, "pct": 3.7, "color": "#f59e0b"},
-        {"label": "Unsatisfactory (Below 30)", "count": 0, "pct": 0.0, "color": "#dc2626"},
-    ]
+        domain_trajectories.append({
+            "id": dom["id"],
+            "name": dom["name"],
+            "code": dom["code"],
+            "color": dom["color"],
+            "points": pts,
+            "deptCount": dom["count"],
+        })
 
     active_month_index = 10 if is_current_year else (10 if is_launch_year else 11)
+    active_m = monthly_metrics.get(str(active_month_index), monthly_metrics["10"])
 
     return {
         "selectedYear": str(selected_year_num),
-        "systemLaunchDate": "2025-11-01",
+        "systemLaunchDate": "2026-11-01",
         "systemLaunchYear": SYSTEM_LAUNCH_YEAR,
         "systemLaunchMonth": SYSTEM_LAUNCH_MONTH,
         "availableYears": available_years,
         "isHistorical": is_historical,
         "isCurrentYear": is_current_year,
-        "institutionalAverage": 86.4,
-        "institutionalRating": "Very Satisfactory",
-        "totalAssessed": 27,
+        "institutionalAverage": active_m["institutionalAverage"],
+        "institutionalRating": active_m["institutionalRating"],
+        "totalAssessed": active_m["totalAssessed"],
         "months": months,
         "evaluationPeriods": months,
         "activeMonthIndex": active_month_index,
-        "trendSeries": trend_series,
+        "trendSeries": domain_trajectories,
         "domainTrajectories": domain_trajectories,
         "departmentTrajectories": department_trajectories,
-        "departmentLeaderboard": department_leaderboard,
-        "outstandingEmployees": outstanding_employees,
-        "ratingDistribution": rating_distribution,
+        "departmentLeaderboard": active_m["departmentLeaderboard"],
+        "outstandingEmployees": active_m["outstandingEmployees"],
+        "ratingDistribution": active_m["ratingDistribution"],
+        "monthlyMetrics": monthly_metrics,
     }

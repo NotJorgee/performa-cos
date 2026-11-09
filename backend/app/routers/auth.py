@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 def _add_six_months(d: datetime.date) -> datetime.date:
-    """Calculates standard 6-month COS contract end date inclusive (e.g. July 5, 2026 -> Jan 4, 2027)."""
+    """Calculates default COS contract term end date inclusive (e.g. July 5, 2026 -> Jan 4, 2027)."""
     month = d.month + 6
     year = d.year + (month - 1) // 12
     month = ((month - 1) % 12) + 1

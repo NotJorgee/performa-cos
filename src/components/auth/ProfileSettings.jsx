@@ -1003,7 +1003,7 @@ export default function ProfileSettings({
                     )}
                   </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                    Notifications when a 6-month contract enters the 60-day or 30-day renewal intent window.
+                    Notifications when a contract enters the 60-day or 30-day renewal intent window.
                   </div>
                 </div>
               </label>

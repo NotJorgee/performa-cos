@@ -1317,11 +1317,14 @@ export default function EmployeeRecordView({
 
   },
 
+  currentUser = null,
+
   onBack = () => {},
 
   backLabel = '← Back to Employee Records',
 
 }) {
+  const authUser = currentUser || api.auth.getCurrentUser();
   const empDepartment = typeof employee?.department === 'object' && employee?.department !== null
     ? (employee.department.name || 'Computer Studies Department')
     : (employee?.department || 'Computer Studies Department');
@@ -1415,7 +1418,7 @@ export default function EmployeeRecordView({
 
     const isMar = docType === 'mar';
 
-    const cleanPeriod = cycle.periodDates.replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanPeriod = (cycle?.periodDates || 'Active_Term').replace(/[^a-zA-Z0-9]/g, '_');
 
     const filename = `${employee.idNumber}_${isMar ? 'MAR' : 'Evaluation'}_${cleanPeriod}.pdf`;
 
@@ -1634,7 +1637,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
     return (
       <div>
         <AttendanceLogs
-          currentUser={currentUser}
+          currentUser={authUser}
           employeeId={employee.id}
           employeeName={employee.fullName}
           backLabel="Back to Personnel Record"
@@ -2068,7 +2071,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                   <li>Efficiently handled student enrollment records, credential validations, and laboratory maintenance schedules.</li>
 
-                  <li>Zero deliverable defects or contractual non-compliance logged across the 6-month cycle.</li>
+                  <li>Zero deliverable defects or contractual non-compliance logged across the contract cycle.</li>
 
                 </ul>
 
@@ -2921,7 +2924,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
 
             <div style={{ background: '#f8fafc', padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--line)' }}>
 
@@ -2973,6 +2976,52 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               </div>
 
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  padding: '9px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  background: '#ffffff',
+                  border: '1.5px solid var(--line)',
+                  borderRadius: '8px',
+                }}
+                onClick={() => setViewingAttendanceCycle({ periodDates: 'Active Contract Period' })}
+                title="View Daily Time Record (DTR) & Attendance Logs"
+              >
+                <Calendar size={14} color="var(--brand-700)" />
+                <span>Attendance Logs</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  padding: '9px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  background: '#ffffff',
+                  border: '1.5px solid var(--line)',
+                  borderRadius: '8px',
+                }}
+                onClick={() => setViewingMarCycle({ periodDates: 'Active Contract Period' })}
+                title="View Accumulated Daily Accomplishment Reports (DAR)"
+              >
+                <FileText size={14} color="var(--brand-700)" />
+                <span>DAR Logs</span>
+              </button>
             </div>
 
           </div>
@@ -3453,7 +3502,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
           <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
 
-            Permanent evaluation audit log and downloadable PDF packages for completed 6-month contract evaluation cycles.
+            Permanent evaluation audit log and downloadable PDF packages for completed contract evaluation cycles.
 
           </p>
 
@@ -3462,10 +3511,33 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
         {historicalEvaluations.length === 0 ? (
-          <div style={{ padding: '36px 20px', textAlign: 'center', background: '#fafbfc' }}>
-            <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
+          <div style={{ padding: '36px 24px', textAlign: 'center', background: '#fafbfc' }}>
+            <p style={{ margin: '0 0 6px', fontSize: '14.5px', fontWeight: 700, color: 'var(--ink-900)' }}>
               No completed performance evaluations on record for this personnel yet.
             </p>
+            <p className="muted" style={{ margin: '0 auto 18px', fontSize: '13px', maxWidth: '520px', lineHeight: 1.5 }}>
+              The initial performance evaluation cycle for this personnel has not yet concluded. However, operational Daily Accomplishment Reports (DAR) and Attendance Logs are actively accessible below.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '7px 14px' }}
+                onClick={() => setViewingAttendanceCycle({ periodDates: 'Active Contract Period' })}
+              >
+                <Calendar size={14} />
+                <span>View Attendance Logs</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '7px 14px' }}
+                onClick={() => setViewingMarCycle({ periodDates: 'Active Contract Period' })}
+              >
+                <FileText size={14} />
+                <span>View DAR Logs</span>
+              </button>
+            </div>
           </div>
         ) : (
         <table className="data-table">

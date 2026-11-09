@@ -560,7 +560,7 @@ def submit_renewal(
     emp_notif = models.Notification(
         user_id=current_user.id,
         title="Contract Renewal Intent Confirmed",
-        message=f"Your 6-month contract renewal application for {payload.period} has been submitted and forwarded to your Department Head for endorsement.",
+        message=f"Your contract renewal application for {payload.period} has been submitted and forwarded to your Department Head for endorsement.",
         category="contract",
         is_read=False,
         action_view="contract_status",
@@ -846,8 +846,8 @@ def finalize_contract_renewal(
         emp.contract_end_date = _add_six_months(new_start)
 
     now = datetime.datetime.utcnow()
-    decision_label = "RENEWED (6-Month Term Extension)" if is_renewed else "DO NOT RENEW (Contract Conclusion)"
-    remarks = payload.remarks or ("Approved for standard 6-month contract renewal." if is_renewed else "Non-renewal finalized.")
+    decision_label = "RENEWED (Term Extension)" if is_renewed else "DO NOT RENEW (Contract Conclusion)"
+    remarks = payload.remarks or ("Approved for contract renewal." if is_renewed else "Non-renewal finalized.")
 
     # In-App Notification for Employee
     db.add(

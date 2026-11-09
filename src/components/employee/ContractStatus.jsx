@@ -163,7 +163,7 @@ export default function ContractStatus({
         <div>
           <h1 style={{ margin: '0 0 6px' }}>Contract Status</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Monitor your 6-month Contract of Service lifecycle and submit your formal digital renewal confirmation.
+            Monitor your Contract of Service lifecycle and submit your formal digital renewal confirmation.
           </p>
         </div>
         {onBack && (
@@ -234,7 +234,7 @@ export default function ContractStatus({
             Contract Renewal Action Required
           </div>
           <p style={{ fontSize: '13.5px', lineHeight: 1.5, margin: '0 0 16px' }}>
-            Your 6-month Contract of Service is approaching its expiration date ({contract.daysRemaining} days remaining). Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) for AI performance synthesis and forward your intent to your Department Head for endorsement review.
+            Your Contract of Service is approaching its expiration date ({contract.daysRemaining} days remaining). Would you like to renew your contract for the upcoming term? Confirming your renewal intent will submit your accumulated Daily Accomplishment Reports (DAR) for AI performance synthesis and forward your intent to your Department Head for endorsement review.
           </p>
 
           <div>
@@ -276,7 +276,7 @@ export default function ContractStatus({
                 Contract Active &amp; In Good Standing
               </div>
               <p className="muted" style={{ fontSize: '13px', margin: '4px 0 0', lineHeight: 1.5 }}>
-                Your 6-month Contract of Service is currently active with <strong>{contract.daysRemaining} days</strong> remaining until expiration ({contract.endDate}).
+                Your Contract of Service is currently active with <strong>{contract.daysRemaining} days</strong> remaining until expiration ({contract.endDate}).
                 The formal digital renewal confirmation workflow will automatically unlock <strong>30 days prior to contract expiration</strong>.
                 Please continue logging your Daily Accomplishment Reports (DAR) to maintain your evaluation portfolio.
               </p>

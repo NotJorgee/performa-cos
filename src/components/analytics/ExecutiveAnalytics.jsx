@@ -19,7 +19,7 @@ export default function ExecutiveAnalytics({
   onBack = () => {},
   onNavigate = () => {},
 }) {
-  const SYSTEM_LAUNCH_YEAR = 2025;
+  const SYSTEM_LAUNCH_YEAR = 2026;
   const currentCalendarYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedPeriodIndex, setSelectedPeriodIndex] = useState(10); // Default to active month (November 2026)
@@ -73,7 +73,7 @@ export default function ExecutiveAnalytics({
     };
   }, [selectedYear]);
 
-  // Dynamic Available Years from System Inception (2025) to Current/Selected Year
+  // Dynamic Available Years from System Inception (2026) to Current/Selected Year
   const availableYears = analyticsData?.availableYears || (() => {
     const highestYear = Math.max(currentCalendarYear, parseInt(selectedYear, 10) || currentCalendarYear);
     const yrs = [];
@@ -87,20 +87,20 @@ export default function ExecutiveAnalytics({
   const isLaunchYear = selectedYear === String(SYSTEM_LAUNCH_YEAR);
   const isHistoricalYear = parseInt(selectedYear, 10) < currentCalendarYear;
 
-  // 12-Month Calendar Timeline (Jan – Dec, with Nov as current active evaluation month)
+  // 12-Month Calendar Timeline (Jan – Dec, with System Go-Live in November 2026)
   const defaultMonths = [
-    { id: 'jan', key: 'jan', label: 'Jan', fullName: 'January', index: 0, contractType: 'Monthly Eval' },
-    { id: 'feb', key: 'feb', label: 'Feb', fullName: 'February', index: 1, contractType: 'Monthly Eval' },
-    { id: 'mar', key: 'mar', label: 'Mar', fullName: 'March', index: 2, contractType: 'Monthly Eval' },
-    { id: 'apr', key: 'apr', label: 'Apr', fullName: 'April', index: 3, contractType: 'Monthly Eval' },
-    { id: 'may', key: 'may', label: 'May', fullName: 'May', index: 4, contractType: 'Monthly Eval' },
-    { id: 'jun', key: 'jun', label: 'Jun', fullName: 'June', index: 5, contractType: 'Monthly Eval' },
-    { id: 'jul', key: 'jul', label: 'Jul', fullName: 'July', index: 6, contractType: 'Monthly Eval' },
-    { id: 'aug', key: 'aug', label: 'Aug', fullName: 'August', index: 7, contractType: 'Monthly Eval' },
-    { id: 'sep', key: 'sep', label: 'Sep', fullName: 'September', index: 8, contractType: 'Monthly Eval' },
-    { id: 'oct', key: 'oct', label: 'Oct', fullName: 'October', index: 9, contractType: 'Monthly Eval' },
-    { id: 'nov', key: 'nov', label: 'Nov', fullName: 'November', index: 10, isActive: true, contractType: 'Active Month' },
-    { id: 'dec', key: 'dec', label: 'Dec', fullName: 'December', index: 11, contractType: 'Upcoming Month' },
+    { id: 'jan', key: 'jan', label: 'Jan', fullName: 'January', index: 0, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'feb', key: 'feb', label: 'Feb', fullName: 'February', index: 1, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'mar', key: 'mar', label: 'Mar', fullName: 'March', index: 2, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'apr', key: 'apr', label: 'Apr', fullName: 'April', index: 3, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'may', key: 'may', label: 'May', fullName: 'May', index: 4, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'jun', key: 'jun', label: 'Jun', fullName: 'June', index: 5, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'jul', key: 'jul', label: 'Jul', fullName: 'July', index: 6, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'aug', key: 'aug', label: 'Aug', fullName: 'August', index: 7, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'sep', key: 'sep', label: 'Sep', fullName: 'September', index: 8, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'oct', key: 'oct', label: 'Oct', fullName: 'October', index: 9, isPreLaunch: true, status: 'Pre-Launch', contractType: 'Pre-Deployment' },
+    { id: 'nov', key: 'nov', label: 'Nov', fullName: 'November', index: 10, isActive: true, isLaunchMonth: true, status: 'Active', contractType: 'System Go-Live (Active)' },
+    { id: 'dec', key: 'dec', label: 'Dec', fullName: 'December', index: 11, status: 'Upcoming', contractType: 'Upcoming Month' },
   ];
   const defaultEvaluationPeriods = defaultMonths;
 
@@ -110,7 +110,7 @@ export default function ExecutiveAnalytics({
       name: 'Academic Departments',
       code: 'ACAD',
       color: '#2563eb',
-      points: [84.2, 85.0, 84.6, 85.8, 86.2, 87.4, 86.8, 87.5, 88.2, 88.9, 89.4],
+      points: [null, null, null, null, null, null, null, null, null, null, null, null],
       deptCount: 5,
     },
     {
@@ -118,7 +118,7 @@ export default function ExecutiveAnalytics({
       name: 'Administrative & Fiscal Services',
       code: 'ADMIN',
       color: '#800020',
-      points: [82.0, 82.5, 82.8, 83.4, 84.0, 84.6, 84.0, 84.8, 85.2, 85.8, 86.4],
+      points: [null, null, null, null, null, null, null, null, null, null, null, null],
       deptCount: 5,
     },
     {
@@ -126,7 +126,7 @@ export default function ExecutiveAnalytics({
       name: 'Student Support & Services',
       code: 'STUDENT',
       color: '#059669',
-      points: [80.5, 81.2, 81.6, 82.2, 82.8, 83.5, 83.0, 83.6, 84.0, 84.3, 84.8],
+      points: [null, null, null, null, null, null, null, null, null, null, null, null],
       deptCount: 5,
     },
     {
@@ -134,300 +134,24 @@ export default function ExecutiveAnalytics({
       name: 'Extension & Operations',
       code: 'EXT/OPS',
       color: '#7c3aed',
-      points: [78.6, 79.4, 79.8, 80.5, 81.2, 82.0, 81.4, 82.2, 82.6, 83.0, 83.4],
+      points: [null, null, null, null, null, null, null, null, null, null, null, null],
       deptCount: 7,
     },
   ];
 
-  // Department-Level Trajectories across 11 Months (Jan – Nov Active)
   const defaultDepartmentTrajectories = {
-    academic: [
-      {
-        id: 15,
-        name: 'Computer Studies Department',
-        code: 'CSD',
-        color: '#2563eb',
-        points: [84.5, 85.2, 84.8, 86.0, 86.5, 87.6, 87.0, 87.8, 88.4, 89.1, 89.6],
-      },
-      {
-        id: 17,
-        name: 'Engineering Department',
-        code: 'ENGG',
-        color: '#0284c7',
-        points: [82.8, 83.4, 83.0, 84.2, 84.6, 85.5, 85.0, 85.6, 86.0, 86.4, 86.8],
-      },
-      {
-        id: 8,
-        name: 'Technology Department',
-        code: 'TECH',
-        color: '#0d9488',
-        points: [81.2, 82.0, 81.6, 82.6, 83.0, 84.0, 83.5, 84.2, 84.8, 85.0, 85.4],
-      },
-      {
-        id: 11,
-        name: 'Education Department',
-        code: 'EDUC',
-        color: '#4f46e5',
-        points: [80.5, 81.2, 80.8, 82.0, 82.5, 83.4, 83.0, 83.8, 84.2, 84.6, 85.0],
-      },
-      {
-        id: 19,
-        name: 'Hospitality & Tourism Management',
-        code: 'HTM',
-        color: '#0891b2',
-        points: [79.8, 80.6, 80.2, 81.2, 81.8, 82.6, 82.2, 83.0, 83.6, 83.9, 84.2],
-      },
-    ],
-    administrative: [
-      {
-        id: 18,
-        name: 'Administrative and Finance',
-        code: 'ADMIN/FIN',
-        color: '#800020',
-        points: [82.2, 82.8, 83.0, 83.6, 84.2, 84.8, 84.4, 85.0, 85.6, 86.2, 86.8],
-      },
-      {
-        id: 14,
-        name: 'Campus Director Office',
-        code: 'CDO',
-        color: '#991b1b',
-        points: [81.8, 82.4, 82.6, 83.2, 83.8, 84.4, 84.0, 84.6, 85.2, 85.8, 86.4],
-      },
-      {
-        id: 1,
-        name: 'Disbursing / Cashier Office',
-        code: 'CASHIER',
-        color: '#b91c1c',
-        points: [81.0, 81.6, 81.8, 82.4, 83.0, 83.6, 83.2, 83.8, 84.5, 85.0, 85.6],
-      },
-      {
-        id: 2,
-        name: 'HRMDO Office',
-        code: 'HRMDO',
-        color: '#c026d3',
-        points: [82.5, 83.0, 83.4, 84.0, 84.6, 85.2, 84.8, 85.5, 86.0, 86.6, 87.2],
-      },
-      {
-        id: 12,
-        name: 'Procurement Office',
-        code: 'PROCURE',
-        color: '#a21caf',
-        points: [80.2, 80.8, 81.2, 81.8, 82.4, 83.0, 82.6, 83.4, 84.0, 84.5, 85.0],
-      },
-    ],
-    student_services: [
-      {
-        id: 20,
-        name: 'Library Office',
-        code: 'LIBRARY',
-        color: '#059669',
-        points: [81.5, 82.0, 82.4, 83.0, 83.5, 84.2, 83.8, 84.5, 85.0, 85.5, 86.0],
-      },
-      {
-        id: 16,
-        name: 'SASO Office',
-        code: 'SASO',
-        color: '#16a34a',
-        points: [80.5, 81.2, 81.5, 82.0, 82.6, 83.4, 83.0, 83.6, 84.2, 84.7, 85.1],
-      },
-      {
-        id: 3,
-        name: 'School Clinic',
-        code: 'CLINIC',
-        color: '#10b981',
-        points: [79.8, 80.4, 80.8, 81.4, 82.0, 82.6, 82.2, 82.8, 83.4, 83.9, 84.3],
-      },
-      {
-        id: 9,
-        name: 'Guidance Office',
-        code: 'GUIDANCE',
-        color: '#14b8a6',
-        points: [79.2, 79.8, 80.2, 80.8, 81.4, 82.2, 81.8, 82.5, 83.0, 83.5, 83.9],
-      },
-      {
-        id: 21,
-        name: 'Registrar Office',
-        code: 'REGISTRAR',
-        color: '#047857',
-        points: [80.0, 80.6, 81.0, 81.6, 82.2, 83.0, 82.5, 83.2, 83.8, 84.2, 84.7],
-      },
-    ],
-    extension_operations: [
-      {
-        id: 22,
-        name: 'Maintenance/Janitorial (MESO) Office',
-        code: 'MESO',
-        color: '#7c3aed',
-        points: [79.5, 80.2, 80.6, 81.2, 81.8, 82.6, 82.0, 82.8, 83.2, 83.7, 84.2],
-      },
-      {
-        id: 10,
-        name: 'Extension Service Office',
-        code: 'EXTENSION',
-        color: '#6d28d9',
-        points: [78.8, 79.4, 79.8, 80.4, 81.0, 81.8, 81.2, 82.0, 82.5, 83.0, 83.6],
-      },
-      {
-        id: 5,
-        name: 'Research Office',
-        code: 'RESEARCH',
-        color: '#9333ea',
-        points: [79.0, 79.6, 80.0, 80.6, 81.2, 82.0, 81.5, 82.2, 82.8, 83.3, 83.8],
-      },
-      {
-        id: 6,
-        name: 'Sports And Development Office',
-        code: 'SPORTS',
-        color: '#8b5cf6',
-        points: [78.2, 78.8, 79.2, 79.8, 80.4, 81.2, 80.8, 81.5, 82.0, 82.5, 83.0],
-      },
-      {
-        id: 7,
-        name: 'Quality Assurance & Accreditation Office',
-        code: 'QA/QAAO',
-        color: '#a855f7',
-        points: [80.0, 80.6, 81.0, 81.8, 82.4, 83.2, 82.8, 83.5, 84.0, 84.5, 84.9],
-      },
-      {
-        id: 4,
-        name: 'IPDO Office',
-        code: 'IPDO',
-        color: '#6366f1',
-        points: [77.8, 78.4, 78.8, 79.4, 80.0, 80.8, 80.4, 81.0, 81.6, 82.1, 82.6],
-      },
-      {
-        id: 13,
-        name: 'IGP Office',
-        code: 'IGP',
-        color: '#7e22ce',
-        points: [77.2, 77.8, 78.2, 78.8, 79.4, 80.2, 79.8, 80.5, 81.0, 81.5, 82.0],
-      },
-    ],
+    academic: [],
+    administrative: [],
+    student_services: [],
+    extension_operations: [],
   };
 
-  // Highest-Performing Departments Leaderboard Data
-  const defaultLeaderboard = [
-    {
-      rank: 1,
-      name: 'Computer Studies Department',
-      headcount: 12,
-      avgScore: 89.1,
-      statusLabel: 'Very Satisfactory',
-      evalCompletedCount: 12,
-      totalEvals: 12,
-      completionRate: 100,
-      badgeColor: '#15803d',
-      badgeBg: '#f0fdf4',
-    },
-    {
-      rank: 2,
-      name: 'Engineering Department',
-      headcount: 8,
-      avgScore: 86.4,
-      statusLabel: 'Very Satisfactory',
-      evalCompletedCount: 7,
-      totalEvals: 8,
-      completionRate: 87.5,
-      badgeColor: '#15803d',
-      badgeBg: '#f0fdf4',
-    },
-    {
-      rank: 3,
-      name: 'Technology Department',
-      headcount: 10,
-      avgScore: 84.8,
-      statusLabel: 'Very Satisfactory',
-      evalCompletedCount: 8,
-      totalEvals: 10,
-      completionRate: 80.0,
-      badgeColor: '#15803d',
-      badgeBg: '#f0fdf4',
-    },
-    {
-      rank: 4,
-      name: 'Library Office',
-      headcount: 6,
-      avgScore: 83.2,
-      statusLabel: 'Very Satisfactory',
-      evalCompletedCount: 5,
-      totalEvals: 6,
-      completionRate: 83.3,
-      badgeColor: '#15803d',
-      badgeBg: '#f0fdf4',
-    },
-    {
-      rank: 5,
-      name: 'Maintenance/Janitorial (MESO) Office',
-      headcount: 5,
-      avgScore: 78.5,
-      statusLabel: 'Satisfactory',
-      evalCompletedCount: 4,
-      totalEvals: 5,
-      completionRate: 80.0,
-      badgeColor: '#0284c7',
-      badgeBg: '#f0f9ff',
-    },
-  ];
-
-  // Outstanding Employees Spotlight (Employees scoring >= 90.0 or top performers)
-  const defaultOutstandingEmployees = [
-    {
-      id: 1,
-      name: 'Jorge Mikhael Gubantes',
-      empId: 'G10222026JMR',
-      department: 'Computer Studies Department',
-      role: 'COS Technical Assistant',
-      score: 92.4,
-      ratingLabel: 'Outstanding',
-      darsVerified: 84,
-      retentionStatus: 'Strongly Recommended for Renewal',
-      highlight: 'Zero defect rate in campus workstation deployments and proactive clearance backlog clearing.',
-    },
-    {
-      id: 2,
-      name: 'Ian Joseph Ranoco',
-      empId: 'R10222026IJM',
-      department: 'Computer Studies Department',
-      role: 'COS Admin Aide',
-      score: 88.6,
-      ratingLabel: 'Very Satisfactory',
-      darsVerified: 76,
-      retentionStatus: 'Recommended for Renewal',
-      highlight: 'Demonstrates strong organizational skills and dependable support during university accreditation cycles.',
-    },
-    {
-      id: 3,
-      name: 'Elena Vasquez',
-      empId: 'V10222026ELV',
-      department: 'Library Office',
-      role: 'COS Records Custodian',
-      score: 89.6,
-      ratingLabel: 'Very Satisfactory',
-      darsVerified: 88,
-      retentionStatus: 'Recommended for Renewal',
-      highlight: 'Digitized over 2,400 monograph accession records with 100% verification accuracy.',
-    },
-    {
-      id: 4,
-      name: 'Mark Anthony Reyes',
-      empId: 'A10222026MTR',
-      department: 'Computer Studies Department',
-      role: 'COS Laboratory Custodian',
-      score: 89.2,
-      ratingLabel: 'Very Satisfactory',
-      darsVerified: 72,
-      retentionStatus: 'Recommended for Renewal',
-      highlight: 'High milestone throughput in hardware diagnostics across Computer Studies Department laboratories.',
-    },
-  ];
-
-  // University-Wide Rating Distribution (Aligned with Official HR Criteria)
   const defaultRatingDistribution = [
-    { label: 'Outstanding (90 – 100)', count: 6, pct: 22.2, color: '#16a34a' },
-    { label: 'Very Satisfactory (80 – 89)', count: 17, pct: 63.0, color: '#2563eb' },
-    { label: 'Satisfactory (70 – 79)', count: 3, pct: 11.1, color: '#0284c7' },
-    { label: 'Needs Improvement (60 – 69)', count: 1, pct: 3.7, color: '#f59e0b' },
-    { label: 'Unsatisfactory (Below 60)', count: 0, pct: 0.0, color: '#dc2626' },
+    {"label": "Outstanding (90 – 100)", "count": 0, "pct": 0.0, "color": "#16a34a"},
+    {"label": "Very Satisfactory (80 – 89.9)", "count": 0, "pct": 0.0, "color": "#2563eb"},
+    {"label": "Satisfactory (70 – 79.9)", "count": 0, "pct": 0.0, "color": "#0284c7"},
+    {"label": "Needs Improvement (60 – 69.9)", "count": 0, "pct": 0.0, "color": "#f59e0b"},
+    {"label": "Unsatisfactory (Below 60)", "count": 0, "pct": 0.0, "color": "#dc2626"},
   ];
 
   // Derive dynamic state from API response with fallback
@@ -482,122 +206,33 @@ export default function ExecutiveAnalytics({
   // Active Month Index (Month 10 / November for current year and launch year)
   const activeMonthIndex = analyticsData?.activeMonthIndex ?? 10;
   const isPreLaunchMonth =
-    (selectedYear === '2025' && selectedPeriodIndex < 10) ||
+    (selectedYear === '2026' && selectedPeriodIndex < 10) ||
     (evaluationPeriods[selectedPeriodIndex]?.isPreLaunch === true);
   const currentMonthData = evaluationPeriods[selectedPeriodIndex] || evaluationPeriods[activeMonthIndex];
   const currentMonthName = currentMonthData?.fullName || currentMonthData?.label || 'November';
 
-  // Dynamic Institutional Average for the Selected Month (Graceful null handling)
-  const institutionalAverage = React.useMemo(() => {
-    if (isPreLaunchMonth) return null;
-    const vals = domainTrajectories
-      .map((d) => d.points[selectedPeriodIndex])
-      .filter((v) => v !== null && v !== undefined);
-    if (vals.length === 0) return null;
-    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
-  }, [domainTrajectories, selectedPeriodIndex, isPreLaunchMonth]);
+  // Selected Month Live Metrics from Database (reactive via analyticsData.monthlyMetrics)
+  const currentMonthMetrics = React.useMemo(() => {
+    if (analyticsData?.monthlyMetrics?.[selectedPeriodIndex]) {
+      return analyticsData.monthlyMetrics[selectedPeriodIndex];
+    }
+    return {
+      isPreLaunch: isPreLaunchMonth,
+      institutionalAverage: analyticsData?.institutionalAverage ?? null,
+      institutionalRating: analyticsData?.institutionalRating ?? 'Awaiting Cycle Evaluations',
+      totalAssessed: analyticsData?.totalAssessed ?? 0,
+      departmentLeaderboard: analyticsData?.departmentLeaderboard || [],
+      outstandingEmployees: analyticsData?.outstandingEmployees || [],
+      ratingDistribution: analyticsData?.ratingDistribution || defaultRatingDistribution,
+    };
+  }, [analyticsData, selectedPeriodIndex, isPreLaunchMonth]);
 
-  const institutionalRating =
-    institutionalAverage >= 90
-      ? 'Outstanding'
-      : institutionalAverage >= 80
-      ? 'Very Satisfactory'
-      : institutionalAverage >= 70
-      ? 'Satisfactory'
-      : 'Needs Improvement';
-
-  // Dynamic Department Performance Leaderboard for the Selected Month
-  const departmentLeaderboard = React.useMemo(() => {
-    const allDepts = Object.entries(departmentTrajectories).flatMap(([domKey, depts]) =>
-      depts.map((d) => {
-        const score = d.points[selectedPeriodIndex] ?? d.points[d.points.length - 1];
-        const ratingLabel =
-          score >= 90
-            ? 'Outstanding'
-            : score >= 80
-            ? 'Very Satisfactory'
-            : score >= 70
-            ? 'Satisfactory'
-            : score >= 60
-            ? 'Needs Improvement'
-            : 'Unsatisfactory';
-        const badgeColor = score >= 90 ? '#15803d' : score >= 80 ? '#15803d' : '#0284c7';
-        const badgeBg = score >= 80 ? '#f0fdf4' : '#f0f9ff';
-        const headcount = d.id === 15 ? 12 : d.id === 17 ? 8 : d.id === 8 ? 10 : d.id === 20 ? 6 : 5;
-        const totalEvals = headcount;
-        const evalCompletedCount = Math.max(1, Math.round(headcount * (score / 95)));
-        const completionRate = Math.min(100, Math.round((evalCompletedCount / totalEvals) * 100));
-
-        return {
-          id: d.id,
-          name: d.name,
-          code: d.code,
-          domain: domKey,
-          avgScore: score,
-          statusLabel: ratingLabel,
-          badgeColor,
-          badgeBg,
-          headcount,
-          totalEvals,
-          evalCompletedCount,
-          completionRate,
-        };
-      })
-    );
-
-    allDepts.sort((a, b) => b.avgScore - a.avgScore);
-    return allDepts.slice(0, 5).map((dept, index) => ({
-      ...dept,
-      rank: index + 1,
-    }));
-  }, [departmentTrajectories, selectedPeriodIndex]);
-
-  // Dynamic Outstanding Employees Spotlight for the Selected Month
-  const outstandingEmployees = React.useMemo(() => {
-    const base = analyticsData?.outstandingEmployees || defaultOutstandingEmployees;
-    const novAvg = 86.4;
-    const delta = institutionalAverage - novAvg;
-
-    return base.map((emp) => {
-      const score = Math.max(75, Math.min(100, Math.round((emp.score + delta) * 10) / 10));
-      const ratingLabel = score >= 90 ? 'Outstanding' : 'Very Satisfactory';
-      return {
-        ...emp,
-        score,
-        ratingLabel,
-      };
-    });
-  }, [analyticsData, defaultOutstandingEmployees, institutionalAverage]);
-
-  // Dynamic Rating Distribution for the Selected Month across all 22 Departments
-  const ratingDistribution = React.useMemo(() => {
-    const allDepts = Object.values(departmentTrajectories).flat();
-    const total = allDepts.length || 22;
-    let outstanding = 0;
-    let verySat = 0;
-    let sat = 0;
-    let needsImp = 0;
-    let unsat = 0;
-
-    allDepts.forEach((d) => {
-      const s = d.points[selectedPeriodIndex] ?? 85;
-      if (s >= 90) outstanding++;
-      else if (s >= 80) verySat++;
-      else if (s >= 70) sat++;
-      else if (s >= 60) needsImp++;
-      else unsat++;
-    });
-
-    return [
-      { label: 'Outstanding (90 – 100)', count: outstanding, pct: Math.round((outstanding / total) * 1000) / 10, color: '#16a34a' },
-      { label: 'Very Satisfactory (80 – 89.9)', count: verySat, pct: Math.round((verySat / total) * 1000) / 10, color: '#2563eb' },
-      { label: 'Satisfactory (70 – 79.9)', count: sat, pct: Math.round((sat / total) * 1000) / 10, color: '#0284c7' },
-      { label: 'Needs Improvement (60 – 69.9)', count: needsImp, pct: Math.round((needsImp / total) * 1000) / 10, color: '#f59e0b' },
-      { label: 'Unsatisfactory (Below 60)', count: unsat, pct: Math.round((unsat / total) * 1000) / 10, color: '#dc2626' },
-    ];
-  }, [departmentTrajectories, selectedPeriodIndex]);
-
-  const totalAssessed = analyticsData?.totalAssessed ?? 27;
+  const institutionalAverage = currentMonthMetrics.institutionalAverage;
+  const institutionalRating = currentMonthMetrics.institutionalRating;
+  const departmentLeaderboard = currentMonthMetrics.departmentLeaderboard || [];
+  const outstandingEmployees = currentMonthMetrics.outstandingEmployees || [];
+  const ratingDistribution = currentMonthMetrics.ratingDistribution || defaultRatingDistribution;
+  const totalAssessed = currentMonthMetrics.totalAssessed ?? 0;
 
   // Unified 2D Scroll Function: guarantees atomic horizontal right-side anchoring & vertical autocenter
   const updateViewportScroll = (periodIdx = selectedPeriodIndex, smooth = false) => {
@@ -677,17 +312,17 @@ export default function ExecutiveAnalytics({
   const handleExportCsv = () => {
     const csvRows = [
       ['EASTERN VISAYAS STATE UNIVERSITY - HRMO EXECUTIVE PERFORMANCE ANALYTICS'],
-      ['Reporting Context', `Contract of Service (COS) Evaluation Periods (Current Active: Oct–Mar 2026/27)`],
-      ['Institutional Average Score', `${institutionalAverage} / 100 (${institutionalRating})`],
+      ['Reporting Context', `Contract of Service (COS) Monthly Performance (${currentMonthName} ${selectedYear})`],
+      ['Institutional Average Score', institutionalAverage !== null && institutionalAverage !== undefined ? `${institutionalAverage} / 100 (${institutionalRating})` : `Awaiting Cycle Evaluations (${institutionalRating})`],
       ['Total Assessed Personnel', `${totalAssessed} COS Subordinates`],
       [],
-      ['CONTRACT EVALUATION PERIOD PERFORMANCE (SCALE: 70 - 100)'],
+      ['INSTITUTIONAL PERFORMANCE TRAJECTORIES (SCALE: 50 - 100)'],
       ['Series Code', 'Entity Name', 'Classification', ...evaluationPeriods.map((p) => p.label)],
       ...domainTrajectories.map((s) => [
         s.code,
         `"${s.name}"`,
         'Governance Domain',
-        ...s.points,
+        ...s.points.map((pt) => (pt !== null && pt !== undefined ? pt : 'N/A')),
       ]),
       [],
       ['DEPARTMENT-LEVEL BREAKDOWN BY GOVERNANCE DOMAIN'],
@@ -697,7 +332,7 @@ export default function ExecutiveAnalytics({
           domKey,
           d.code,
           `"${d.name}"`,
-          ...d.points,
+          ...d.points.map((pt) => (pt !== null && pt !== undefined ? pt : 'N/A')),
         ])
       ),
       [],
@@ -707,7 +342,7 @@ export default function ExecutiveAnalytics({
         d.rank,
         `"${d.name}"`,
         d.headcount,
-        d.avgScore,
+        d.avgScore !== null && d.avgScore !== undefined ? d.avgScore : 'N/A',
         d.statusLabel,
         `${d.completionRate}%`,
       ]),
@@ -719,7 +354,7 @@ export default function ExecutiveAnalytics({
         `"${e.name}"`,
         `"${e.department}"`,
         `"${e.role}"`,
-        e.score,
+        e.score !== null && e.score !== undefined ? e.score : 'N/A',
         e.ratingLabel,
       ]),
     ];
@@ -951,7 +586,7 @@ export default function ExecutiveAnalytics({
                 onChange={(e) => {
                   const yr = e.target.value;
                   setSelectedYear(yr);
-                  if (yr === '2025') {
+                  if (yr === '2026') {
                     setSelectedPeriodIndex(10);
                   } else if (yr === String(currentCalendarYear)) {
                     setSelectedPeriodIndex(10);
@@ -974,9 +609,10 @@ export default function ExecutiveAnalytics({
                 {availableYears.map((yr) => {
                   const isAct = yr === String(currentCalendarYear);
                   const isLaunch = yr === String(SYSTEM_LAUNCH_YEAR);
+                  const labelSuffix = isAct && isLaunch ? '(Active & Launch Year)' : isAct ? '(Active)' : isLaunch ? '(Launch Year)' : '';
                   return (
                     <option key={yr} value={yr}>
-                      Year {yr} {isAct ? '(Active)' : isLaunch ? '(Launch Year)' : ''}
+                      Year {yr} {labelSuffix}
                     </option>
                   );
                 })}
@@ -1043,7 +679,7 @@ export default function ExecutiveAnalytics({
                 {isCurrentActiveYear
                   ? 'Return to Active Month (Nov 2026)'
                   : isLaunchYear
-                  ? 'Return to Go-Live Month (Nov 2025)'
+                  ? 'Return to Go-Live Month (Nov 2026)'
                   : `Return to Active Period (${evaluationPeriods[activeMonthIndex]?.label || 'Nov'})`}
               </button>
             )}
@@ -1055,9 +691,9 @@ export default function ExecutiveAnalytics({
               const isHidden = hiddenSeries.has(s.id);
               const rawVal = s.points[selectedPeriodIndex];
               const hasVal = rawVal !== null && rawVal !== undefined;
-              const val = hasVal ? rawVal : 'N/A';
+              const val = hasVal ? rawVal : '—';
               const ratingLabel = !hasVal
-                ? 'No Record'
+                ? (isPreLaunchMonth ? 'Pre-Deployment' : 'Awaiting Eval')
                 : rawVal >= 90
                 ? 'Outstanding'
                 : rawVal >= 80
@@ -1225,7 +861,7 @@ export default function ExecutiveAnalytics({
               {/* Operational Markers: Active Marker for Current Year vs Milestone for Inception Year */}
               {isLaunchYear ? (
                 <g>
-                  {/* Shaded Pre-Deployment Zone across Jan–Oct 2025 */}
+                  {/* Shaded Pre-Deployment Zone across Jan–Oct 2026 */}
                   <rect
                     x={paddingLeft}
                     y={paddingTop}
@@ -1264,27 +900,27 @@ export default function ExecutiveAnalytics({
                     fill="#cbd5e1"
                     fontFamily="inherit"
                   >
-                    Performa-COS Go-Live: November 2025
+                    Performa-COS Go-Live: November 2026
                   </text>
 
-                  {/* System Go-Live Milestone Marker at Month 10 (Nov 2025) */}
+                  {/* System Go-Live Milestone Marker at Month 10 (Nov 2026) */}
                   <line
                     x1={getX(10)}
                     y1={paddingTop}
                     x2={getX(10)}
                     y2={paddingTop + innerHeight}
-                    stroke="#059669"
+                    stroke="#1d4ed8"
                     strokeWidth="2"
-                    strokeDasharray="4 3"
+                    strokeDasharray="3 3"
                   />
                   <rect
-                    x={getX(10) - 64}
+                    x={getX(10) - 72}
                     y={paddingTop - 19}
-                    width={128}
+                    width={144}
                     height={16}
                     rx={3}
-                    fill="#ecfdf5"
-                    stroke="#a7f3d0"
+                    fill="#eff6ff"
+                    stroke="#bfdbfe"
                     strokeWidth="1"
                   />
                   <text
@@ -1293,10 +929,10 @@ export default function ExecutiveAnalytics({
                     textAnchor="middle"
                     fontSize="9"
                     fontWeight="800"
-                    fill="#047857"
+                    fill="#1d4ed8"
                     fontFamily="inherit"
                   >
-                    SYSTEM GO-LIVE (NOV 2025)
+                    ACTIVE GO-LIVE (NOV 2026)
                   </text>
                 </g>
               ) : isCurrentActiveYear ? (
@@ -1446,6 +1082,46 @@ export default function ExecutiveAnalytics({
                             </g>
                           );
                         })}
+
+                        {/* In-Progress Notification when Go-Live Cycle is awaiting initial evaluations */}
+                        {activeSeriesList.every((seriesItem) => seriesItem.points.every((pt) => pt === null || pt === undefined)) && (
+                          <g>
+                            <rect
+                              x={getX(10) - 150}
+                              y={paddingTop + innerHeight / 2 - 28}
+                              width={300}
+                              height={56}
+                              rx={8}
+                              fill="#ffffff"
+                              stroke="#cbd5e1"
+                              strokeWidth="1.5"
+                              strokeDasharray="4 3"
+                              filter="drop-shadow(0 2px 4px rgba(0,0,0,0.04))"
+                            />
+                            <text
+                              x={getX(10)}
+                              y={paddingTop + innerHeight / 2 - 6}
+                              textAnchor="middle"
+                              fontSize="12"
+                              fontWeight="700"
+                              fill="var(--brand-700)"
+                              fontFamily="inherit"
+                            >
+                              Active Go-Live Month (November 2026)
+                            </text>
+                            <text
+                              x={getX(10)}
+                              y={paddingTop + innerHeight / 2 + 14}
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="500"
+                              fill="#64748b"
+                              fontFamily="inherit"
+                            >
+                              Awaiting initial completed evaluation records
+                            </text>
+                          </g>
+                        )}
 
                         {/* Endpoint Score Badge (Positioned at last valid point) */}
                         {(() => {
@@ -1731,7 +1407,7 @@ export default function ExecutiveAnalytics({
                 Pre-Deployment Period ({currentMonthName} {selectedYear})
               </h3>
               <p className="muted" style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.55 }}>
-                Performa-COS was officially deployed at Eastern Visayas State University in <b>November 2025</b>. Institutional evaluation records and department standings were not conducted prior to system inception.
+                Performa-COS was officially deployed at Eastern Visayas State University in <b>November 2026</b>. Institutional evaluation records and department standings were not conducted prior to system inception.
               </p>
             </div>
             <button
@@ -1743,7 +1419,7 @@ export default function ExecutiveAnalytics({
                 updateViewportScroll(10, true);
               }}
             >
-              <span>Inspect Go-Live Cycle (November 2025)</span>
+              <span>Inspect Go-Live Cycle (November 2026)</span>
               <ChevronRight size={15} />
             </button>
           </div>
@@ -1832,8 +1508,8 @@ export default function ExecutiveAnalytics({
                     </div>
 
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--brand-700)' }}>
-                        {dept.avgScore} <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--ink-500)' }}>/ 100</span>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: dept.avgScore !== null && dept.avgScore !== undefined ? 'var(--brand-700)' : 'var(--ink-500)' }}>
+                        {dept.avgScore !== null && dept.avgScore !== undefined ? dept.avgScore : '—'} <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--ink-500)' }}>/ 100</span>
                       </div>
                       <span
                         style={{
@@ -1984,10 +1660,19 @@ export default function ExecutiveAnalytics({
                     </div>
 
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--brand-700)' }}>
-                        {emp.score} <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--ink-500)' }}>/ 100</span>
+                      <div style={{ fontSize: '17px', fontWeight: 800, color: emp.score !== null && emp.score !== undefined ? 'var(--brand-700)' : 'var(--ink-500)' }}>
+                        {emp.score !== null && emp.score !== undefined ? emp.score : '—'} <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--ink-500)' }}>/ 100</span>
                       </div>
-                      <span className="badge badge-confirmed" style={{ fontSize: '10.5px', padding: '2px 6px' }}>
+                      <span
+                        className={emp.score !== null && emp.score !== undefined ? "badge badge-confirmed" : "badge"}
+                        style={{
+                          fontSize: '10.5px',
+                          padding: '2px 6px',
+                          background: emp.score !== null && emp.score !== undefined ? undefined : '#f1f5f9',
+                          color: emp.score !== null && emp.score !== undefined ? undefined : '#475569',
+                          border: emp.score !== null && emp.score !== undefined ? undefined : '1px solid #cbd5e1',
+                        }}
+                      >
                         {emp.ratingLabel}
                       </span>
                     </div>

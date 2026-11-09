@@ -314,7 +314,7 @@ export default function IntentReview({
               {evaluatingEmp.isReadOnly ? 'View Evaluation' : 'Evaluation'}: {evaluatingEmp.fullName}
             </h1>
             <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
-              Department: <b>{evaluatingEmp.department || displayDepartmentName}</b> | Contract Cycle: <b>{evaluatingEmp.contractPeriod || '6-Month COS'}</b>
+              Department: <b>{evaluatingEmp.department || displayDepartmentName}</b> | Contract Cycle: <b>{evaluatingEmp.contractPeriod || 'COS Contract'}</b>
             </p>
           </div>
           <button

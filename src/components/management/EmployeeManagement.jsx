@@ -1022,7 +1022,7 @@ export default function EmployeeManagement({
                     </select>
                   </div>
 
-                  {/* Date Appointed with Auto-Calculated 6-Month Contract Expiry (Contract End Date input removed) */}
+                  {/* Date Appointed with Auto-Calculated Contract Expiry (Contract End Date input removed) */}
                   <div className="form-group">
                     <label>
                       Date Appointed <span style={{ color: 'var(--red-600)' }}>*</span>
@@ -1039,10 +1039,10 @@ export default function EmployeeManagement({
                         <span>
                           Contract End Date:{' '}
                           <b style={{ color: 'var(--brand-700)' }}>{calculateContractEndDate(dateAppointed)}</b>{' '}
-                          (Strict 6-month contract cycle from appointed date)
+                          (Contract cycle calculated from appointed date)
                         </span>
                       ) : (
-                        <span className="muted">Contract end date is automatically set to 6 months from the date appointed.</span>
+                        <span className="muted">Contract end date is calculated from the date appointed.</span>
                       )}
                     </div>
                   </div>
