@@ -212,6 +212,11 @@ def get_employee_dashboard_metrics(
     }
 
 
+SYSTEM_LAUNCH_DATE = datetime.date(2025, 11, 1)
+SYSTEM_LAUNCH_YEAR = 2025
+SYSTEM_LAUNCH_MONTH = 11  # November (1-indexed), index 10 (0-indexed)
+
+
 @router.get("/executive")
 def get_executive_analytics(
     year: str = Query("2026"),
@@ -224,32 +229,100 @@ def get_executive_analytics(
     - Ranked Department Performance Leaderboard with real COS headcounts
     - Outstanding Employees Spotlight with real database COS personnel
     - CSC-aligned Institutional Rating Distribution
+    - Cutoff at System Launch Date (November 2025)
+    - Dynamic Year Navigation and Progression
     """
-    # 1. Monthly Calendar Timeline (Jan – Dec, with Nov as current active evaluation month)
-    months = [
-        {"id": "jan", "key": "jan", "label": "Jan", "fullName": "January", "monthIndex": 0, "status": "Completed"},
-        {"id": "feb", "key": "feb", "label": "Feb", "fullName": "February", "monthIndex": 1, "status": "Completed"},
-        {"id": "mar", "key": "mar", "label": "Mar", "fullName": "March", "monthIndex": 2, "status": "Completed"},
-        {"id": "apr", "key": "apr", "label": "Apr", "fullName": "April", "monthIndex": 3, "status": "Completed"},
-        {"id": "may", "key": "may", "label": "May", "fullName": "May", "monthIndex": 4, "status": "Completed"},
-        {"id": "jun", "key": "jun", "label": "Jun", "fullName": "June", "monthIndex": 5, "status": "Completed"},
-        {"id": "jul", "key": "jul", "label": "Jul", "fullName": "July", "monthIndex": 6, "status": "Completed"},
-        {"id": "aug", "key": "aug", "label": "Aug", "fullName": "August", "monthIndex": 7, "status": "Completed"},
-        {"id": "sep", "key": "sep", "label": "Sep", "fullName": "September", "monthIndex": 8, "status": "Completed"},
-        {"id": "oct", "key": "oct", "label": "Oct", "fullName": "October", "monthIndex": 9, "status": "Completed"},
-        {"id": "nov", "key": "nov", "label": "Nov", "fullName": "November", "monthIndex": 10, "status": "Active", "isActive": True},
-        {"id": "dec", "key": "dec", "label": "Dec", "fullName": "December", "monthIndex": 11, "status": "Upcoming"},
-    ]
-    evaluation_periods = months  # backward compatibility alias
+    today = datetime.date.today()
+    current_calendar_year = today.year
+    current_calendar_month = today.month  # 11 for Nov
 
-    # Domain Trajectories across 11 Months (Jan through Nov Active)
-    domain_trajectories = [
+    try:
+        selected_year_num = int(year)
+    except (ValueError, TypeError):
+        selected_year_num = current_calendar_year
+
+    # Dynamic Available Years from Inception to Max(current, requested)
+    highest_year = max(current_calendar_year, selected_year_num)
+    available_years = [str(y) for y in range(highest_year, SYSTEM_LAUNCH_YEAR - 1, -1)]
+
+    is_launch_year = (selected_year_num == SYSTEM_LAUNCH_YEAR)
+    is_current_year = (selected_year_num == current_calendar_year)
+    is_historical = (selected_year_num < current_calendar_year)
+    is_future = (selected_year_num > current_calendar_year)
+
+    month_specs = [
+        ("jan", "Jan", "January"),
+        ("feb", "Feb", "February"),
+        ("mar", "Mar", "March"),
+        ("apr", "Apr", "April"),
+        ("may", "May", "May"),
+        ("jun", "Jun", "June"),
+        ("jul", "Jul", "July"),
+        ("aug", "Aug", "August"),
+        ("sep", "Sep", "September"),
+        ("oct", "Oct", "October"),
+        ("nov", "Nov", "November"),
+        ("dec", "Dec", "December"),
+    ]
+
+    months = []
+    for idx, (m_id, m_label, m_full) in enumerate(month_specs):
+        month_number = idx + 1
+        is_pre_launch = False
+        is_launch_month = False
+        is_active = False
+
+        if selected_year_num < SYSTEM_LAUNCH_YEAR or (is_launch_year and month_number < SYSTEM_LAUNCH_MONTH):
+            status = "Pre-Launch"
+            is_pre_launch = True
+            contract_type = "Pre-Deployment"
+        elif is_launch_year and month_number == SYSTEM_LAUNCH_MONTH:
+            status = "Completed" if is_historical else "Active"
+            is_launch_month = True
+            is_active = not is_historical
+            contract_type = "System Go-Live"
+        elif is_current_year:
+            if month_number < current_calendar_month:
+                status = "Completed"
+                contract_type = "Monthly Eval"
+            elif month_number == current_calendar_month:
+                status = "Active"
+                is_active = True
+                contract_type = "Active Month"
+            else:
+                status = "Upcoming"
+                contract_type = "Upcoming Month"
+        elif is_historical:
+            status = "Completed"
+            contract_type = "Monthly Eval"
+        else:
+            status = "Upcoming"
+            contract_type = "Upcoming Month"
+
+        months.append({
+            "id": m_id,
+            "key": m_id,
+            "label": m_label,
+            "fullName": m_full,
+            "monthIndex": idx,
+            "status": status,
+            "contractType": contract_type,
+            "isPreLaunch": is_pre_launch,
+            "isLaunchMonth": is_launch_month,
+            "isActive": is_active,
+        })
+
+    evaluation_periods = months
+
+    # Baseline Trajectories for 2026 (11 active/completed points: Jan through Nov)
+    domain_base = [
         {
             "id": "academic",
             "name": "Academic Departments",
             "code": "ACAD",
             "color": "#2563eb",
-            "points": [84.2, 85.0, 84.6, 85.8, 86.2, 87.4, 86.8, 87.5, 88.2, 88.9, 89.4],
+            "points_2026": [84.2, 85.0, 84.6, 85.8, 86.2, 87.4, 86.8, 87.5, 88.2, 88.9, 89.4, None],
+            "points_2025": [None, None, None, None, None, None, None, None, None, None, 83.2, 83.8],
             "deptCount": 5,
         },
         {
@@ -257,7 +330,8 @@ def get_executive_analytics(
             "name": "Administrative & Fiscal Services",
             "code": "ADMIN",
             "color": "#800020",
-            "points": [82.0, 82.5, 82.8, 83.4, 84.0, 84.6, 84.0, 84.8, 85.2, 85.8, 86.4],
+            "points_2026": [82.0, 82.5, 82.8, 83.4, 84.0, 84.6, 84.0, 84.8, 85.2, 85.8, 86.4, None],
+            "points_2025": [None, None, None, None, None, None, None, None, None, None, 81.0, 81.6],
             "deptCount": 5,
         },
         {
@@ -265,7 +339,8 @@ def get_executive_analytics(
             "name": "Student Support & Services",
             "code": "STUDENT",
             "color": "#059669",
-            "points": [80.5, 81.2, 81.6, 82.2, 82.8, 83.5, 83.0, 83.6, 84.0, 84.3, 84.8],
+            "points_2026": [80.5, 81.2, 81.6, 82.2, 82.8, 83.5, 83.0, 83.6, 84.0, 84.3, 84.8, None],
+            "points_2025": [None, None, None, None, None, None, None, None, None, None, 79.8, 80.4],
             "deptCount": 5,
         },
         {
@@ -273,48 +348,74 @@ def get_executive_analytics(
             "name": "Extension & Operations",
             "code": "EXT/OPS",
             "color": "#7c3aed",
-            "points": [78.6, 79.4, 79.8, 80.5, 81.2, 82.0, 81.4, 82.2, 82.6, 83.0, 83.4],
+            "points_2026": [78.6, 79.4, 79.8, 80.5, 81.2, 82.0, 81.4, 82.2, 82.6, 83.0, 83.4, None],
+            "points_2025": [None, None, None, None, None, None, None, None, None, None, 78.0, 78.5],
             "deptCount": 7,
         },
     ]
 
-    # Department-Level Trajectories grouped by Domain across 11 Months
-    department_trajectories = {
+    domain_trajectories = []
+    for d in domain_base:
+        if is_launch_year:
+            pts = d["points_2025"]
+        elif is_current_year:
+            pts = d["points_2026"]
+        elif is_historical:
+            pts = d["points_2026"][:11] + [d["points_2026"][10]]
+        else:
+            pts = [None] * 12
+
+        domain_trajectories.append({
+            "id": d["id"],
+            "name": d["name"],
+            "code": d["code"],
+            "color": d["color"],
+            "points": pts,
+            "deptCount": d["deptCount"],
+        })
+
+    # Department-Level Trajectories grouped by Domain
+    raw_dept_trajectories = {
         "academic": [
             {
                 "id": 15,
                 "name": "Computer Studies Department",
                 "code": "CSD",
                 "color": "#2563eb",
-                "points": [84.5, 85.2, 84.8, 86.0, 86.5, 87.6, 87.0, 87.8, 88.4, 89.1, 89.6],
+                "points_2026": [84.5, 85.2, 84.8, 86.0, 86.5, 87.6, 87.0, 87.8, 88.4, 89.1, 89.6, None],
+                "points_2025": [None]*10 + [83.6, 84.2],
             },
             {
                 "id": 17,
                 "name": "Engineering Department",
                 "code": "ENGG",
                 "color": "#0284c7",
-                "points": [82.8, 83.4, 83.0, 84.2, 84.6, 85.5, 85.0, 85.6, 86.0, 86.4, 86.8],
+                "points_2026": [82.8, 83.4, 83.0, 84.2, 84.6, 85.5, 85.0, 85.6, 86.0, 86.4, 86.8, None],
+                "points_2025": [None]*10 + [82.0, 82.5],
             },
             {
                 "id": 8,
                 "name": "Technology Department",
                 "code": "TECH",
                 "color": "#0d9488",
-                "points": [81.2, 82.0, 81.6, 82.6, 83.0, 84.0, 83.5, 84.2, 84.8, 85.0, 85.4],
+                "points_2026": [81.2, 82.0, 81.6, 82.6, 83.0, 84.0, 83.5, 84.2, 84.8, 85.0, 85.4, None],
+                "points_2025": [None]*10 + [80.4, 81.0],
             },
             {
                 "id": 11,
                 "name": "Education Department",
                 "code": "EDUC",
                 "color": "#4f46e5",
-                "points": [80.5, 81.2, 80.8, 82.0, 82.5, 83.4, 83.0, 83.8, 84.2, 84.6, 85.0],
+                "points_2026": [80.5, 81.2, 80.8, 82.0, 82.5, 83.4, 83.0, 83.8, 84.2, 84.6, 85.0, None],
+                "points_2025": [None]*10 + [79.6, 80.2],
             },
             {
                 "id": 19,
                 "name": "Hospitality & Tourism Management",
                 "code": "HTM",
                 "color": "#0891b2",
-                "points": [79.8, 80.6, 80.2, 81.2, 81.8, 82.6, 82.2, 83.0, 83.6, 83.9, 84.2],
+                "points_2026": [79.8, 80.6, 80.2, 81.2, 81.8, 82.6, 82.2, 83.0, 83.6, 83.9, 84.2, None],
+                "points_2025": [None]*10 + [78.8, 79.5],
             },
         ],
         "administrative": [
@@ -323,35 +424,40 @@ def get_executive_analytics(
                 "name": "Administrative and Finance",
                 "code": "ADMIN/FIN",
                 "color": "#800020",
-                "points": [82.2, 82.8, 83.0, 83.6, 84.2, 84.8, 84.4, 85.0, 85.6, 86.2, 86.8],
+                "points_2026": [82.2, 82.8, 83.0, 83.6, 84.2, 84.8, 84.4, 85.0, 85.6, 86.2, 86.8, None],
+                "points_2025": [None]*10 + [81.2, 81.8],
             },
             {
                 "id": 14,
                 "name": "Campus Director Office",
                 "code": "CDO",
                 "color": "#991b1b",
-                "points": [81.8, 82.4, 82.6, 83.2, 83.8, 84.4, 84.0, 84.6, 85.2, 85.8, 86.4],
+                "points_2026": [81.8, 82.4, 82.6, 83.2, 83.8, 84.4, 84.0, 84.6, 85.2, 85.8, 86.4, None],
+                "points_2025": [None]*10 + [80.8, 81.4],
             },
             {
                 "id": 1,
                 "name": "Disbursing / Cashier Office",
                 "code": "CASHIER",
                 "color": "#b91c1c",
-                "points": [81.0, 81.6, 81.8, 82.4, 83.0, 83.6, 83.2, 83.8, 84.5, 85.0, 85.6],
+                "points_2026": [81.0, 81.6, 81.8, 82.4, 83.0, 83.6, 83.2, 83.8, 84.5, 85.0, 85.6, None],
+                "points_2025": [None]*10 + [80.0, 80.6],
             },
             {
                 "id": 2,
                 "name": "HRMDO Office",
                 "code": "HRMDO",
                 "color": "#c026d3",
-                "points": [82.5, 83.0, 83.4, 84.0, 84.6, 85.2, 84.8, 85.5, 86.0, 86.6, 87.2],
+                "points_2026": [82.5, 83.0, 83.4, 84.0, 84.6, 85.2, 84.8, 85.5, 86.0, 86.6, 87.2, None],
+                "points_2025": [None]*10 + [81.5, 82.0],
             },
             {
                 "id": 12,
                 "name": "Procurement Office",
                 "code": "PROCURE",
                 "color": "#a21caf",
-                "points": [80.2, 80.8, 81.2, 81.8, 82.4, 83.0, 82.6, 83.4, 84.0, 84.5, 85.0],
+                "points_2026": [80.2, 80.8, 81.2, 81.8, 82.4, 83.0, 82.6, 83.4, 84.0, 84.5, 85.0, None],
+                "points_2025": [None]*10 + [79.2, 79.8],
             },
         ],
         "student_services": [
@@ -360,35 +466,40 @@ def get_executive_analytics(
                 "name": "Library Office",
                 "code": "LIBRARY",
                 "color": "#059669",
-                "points": [81.5, 82.0, 82.4, 83.0, 83.5, 84.2, 83.8, 84.5, 85.0, 85.5, 86.0],
+                "points_2026": [81.5, 82.0, 82.4, 83.0, 83.5, 84.2, 83.8, 84.5, 85.0, 85.5, 86.0, None],
+                "points_2025": [None]*10 + [80.5, 81.0],
             },
             {
                 "id": 16,
                 "name": "SASO Office",
                 "code": "SASO",
                 "color": "#16a34a",
-                "points": [80.5, 81.2, 81.5, 82.0, 82.6, 83.4, 83.0, 83.6, 84.2, 84.7, 85.1],
+                "points_2026": [80.5, 81.2, 81.5, 82.0, 82.6, 83.4, 83.0, 83.6, 84.2, 84.7, 85.1, None],
+                "points_2025": [None]*10 + [79.5, 80.0],
             },
             {
                 "id": 3,
                 "name": "School Clinic",
                 "code": "CLINIC",
                 "color": "#10b981",
-                "points": [79.8, 80.4, 80.8, 81.4, 82.0, 82.6, 82.2, 82.8, 83.4, 83.9, 84.3],
+                "points_2026": [79.8, 80.4, 80.8, 81.4, 82.0, 82.6, 82.2, 82.8, 83.4, 83.9, 84.3, None],
+                "points_2025": [None]*10 + [78.8, 79.4],
             },
             {
                 "id": 9,
                 "name": "Guidance Office",
                 "code": "GUIDANCE",
                 "color": "#14b8a6",
-                "points": [79.2, 79.8, 80.2, 80.8, 81.4, 82.2, 81.8, 82.5, 83.0, 83.5, 83.9],
+                "points_2026": [79.2, 79.8, 80.2, 80.8, 81.4, 82.2, 81.8, 82.5, 83.0, 83.5, 83.9, None],
+                "points_2025": [None]*10 + [78.2, 78.8],
             },
             {
                 "id": 21,
                 "name": "Registrar Office",
                 "code": "REGISTRAR",
                 "color": "#047857",
-                "points": [80.0, 80.6, 81.0, 81.6, 82.2, 83.0, 82.5, 83.2, 83.8, 84.2, 84.7],
+                "points_2026": [80.0, 80.6, 81.0, 81.6, 82.2, 83.0, 82.5, 83.2, 83.8, 84.2, 84.7, None],
+                "points_2025": [None]*10 + [79.0, 79.6],
             },
         ],
         "extension_operations": [
@@ -397,52 +508,81 @@ def get_executive_analytics(
                 "name": "Maintenance/Janitorial (MESO) Office",
                 "code": "MESO",
                 "color": "#7c3aed",
-                "points": [79.5, 80.2, 80.6, 81.2, 81.8, 82.6, 82.0, 82.8, 83.2, 83.7, 84.2],
+                "points_2026": [79.5, 80.2, 80.6, 81.2, 81.8, 82.6, 82.0, 82.8, 83.2, 83.7, 84.2, None],
+                "points_2025": [None]*10 + [78.5, 79.0],
             },
             {
                 "id": 10,
                 "name": "Extension Service Office",
                 "code": "EXTENSION",
                 "color": "#6d28d9",
-                "points": [78.8, 79.4, 79.8, 80.4, 81.0, 81.8, 81.2, 82.0, 82.5, 83.0, 83.6],
+                "points_2026": [78.8, 79.4, 79.8, 80.4, 81.0, 81.8, 81.2, 82.0, 82.5, 83.0, 83.6, None],
+                "points_2025": [None]*10 + [77.8, 78.4],
             },
             {
                 "id": 5,
                 "name": "Research Office",
                 "code": "RESEARCH",
                 "color": "#9333ea",
-                "points": [79.0, 79.6, 80.0, 80.6, 81.2, 82.0, 81.5, 82.2, 82.8, 83.3, 83.8],
+                "points_2026": [79.0, 79.6, 80.0, 80.6, 81.2, 82.0, 81.5, 82.2, 82.8, 83.3, 83.8, None],
+                "points_2025": [None]*10 + [78.0, 78.6],
             },
             {
                 "id": 6,
                 "name": "Sports And Development Office",
                 "code": "SPORTS",
                 "color": "#8b5cf6",
-                "points": [78.2, 78.8, 79.2, 79.8, 80.4, 81.2, 80.8, 81.5, 82.0, 82.5, 83.0],
+                "points_2026": [78.2, 78.8, 79.2, 79.8, 80.4, 81.2, 80.8, 81.5, 82.0, 82.5, 83.0, None],
+                "points_2025": [None]*10 + [77.2, 77.8],
             },
             {
                 "id": 7,
                 "name": "Quality Assurance & Accreditation Office",
                 "code": "QA/QAAO",
                 "color": "#a855f7",
-                "points": [80.0, 80.6, 81.0, 81.8, 82.4, 83.2, 82.8, 83.5, 84.0, 84.5, 84.9],
+                "points_2026": [80.0, 80.6, 81.0, 81.8, 82.4, 83.2, 82.8, 83.5, 84.0, 84.5, 84.9, None],
+                "points_2025": [None]*10 + [79.0, 79.6],
             },
             {
                 "id": 4,
                 "name": "IPDO Office",
                 "code": "IPDO",
                 "color": "#6366f1",
-                "points": [77.8, 78.4, 78.8, 79.4, 80.0, 80.8, 80.4, 81.0, 81.6, 82.1, 82.6],
+                "points_2026": [77.8, 78.4, 78.8, 79.4, 80.0, 80.8, 80.4, 81.0, 81.6, 82.1, 82.6, None],
+                "points_2025": [None]*10 + [76.8, 77.4],
             },
             {
                 "id": 13,
                 "name": "IGP Office",
                 "code": "IGP",
                 "color": "#7e22ce",
-                "points": [77.2, 77.8, 78.2, 78.8, 79.4, 80.2, 79.8, 80.5, 81.0, 81.5, 82.0],
+                "points_2026": [77.2, 77.8, 78.2, 78.8, 79.4, 80.2, 79.8, 80.5, 81.0, 81.5, 82.0, None],
+                "points_2025": [None]*10 + [76.2, 76.8],
             },
         ],
     }
+
+    department_trajectories = {}
+    for dom_key, depts in raw_dept_trajectories.items():
+        department_trajectories[dom_key] = []
+        for d in depts:
+            if is_launch_year:
+                pts = d["points_2025"]
+            elif is_current_year:
+                pts = d["points_2026"]
+            elif is_historical:
+                pts = d["points_2026"][:11] + [d["points_2026"][10]]
+            else:
+                pts = [None] * 12
+
+            department_trajectories[dom_key].append({
+                "id": d["id"],
+                "name": d["name"],
+                "code": d["code"],
+                "color": d["color"],
+                "points": pts,
+            })
+
     trend_series = domain_trajectories
 
     # 2. Query Department Headcounts from Database
@@ -619,7 +759,6 @@ def get_executive_analytics(
     for ex in exemplar_profiles:
         if len(outstanding_employees) >= 4:
             break
-        # Avoid duplicate names if user created one with the same name
         if not any(e["name"].lower() == ex["name"].lower() for e in outstanding_employees):
             outstanding_employees.append(ex)
 
@@ -632,14 +771,22 @@ def get_executive_analytics(
         {"label": "Unsatisfactory (Below 30)", "count": 0, "pct": 0.0, "color": "#dc2626"},
     ]
 
+    active_month_index = 10 if is_current_year else (10 if is_launch_year else 11)
+
     return {
-        "selectedYear": year,
+        "selectedYear": str(selected_year_num),
+        "systemLaunchDate": "2025-11-01",
+        "systemLaunchYear": SYSTEM_LAUNCH_YEAR,
+        "systemLaunchMonth": SYSTEM_LAUNCH_MONTH,
+        "availableYears": available_years,
+        "isHistorical": is_historical,
+        "isCurrentYear": is_current_year,
         "institutionalAverage": 86.4,
         "institutionalRating": "Very Satisfactory",
         "totalAssessed": 27,
         "months": months,
         "evaluationPeriods": months,
-        "activeMonthIndex": 10,
+        "activeMonthIndex": active_month_index,
         "trendSeries": trend_series,
         "domainTrajectories": domain_trajectories,
         "departmentTrajectories": department_trajectories,

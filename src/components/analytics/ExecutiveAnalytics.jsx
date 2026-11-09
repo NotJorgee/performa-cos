@@ -19,6 +19,8 @@ export default function ExecutiveAnalytics({
   onBack = () => {},
   onNavigate = () => {},
 }) {
+  const SYSTEM_LAUNCH_YEAR = 2025;
+  const currentCalendarYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedPeriodIndex, setSelectedPeriodIndex] = useState(10); // Default to active month (November 2026)
   const chartScrollRef = React.useRef(null);
@@ -70,6 +72,20 @@ export default function ExecutiveAnalytics({
       isMounted = false;
     };
   }, [selectedYear]);
+
+  // Dynamic Available Years from System Inception (2025) to Current/Selected Year
+  const availableYears = analyticsData?.availableYears || (() => {
+    const highestYear = Math.max(currentCalendarYear, parseInt(selectedYear, 10) || currentCalendarYear);
+    const yrs = [];
+    for (let y = highestYear; y >= SYSTEM_LAUNCH_YEAR; y--) {
+      yrs.push(String(y));
+    }
+    return yrs;
+  })();
+
+  const isCurrentActiveYear = selectedYear === String(currentCalendarYear);
+  const isLaunchYear = selectedYear === String(SYSTEM_LAUNCH_YEAR);
+  const isHistoricalYear = parseInt(selectedYear, 10) < currentCalendarYear;
 
   // 12-Month Calendar Timeline (Jan – Dec, with Nov as current active evaluation month)
   const defaultMonths = [
@@ -463,17 +479,23 @@ export default function ExecutiveAnalytics({
   const getX = (index) => paddingLeft + colOffset + index * colWidth;
   const getY = (val) => paddingTop + innerHeight - ((val - minY) / (maxY - minY)) * innerHeight;
 
-  // Active Month Index is 10 (November in Year 2026)
-  const activeMonthIndex = 10;
+  // Active Month Index (Month 10 / November for current year and launch year)
+  const activeMonthIndex = analyticsData?.activeMonthIndex ?? 10;
+  const isPreLaunchMonth =
+    (selectedYear === '2025' && selectedPeriodIndex < 10) ||
+    (evaluationPeriods[selectedPeriodIndex]?.isPreLaunch === true);
   const currentMonthData = evaluationPeriods[selectedPeriodIndex] || evaluationPeriods[activeMonthIndex];
   const currentMonthName = currentMonthData?.fullName || currentMonthData?.label || 'November';
 
-  // Dynamic Institutional Average for the Selected Month
+  // Dynamic Institutional Average for the Selected Month (Graceful null handling)
   const institutionalAverage = React.useMemo(() => {
-    const vals = domainTrajectories.map((d) => d.points[selectedPeriodIndex] ?? d.points[d.points.length - 1]);
-    if (vals.length === 0) return 86.4;
+    if (isPreLaunchMonth) return null;
+    const vals = domainTrajectories
+      .map((d) => d.points[selectedPeriodIndex])
+      .filter((v) => v !== null && v !== undefined);
+    if (vals.length === 0) return null;
     return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
-  }, [domainTrajectories, selectedPeriodIndex]);
+  }, [domainTrajectories, selectedPeriodIndex, isPreLaunchMonth]);
 
   const institutionalRating =
     institutionalAverage >= 90
@@ -595,9 +617,9 @@ export default function ExecutiveAnalytics({
     }
 
     // Horizontal target:
-    // If viewing the current active month (default): always anchor firmly to the far right
-    // If inspecting an older month: center horizontally on that month's column
-    const isLatest = periodIdx >= activeMonthIndex;
+    // If viewing current active year and month >= activeMonthIndex: anchor firmly to the far right
+    // If viewing launch year or inspecting a past month: center horizontally on that month's column
+    const isLatest = isCurrentActiveYear && (periodIdx >= activeMonthIndex);
     let targetLeft = maxScrollLeft;
     if (!isLatest) {
       const colX = getX(periodIdx);
@@ -714,11 +736,17 @@ export default function ExecutiveAnalytics({
 
 
 
-  // Smooth Catmull-Rom to Cubic Bezier curve path generator
+  // Smooth Catmull-Rom to Cubic Bezier curve path generator with null-point skipping
   const getSmoothCurvePath = (pointsArray) => {
     if (!pointsArray || pointsArray.length === 0) return '';
-    const pts = pointsArray.map((val, i) => ({ x: getX(i), y: getY(val) }));
-    if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+    const pts = [];
+    pointsArray.forEach((val, i) => {
+      if (val !== null && val !== undefined) {
+        pts.push({ x: getX(i), y: getY(val) });
+      }
+    });
+    if (pts.length === 0) return '';
+    if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
 
     let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
     for (let i = 0; i < pts.length - 1; i++) {
@@ -921,7 +949,15 @@ export default function ExecutiveAnalytics({
               <select
                 value={selectedYear}
                 onChange={(e) => {
-                  setSelectedYear(e.target.value);
+                  const yr = e.target.value;
+                  setSelectedYear(yr);
+                  if (yr === '2025') {
+                    setSelectedPeriodIndex(10);
+                  } else if (yr === String(currentCalendarYear)) {
+                    setSelectedPeriodIndex(10);
+                  } else {
+                    setSelectedPeriodIndex(0);
+                  }
                 }}
                 style={{
                   padding: '4px 10px',
@@ -935,9 +971,15 @@ export default function ExecutiveAnalytics({
                   outline: 'none',
                 }}
               >
-                <option value="2026">Year 2026 (Active)</option>
-                <option value="2025">Year 2025</option>
-                <option value="2024">Year 2024</option>
+                {availableYears.map((yr) => {
+                  const isAct = yr === String(currentCalendarYear);
+                  const isLaunch = yr === String(SYSTEM_LAUNCH_YEAR);
+                  return (
+                    <option key={yr} value={yr}>
+                      Year {yr} {isAct ? '(Active)' : isLaunch ? '(Launch Year)' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div></div>
         </div>
@@ -964,13 +1006,28 @@ export default function ExecutiveAnalytics({
               Interactive Performance Legend
             </span>
 
+            {isPreLaunchMonth ? (
+              <span
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  border: '1px solid #cbd5e1',
+                }}
+              >
+                Pre-Deployment Period ({currentMonthName} {selectedYear})
+              </span>
+            ) : null}
+
             {selectedPeriodIndex !== activeMonthIndex && (
               <button
                 type="button"
                 onClick={() => {
-                  const activeIdx = activeMonthIndex;
-                  setSelectedPeriodIndex(activeIdx);
-                  updateViewportScroll(lastIdx, true);
+                  setSelectedPeriodIndex(activeMonthIndex);
+                  updateViewportScroll(activeMonthIndex, true);
                 }}
                 style={{
                   background: 'none',
@@ -983,7 +1040,11 @@ export default function ExecutiveAnalytics({
                   padding: '2px 6px',
                 }}
               >
-                Return to Active Month (Nov 2026)
+                {isCurrentActiveYear
+                  ? 'Return to Active Month (Nov 2026)'
+                  : isLaunchYear
+                  ? 'Return to Go-Live Month (Nov 2025)'
+                  : `Return to Active Period (${evaluationPeriods[activeMonthIndex]?.label || 'Nov'})`}
               </button>
             )}
           </div>
@@ -992,15 +1053,18 @@ export default function ExecutiveAnalytics({
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {activeSeriesList.map((s) => {
               const isHidden = hiddenSeries.has(s.id);
-              const val = s.points[selectedPeriodIndex];
-              const ratingLabel =
-                val >= 90
-                  ? 'Outstanding'
-                  : val >= 80
-                  ? 'Very Satisfactory'
-                  : val >= 70
-                  ? 'Satisfactory'
-                  : 'Needs Improvement';
+              const rawVal = s.points[selectedPeriodIndex];
+              const hasVal = rawVal !== null && rawVal !== undefined;
+              const val = hasVal ? rawVal : 'N/A';
+              const ratingLabel = !hasVal
+                ? 'No Record'
+                : rawVal >= 90
+                ? 'Outstanding'
+                : rawVal >= 80
+                ? 'Very Satisfactory'
+                : rawVal >= 70
+                ? 'Satisfactory'
+                : 'Needs Improvement';
 
               return (
                 <button
@@ -1158,42 +1222,120 @@ export default function ExecutiveAnalytics({
                 );
               })}
 
-              {/* Active Contract Cycle Operational Marker at the latest index */}
-              <g>
-                <line
-                  x1={getX(activeMonthIndex)}
-                  y1={paddingTop}
-                  x2={getX(activeMonthIndex)}
-                  y2={paddingTop + innerHeight}
-                  stroke="#93c5fd"
-                  strokeWidth="1.5"
-                  strokeDasharray="3 3"
-                />
-                <rect
-                  x={getX(activeMonthIndex) - 52}
-                  y={paddingTop - 19}
-                  width={104}
-                  height={16}
-                  rx={3}
-                  fill="#eff6ff"
-                  stroke="#bfdbfe"
-                  strokeWidth="1"
-                />
-                <text
-                  x={getX(activeMonthIndex)}
-                  y={paddingTop - 7}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fontWeight="700"
-                  fill="#1d4ed8"
-                  fontFamily="inherit"
-                >
-                  ACTIVE (NOV 2026)
-                </text>
-              </g>
+              {/* Operational Markers: Active Marker for Current Year vs Milestone for Inception Year */}
+              {isLaunchYear ? (
+                <g>
+                  {/* Shaded Pre-Deployment Zone across Jan–Oct 2025 */}
+                  <rect
+                    x={paddingLeft}
+                    y={paddingTop}
+                    width={getX(10) - paddingLeft}
+                    height={innerHeight}
+                    fill="#f8fafc"
+                    opacity="0.85"
+                  />
+                  <line
+                    x1={paddingLeft}
+                    y1={paddingTop + innerHeight / 2}
+                    x2={getX(10)}
+                    y2={paddingTop + innerHeight / 2}
+                    stroke="#e2e8f0"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                  />
+                  <text
+                    x={paddingLeft + (getX(10) - paddingLeft) / 2}
+                    y={paddingTop + innerHeight / 2 - 8}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fontWeight="700"
+                    fill="#94a3b8"
+                    letterSpacing="0.8px"
+                    fontFamily="inherit"
+                  >
+                    PRE-DEPLOYMENT PERIOD
+                  </text>
+                  <text
+                    x={paddingLeft + (getX(10) - paddingLeft) / 2}
+                    y={paddingTop + innerHeight / 2 + 10}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontWeight="500"
+                    fill="#cbd5e1"
+                    fontFamily="inherit"
+                  >
+                    Performa-COS Go-Live: November 2025
+                  </text>
+
+                  {/* System Go-Live Milestone Marker at Month 10 (Nov 2025) */}
+                  <line
+                    x1={getX(10)}
+                    y1={paddingTop}
+                    x2={getX(10)}
+                    y2={paddingTop + innerHeight}
+                    stroke="#059669"
+                    strokeWidth="2"
+                    strokeDasharray="4 3"
+                  />
+                  <rect
+                    x={getX(10) - 64}
+                    y={paddingTop - 19}
+                    width={128}
+                    height={16}
+                    rx={3}
+                    fill="#ecfdf5"
+                    stroke="#a7f3d0"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={getX(10)}
+                    y={paddingTop - 7}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fontWeight="800"
+                    fill="#047857"
+                    fontFamily="inherit"
+                  >
+                    SYSTEM GO-LIVE (NOV 2025)
+                  </text>
+                </g>
+              ) : isCurrentActiveYear ? (
+                <g>
+                  <line
+                    x1={getX(activeMonthIndex)}
+                    y1={paddingTop}
+                    x2={getX(activeMonthIndex)}
+                    y2={paddingTop + innerHeight}
+                    stroke="#93c5fd"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                  />
+                  <rect
+                    x={getX(activeMonthIndex) - 52}
+                    y={paddingTop - 19}
+                    width={104}
+                    height={16}
+                    rx={3}
+                    fill="#eff6ff"
+                    stroke="#bfdbfe"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={getX(activeMonthIndex)}
+                    y={paddingTop - 7}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fontWeight="700"
+                    fill="#1d4ed8"
+                    fontFamily="inherit"
+                  >
+                    ACTIVE (NOV 2026)
+                  </text>
+                </g>
+              ) : null}
 
               {/* Selected Period Inspection Guideline (when inspecting past periods) */}
-              {selectedPeriodIndex !== activeMonthIndex && (
+              {selectedPeriodIndex !== activeMonthIndex && !isPreLaunchMonth && (
                 <g>
                   <line
                     x1={getX(selectedPeriodIndex)}
@@ -1250,13 +1392,14 @@ export default function ExecutiveAnalytics({
                           strokeLinejoin="round"
                         />
 
-                        {/* Data Points */}
+                        {/* Data Points (Render only for non-null months) */}
                         {s.points.map((val, i) => {
+                          if (val === null || val === undefined) return null;
                           const x = getX(i);
                           const y = getY(val);
                           const isSelected = selectedPeriodIndex === i;
                           const isHovered = hoveredPeriodIndex === i;
-                          const isActiveCycle = i === activeMonthIndex;
+                          const isActiveCycle = isCurrentActiveYear && i === activeMonthIndex;
 
                           return (
                             <g key={i}>
@@ -1304,17 +1447,28 @@ export default function ExecutiveAnalytics({
                           );
                         })}
 
-                        {/* Endpoint Score Badge */}
-                        <text
-                          x={lastX + 8}
-                          y={(spacedYMap[s.id] ?? lastY) + 4}
-                          fontSize="10.5"
-                          fontWeight="bold"
-                          fill={s.color}
-                          fontFamily="inherit"
-                        >
-                          {s.code} {s.points[s.points.length - 1]}
-                        </text>
+                        {/* Endpoint Score Badge (Positioned at last valid point) */}
+                        {(() => {
+                          const validPoints = s.points
+                            .map((val, idx) => ({ val, idx }))
+                            .filter((item) => item.val !== null && item.val !== undefined);
+                          if (validPoints.length === 0) return null;
+                          const lastItem = validPoints[validPoints.length - 1];
+                          const lastX = getX(lastItem.idx);
+                          const lastY = getY(lastItem.val);
+                          return (
+                            <text
+                              x={lastX + 8}
+                              y={(spacedYMap[s.id] ?? lastY) + 4}
+                              fontSize="10.5"
+                              fontWeight="bold"
+                              fill={s.color}
+                              fontFamily="inherit"
+                            >
+                              {s.code} {lastItem.val}
+                            </text>
+                          );
+                        })()}
                       </g>
                     );
                   });
@@ -1422,7 +1576,9 @@ export default function ExecutiveAnalytics({
                 const x = getX(idx);
                 const isSelected = selectedPeriodIndex === idx;
                 const isHovered = hoveredPeriodIndex === idx;
-                const isActiveCycle = idx === activeMonthIndex;
+                const isPreLaunch = isLaunchYear && idx < 10;
+                const isLaunchMonth = isLaunchYear && idx === 10;
+                const isActiveCycle = isCurrentActiveYear && idx === activeMonthIndex;
 
                 return (
                   <button
@@ -1443,15 +1599,23 @@ export default function ExecutiveAnalytics({
                         ? 'var(--brand-50, #fdf2f8)'
                         : isHovered
                         ? '#f1f5f9'
+                        : isLaunchMonth
+                        ? '#ecfdf5'
                         : isActiveCycle
                         ? '#eff6ff'
+                        : isPreLaunch
+                        ? '#f8fafc'
                         : '#ffffff',
                       border: isSelected
                         ? '1.5px solid var(--brand-700)'
+                        : isLaunchMonth
+                        ? '1.5px solid #a7f3d0'
                         : isActiveCycle
                         ? '1px solid #bfdbfe'
                         : isHovered
                         ? '1px solid #cbd5e1'
+                        : isPreLaunch
+                        ? '1px dashed #e2e8f0'
                         : '1px solid transparent',
                       borderRadius: '6px',
                       padding: '3px 10px',
@@ -1464,23 +1628,38 @@ export default function ExecutiveAnalytics({
                       boxShadow: isSelected
                         ? '0 1px 3px rgba(128,0,32,0.15)'
                         : 'none',
+                      opacity: isPreLaunch && !isSelected ? 0.75 : 1,
                       transition: 'all 0.15s ease',
                     }}
                   >
                     <span
                       style={{
                         fontSize: isSelected ? '12.5px' : '11.5px',
-                        fontWeight: isSelected || isActiveCycle ? 800 : 600,
+                        fontWeight: isSelected || isActiveCycle || isLaunchMonth ? 800 : 600,
                         color: isSelected
                           ? 'var(--brand-700)'
+                          : isLaunchMonth
+                          ? '#047857'
                           : isActiveCycle
                           ? '#1d4ed8'
+                          : isPreLaunch
+                          ? '#94a3b8'
                           : 'var(--ink-800)',
                       }}
                     >
                       {p.label}
                     </span>
-                    {isActiveCycle ? (
+                    {isLaunchMonth ? (
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          fontWeight: 800,
+                          color: '#047857',
+                        }}
+                      >
+                        Go-Live
+                      </span>
+                    ) : isActiveCycle ? (
                       <span
                         style={{
                           fontSize: '9.5px',
@@ -1490,7 +1669,17 @@ export default function ExecutiveAnalytics({
                       >
                         Active
                       </span>
-                    ) : idx === 11 ? (
+                    ) : isPreLaunch ? (
+                      <span
+                        style={{
+                          fontSize: '8.5px',
+                          fontWeight: 600,
+                          color: '#94a3b8',
+                        }}
+                      >
+                        Pre-Launch
+                      </span>
+                    ) : (isCurrentActiveYear && idx === 11) ? (
                       <span
                         style={{
                           fontSize: '9px',
@@ -1509,7 +1698,57 @@ export default function ExecutiveAnalytics({
         </div>
       </div>
 
-      {/* 2-Column Analytics Grid */}
+      {/* 2-Column Analytics Grid or Pre-Launch Inception Notice */}
+      {isPreLaunchMonth ? (
+        <div
+          className="card"
+          style={{
+            padding: '48px 28px',
+            textAlign: 'center',
+            background: '#fafbfc',
+            border: '1.5px dashed #cbd5e1',
+            borderRadius: '12px',
+          }}
+        >
+          <div style={{ maxWidth: '560px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '50%',
+                background: '#f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--brand-700)',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <Calendar size={26} />
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: 800, color: 'var(--ink-900)' }}>
+                Pre-Deployment Period ({currentMonthName} {selectedYear})
+              </h3>
+              <p className="muted" style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.55 }}>
+                Performa-COS was officially deployed at Eastern Visayas State University in <b>November 2025</b>. Institutional evaluation records and department standings were not conducted prior to system inception.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ marginTop: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => {
+                setSelectedPeriodIndex(10);
+                updateViewportScroll(10, true);
+              }}
+            >
+              <span>Inspect Go-Live Cycle (November 2025)</span>
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      ) : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '22px' }}>
         {/* Column 1: Departments Leaderboard & Average Ratings Distribution */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -1775,6 +2014,7 @@ export default function ExecutiveAnalytics({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
