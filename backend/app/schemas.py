@@ -232,6 +232,9 @@ class EvaluationRecordOut(BaseModel):
     rating_label: Optional[str] = None
     status: str
     is_fast_track_rejected: bool = False
+    qualitative_strengths: Optional[str] = None
+    qualitative_recommendations: Optional[str] = None
+    dimension_scores: Optional[dict] = None
     created_at: Optional[datetime.datetime] = None
 
     class Config:

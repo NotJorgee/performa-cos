@@ -14,6 +14,7 @@ from .email_service import (
     send_renewal_intent_submitted_email,
     send_endorsement_decision_email,
     send_contract_resolution_email,
+    send_dept_head_contract_resolution_email,
 )
 from .scheduler import evaluate_contract_deadlines, start_deadline_scheduler
 
@@ -693,10 +694,11 @@ def submit_renewal(
     if dept_head and dept_head.email:
         background_tasks.add_task(
             send_renewal_intent_submitted_email,
-            dept_head.email,
-            current_user.full_name,
-            dept_name,
-            payload.period,
+            to=dept_head.email,
+            emp_name=current_user.full_name,
+            dept_name=dept_name,
+            period=payload.period,
+            dept_head_name=dept_head.full_name,
         )
 
     return renewal
@@ -784,12 +786,13 @@ def endorse_renewal(
         if h.email:
             background_tasks.add_task(
                 send_endorsement_decision_email,
-                h.email,
-                emp.full_name,
-                dept_name,
-                payload.status,
-                notes_or_grounds,
-                current_user.full_name,
+                to=h.email,
+                emp_name=emp.full_name,
+                dept_name=dept_name,
+                status=payload.status,
+                notes_or_grounds=notes_or_grounds,
+                dept_head_name=current_user.full_name,
+                hr_name=h.full_name,
             )
 
     log_audit(
@@ -847,14 +850,34 @@ def finalize_contract_renewal(
 
     now = datetime.datetime.utcnow()
     decision_label = "RENEWED (Term Extension)" if is_renewed else "DO NOT RENEW (Contract Conclusion)"
-    remarks = payload.remarks or ("Approved for contract renewal." if is_renewed else "Non-renewal finalized.")
+    remarks = payload.remarks.strip() if payload.remarks and payload.remarks.strip() else None
+    remarks_suffix = f" Remarks: {remarks}" if remarks else ""
+
+    # Record HR resolution remarks in renewal application narrative if provided
+    if renewal.mar_narrative:
+        renewal.mar_narrative += f"\n[HRMO Resolution]: {decision_label}.{remarks_suffix}"
+    else:
+        renewal.mar_narrative = f"[HRMO Resolution]: {decision_label}.{remarks_suffix}"
+
+    # Record to university audit trail
+    db.add(
+        models.AuditLog(
+            user_id=current_user.id,
+            user_name=current_user.full_name,
+            role=current_user.role,
+            action="FINALIZE_CONTRACT_DISPOSITION",
+            target_scope=f"Employee {emp.full_name} (ID: {emp.id})",
+            operation_details=f"Decision: {payload.decision}. Disposition: {decision_label}.{remarks_suffix}",
+            timestamp=now,
+        )
+    )
 
     # In-App Notification for Employee
     db.add(
         models.Notification(
             user_id=emp.id,
             title="Official Contract Resolution Finalized",
-            message=f"HRMO has finalized your contract disposition: {decision_label}. Remarks: {remarks}",
+            message=f"HRMO has finalized your contract disposition: {decision_label}.{remarks_suffix}",
             category="contract",
             is_read=False,
             action_view="contract_status",
@@ -877,7 +900,7 @@ def finalize_contract_renewal(
             models.Notification(
                 user_id=dept_head.id,
                 title=f"Contract Resolution: {emp.full_name}",
-                message=f"Official determination finalized for {emp.full_name}: {decision_label}. Remarks: {remarks}",
+                message=f"Official determination finalized for {emp.full_name}: {decision_label}.{remarks_suffix}",
                 category="contract",
                 is_read=False,
                 action_view="department_records",
@@ -892,22 +915,25 @@ def finalize_contract_renewal(
     if emp.email:
         background_tasks.add_task(
             send_contract_resolution_email,
-            emp.email,
-            emp.full_name,
-            payload.decision,
-            remarks,
-            renewal.period,
+            to=emp.email,
+            emp_name=emp.full_name,
+            decision=payload.decision,
+            remarks=remarks,
+            period=renewal.period,
         )
 
     # Dispatches email to Department Head
     if dept_head and dept_head.email:
+        dept_name_str = dept_head.department.name if dept_head.department else (emp.department.name if emp.department else "Department")
         background_tasks.add_task(
-            send_contract_resolution_email,
-            dept_head.email,
-            f"{emp.full_name} ({dept_head.department.name if dept_head.department else 'Dept'})",
-            payload.decision,
-            remarks,
-            renewal.period,
+            send_dept_head_contract_resolution_email,
+            to=dept_head.email,
+            dept_head_name=dept_head.full_name,
+            emp_name=emp.full_name,
+            dept_name=dept_name_str,
+            decision=payload.decision,
+            remarks=remarks,
+            period=renewal.period,
         )
 
     log_audit(

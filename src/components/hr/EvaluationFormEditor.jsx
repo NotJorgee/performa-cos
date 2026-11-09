@@ -44,10 +44,8 @@ export default function EvaluationFormEditor({
 
   // Live scoring state (mirrors DynamicRubric evaluator behavior)
   const [scores, setScores] = useState({});
-  const [strengths, setStrengths] = useState(
-    'Demonstrates consistent and commendable execution of contracted departmental deliverables.'
-  );
-  const [recommendation, setRecommendation] = useState('Recommended for Renewal');
+  const [strengths, setStrengths] = useState('');
+  const [recommendation, setRecommendation] = useState('');
 
   // Load active template from backend API on mount
   useEffect(() => {

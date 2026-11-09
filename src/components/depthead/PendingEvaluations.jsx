@@ -39,23 +39,50 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
 
   useEffect(() => {
     if (!selectedEmpId) return;
-    api.attendance.getEmployeeStats(selectedEmpId).then((stats) => {
-      if (stats) {
-        setSubordinateList((prev) =>
-          prev.map((s) =>
-            s.id === selectedEmpId
-              ? {
-                  ...s,
-                  aiSummary: {
-                    ...(s.aiSummary || {}),
-                    attendanceStats: stats,
-                  },
-                }
-              : s
-          )
-        );
-      }
-    }).catch(() => {});
+    if (api?.analytics?.getEmployeeAiSummary) {
+      api.analytics.getEmployeeAiSummary(selectedEmpId).then((dossier) => {
+        if (dossier) {
+          setSubordinateList((prev) =>
+            prev.map((s) =>
+              s.id === selectedEmpId
+                ? {
+                    ...s,
+                    totalDarEntries: dossier.totalDarEntries,
+                    aiSummary: {
+                      ...(s.aiSummary || {}),
+                      confidenceScore: dossier.confidenceScore,
+                      keyAchievements: dossier.monthlyAccomplishments,
+                      monthlyAccomplishments: dossier.monthlyAccomplishments,
+                      workTrends: dossier.workTrends,
+                      frequentActivities: dossier.frequentActivities,
+                      productivitySummary: dossier.productivitySummary,
+                      attendanceStats: dossier.attendanceStats,
+                    },
+                  }
+                : s
+            )
+          );
+        }
+      }).catch(() => {
+        api.attendance.getEmployeeStats(selectedEmpId).then((stats) => {
+          if (stats) {
+            setSubordinateList((prev) =>
+              prev.map((s) =>
+                s.id === selectedEmpId
+                  ? {
+                      ...s,
+                      aiSummary: {
+                        ...(s.aiSummary || {}),
+                        attendanceStats: stats,
+                      },
+                    }
+                  : s
+              )
+            );
+          }
+        }).catch(() => {});
+      });
+    }
   }, [selectedEmpId]);
 
   // Filter out any employees whose contract renewal is finished (Active Contract / Completed)

@@ -78,8 +78,33 @@ export default function EvaluationManagement({
       });
 
       const mapped = users.map((u) => {
-        const r = renewalMap.get(u.id);
-        const ev = evalMap.get(u.id);
+        let r = renewalMap.get(u.id);
+        let ev = evalMap.get(u.id);
+
+        // Term guard: if renewal or eval was submitted prior to current contract start, treat as prior term.
+        // Only applies if the contract start date has already arrived in the past (historical term).
+        // If contractStart is in the future, it represents a newly approved future renewal term.
+        const contractStart = u.contract_start_date || u.contractStartDate;
+        const now = new Date();
+        if (contractStart) {
+          const startDateObj = new Date(contractStart);
+          if (startDateObj <= now) {
+            if (r?.submitted_at && new Date(r.submitted_at) < startDateObj) {
+              r = null;
+            }
+            if (ev?.created_at && new Date(ev.created_at) < startDateObj) {
+              ev = null;
+            }
+          }
+        }
+
+        const endRaw = u.contract_end_date || u.contractEndDate;
+        let daysUntilExpiration = 999;
+        if (endRaw) {
+          const endDateObj = new Date(endRaw);
+          const diffMs = endDateObj.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0);
+          daysUntilExpiration = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        }
 
         let routingStatus = 'Awaiting Employee Intent';
         let intentStatus = 'Awaiting Intent';
@@ -190,6 +215,7 @@ export default function EvaluationManagement({
           role: u.jobTitle || u.job_title || 'COS Employee',
           jobTitle: u.jobTitle || u.job_title || 'COS Employee',
           contractEndDate: contractEnd,
+          daysUntilExpiration,
           routingStatus,
           intentStatus,
           deptHeadEndorsement,
@@ -208,10 +234,11 @@ export default function EvaluationManagement({
                 : 'Recommended for Renewal',
             supervisorStrengths:
               ev?.qualitative_strengths ||
-              'Consistently meets university performance standards and maintains excellent administrative support.',
+              ev?.qualitative_recommendations ||
+              'Pending immediate supervisor qualitative remarks.',
             supervisorRemarks:
               ev?.qualitative_recommendations ||
-              'Recommended for contract renewal based on institutional triad evaluation.',
+              'Recommended for contract renewal based on immediate supervisor evaluation.',
           },
         };
       });
@@ -266,19 +293,15 @@ export default function EvaluationManagement({
     setFinalizeEmp(emp);
     if (emp.routingStatus === 'Contract Renewed') {
       setHrRenewalDecision('Yes');
-      setHrRenewalRemarks(emp.finalContractRemarks || 'Contract renewed for upcoming term.');
+      setHrRenewalRemarks(emp.finalContractRemarks || '');
     } else if (emp.routingStatus === 'Non-Renewal Finalized') {
       setHrRenewalDecision('No');
-      setHrRenewalRemarks(emp.finalContractRemarks || 'Contract expired. Non-renewal finalized.');
+      setHrRenewalRemarks(emp.finalContractRemarks || '');
     } else {
       const isRecommended =
         (emp.evaluationScores?.supervisorRecommendation || emp.deptHeadEndorsement) !== 'Not Recommended';
       setHrRenewalDecision(isRecommended ? 'Yes' : 'No');
-      setHrRenewalRemarks(
-        isRecommended
-          ? 'Triad evaluation and supervisory endorsement verified. Approved for contract renewal.'
-          : 'Supervisory non-renewal upheld. Contract will conclude at term expiration.'
-      );
+      setHrRenewalRemarks('');
     }
   };
 
@@ -484,7 +507,14 @@ export default function EvaluationManagement({
     emp.routingStatus === 'Offboarded / Archived';
 
   // Only display users who are pending for renewal or in progress of said renewal
-  const activeRenewalEmployees = employees.filter((emp) => !isConcluded(emp));
+  const activeRenewalEmployees = employees.filter((emp) => {
+    if (isConcluded(emp)) return false;
+    // An employee awaiting intent only belongs in the nearing expiration queue if their contract expires within 30 days
+    if (emp.routingStatus === 'Awaiting Employee Intent' && emp.daysUntilExpiration > 30) {
+      return false;
+    }
+    return true;
+  });
 
   // Top Group: Actionable rows, sorted by prioritized urgency (Start -> Finalize -> Mediate -> Offboard), then A-Z
   const actionableEmployees = [...activeRenewalEmployees]
@@ -1441,7 +1471,7 @@ export default function EvaluationManagement({
                     Finalize Contract Renewal Decision
                   </h3>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                    Institutional Triad Performance Review &amp; Official HR Disposition
+                    Institutional Performance Review &amp; Official HR Disposition
                   </div>
                 </div>
               </div>
@@ -1489,55 +1519,8 @@ export default function EvaluationManagement({
                 </div>
               </div>
 
-              {/* Final Triad Evaluation Scores Grid */}
+              {/* Immediate Supervisor Performance Rating Highlight Banner */}
               <div style={{ marginBottom: '18px' }}>
-                <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-800)', marginBottom: '8px' }}>
-                  Final Triad Evaluation Results &amp; Component Breakdown:
-                </div>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '10px',
-                    marginBottom: '12px',
-                  }}
-                >
-                  {/* Supervisor (50%) */}
-                  <div style={{ background: '#f8fafc', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-                    <div className="muted" style={{ fontSize: '11.5px', fontWeight: 600 }}>Supervisor (50%)</div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
-                      {(finalizeEmp.evaluationScores?.supervisor || 90.0).toFixed(1)}%
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                      {((finalizeEmp.evaluationScores?.supervisor || 90.0) * 0.5).toFixed(2)} pts
-                    </div>
-                  </div>
-
-                  {/* Peer (20%) */}
-                  <div style={{ background: '#f8fafc', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-                    <div className="muted" style={{ fontSize: '11.5px', fontWeight: 600 }}>COS Peer (20%)</div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
-                      {(finalizeEmp.evaluationScores?.peer || 86.7).toFixed(1)}%
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                      {((finalizeEmp.evaluationScores?.peer || 86.7) * 0.2).toFixed(2)} pts
-                    </div>
-                  </div>
-
-                  {/* HRMO (30%) */}
-                  <div style={{ background: '#f8fafc', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', textAlign: 'center' }}>
-                    <div className="muted" style={{ fontSize: '11.5px', fontWeight: 600 }}>HRMO (30%)</div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
-                      {(finalizeEmp.evaluationScores?.hrmo || 90.0).toFixed(1)}%
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                      {((finalizeEmp.evaluationScores?.hrmo || 90.0) * 0.3).toFixed(2)} pts
-                    </div>
-                  </div>
-                </div>
-
-                {/* Composite Score Highlight Banner */}
                 <div
                   style={{
                     background: '#eff6ff',
@@ -1708,7 +1691,7 @@ export default function EvaluationManagement({
                   <p style={{ margin: 0, fontStyle: 'italic', color: 'var(--ink-900)' }}>
                     "{finalizeEmp.evaluationScores?.supervisorStrengths ||
                       finalizeEmp.evaluationScores?.supervisorRemarks ||
-                      'Consistently meets university performance standards and maintains excellent administrative support.'}"
+                      'No qualitative remarks provided.'}"
                   </p>
                 </div>
               </div>
@@ -1808,14 +1791,14 @@ export default function EvaluationManagement({
               {/* Remarks Textarea */}
               <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label style={{ fontWeight: 600, fontSize: '12.5px' }}>
-                  HR Resolution Notes &amp; Administrative Remarks:
+                  HR Resolution Notes &amp; Administrative Remarks <span className="muted" style={{ fontWeight: 400 }}>(Optional)</span>:
                 </label>
                 <textarea
                   className="form-control"
                   rows="3"
                   value={hrRenewalRemarks}
                   onChange={(e) => setHrRenewalRemarks(e.target.value)}
-                  placeholder="Enter official resolution notes for university records..."
+                  placeholder="Optional: Enter administrative notes or remarks for university records..."
                   style={{ fontSize: '13px' }}
                 />
               </div>

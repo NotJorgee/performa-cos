@@ -296,12 +296,11 @@ export default function ContractStatus({
               </div>
               <p style={{ margin: '0 0 8px', fontSize: '13.5px' }}>
                 All {contract.totalDarsLogged} DAR logs have been successfully aggregated into your Accomplishment Report.
-                Concurrent evaluation routing is now active:
+                Performance evaluation routing is now active:
               </p>
               <ul style={{ margin: '0 0 12px', paddingLeft: '20px', fontSize: '13px', lineHeight: 1.6 }}>
-                <li><b>Immediate Supervisor (50%):</b> Department Head notified with split-panel AI summary.</li>
-                <li><b>Peer Evaluation (20%):</b> Anonymous departmental peers assigned.</li>
-                <li><b>HRMO Compliance (30%):</b> Administrative review unlocked.</li>
+                <li><b>Immediate Supervisor Evaluation (100%):</b> Department Head notified with live DAR summary and performance rubric.</li>
+                <li><b>HRMO Compliance &amp; Contract Finalization:</b> Institutional review and renewal appointment determination.</li>
               </ul>
             </div>
             <button

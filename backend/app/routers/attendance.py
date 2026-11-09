@@ -1018,11 +1018,11 @@ def get_employee_attendance_stats(
         db.query(models.LeaveRequest)
         .filter(
             models.LeaveRequest.user_id == employee_id,
-            models.LeaveRequest.status == "Approved",
+            models.LeaveRequest.status.in_(["APPROVED", "Approved"]),
         )
         .all()
     )
-    total_approved_leaves = len(approved_leaves)
+    total_approved_leaves = sum(int(l.days_count or 1) for l in approved_leaves)
 
     dar_tasks = (
         db.query(models.DailyAccomplishmentReport)

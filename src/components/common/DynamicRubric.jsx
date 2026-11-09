@@ -194,10 +194,10 @@ export default function DynamicRubric({
 
   const criteria = propCriteria || template.criteria || EVSU_PERFORMANCE_CRITERIA;
 
-  const defaultStrengths = initialStrengths || 'Demonstrates consistent and commendable execution of contracted departmental deliverables.';
+  const defaultStrengths = initialStrengths || '';
   const [scores, setScores] = useState(initialScores || {});
   const [strengths, setStrengths] = useState(defaultStrengths);
-  const [recommendation, setRecommendation] = useState(initialRecommendation || 'Recommended for Renewal');
+  const [recommendation, setRecommendation] = useState(initialRecommendation || '');
 
   const totalItems = criteria.length;
   const maxRawScore = totalItems > 0 ? totalItems * 10 : 60;
@@ -216,7 +216,7 @@ export default function DynamicRubric({
   const currentInterpretation =
     scoredCount > 0 ? getPerformanceInterpretation(scaledScore) : null;
 
-  const hasProgress = Object.keys(scores).length > 0 || (strengths && strengths !== defaultStrengths);
+  const hasProgress = Object.keys(scores).length > 0 || Boolean(strengths.trim()) || Boolean(recommendation);
 
   const onSaveDraftRef = useRef(onSaveDraft);
   useEffect(() => {
@@ -715,7 +715,7 @@ export default function DynamicRubric({
               onClick={() =>
                 onSubmit({
                   scores,
-                  strengths: strengths.trim() || 'Demonstrates consistent and commendable execution of contracted departmental deliverables.',
+                  strengths: strengths.trim(),
                   recommendation,
                   rawSum,
                   scaledScore,

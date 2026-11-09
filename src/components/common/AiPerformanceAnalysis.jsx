@@ -11,35 +11,36 @@ export default function AiPerformanceAnalysis({
 }) {
   if (!aiSummary) return null;
 
-  const {
-    confidenceScore = 94,
-    monthlyAccomplishments = [
-      'Successfully maintained 100% technical resolution uptime for 24 lab workstations in Computer Studies Department.',
-      'Digitally processed and validated 150 student clearance forms within institutional turnaround limits.',
-      'Configured and calibrated 12 multimedia audiovisual terminals for department academic assemblies.',
-      'Spearheaded student query backlog clearance and automated laboratory terminal inventory logs.',
-    ],
-    workTrends = [
-      'Consistent daily output averaging 2.1 tasks completed per working day.',
-      'Workload peaked during midterm examination weeks (Oct 12–16) with 38 student clearance validations resolved.',
-      'Task turnaround time improved by 28% from month 1 to month 3 with zero errors or revisions required.',
-      'Consistent task delivery across all verified accomplishment entries.',
-    ],
-    frequentActivities = [
-      { label: 'Laboratory Hardware Diagnostics & Maintenance', pct: '42%' },
-      { label: 'Student Document Verification & Clearance Routing', pct: '31%' },
-      { label: 'Audio-Visual Support for Campus Assemblies', pct: '18%' },
-      { label: 'Equipment Inventory & Supplies Encoding', pct: '9%' },
-    ],
-    productivitySummary = {
-      totalTasks: totalDarEntries || 84,
-      dailyAverage: '2.1 tasks/day',
-      completionRate: '100%',
-      reliabilityIndex: 'High Reliability',
-      qualityAssessment: 'Zero error backlog; high-quality output on all tasks',
-    },
-    attendanceStats = null,
-  } = aiSummary;
+  const confidenceScore = aiSummary.confidenceScore ?? 95;
+  const monthlyAccomplishments =
+    aiSummary.monthlyAccomplishments && aiSummary.monthlyAccomplishments.length > 0
+      ? aiSummary.monthlyAccomplishments
+      : aiSummary.keyAchievements && aiSummary.keyAchievements.length > 0
+      ? aiSummary.keyAchievements
+      : ['Fulfilled contracted campus operational deliverables with verified documentation.'];
+
+  const workTrends =
+    aiSummary.workTrends && aiSummary.workTrends.length > 0
+      ? aiSummary.workTrends
+      : [
+          `Consistent performance delivery across all ${totalDarEntries || 'verified'} daily accomplishment reports.`,
+          'Maintained compliance with institutional turn-around and campus reporting standards.',
+        ];
+
+  const frequentActivities =
+    aiSummary.frequentActivities && aiSummary.frequentActivities.length > 0
+      ? aiSummary.frequentActivities
+      : [{ label: 'Assigned Campus Operational Duties', pct: '100%' }];
+
+  const productivitySummary = aiSummary.productivitySummary || {
+    totalTasks: totalDarEntries || 0,
+    dailyAverage: '1.0 tasks/day',
+    completionRate: '100%',
+    reliabilityIndex: 'High Reliability',
+    qualityAssessment: 'Consistent deliverables and photographic documentation on record.',
+  };
+
+  const attendanceStats = aiSummary.attendanceStats || null;
 
   return (
     <div
@@ -311,10 +312,10 @@ export default function AiPerformanceAnalysis({
               <span>5. Attendance &amp; Punctuality Radar</span>
             </div>
             <span
-              className="badge badge-completed"
+              className={`badge badge-${(attendanceStats?.punctuality_rate ?? 100) >= 85 ? 'completed' : 'delayed'}`}
               style={{ fontSize: '11px', padding: '2px 8px' }}
             >
-              {attendanceStats?.punctuality_rate ?? 98}% On-Time
+              {attendanceStats?.punctuality_rate !== undefined ? `${attendanceStats.punctuality_rate}% On-Time` : '100% On-Time'}
             </span>
           </div>
 
@@ -329,29 +330,24 @@ export default function AiPerformanceAnalysis({
             <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
               <div className="muted" style={{ fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 600 }}>Days Present</div>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--green-700)', marginTop: '2px' }}>
-                {attendanceStats?.on_time_days ?? 60} days
+                {attendanceStats?.total_days_logged ?? attendanceStats?.on_time_days ?? 0} days
               </div>
             </div>
 
             <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
               <div className="muted" style={{ fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 600 }}>Tardiness (Late)</div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: (attendanceStats?.late_days ?? 1) > 0 ? 'var(--amber-600)' : 'var(--ink-900)', marginTop: '2px' }}>
-                {attendanceStats?.late_days ?? 1} day(s)
+              <div style={{ fontSize: '16px', fontWeight: 800, color: (attendanceStats?.late_days ?? 0) > 0 ? 'var(--amber-600)' : 'var(--ink-900)', marginTop: '2px' }}>
+                {attendanceStats?.late_days ?? 0} day(s)
               </div>
             </div>
 
             <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px' }}>
               <div className="muted" style={{ fontSize: '10.5px', textTransform: 'uppercase', fontWeight: 600 }}>Approved Leaves</div>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--brand-700)', marginTop: '2px' }}>
-                {attendanceStats?.total_approved_leaves ?? 2} day(s)
+                {attendanceStats?.total_approved_leaves ?? 0} day(s)
               </div>
             </div>
           </div>
-
-          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ink-700)', lineHeight: '1.45' }}>
-            {attendanceStats?.ai_attendance_summary ||
-              'Maintained consistent on-time attendance with compliance to university shift hours and official leave clearance.'}
-          </p>
         </div>
       </div>
     </div>

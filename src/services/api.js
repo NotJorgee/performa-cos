@@ -329,6 +329,7 @@ export const api = {
     getDeptHeadDashboard: () => request('/analytics/depthead-dashboard'),
     getEmployeeDashboard: () => request('/analytics/employee-dashboard'),
     getExecutiveAnalytics: (year = '2026') => request(`/analytics/executive?year=${year}`),
+    getEmployeeAiSummary: (empId) => request(`/analytics/employee/${empId}/ai-summary`),
   },
 
   // In-App Notifications (Phase 4)

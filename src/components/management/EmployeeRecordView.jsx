@@ -1400,7 +1400,41 @@ export default function EmployeeRecordView({
     ? dbEvaluations
     : (dbEvaluations !== null ? [] : staticEvaluations);
 
+  // Derive latest completed evaluation metrics from the newest evaluation record
+  const latestEvaluation = historicalEvaluations && historicalEvaluations.length > 0 ? historicalEvaluations[0] : null;
+  const effectiveLatestScore = latestEvaluation
+    ? (typeof latestEvaluation.finalGrade === 'number' ? Number(latestEvaluation.finalGrade).toFixed(2) : latestEvaluation.finalGrade)
+    : (employee.latestScore !== null && employee.latestScore !== undefined ? employee.latestScore : null);
+  const effectiveLatestRating = latestEvaluation
+    ? (latestEvaluation.interpretation || 'Satisfactory')
+    : (employee.latestRating || (effectiveLatestScore ? 'Evaluated' : null));
 
+  // Resolved active evaluation details for the rubric and rating sheet view
+  const getActiveEvalDetails = () => {
+    if (!viewingEvalCycle) {
+      return {
+        title: 'Immediate Supervisor Evaluation Form',
+        evaluator: getDepartmentSupervisor(employee?.department),
+        score: 0,
+        weight: '100% Institutional Weight',
+        role: 'depthead',
+        scores: generateCriteriaScores(85),
+        strengths: '',
+        recommendation: 'Recommended for Renewal',
+      };
+    }
+    const scoreVal = viewingEvalCycle.supervisorScore ?? viewingEvalCycle.finalGrade ?? 0;
+    return {
+      title: 'Immediate Supervisor Evaluation Form',
+      evaluator: getDepartmentSupervisor(employee?.department),
+      score: typeof scoreVal === 'number' ? scoreVal.toFixed(1) : scoreVal,
+      weight: '100% Institutional Weight',
+      role: 'depthead',
+      scores: generateCriteriaScores(scoreVal || 85),
+      strengths: viewingEvalCycle.strengths || 'Fulfills duties with consistent diligence and reliable university service.',
+      recommendation: viewingEvalCycle.recommendation || 'Recommended for Renewal',
+    };
+  };
 
   // Cycle-over-cycle comparative calculation between most recent and prior cycle
 
@@ -1446,13 +1480,9 @@ Contract Cycle Period: ${cycle.periodDates}
 
 SCORES & EVALUATION SUMMARY:
 
-Supervisor Score (50%): ${cycle.supervisorScore}%
+Immediate Supervisor Rating (100%): ${cycle.supervisorScore || cycle.finalGrade}%
 
-Peer Score (20%): ${cycle.peerScore}%
-
-HRMO Score (30%): ${cycle.hrmoScore}%
-
-Final Weighted Grade: ${cycle.finalGrade} / 100
+Official Performance Grade: ${cycle.finalGrade} / 100
 
 Adjectival Rating: ${cycle.interpretation}
 
@@ -1518,7 +1548,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         pageNumber: 1,
 
-        weightLabel: '50% Triad Weight',
+        weightLabel: 'Immediate Supervisor Evaluation (100%)',
 
         evaluatorRole: 'Immediate Supervisor',
 
@@ -1528,15 +1558,15 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         evaluationDate: 'Dec 18, 2026',
 
-        scores: generateCriteriaScores(viewingEvalCycle.supervisorScore),
+        scores: generateCriteriaScores(viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade),
 
         strengths: viewingEvalCycle.strengths,
 
         recommendation: viewingEvalCycle.recommendation,
 
-        rawScore: Math.round((viewingEvalCycle.supervisorScore / 100) * 60),
+        rawScore: Math.round(((viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade) / 100) * 60),
 
-        scaledScore: viewingEvalCycle.supervisorScore,
+        scaledScore: viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade,
 
       });
 
@@ -1787,7 +1817,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-            {/* Triad Score Pills (Interactive Switcher - Clean Uniform HRMO Text Styling) */}
+            {/* Immediate Supervisor Rating & Official Performance Score */}
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
 
@@ -1797,119 +1827,27 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                   textAlign: 'center',
 
-                  background: activeEvaluatorTab === 'depthead' ? '#eef2f6' : '#f8fafc',
+                  background: '#f8fafc',
 
-                  border: `2px solid ${activeEvaluatorTab === 'depthead' ? 'var(--ink-700)' : 'var(--line)'}`,
+                  border: '1px solid var(--line)',
 
-                  padding: '9px 13px',
+                  padding: '9px 16px',
 
                   borderRadius: '8px',
 
-                  cursor: 'pointer',
-
-                  transition: 'all 0.15s ease',
-
                 }}
-
-                onClick={() => setActiveEvaluatorTab('depthead')}
-
-                title="Click to view Immediate Supervisor Evaluation"
 
               >
 
                 <div className="muted" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>
 
-                  Dept Head (50%)
+                  Immediate Supervisor Rating
 
                 </div>
 
-                <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
 
-                  {viewingEvalCycle.supervisorScore}%
-
-                </div>
-
-              </div>
-
-
-
-              <div
-
-                style={{
-
-                  textAlign: 'center',
-
-                  background: activeEvaluatorTab === 'cos' ? '#eef2f6' : '#f8fafc',
-
-                  border: `2px solid ${activeEvaluatorTab === 'cos' ? 'var(--ink-700)' : 'var(--line)'}`,
-
-                  padding: '9px 13px',
-
-                  borderRadius: '8px',
-
-                  cursor: 'pointer',
-
-                  transition: 'all 0.15s ease',
-
-                }}
-
-                onClick={() => setActiveEvaluatorTab('cos')}
-
-                title="Click to view COS Peer Evaluation (20%)"
-
-              >
-
-                <div className="muted" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>
-
-                  COS Peer (20%)
-
-                </div>
-
-                <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
-
-                  {viewingEvalCycle.peerScore}%
-
-                </div>
-
-              </div>
-
-
-
-              <div
-
-                style={{
-
-                  textAlign: 'center',
-
-                  background: activeEvaluatorTab === 'hr' ? '#eef2f6' : '#f8fafc',
-
-                  border: `2px solid ${activeEvaluatorTab === 'hr' ? 'var(--ink-700)' : 'var(--line)'}`,
-
-                  padding: '9px 13px',
-
-                  borderRadius: '8px',
-
-                  cursor: 'pointer',
-
-                  transition: 'all 0.15s ease',
-
-                }}
-
-                onClick={() => setActiveEvaluatorTab('hr')}
-
-                title="Click to view HRMO Evaluation (30%)"
-
-              >
-
-                <div className="muted" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>
-
-                  HRMO (30%)
-
-                </div>
-
-                <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
-
-                  {viewingEvalCycle.hrmoScore}%
+                  {viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade}%
 
                 </div>
 
@@ -2954,9 +2892,9 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
 
-                <span style={{ fontWeight: 800, fontSize: '15px', color: getScoreInterpretationColor(employee.latestRating, employee.latestScore).color }}>
+                <span style={{ fontWeight: 800, fontSize: '15px', color: getScoreInterpretationColor(effectiveLatestRating, effectiveLatestScore).color }}>
 
-                  {employee.latestScore !== null && employee.latestScore !== undefined ? `${employee.latestScore} (${employee.latestRating || 'Evaluated'})` : 'Unrated'}
+                  {effectiveLatestScore !== null && effectiveLatestScore !== undefined ? `${effectiveLatestScore} (${effectiveLatestRating || 'Evaluated'})` : 'Unrated'}
 
                 </span>
 
@@ -2976,52 +2914,6 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               </div>
 
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  padding: '9px 14px',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  background: '#ffffff',
-                  border: '1.5px solid var(--line)',
-                  borderRadius: '8px',
-                }}
-                onClick={() => setViewingAttendanceCycle({ periodDates: 'Active Contract Period' })}
-                title="View Daily Time Record (DTR) & Attendance Logs"
-              >
-                <Calendar size={14} color="var(--brand-700)" />
-                <span>Attendance Logs</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  padding: '9px 14px',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  background: '#ffffff',
-                  border: '1.5px solid var(--line)',
-                  borderRadius: '8px',
-                }}
-                onClick={() => setViewingMarCycle({ periodDates: 'Active Contract Period' })}
-                title="View Accumulated Daily Accomplishment Reports (DAR)"
-              >
-                <FileText size={14} color="var(--brand-700)" />
-                <span>DAR Logs</span>
-              </button>
             </div>
 
           </div>
@@ -3166,7 +3058,100 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
       </div>
 
+      {/* Current Active Contract Operational Records Card */}
+      <div
+        className="card"
+        style={{
+          marginBottom: '22px',
+          padding: '16px 22px',
+          background: 'linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%)',
+          border: '1px solid var(--line)',
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '8px',
+              background: '#fdf2f2',
+              border: '1px solid #fee2e2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--brand-700)',
+              flexShrink: 0,
+            }}
+          >
+            <Layers size={20} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <b style={{ fontSize: '14.5px', color: 'var(--ink-900)' }}>
+                Current Contract Term Logs
+              </b>
+              <span className="badge badge-active" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                Active Term
+              </span>
+            </div>
+            <p className="muted" style={{ margin: '2px 0 0', fontSize: '12.5px' }}>
+              Inspect live Daily Time Records (DTR) and accumulated Daily Accomplishment Reports (DAR) for the current contract window.
+            </p>
+          </div>
+        </div>
 
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: '#fff',
+              border: '1.5px solid var(--line)',
+              borderRadius: '6px',
+            }}
+            onClick={() => setViewingAttendanceCycle({ periodDates: 'Active Contract Period' })}
+            title="Inspect current contract DTR and attendance punches"
+          >
+            <Calendar size={14} color="var(--brand-700)" />
+            <span>Active Attendance Logs</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: '#fff',
+              border: '1.5px solid var(--line)',
+              borderRadius: '6px',
+            }}
+            onClick={() => setViewingMarCycle({ periodDates: 'Active Contract Period' })}
+            title="Inspect current contract Daily Accomplishment Reports"
+          >
+            <FileText size={14} color="var(--brand-700)" />
+            <span>Active DAR Logs</span>
+          </button>
+        </div>
+      </div>
 
       {/* Comparative Performance Analysis (Cycle-over-Cycle Deep Dive) */}
 
@@ -3609,11 +3594,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                   </div>
 
-                  <div className="muted" style={{ fontSize: '11px', marginTop: '3px' }}>
 
-                    Sup: {evalItem.supervisorScore} | Peer: {evalItem.peerScore} | HR: {evalItem.hrmoScore}
-
-                  </div>
 
                 </td>
 
@@ -3702,7 +3683,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                     }}
 
-                    title={`View Triad Evaluation for ${evalItem.periodDates}`}
+                    title={`View Evaluation Record for ${evalItem.periodDates}`}
 
                   >
 
