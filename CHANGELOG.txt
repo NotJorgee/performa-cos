@@ -1,0 +1,115 @@
+PerformaCOS - Update Notes (Since Commit 6915a27)
+Date: 2026-11-10
+Baseline Commit: 6915a27 (docs: add generalized setup README and .env.example)
+================================================================================
+
+SUMMARY OF CHANGES
+------------------
+This update fixes invitation link loading issues, enforces strict role and
+department scoping for onboarding, and restores full-featured manual account
+creation inside User Management.
+
+1. Invitation Link HTTPS & Same-Browser Routing Fixes
+------------------------------------------------------
+- Problem Fixed:
+  - Previously, backend invitation links defaulted to http://localhost:5173,
+    causing Chrome ERR_EMPTY_RESPONSE because Vite dev server runs on HTTPS
+    (@vitejs/plugin-basic-ssl).
+  - Opening an invitation URL (?token=...) in a browser that already had an
+    active logged-in session in localStorage skipped the signup screen and
+    redirected to #/dashboard.
+- Changes:
+  - backend/app/config.py:
+    * Updated default APP_FRONTEND_URL from "http://localhost:5173" to
+      "https://localhost:5173".
+    * Added "https://localhost:5173" and "https://127.0.0.1:5173" to default
+      CORS_ORIGINS.
+    * Added Settings.frontend_base_url helper to strip trailing slashes cleanly.
+  - backend/app/email_service.py & backend/app/routers/invitations.py:
+    * Switched all email/invitation URL builders to use settings.frontend_base_url.
+    * Trimmed whitespace on incoming token in GET /api/invitations/validate.
+  - src/App.jsx:
+    * Ensured ?token=... and ?invite=... URLs always open TokenizedSignUp even
+      when a previous user session is present in localStorage.
+    * Preserved query token during signup and cleared stale cache/session state
+      when completing registration or returning to login.
+  - src/components/auth/TokenizedSignUp.jsx:
+    * Included departmentId in registered user state passed into handleLogin.
+
+2. Invite Modal Scoping & HRMDO Office Locking
+----------------------------------------------
+- Changes:
+  - src/components/management/UserManagement.jsx &
+    src/components/management/OnboardingUserModal.jsx:
+    * On the University Departments tab ("+ Invite Personnel" and department-level
+      invite buttons), the Account Role selector now only allows "COS Employee"
+      and "Department Head" ("HR Personnel" is excluded).
+    * On the HR Administrators tab ("+ Invite HR Administrator"), Account Role
+      is locked to "HR Personnel" and Target Department is locked to
+      "HRMDO Office".
+    * Custom departments added via "+ Add Department" also appear cleanly in the
+      Target Department dropdown under "Additional / Custom Units".
+  - backend/app/auth.py & backend/app/routers/invitations.py:
+    * Added shared resolve_onboarding_department_id(...) helper so any
+      "HR Personnel" invitation or registration is automatically enforced to
+      "HRMDO Office" server-side as well.
+
+3. Restored & Upgraded Manual User Creation
+-------------------------------------------
+- Changes:
+  - src/components/management/OnboardingUserModal.jsx &
+    src/components/management/UserManagement.jsx:
+    * Restored the "Register directly without sending link? -> Add Manually"
+      option inside the invitation modal for both University Departments and
+      HR Administrators tabs.
+    * Included all Tokenized Email Sign-Up onboarding features:
+      - Title selector (UNIVERSITY_TITLES), First Name, M.I., Last Name inputs
+      - Campus Starting Date & Current Contract Start (COS Employee auto-syncs
+        and displays auto-calculated inclusive 6-month Contract End Date)
+      - Job Position / Designation and Official Contact Number
+      - Live preview of system-generated EVSU Employee ID (e.g. D07052026JM)
+      - Real-time password complexity checklist badges
+    * Preserved & expanded unique Manual Creation features:
+      - Temporary Password input with visibility toggle, one-click
+        "Generate Strong Password" button, and Copy button
+      - Optional "Override ID" toggle to assign a custom Employee ID
+      - "Activate account immediately" (is_active) and
+        "Send welcome confirmation email" (send_welcome_email) checkboxes
+      - Post-creation Credential Handoff confirmation card with Assigned ID,
+        Role, Department/Office, Contract End Date, Email, Temporary Password,
+        and "Copy Login Credentials" button.
+  - backend/app/schemas.py & backend/app/routers/users.py (POST /api/users):
+    * Extended UserAccountCreate to accept optional department_name,
+      first_name, middle_initial, last_name, title, starting_date, and
+      send_welcome_email (default true) while keeping full_name backward-compatible.
+    * Enforced institutional password complexity rules via shared
+      validate_password_complexity(...) helper in backend/app/auth.py.
+    * Checked duplicate emails case-insensitively and checked custom
+      employee_id_number uniqueness cleanly.
+    * Locked "HR Personnel" manual accounts to "HRMDO Office" server-side.
+    * Added USER_CREATED_MANUAL audit logging and optional background welcome
+      email dispatch.
+  - Shared frontend modules added to avoid duplication:
+    * src/utils/onboardingHelpers.js
+    * src/components/common/PasswordComplexityChecklist.jsx
+
+NOTES FOR MOBILE / TEAMMATE INTEGRATION
+---------------------------------------
+1. Pull the latest main branch and run no new DB migrations (no schema changes
+   were made in Alembic; existing tables match).
+2. Restart both frontend (npm run dev) and backend (python run.py) after pulling.
+   Make sure .env uses APP_FRONTEND_URL=https://localhost:5173 (or omit it to
+   use the updated default).
+3. POST /api/invitations now enforces department = "HRMDO Office" whenever
+   role is "HR Personnel".
+4. POST /api/users now enforces password complexity (minimum 8 chars, upper,
+   lower, digit, symbol) and accepts structured name/date fields alongside
+   full_name.
+
+VERIFICATION PERFORMED BEFORE PUSH
+----------------------------------
+- Frontend production build: npm run build passed (vite v5.4.21, 2007 modules).
+- Backend TestClient checks passed for HR invitation locking, weak password
+  rejection, manual HR creation, manual COS creation with 6-month contract end
+  date calculation, and temporary password login verification.
+- Live HTTPS Vite + FastAPI probe verified / and /api/invitations/validate.
