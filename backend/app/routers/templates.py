@@ -3,6 +3,7 @@ routers/templates.py — Evaluation Rubric Template Architecture for PerformaCOS
 Manages institutional evaluation forms, dynamic criteria rows, rating scales, and versioning.
 """
 import datetime
+import re
 from typing import Optional, List, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -104,6 +105,31 @@ DEFAULT_RECOMMENDATIONS = [
 ]
 
 
+def get_next_template_version(current_version: Optional[str] = None) -> str:
+    """
+    Computes next template version string under EVSU institutional convention (Convention 1):
+    - Initial format: Form Series of YYYY (e.g. Form Series of 2026)
+    - Mid-year revisions: Form Series of YYYY (Rev. 1), (Rev. 2), etc.
+    - New calendar year: Form Series of <NEW_YEAR>
+    """
+    current_year = datetime.datetime.utcnow().year
+    if not current_version:
+        return f"Form Series of {current_year}"
+
+    match = re.search(r"Form Series of (\d{4})(?:\s*\(Rev\.\s*(\d+)\))?", current_version, re.IGNORECASE)
+    if match:
+        year = int(match.group(1))
+        rev = int(match.group(2)) if match.group(2) else 0
+        if year == current_year:
+            return f"Form Series of {year} (Rev. {rev + 1})"
+        return f"Form Series of {current_year}"
+
+    if "v1." in current_version or "Standard" in current_version:
+        return f"Form Series of {current_year}"
+
+    return f"Form Series of {current_year} (Rev. 1)"
+
+
 def seed_default_template(db: Session, created_by_id: Optional[int] = None) -> models.EvaluationTemplate:
     """Helper to seed and activate the official institutional EVSU default template."""
     now = datetime.datetime.utcnow()
@@ -112,7 +138,7 @@ def seed_default_template(db: Session, created_by_id: Optional[int] = None) -> m
         title="EVSU Contract of Service (COS) Performance Appraisal Form",
         subtitle="Official Performance Rating Instrument for Non-Regular Personnel",
         instructions="Evaluate the contracted personnel based on verifiable work deliverables, daily accomplishment reports, and departmental contributions during the current rating period.",
-        version="v1.0 (Official EVSU Standard)",
+        version="Form Series of 2026",
         is_active=True,
         criteria=DEFAULT_EVSU_CRITERIA,
         rating_scale=DEFAULT_RATING_SCALE,
@@ -172,20 +198,31 @@ def publish_evaluation_template(
             detail="The evaluation rubric must contain at least one criterion row.",
         )
 
+    # Fetch currently active template to derive revision counter
+    active_tpl = (
+        db.query(models.EvaluationTemplate)
+        .filter(models.EvaluationTemplate.is_active == True)
+        .order_by(desc(models.EvaluationTemplate.id))
+        .first()
+    )
+
     # Deactivate existing active templates
     db.query(models.EvaluationTemplate).filter(models.EvaluationTemplate.is_active == True).update(
         {"is_active": False}
     )
 
     now = datetime.datetime.utcnow()
-    new_version = f"v{now.strftime('%Y%m%d.%H%M')}"
+    if payload.version and payload.version.strip() and not payload.version.strip().startswith("v"):
+        version_to_use = payload.version.strip()
+    else:
+        version_to_use = get_next_template_version(active_tpl.version if active_tpl else None)
 
     new_tpl = models.EvaluationTemplate(
         template_key=payload.template_key or "evsu_custom_template",
         title=payload.title,
         subtitle=payload.subtitle or "Official Performance Rating Instrument for Non-Regular Personnel",
         instructions=payload.instructions or "Evaluate the contracted personnel based on verifiable work deliverables and departmental contributions.",
-        version=payload.version or new_version,
+        version=version_to_use,
         is_active=True,
         criteria=payload.criteria,
         rating_scale=payload.rating_scale or DEFAULT_RATING_SCALE,

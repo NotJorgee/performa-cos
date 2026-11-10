@@ -1,4 +1,5 @@
 import Toast from '../common/Toast';
+import PredictiveTextarea from '../common/PredictiveTextarea';
 import React, { useState, useEffect } from 'react';
 import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../services/api';
@@ -537,13 +538,16 @@ export default function ContractStatus({
                       <label htmlFor="declineReasonInput" style={{ fontWeight: 600, fontSize: '13px' }}>
                         Reason for Exiting <span className="muted" style={{ fontWeight: 'normal' }}>(Optional):</span>
                       </label>
-                      <textarea
+                      <PredictiveTextarea
                         id="declineReasonInput"
-                        className="form-control"
-                        rows="2"
+                        rows={3}
                         placeholder="Career transition, further studies, relocation, etc."
                         value={declineReason}
                         onChange={(e) => setDeclineReason(e.target.value)}
+                        contextType="exit_reason"
+                        fieldName="declineReason"
+                        role={currentUser?.job_title || currentUser?.jobTitle || 'COS Personnel'}
+                        department={contractDetails.department}
                       />
                     </div>
 

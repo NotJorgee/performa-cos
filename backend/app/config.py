@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     # OTP
     OTP_EXPIRE_MINUTES: int = 10
 
+    # Google Gemini API
+    GEMINI_API_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=(
             os.path.join(os.path.dirname(__file__), "..", "..", ".env"),

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Toast from '../common/Toast';
+import PredictiveTextarea from '../common/PredictiveTextarea';
 import { api } from '../../services/api';
 import {
   Check,
@@ -1793,13 +1794,16 @@ export default function EvaluationManagement({
                 <label style={{ fontWeight: 600, fontSize: '12.5px' }}>
                   HR Resolution Notes &amp; Administrative Remarks <span className="muted" style={{ fontWeight: 400 }}>(Optional)</span>:
                 </label>
-                <textarea
-                  className="form-control"
-                  rows="3"
+                <PredictiveTextarea
+                  id="hrRenewalRemarksInput"
+                  rows={3}
                   value={hrRenewalRemarks}
                   onChange={(e) => setHrRenewalRemarks(e.target.value)}
                   placeholder="Optional: Enter administrative notes or remarks for university records..."
-                  style={{ fontSize: '13px' }}
+                  contextType="hr_renewal"
+                  fieldName={`hrRenewalNotes (${hrRenewalDecision === 'Yes' ? 'Contract Renewed' : 'Non-Renewal Finalized'})`}
+                  role={finalizeEmp?.role || finalizeEmp?.jobTitle || 'COS Personnel'}
+                  department={typeof finalizeEmp?.department === 'object' ? (finalizeEmp?.department?.name || 'Academic Affairs') : (finalizeEmp?.department || 'Academic Affairs')}
                 />
               </div>
 

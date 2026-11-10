@@ -68,6 +68,11 @@ class UserAccount(Base):
     department = relationship("Department", back_populates="users")
     dars = relationship("DailyAccomplishmentReport", back_populates="user")
     renewals = relationship("RenewalApplication", back_populates="employee")
+    evaluations = relationship(
+        "EvaluationRecord",
+        foreign_keys="EvaluationRecord.employee_id",
+        back_populates="employee",
+    )
     evaluations_as_supervisor = relationship(
         "EvaluationRecord",
         foreign_keys="EvaluationRecord.supervisor_id",
@@ -136,6 +141,25 @@ class EvaluationRecord(Base):
     status = Column(String(50), default="Open")  # 'Open' | 'Pending HR Review' | 'Completed' | 'Rejected'
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    # Relationships
+    employee = relationship(
+        "UserAccount",
+        foreign_keys=[employee_id],
+        back_populates="evaluations",
+    )
+
+    @property
+    def employee_name(self):
+        return self.employee.full_name if self.employee else None
+
+    @property
+    def supervisor_name(self):
+        return self.supervisor.full_name if self.supervisor else None
+
+    @property
+    def peer_name(self):
+        return self.peer.full_name if self.peer else None
+
 
 # ---------------------------------------------------------------------------
 # RenewalApplication
@@ -152,6 +176,7 @@ class RenewalApplication(Base):
     loi_file_url = Column(String(500), nullable=True)
     loi_original_filename = Column(String(255), nullable=True)
     mar_narrative = Column(Text, nullable=True)
+    ai_synthesis = Column(JSON, nullable=True)
 
     submitted_at = Column(DateTime, nullable=True)
     department_head_endorsement = Column(String(50), nullable=True)  # 'Endorsed' | 'Disapproved'
@@ -293,7 +318,7 @@ class EvaluationTemplate(Base):
     title = Column(String(255), nullable=False)
     subtitle = Column(String(255), nullable=True)
     instructions = Column(Text, nullable=True)
-    version = Column(String(50), default="v1.0")
+    version = Column(String(50), default="Form Series of 2026")
     is_active = Column(Boolean, default=True, index=True)
     criteria = Column(JSON, nullable=False)  # Array of { id, title, description }
     rating_scale = Column(JSON, nullable=True)  # Array of { rating, label, desc, color, bg, border }

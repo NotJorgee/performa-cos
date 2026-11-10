@@ -31,6 +31,7 @@ import {
   ShieldAlert,
 
   Printer,
+  Award,
   Calendar,
 
   X,
@@ -40,6 +41,8 @@ import {
 import MonthlyReport from '../employee/MonthlyReport';
 
 import DynamicRubric from '../common/DynamicRubric';
+import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
+import { getActiveEvaluationTemplate, fetchActiveTemplateFromApi } from '../../utils/evaluationTemplate';
 
 import OfficialRatingSheetModal from '../common/OfficialRatingSheetModal';
 
@@ -64,7 +67,7 @@ const getDepartmentSupervisor = (department) => {
   const deptStr = typeof department === 'object' && department !== null ? (department.name || '') : (department || '');
   const norm = deptStr.toLowerCase();
 
-  if (norm.includes('computer studies')) return 'Dr. Roberto Santos';
+  if (norm.includes('computer studies')) return 'Jane A. Doe';
 
   if (norm.includes('technology')) return 'Engr. Juan Perez';
 
@@ -1358,6 +1361,61 @@ export default function EmployeeRecordView({
 
   // Load real completed evaluation records from API for this employee if available
   const [dbEvaluations, setDbEvaluations] = useState(null);
+  const [liveAiDossier, setLiveAiDossier] = useState(null);
+  const [activeTemplate, setActiveTemplate] = useState(() => getActiveEvaluationTemplate());
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchActiveTemplateFromApi()
+      .then((tpl) => {
+        if (isMounted && tpl) setActiveTemplate(tpl);
+      })
+      .catch(() => {});
+
+    const onTemplateUpdated = (e) => {
+      if (e.detail && isMounted) setActiveTemplate(e.detail);
+    };
+
+    window.addEventListener('performa_template_updated', onTemplateUpdated);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('performa_template_updated', onTemplateUpdated);
+    };
+  }, []);
+
+  const effectiveAiSummary = liveAiDossier || {
+    confidenceScore: 95,
+    monthlyAccomplishments: [
+      'Fulfilled contracted campus operational deliverables with verified documentation.',
+    ],
+    workTrends: [
+      'Consistent performance delivery across all verified daily accomplishment reports.',
+      'Maintained compliance with institutional turn-around and campus reporting standards.',
+    ],
+    frequentActivities: [
+      { label: 'Assigned Campus Operational Duties', pct: '100%' },
+    ],
+    productivitySummary: {
+      totalTasks: 5,
+      dailyAverage: '1.0 tasks/day',
+      completionRate: '100%',
+      reliabilityIndex: 'High Reliability',
+      qualityAssessment: 'Verified deliverables and photographic documentation on record.',
+    },
+    attendanceStats: null,
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    if (employee?.id && api?.analytics?.getEmployeeAiSummary) {
+      api.analytics.getEmployeeAiSummary(employee.id)
+        .then((data) => {
+          if (isMounted && data) setLiveAiDossier(data);
+        })
+        .catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [employee?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1381,6 +1439,9 @@ export default function EmployeeRecordView({
                 marCount: 0,
                 strengths: r.qualitative_strengths || 'Performance targets completed.',
                 recommendation: r.qualitative_recommendations || 'Recommended for Renewal',
+                dimensionScores: r.dimension_scores || null,
+                supervisorId: r.supervisor_id || null,
+                supervisorName: r.supervisor_name || null,
               }))
             );
           } else {
@@ -1424,13 +1485,19 @@ export default function EmployeeRecordView({
       };
     }
     const scoreVal = viewingEvalCycle.supervisorScore ?? viewingEvalCycle.finalGrade ?? 0;
+    const evaluatorDisplayName =
+      viewingEvalCycle.supervisorName ||
+      (employee?.department && typeof employee.department === 'object' && employee.department.supervisor
+        ? employee.department.supervisor.full_name
+        : null) ||
+      getDepartmentSupervisor(employee?.department);
     return {
       title: 'Immediate Supervisor Evaluation Form',
-      evaluator: getDepartmentSupervisor(employee?.department),
+      evaluator: evaluatorDisplayName,
       score: typeof scoreVal === 'number' ? scoreVal.toFixed(1) : scoreVal,
       weight: '100% Institutional Weight',
       role: 'depthead',
-      scores: generateCriteriaScores(scoreVal || 85),
+      scores: viewingEvalCycle.dimensionScores || generateCriteriaScores(scoreVal || 85),
       strengths: viewingEvalCycle.strengths || 'Fulfills duties with consistent diligence and reliable university service.',
       recommendation: viewingEvalCycle.recommendation || 'Recommended for Renewal',
     };
@@ -1552,13 +1619,13 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         evaluatorRole: 'Immediate Supervisor',
 
-        evaluatorName: getDepartmentSupervisor(employee.department),
+        evaluatorName: viewingEvalCycle.supervisorName || currentEval.evaluator,
 
         evaluatorPosition: 'Department Head',
 
         evaluationDate: 'Dec 18, 2026',
 
-        scores: generateCriteriaScores(viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade),
+        scores: viewingEvalCycle.dimensionScores || generateCriteriaScores(viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade),
 
         strengths: viewingEvalCycle.strengths,
 
@@ -1817,43 +1884,9 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-            {/* Immediate Supervisor Rating & Official Performance Score */}
+            {/* Final Weighted Grade */}
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-
-              <div
-
-                style={{
-
-                  textAlign: 'center',
-
-                  background: '#f8fafc',
-
-                  border: '1px solid var(--line)',
-
-                  padding: '9px 16px',
-
-                  borderRadius: '8px',
-
-                }}
-
-              >
-
-                <div className="muted" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>
-
-                  Immediate Supervisor Rating
-
-                </div>
-
-                <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-900)', marginTop: '2px' }}>
-
-                  {viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade}%
-
-                </div>
-
-              </div>
-
-
 
               {(() => {
 
@@ -1927,9 +1960,9 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
-                <span className="badge badge-dept" style={{ fontSize: '12.5px', fontWeight: 700, padding: '4px 10px' }}>
+                <span className="badge badge-dept" style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px' }}>
 
-                  Score: {currentEval.score}% ({currentEval.weight})
+                  Template: {activeTemplate?.version || 'Form Series of 2026'}
 
                 </span>
 
@@ -1969,55 +2002,15 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-            {/* AI Accomplishment Synthesis Card */}
-
-            <div className="card">
-
-              <div className="card-title" style={{ margin: '0 0 10px', fontSize: '15px' }}>
-
-                AI-Assisted Accomplishment Synthesis
-
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-
-                <span className="badge badge-completed">
-
-                  AI Confidence: 96%
-
-                </span>
-
-                <span className="muted" style={{ fontSize: '12px', marginLeft: '8px' }}>
-
-                  Synthesized from {viewingEvalCycle.marCount} verified DAR task entries
-
-                </span>
-
-              </div>
-
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid var(--line)', fontSize: '13px', lineHeight: 1.6 }}>
-
-                <b style={{ display: 'block', marginBottom: '6px', color: 'var(--ink-700)' }}>
-
-                  Executive Performance Highlights:
-
-                </b>
-
-                <ul style={{ margin: 0, paddingLeft: '18px' }}>
-
-                  <li>All accomplishment logs verified with valid documentation, attachments, and deliverable records.</li>
-
-                  <li>Efficiently handled student enrollment records, credential validations, and laboratory maintenance schedules.</li>
-
-                  <li>Zero deliverable defects or contractual non-compliance logged across the contract cycle.</li>
-
-                </ul>
-
-              </div>
-
+            {/* 5-Dimension Institutional AI Performance Dossier for Auditing */}
+            <div style={{ marginBottom: '6px' }}>
+              <AiPerformanceAnalysis
+                aiSummary={effectiveAiSummary}
+                totalDarEntries={effectiveAiSummary.productivitySummary?.totalTasks ?? 5}
+                employeeName={employee.fullName}
+                scrollable={false}
+              />
             </div>
-
-
 
             {/* Immediate Supervisor Appraisal Summary Card */}
             <div className="card">
@@ -2027,11 +2020,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                   <span>Evaluator:</span>
-                  <b>{getDepartmentSupervisor(employee.department)}</b>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                  <span>Evaluation Model:</span>
-                  <b>Immediate Supervisor (100% Definitive Rating)</b>
+                  <b>{viewingEvalCycle.supervisorName || currentEval.evaluator}</b>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
                   <span>Official Recommendation:</span>
@@ -3451,7 +3440,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
 
-            <span style={{ fontSize: '16px' }}>★</span>
+            <Award size={18} style={{ color: 'var(--brand-700)' }} />
 
             <div>
 

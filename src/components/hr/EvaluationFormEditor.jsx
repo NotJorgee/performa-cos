@@ -23,6 +23,7 @@ import {
   fetchActiveTemplateFromApi,
   publishTemplateToApi,
   resetTemplateOnApi,
+  getNextTemplateVersion,
   DEFAULT_RATING_SCALE,
   DEFAULT_RECOMMENDATIONS,
 } from '../../utils/evaluationTemplate';
@@ -175,11 +176,16 @@ export default function EvaluationFormEditor({
 
     setIsSaving(true);
     try {
-      const published = await publishTemplateToApi(template);
+      const nextVersion = getNextTemplateVersion(template.version);
+      const templateToPublish = {
+        ...template,
+        version: nextVersion,
+      };
+      const published = await publishTemplateToApi(templateToPublish);
       setTemplate(published);
       setHasUnsavedChanges(false);
       showToast(
-        `Active evaluation rubric (${published.version || template.version}) published and saved to institutional server.`,
+        `Active evaluation rubric (${published.version || nextVersion}) published and saved to institutional server.`,
         'success'
       );
     } catch (err) {

@@ -21,6 +21,7 @@ import {
 import { applyStyle2GeotagWatermark } from '../../utils/geotagWatermark';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
+import PredictiveTextarea from '../common/PredictiveTextarea';
 
 export default function DailyReporting({
   onBack = null,
@@ -373,18 +374,18 @@ export default function DailyReporting({
               <label htmlFor="workAccomplished">
                 Specific Work Accomplished <span style={{ color: 'var(--red-600)' }}>*</span>
               </label>
-              <textarea
+              <PredictiveTextarea
                 id="workAccomplished"
                 name="work_accomplished_input"
-                className="form-control"
-                rows="4"
+                rows={4}
                 required
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
                 placeholder="Detail the work outputs, procedures executed, or targets completed..."
                 value={workAccomplished}
                 onChange={(e) => setWorkAccomplished(e.target.value)}
+                contextType="dar"
+                fieldName="workAccomplished"
+                role={activeUser?.job_title || 'COS Personnel'}
+                department={typeof activeUser?.department === 'object' ? (activeUser?.department?.name || 'Computer Studies Department') : (activeUser?.department || 'Computer Studies Department')}
               />
             </div>
 

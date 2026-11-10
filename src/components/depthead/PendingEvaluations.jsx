@@ -57,6 +57,12 @@ const [selectedEmpId, setSelectedEmpId] = useState(null);
                       frequentActivities: dossier.frequentActivities,
                       productivitySummary: dossier.productivitySummary,
                       attendanceStats: dossier.attendanceStats,
+                      executiveNarrative: dossier.executiveNarrative,
+                      aiStrengths: dossier.aiStrengths,
+                      aiRecommendations: dossier.aiRecommendations,
+                      aiSource: dossier.aiSource,
+                      isAiSynthesized: dossier.isAiSynthesized,
+                      aiGeneratedAt: dossier.aiGeneratedAt,
                     },
                   }
                 : s

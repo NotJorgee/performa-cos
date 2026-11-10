@@ -123,13 +123,44 @@ export const DEFAULT_EVSU_TEMPLATE = {
   subtitle: 'Official Performance Rating Instrument for Non-Regular Personnel',
   instructions:
     'Evaluate the contracted personnel based on verifiable work deliverables, daily accomplishment reports, and departmental contributions during the current rating period.',
-  version: 'v1.0 (Official EVSU Standard)',
+  version: 'Form Series of 2026',
   lastUpdated: '2026-11-07',
   criteria: DEFAULT_EVSU_CRITERIA,
   ratingScale: DEFAULT_RATING_SCALE,
   qualitativePrompts: DEFAULT_QUALITATIVE_PROMPTS,
   recommendations: DEFAULT_RECOMMENDATIONS,
 };
+
+/**
+ * Calculates the next version string according to EVSU institutional convention (Convention 1):
+ * - Initial format: Form Series of YYYY (e.g. Form Series of 2026)
+ * - Mid-year revisions: Form Series of YYYY (Rev. 1), (Rev. 2), etc.
+ * - New calendar year: Form Series of <NEW_YEAR>
+ */
+export function getNextTemplateVersion(currentVersion, currentYear = new Date().getFullYear()) {
+  if (!currentVersion || typeof currentVersion !== 'string') {
+    return `Form Series of ${currentYear}`;
+  }
+
+  const regex = /Form Series of (\d{4})(?:\s*\(Rev\.\s*(\d+)\))?/i;
+  const match = currentVersion.match(regex);
+
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const revNum = match[2] ? parseInt(match[2], 10) : 0;
+
+    if (year === currentYear) {
+      return `Form Series of ${year} (Rev. ${revNum + 1})`;
+    }
+    return `Form Series of ${currentYear}`;
+  }
+
+  if (currentVersion.includes('v1.') || currentVersion.includes('Standard')) {
+    return `Form Series of ${currentYear}`;
+  }
+
+  return `Form Series of ${currentYear} (Rev. 1)`;
+}
 
 const STORAGE_KEY = 'performa_evaluation_form_template';
 

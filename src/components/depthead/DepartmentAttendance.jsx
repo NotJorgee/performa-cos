@@ -14,6 +14,7 @@ import {
 import api from '../../services/api';
 import Toast from '../common/Toast';
 import HistoricalAttendanceRoster from '../common/HistoricalAttendanceRoster';
+import PredictiveTextarea from '../common/PredictiveTextarea';
 import { getCachedData, setCachedData, invalidateCache } from '../../utils/swrCache';
 
 export default function DepartmentAttendance({ currentUser, onBack = null, initialTab = 'radar' }) {
@@ -642,13 +643,16 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink-800)' }}>
                     Supervisor Endorsement Remarks (Optional)
                   </label>
-                  <input
-                    type="text"
+                  <PredictiveTextarea
+                    id="supervisorLeaveRemarksInput"
+                    rows={3}
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     placeholder="Provide notes, conditions, or recommendations..."
-                    className="form-control"
-                    style={{ width: '100%', padding: '9px 12px', fontSize: '13px' }}
+                    contextType="leave_review"
+                    fieldName={`supervisorRemarks (${selectedLeave?.category || 'Leave'})`}
+                    role={currentUser?.job_title || 'Department Head'}
+                    department={typeof currentUser?.department === 'object' ? (currentUser?.department?.name || selectedLeave?.department || 'Academic Department') : (currentUser?.department || selectedLeave?.department || 'Academic Department')}
                     autoFocus
                   />
                 </div>

@@ -330,6 +330,10 @@ export const api = {
     getEmployeeDashboard: () => request('/analytics/employee-dashboard'),
     getExecutiveAnalytics: (year = '2026') => request(`/analytics/executive?year=${year}`),
     getEmployeeAiSummary: (empId) => request(`/analytics/employee/${empId}/ai-summary`),
+    synthesizeEmployeeAi: (empId) =>
+      request(`/analytics/employee/${empId}/synthesize-ai`, {
+        method: 'POST',
+      }),
   },
 
   // In-App Notifications (Phase 4)
@@ -457,6 +461,15 @@ export const api = {
     getMyRequests: () => request('/attendance/leaves/my-requests'),
     getDepartmentQueue: () => request('/attendance/leaves/department-queue'),
     review: (leaveId, data) => request(`/attendance/leaves/${leaveId}/review`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
+
+  // AI Services & Predictive Text Autocomplete
+  ai: {
+    predictText: (payload) =>
+      request('/ai/predictive-text', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
   },
 };
 

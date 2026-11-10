@@ -154,6 +154,12 @@ export default function IntentReview({
                   qualityAssessment: 'Verified deliverables on record.',
                 },
                 attendanceStats: aiDossier?.attendanceStats || null,
+                executiveNarrative: aiDossier?.executiveNarrative || null,
+                aiStrengths: aiDossier?.aiStrengths || [],
+                aiRecommendations: aiDossier?.aiRecommendations || [],
+                aiSource: aiDossier?.aiSource || null,
+                isAiSynthesized: aiDossier?.isAiSynthesized || false,
+                aiGeneratedAt: aiDossier?.aiGeneratedAt || null,
               },
             };
           });
@@ -733,6 +739,7 @@ export default function IntentReview({
       <FastTrackModal
         isOpen={Boolean(rejectEmp)}
         employeeName={rejectEmp?.fullName || ''}
+        employee={rejectEmp}
         title="Endorse Non-Renewal (Rejection of Intent)"
         submitButtonText="Submit Non-Renewal to HRMO"
         onClose={() => setRejectEmp(null)}

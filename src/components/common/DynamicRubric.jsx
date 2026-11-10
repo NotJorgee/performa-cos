@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getActiveEvaluationTemplate, fetchActiveTemplateFromApi } from '../../utils/evaluationTemplate';
+import PredictiveTextarea from './PredictiveTextarea';
 
 export { getActiveEvaluationTemplate };
 
@@ -280,8 +281,8 @@ export default function DynamicRubric({
         }}
       >
         <div style={{ fontSize: '13px', color: 'var(--ink-700)' }}>
-          <b>EVSU Ormoc Campus · Employee Performance Rating</b> · 6 Universal
-          Criteria (Max 60 pts)
+          <b>EVSU Ormoc Campus · Employee Performance Rating</b> · {criteria.length} Universal
+          Criteria (Max {maxRawScore} pts)
         </div>
         <div
           style={{
@@ -300,7 +301,7 @@ export default function DynamicRubric({
           </span>
           <span className="muted">·</span>
           <span>
-            Raw Total: <b>{rawSum} / 60</b>
+            Raw Total: <b>{rawSum} / {maxRawScore}</b>
           </span>
           <span className="muted">·</span>
           <span>
@@ -359,7 +360,7 @@ export default function DynamicRubric({
             Official Rating Scale (2, 4, 6, 8, 10)
           </span>
           <span className="muted" style={{ fontSize: '11.5px' }}>
-            Eastern Visayas State University – Ormoc Campus
+            Eastern Visayas State University – Ormoc Campus · {template?.version || 'Form Series of 2026'}
           </span>
         </div>
         <div
@@ -624,14 +625,17 @@ export default function DynamicRubric({
             Detailed qualitative feedback highlighting observed competencies,
             dependability, task outputs, and areas for professional development.
           </p>
-          <textarea
+          <PredictiveTextarea
             id="strengthsField"
-            className="form-control"
-            rows="3"
+            rows={3}
             disabled={readOnly}
             placeholder="Type specific qualitative observations here..."
             value={strengths}
             onChange={(e) => setStrengths(e.target.value)}
+            contextType="evaluation"
+            fieldName="strengths"
+            role={employeeJobTitle}
+            dimensionScores={scores}
           />
         </div>
 

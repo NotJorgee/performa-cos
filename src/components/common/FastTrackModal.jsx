@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import PredictiveTextarea from './PredictiveTextarea';
 
 export const NON_RENEWAL_GROUNDS = [
   'Gross Incompetence / Poor Performance',
@@ -13,6 +14,7 @@ export const NON_RENEWAL_GROUNDS = [
 export default function FastTrackModal({
   isOpen,
   employeeName,
+  employee = null,
   onClose,
   onSubmitRejection,
   title = 'Recommend Non-Renewal',
@@ -95,14 +97,17 @@ export default function FastTrackModal({
             <label htmlFor="justificationText">
               Substantive Supervisory Justification <span style={{ color: 'var(--red-600)' }}>*</span>
             </label>
-            <textarea
+            <PredictiveTextarea
               id="justificationText"
-              className="form-control"
-              rows="4"
+              rows={4}
               required
               placeholder="State the specific performance deficiencies, incident records, or institutional justifications..."
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
+              contextType="fast_track"
+              fieldName={`justification (${category})`}
+              role={employee?.role || employee?.jobTitle || employee?.job_title || 'COS Personnel'}
+              department={typeof employee?.department === 'object' ? (employee?.department?.name || 'Academic Affairs') : (employee?.department || 'Academic Affairs')}
             />
           </div>
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
+import PredictiveTextarea from '../common/PredictiveTextarea';
 import { getCachedData, setCachedData, invalidateCache } from '../../utils/swrCache';
 
 export default function EmployeeAttendance({ currentUser, onBack = null, onNavigate = null, initialTab = 'dtr' }) {
@@ -592,13 +593,16 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
                   Justification / Specific Reason
                 </label>
-                <textarea
+                <PredictiveTextarea
+                  id="leaveReasonInput"
                   rows={4}
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
-                  className="form-control"
                   placeholder="State the reason for absence for Department Head review..."
-                  style={{ width: '100%', padding: '10px 12px', fontSize: '13px' }}
+                  contextType="leave"
+                  fieldName={`leaveReason (${leaveType})`}
+                  role={currentUser?.job_title || currentUser?.jobTitle || 'COS Personnel'}
+                  department={typeof currentUser?.department === 'object' ? (currentUser?.department?.name || 'Computer Studies Department') : (currentUser?.department || 'Computer Studies Department')}
                   required
                 />
               </div>

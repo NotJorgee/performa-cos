@@ -32,6 +32,7 @@ from .routers.geofence import router as geofence_router
 from .routers.backup import router as backup_router
 from .routers.templates import router as templates_router
 from .routers.attendance import router as attendance_router
+from .routers.ai import router as ai_router
 from .routers.audit import log_audit
 
 # Initialize FastAPI App
@@ -64,6 +65,7 @@ app.include_router(geofence_router)
 app.include_router(backup_router)
 app.include_router(templates_router)
 app.include_router(attendance_router)
+app.include_router(ai_router)
 
 
 @app.on_event("startup")
@@ -700,6 +702,16 @@ def submit_renewal(
             period=payload.period,
             dept_head_name=dept_head.full_name,
         )
+
+    # 7. Automatic Background AI DAR Synthesis (Option B: Cached once in database)
+    from .ai_service import synthesize_and_cache_renewal_dar
+    from .database import SessionLocal
+    background_tasks.add_task(
+        synthesize_and_cache_renewal_dar,
+        db_session_factory=SessionLocal,
+        employee_id=current_user.id,
+        renewal_id=renewal.id,
+    )
 
     return renewal
 

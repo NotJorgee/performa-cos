@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from pydantic import BaseModel, EmailStr
 
 
@@ -412,5 +412,21 @@ class EvaluationTemplateOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PredictiveTextRequest(BaseModel):
+    context_type: str = "evaluation"  # "evaluation" | "dar"
+    current_text: str = ""
+    field_name: Optional[str] = "strengths"
+    employee_role: Optional[str] = "COS Personnel"
+    department: Optional[str] = "Academic Affairs"
+    dimension_scores: Optional[Dict[str, Any]] = None
+    recent_tasks: Optional[List[str]] = None
+
+
+class PredictiveTextResponse(BaseModel):
+    ghost_text: str = ""
+    suggestion_chips: List[str] = []
+    source: str = "gemini"
 
 

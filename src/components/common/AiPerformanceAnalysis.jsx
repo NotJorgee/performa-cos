@@ -41,6 +41,16 @@ export default function AiPerformanceAnalysis({
   };
 
   const attendanceStats = aiSummary.attendanceStats || null;
+  const executiveNarrative =
+    aiSummary.executiveNarrative ||
+    aiSummary.narrativeSummary ||
+    aiSummary.narrative_summary ||
+    null;
+  const aiRecommendations =
+    aiSummary.aiRecommendations ||
+    aiSummary.recommendations ||
+    [];
+  const aiSource = aiSummary.aiSource || aiSummary.source || null;
 
   return (
     <div

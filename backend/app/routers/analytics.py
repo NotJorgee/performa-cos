@@ -343,17 +343,49 @@ def get_employee_ai_summary(
         today = datetime.date.today()
         days_until_exp = max(0, (emp.contract_end_date - today).days)
 
+    # Read cached Gemini AI synthesis on the latest renewal application
+    latest_renewal = (
+        db.query(models.RenewalApplication)
+        .filter(models.RenewalApplication.employee_id == employee_id)
+        .order_by(models.RenewalApplication.id.desc())
+        .first()
+    )
+    cached_ai = latest_renewal.ai_synthesis if (latest_renewal and latest_renewal.ai_synthesis) else None
+    executive_narrative = cached_ai.get("narrative_summary") if cached_ai else None
+    ai_strengths = cached_ai.get("key_strengths") if cached_ai else None
+    ai_recommendations = cached_ai.get("recommendations") if cached_ai else None
+    ai_source = cached_ai.get("source") if cached_ai else None
+    ai_generated_at = cached_ai.get("generated_at") if cached_ai else None
+
+    display_accomplishments = accomplishments
+    if ai_strengths and len(ai_strengths) > 0:
+        display_accomplishments = ai_strengths
+
+    display_work_trends = list(work_trends)
+    if executive_narrative:
+        display_work_trends = [executive_narrative] + display_work_trends
+    if ai_recommendations and len(ai_recommendations) > 0:
+        for rec in ai_recommendations:
+            display_work_trends.append(f"Strategic Growth Focus: {rec}")
+
     return {
         "employeeId": employee_id,
         "employeeName": emp.full_name,
-        "confidenceScore": 96 if total_tasks >= 5 else (85 if total_tasks > 0 else 70),
+        "confidenceScore": 98 if (cached_ai and total_tasks >= 5) else (95 if total_tasks >= 5 else 85),
         "totalDarEntries": total_tasks,
         "daysUntilExpiration": days_until_exp,
         "latestScore": latest_score,
         "previousScore": prev_score,
         "totalContracts": emp.total_contracts or 1,
-        "monthlyAccomplishments": accomplishments,
-        "workTrends": work_trends,
+        "monthlyAccomplishments": display_accomplishments,
+        "rawAccomplishments": accomplishments,
+        "executiveNarrative": executive_narrative,
+        "aiStrengths": ai_strengths or [],
+        "aiRecommendations": ai_recommendations or [],
+        "aiSource": ai_source,
+        "aiGeneratedAt": ai_generated_at,
+        "isAiSynthesized": bool(cached_ai),
+        "workTrends": display_work_trends,
         "frequentActivities": frequent_activities,
         "productivitySummary": {
             "totalTasks": total_tasks,
@@ -364,6 +396,77 @@ def get_employee_ai_summary(
         },
         "attendanceStats": att_stats,
     }
+
+
+@router.post("/employee/{employee_id}/synthesize-ai")
+def trigger_employee_ai_synthesis(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Explicitly triggers or refreshes Gemini AI DAR synthesis for an employee.
+    Used by supervisors to generate/update term appraisal.
+    """
+    if current_user.role not in ["Department Head", "HR Personnel"] and current_user.id != employee_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    emp = db.query(models.UserAccount).filter(models.UserAccount.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    latest_renewal = (
+        db.query(models.RenewalApplication)
+        .filter(models.RenewalApplication.employee_id == employee_id)
+        .order_by(models.RenewalApplication.id.desc())
+        .first()
+    )
+
+    from ..ai_service import synthesize_and_cache_renewal_dar, generate_gemini_synthesis
+    from ..database import SessionLocal
+
+    if latest_renewal:
+        synthesize_and_cache_renewal_dar(SessionLocal, employee_id, latest_renewal.id)
+        db.refresh(latest_renewal)
+        return {
+            "success": True,
+            "message": "AI performance synthesis successfully generated and cached.",
+            "synthesis": latest_renewal.ai_synthesis,
+        }
+    else:
+        from .attendance import get_employee_attendance_stats
+        dars = (
+            db.query(models.DailyAccomplishmentReport)
+            .filter(models.DailyAccomplishmentReport.user_id == employee_id)
+            .order_by(models.DailyAccomplishmentReport.log_date.desc())
+            .all()
+        )
+        tasks_list = []
+        for d in dars:
+            raw_tasks = d.tasks or []
+            if isinstance(raw_tasks, list):
+                for t in raw_tasks:
+                    if isinstance(t, dict):
+                        tasks_list.append({
+                            "title": t.get("title") or t.get("job_description") or "Assigned Task",
+                            "work": t.get("workAccomplished") or t.get("work_accomplished") or "",
+                            "category": t.get("category") or "General Support",
+                            "quantity": t.get("quantity") or "",
+                        })
+        att_stats = get_employee_attendance_stats(employee_id=employee_id, db=db, current_user=current_user)
+        dept_name = emp.department.name if emp.department else "Academic / Administrative Unit"
+        synthesis = generate_gemini_synthesis(
+            employee_name=emp.full_name,
+            department_name=dept_name,
+            period="Current Contract Cycle",
+            tasks=tasks_list,
+            attendance_stats=att_stats,
+        )
+        return {
+            "success": True,
+            "message": "AI performance synthesis generated on demand.",
+            "synthesis": synthesis,
+        }
 
 
 SYSTEM_LAUNCH_DATE = datetime.date(2026, 11, 1)
@@ -597,15 +700,15 @@ def get_executive_analytics(
                     status_label = "Outstanding"
                     badge_color = "#15803d"
                     badge_bg = "#f0fdf4"
-                elif avg_score >= 80:
-                    status_label = "Very Satisfactory"
-                    badge_color = "#15803d"
-                    badge_bg = "#f0fdf4"
                 elif avg_score >= 70:
+                    status_label = "Very Satisfactory"
+                    badge_color = "#2563eb"
+                    badge_bg = "#eff6ff"
+                elif avg_score >= 50:
                     status_label = "Satisfactory"
                     badge_color = "#0284c7"
                     badge_bg = "#f0f9ff"
-                elif avg_score >= 60:
+                elif avg_score >= 30:
                     status_label = "Needs Improvement"
                     badge_color = "#d97706"
                     badge_bg = "#fffbeb"
@@ -686,28 +789,29 @@ def get_executive_analytics(
             s = ev.final_score
             total_sum += s
             if s >= 90: c_out += 1
-            elif s >= 80: c_vsat += 1
-            elif s >= 70: c_sat += 1
-            elif s >= 60: c_nimp += 1
+            elif s >= 70: c_vsat += 1
+            elif s >= 50: c_sat += 1
+            elif s >= 30: c_nimp += 1
             else: c_uns += 1
 
         pct_of = lambda c: round((c / total_evaluated) * 100, 1) if total_evaluated > 0 else 0.0
 
         month_rating_dist = [
             {"label": "Outstanding (90 – 100)", "count": c_out, "pct": pct_of(c_out), "color": "#16a34a"},
-            {"label": "Very Satisfactory (80 – 89.9)", "count": c_vsat, "pct": pct_of(c_vsat), "color": "#2563eb"},
-            {"label": "Satisfactory (70 – 79.9)", "count": c_sat, "pct": pct_of(c_sat), "color": "#0284c7"},
-            {"label": "Needs Improvement (60 – 69.9)", "count": c_nimp, "pct": pct_of(c_nimp), "color": "#f59e0b"},
-            {"label": "Unsatisfactory (Below 60)", "count": c_uns, "pct": pct_of(c_uns), "color": "#dc2626"},
+            {"label": "Very Satisfactory (70 – 89.9)", "count": c_vsat, "pct": pct_of(c_vsat), "color": "#2563eb"},
+            {"label": "Satisfactory (50 – 69.9)", "count": c_sat, "pct": pct_of(c_sat), "color": "#0284c7"},
+            {"label": "Needs Improvement (30 – 49.9)", "count": c_nimp, "pct": pct_of(c_nimp), "color": "#f59e0b"},
+            {"label": "Unsatisfactory (Below 30)", "count": c_uns, "pct": pct_of(c_uns), "color": "#dc2626"},
         ]
 
         if total_evaluated > 0:
             inst_avg = round(total_sum / total_evaluated, 1)
             inst_rating = (
                 "Outstanding" if inst_avg >= 90
-                else "Very Satisfactory" if inst_avg >= 80
-                else "Satisfactory" if inst_avg >= 70
-                else "Needs Improvement"
+                else "Very Satisfactory" if inst_avg >= 70
+                else "Satisfactory" if inst_avg >= 50
+                else "Needs Improvement" if inst_avg >= 30
+                else "Unsatisfactory"
             )
         else:
             inst_avg = None

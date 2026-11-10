@@ -191,13 +191,13 @@ export default function ExecutiveAnalytics({
     { value: 95, isBenchmark: false },
     { value: 90, status: 'Outstanding', isBenchmark: true },
     { value: 85, isBenchmark: false },
-    { value: 80, status: 'Very Satisfactory', isBenchmark: true },
+    { value: 80, isBenchmark: false },
     { value: 75, isBenchmark: false },
-    { value: 70, status: 'Satisfactory', isBenchmark: true },
+    { value: 70, status: 'Very Satisfactory', isBenchmark: true },
     { value: 65, isBenchmark: false },
-    { value: 60, status: 'Needs Improvement', isBenchmark: true },
+    { value: 60, isBenchmark: false },
     { value: 55, isBenchmark: false },
-    { value: 50, status: 'Unsatisfactory', isBenchmark: true },
+    { value: 50, status: 'Satisfactory', isBenchmark: true },
   ];
 
   const getX = (index) => paddingLeft + colOffset + index * colWidth;
@@ -477,7 +477,7 @@ export default function ExecutiveAnalytics({
           <p className="muted" style={{ margin: 0, fontSize: '13px' }}>
             {activeDrilldownDomain
               ? `Individual department evaluation standing across Contract of Service (COS) evaluation periods for ${currentDomainMeta?.name}.`
-              : 'Official COS contract evaluation period trajectories across campus domains (Scale: 70 – 100). Click any domain tab below to inspect individual department units.'}
+              : 'Official COS contract evaluation period trajectories across campus domains (Scale: 50 – 100). Click any domain tab below to inspect individual department units.'}
           </p>
         </div>
 
@@ -696,11 +696,13 @@ export default function ExecutiveAnalytics({
                 ? (isPreLaunchMonth ? 'Pre-Deployment' : 'Awaiting Eval')
                 : rawVal >= 90
                 ? 'Outstanding'
-                : rawVal >= 80
-                ? 'Very Satisfactory'
                 : rawVal >= 70
+                ? 'Very Satisfactory'
+                : rawVal >= 50
                 ? 'Satisfactory'
-                : 'Needs Improvement';
+                : rawVal >= 30
+                ? 'Needs Improvement'
+                : 'Unsatisfactory';
 
               return (
                 <button
