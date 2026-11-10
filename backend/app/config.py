@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     SQL_ECHO: bool = False
-    APP_FRONTEND_URL: str = "http://localhost:5173"
+    APP_FRONTEND_URL: str = "https://localhost:5173"
 
     # Database
     DATABASE_URL: str = ""
@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: List[str] = [
+        "https://localhost:5173",
+        "https://127.0.0.1:5173",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
@@ -78,6 +80,11 @@ class Settings(BaseSettings):
         ),
         extra="ignore",
     )
+
+    @property
+    def frontend_base_url(self) -> str:
+        """Return APP_FRONTEND_URL without a trailing slash for clean link joins."""
+        return (self.APP_FRONTEND_URL or "https://localhost:5173").rstrip("/")
 
 
 settings = Settings()

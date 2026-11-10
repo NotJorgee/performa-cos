@@ -78,7 +78,7 @@ def send_otp_email(to: str, otp_code: str, name: str = "") -> bool:
 
 def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR Personnel") -> bool:
     """Sends an official institutional onboarding invitation with tokenized registration link and role-specific salutation."""
-    registration_url = f"{settings.APP_FRONTEND_URL}/?token={token}"
+    registration_url = f"{settings.frontend_base_url}/?token={token}"
     role_label = "COS Employee" if "COS" in role else "Administrator / Department Head"
     if "Department Head" in role or "Dept" in role:
         salutation = "Dear Department Head,"
@@ -133,7 +133,7 @@ def send_welcome_email(to: str, name: str, role: str) -> bool:
         You can now sign in to the PerformaCOS portal using your institutional credentials to access your dashboard, monitor performance records, and participate in evaluation workflows.
       </p>
       <div style="text-align:center;margin:24px 0;">
-        <a href="{settings.APP_FRONTEND_URL}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px;">Go to Login Portal</a>
+        <a href="{settings.frontend_base_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px;">Go to Login Portal</a>
       </div>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
@@ -144,7 +144,7 @@ def send_welcome_email(to: str, name: str, role: str) -> bool:
 
 def send_renewal_intent_submitted_email(to: str, emp_name: str, dept_name: str, period: str, dept_head_name: str = "") -> bool:
     """Dispatches notice to Department Head when a subordinate files renewal intent."""
-    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    portal_url = f"{settings.frontend_base_url}/"
     salutation = f"Dear <strong>{dept_head_name}</strong>," if dept_head_name else "Dear Department Head,"
     html = f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
@@ -174,7 +174,7 @@ def send_renewal_intent_submitted_email(to: str, emp_name: str, dept_name: str, 
 
 def send_endorsement_decision_email(to: str, emp_name: str, dept_name: str, status: str, notes_or_grounds: str, dept_head_name: str, hr_name: str = "") -> bool:
     """Dispatches supervisory endorsement notice to HR Personnel."""
-    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    portal_url = f"{settings.frontend_base_url}/"
     is_recommended = "Recommend" in status and "Not" not in status
     status_color = "#15803d" if is_recommended else "#b91c1c"
     status_bg = "#f0fdf4" if is_recommended else "#fef2f2"
@@ -212,7 +212,7 @@ def send_endorsement_decision_email(to: str, emp_name: str, dept_name: str, stat
 
 def send_contract_resolution_email(to: str, emp_name: str, decision: str, remarks: str, period: str) -> bool:
     """Dispatches final contract resolution decision from HR to the COS Employee."""
-    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    portal_url = f"{settings.frontend_base_url}/"
     is_approved = "Yes" in decision or "Renew" in decision or "Approve" in decision
     decision_color = "#15803d" if is_approved else "#b91c1c"
     decision_bg = "#f0fdf4" if is_approved else "#fef2f2"
@@ -249,7 +249,7 @@ def send_contract_resolution_email(to: str, emp_name: str, decision: str, remark
 
 def send_dept_head_contract_resolution_email(to: str, dept_head_name: str, emp_name: str, dept_name: str, decision: str, remarks: str, period: str) -> bool:
     """Dispatches contract resolution notice from HR to the Department Head."""
-    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    portal_url = f"{settings.frontend_base_url}/"
     is_approved = "Yes" in decision or "Renew" in decision or "Approve" in decision
     decision_color = "#15803d" if is_approved else "#b91c1c"
     decision_bg = "#f0fdf4" if is_approved else "#fef2f2"
@@ -287,7 +287,7 @@ def send_dept_head_contract_resolution_email(to: str, dept_head_name: str, emp_n
 
 def send_contract_window_alert_email(to: str, emp_name: str, days_left: int, end_date: str) -> bool:
     """Dispatches proactive contract expiration and renewal intent window reminder to employee."""
-    portal_url = f"{settings.APP_FRONTEND_URL}/"
+    portal_url = f"{settings.frontend_base_url}/"
     urgency_subject = "Action Required" if days_left <= 14 else "Notice"
     html = f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">

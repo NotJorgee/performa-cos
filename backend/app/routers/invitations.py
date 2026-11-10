@@ -10,11 +10,16 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..config import settings
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth import get_current_user, resolve_onboarding_department_id
 from ..email_service import send_invitation_email
 from .audit import log_audit
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations"])
+
+
+def _build_invite_url(token: str) -> str:
+    """Build the frontend invitation onboarding URL using configured base URL."""
+    return f"{settings.frontend_base_url}/?token={token}"
 
 
 @router.post("", response_model=schemas.InvitationTokenOut, status_code=status.HTTP_201_CREATED)
@@ -44,11 +49,7 @@ def create_invitation(
 
     expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=30)
 
-    dept_id = payload.department_id
-    if not dept_id and payload.department_name:
-        dept = db.query(models.Department).filter(models.Department.name == payload.department_name).first()
-        if dept:
-            dept_id = dept.id
+    dept_id = resolve_onboarding_department_id(db, payload.role, payload.department_id, payload.department_name)
 
     invitation = models.InvitationToken(
         token=token_str,
@@ -81,7 +82,7 @@ def create_invitation(
     )
 
     # Attach computed invite_url
-    invitation.invite_url = f"{settings.APP_FRONTEND_URL}/?token={invitation.token}"
+    invitation.invite_url = _build_invite_url(invitation.token)
     return invitation
 
 
@@ -98,7 +99,7 @@ def list_invitations(
         )
     invites = db.query(models.InvitationToken).order_by(models.InvitationToken.created_at.desc()).all()
     for inv in invites:
-        inv.invite_url = f"{settings.APP_FRONTEND_URL}/?token={inv.token}"
+        inv.invite_url = _build_invite_url(inv.token)
     return invites
 
 
@@ -141,10 +142,11 @@ def revoke_invitation(
 @router.get("/validate")
 def validate_invitation(token: str, db: Session = Depends(get_db)):
     """Public endpoint — validates an invitation token without requiring authentication."""
+    clean_token = (token or "").strip()
     invite = (
         db.query(models.InvitationToken)
         .filter(
-            models.InvitationToken.token == token,
+            models.InvitationToken.token == clean_token,
             models.InvitationToken.used_at == None,
         )
         .first()
@@ -169,5 +171,5 @@ def validate_invitation(token: str, db: Session = Depends(get_db)):
         "department_name": dept_name,
         "email": invite.email,
         "token": invite.token,
-        "invite_url": f"{settings.APP_FRONTEND_URL}/?token={invite.token}",
+        "invite_url": _build_invite_url(invite.token),
     }

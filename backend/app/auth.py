@@ -2,6 +2,7 @@
 auth.py — JWT and bcrypt utilities for PerformaCOS.
 """
 import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -68,3 +69,45 @@ def get_current_user(
             detail="User account not found or inactive.",
         )
     return user
+
+
+def validate_password_complexity(password: str) -> None:
+    """Enforce institutional password complexity rules (8+ chars, upper, lower, digit, symbol)."""
+    if len(password or "") < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter (A-Z).")
+    if not re.search(r"[a-z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter (a-z).")
+    if not re.search(r"[0-9]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one number (0-9).")
+    if not re.search(r"[^A-Za-z0-9]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one special symbol.")
+
+
+def resolve_onboarding_department_id(
+    db: Session,
+    role: str,
+    department_id: Optional[int] = None,
+    department_name: Optional[str] = None,
+) -> Optional[int]:
+    """Resolve onboarding target department; lock HR Personnel accounts strictly to HRMDO Office."""
+    if role == "HR Personnel":
+        hrmdo = (
+            db.query(models.Department)
+            .filter(models.Department.name == "HRMDO Office")
+            .first()
+        )
+        return hrmdo.id if hrmdo else department_id
+
+    if department_id:
+        return department_id
+    if department_name:
+        dept = (
+            db.query(models.Department)
+            .filter(models.Department.name == department_name)
+            .first()
+        )
+        if dept:
+            return dept.id
+    return None

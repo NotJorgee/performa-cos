@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
+import OnboardingUserModal from './OnboardingUserModal';
+import { clearAllPerformaCache } from '../../utils/swrCache';
 import {
   EVSU_DEPARTMENTS,
   EVSU_DEPARTMENT_DOMAINS,
@@ -103,13 +105,12 @@ export default function UserManagement({
   const [transferDeptId, setTransferDeptId] = useState('');
   const [userModalSuccess, setUserModalSuccess] = useState(null);
 
-  // Invite Modal Form
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('COS Employee');
-  const [inviteDeptName, setInviteDeptName] = useState('Computer Studies Department');
-  const [inviteJobTitle, setInviteJobTitle] = useState('');
-  const [createdInvite, setCreatedInvite] = useState(null);
-  const [copiedLink, setCopiedLink] = useState(false);
+  // Invite / Manual Onboarding Modal Config
+  const [inviteModalConfig, setInviteModalConfig] = useState({
+    role: 'COS Employee',
+    departmentName: '',
+    scope: 'departments',
+  });
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -483,59 +484,27 @@ export default function UserManagement({
   };
 
   // -------------------------------------------------------------
-  // Token Invite Handlers (UC-07)
+  // Token Invite & Manual Provisioning Handlers (UC-07)
   // -------------------------------------------------------------
-  const handleOpenInviteModal = (preselectedRole = 'COS Employee', preselectedDeptName = '') => {
-    setInviteEmail('');
-    setInviteRole(preselectedRole);
-    setInviteDeptName(preselectedDeptName || departments[0]?.name || 'Computer Studies Department');
-    setInviteJobTitle('');
-    setCreatedInvite(null);
-    setCopiedLink(false);
+  const handleOpenInviteModal = (
+    preselectedRole = 'COS Employee',
+    preselectedDeptName = '',
+    scope = null
+  ) => {
+    const resolvedScope =
+      scope || (preselectedRole === 'HR Personnel' ? 'hr_admins' : 'departments');
+    const resolvedRole = resolvedScope === 'hr_admins' ? 'HR Personnel' : preselectedRole;
+    const resolvedDept =
+      resolvedScope === 'hr_admins'
+        ? 'HRMDO Office'
+        : preselectedDeptName || departments[0]?.name || 'Computer Studies Department';
+
+    setInviteModalConfig({
+      role: resolvedRole,
+      departmentName: resolvedDept,
+      scope: resolvedScope,
+    });
     setShowInviteModal(true);
-  };
-
-  const handleSendInviteSubmit = async (e) => {
-    e.preventDefault();
-    if (!inviteEmail.trim()) return;
-
-    try {
-      const res = await api.invitations.create({
-        email: inviteEmail.trim(),
-        role: inviteRole,
-        department_name: inviteDeptName,
-      });
-
-      const fullUrl = res.invite_url || `${window.location.origin}/?token=${res.token}`;
-      setCreatedInvite({
-        token: res.token,
-        email: inviteEmail.trim(),
-        role: inviteRole,
-        department: inviteDeptName,
-        url: fullUrl,
-      });
-      showToast(`Official invitation link created for ${inviteEmail.trim()}!`);
-    } catch (err) {
-      console.warn('Create invite error:', err);
-      const fallbackToken = `EVSU-INV-${Math.floor(10000 + Math.random() * 90000)}`;
-      const fullUrl = `${window.location.origin}/?token=${fallbackToken}`;
-      setCreatedInvite({
-        token: fallbackToken,
-        email: inviteEmail.trim(),
-        role: inviteRole,
-        department: inviteDeptName,
-        url: fullUrl,
-      });
-      showToast(`Invitation token (${fallbackToken}) generated.`);
-    }
-  };
-
-  const handleCopyLink = () => {
-    if (createdInvite?.url) {
-      navigator.clipboard.writeText(createdInvite.url);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    }
   };
 
   return (
@@ -636,7 +605,7 @@ export default function UserManagement({
                     padding: '8px 16px',
                     boxShadow: '0 2px 6px rgba(122, 12, 46, 0.15)',
                   }}
-                  onClick={() => handleOpenInviteModal('COS Employee')}
+                  onClick={() => handleOpenInviteModal('COS Employee', '', 'departments')}
                 >
                   <UserPlus size={16} />
                   <span>+ Invite Personnel</span>
@@ -656,7 +625,7 @@ export default function UserManagement({
                   padding: '8px 16px',
                   boxShadow: '0 2px 6px rgba(122, 12, 46, 0.15)',
                 }}
-                onClick={() => handleOpenInviteModal('HR Personnel', 'HRMDO Office')}
+                onClick={() => handleOpenInviteModal('HR Personnel', 'HRMDO Office', 'hr_admins')}
               >
                 <UserPlus size={16} />
                 <span>+ Invite HR Administrator</span>
@@ -1319,7 +1288,7 @@ export default function UserManagement({
                                 fontWeight: 700,
                                 cursor: 'pointer',
                               }}
-                              onClick={() => handleOpenInviteModal('Department Head', dept.name)}
+                              onClick={() => handleOpenInviteModal('Department Head', dept.name, 'departments')}
                             >
                               <UserPlus size={14} />
                               <span>Assign / Invite Department Head</span>
@@ -1364,7 +1333,7 @@ export default function UserManagement({
                             borderColor: 'var(--line)',
                             cursor: 'pointer',
                           }}
-                          onClick={() => handleOpenInviteModal('COS Employee', dept.name)}
+                          onClick={() => handleOpenInviteModal('COS Employee', dept.name, 'departments')}
                         >
                           <Plus size={14} color="var(--brand-700)" />
                           <span>Invite to Department</span>
@@ -1388,7 +1357,7 @@ export default function UserManagement({
                             type="button"
                             className="btn btn-sm btn-primary"
                             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                            onClick={() => handleOpenInviteModal('COS Employee', dept.name)}
+                            onClick={() => handleOpenInviteModal('COS Employee', dept.name, 'departments')}
                           >
                             <UserPlus size={13} />
                             <span>Invite First Employee</span>
@@ -1679,7 +1648,7 @@ export default function UserManagement({
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
-                onClick={() => handleOpenInviteModal('HR Personnel', 'HRMDO Office')}
+                onClick={() => handleOpenInviteModal('HR Personnel', 'HRMDO Office', 'hr_admins')}
               >
                 <UserPlus size={14} />
                 <span>+ Invite HR Administrator</span>
@@ -2486,171 +2455,22 @@ export default function UserManagement({
       )}
 
       {/* ========================================================= */}
-      {/* MODAL 4: Universal Tokenized Invitation Modal (UC-07) */}
+      {/* MODAL 4: Tokenized Invitation & Manual Onboarding Modal   */}
       {/* ========================================================= */}
-      {showInviteModal && (
-        <div
-          className="modal-overlay open"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowInviteModal(false);
-          }}
-        >
-          <div className="modal-card" style={{ maxWidth: '520px' }}>
-            <div className="modal-header">
-              <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <UserPlus size={18} color="var(--brand-700)" />
-                <span>Generate Official Registration Invite</span>
-              </div>
-              <button type="button" className="modal-close" onClick={() => setShowInviteModal(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {!createdInvite ? (
-              <form onSubmit={handleSendInviteSubmit}>
-                <p className="muted" style={{ margin: '0 0 16px', fontSize: '12.5px', lineHeight: 1.5 }}>
-                  Generate a verified institutional registration token. The invited personnel will use this link to self-enroll with their institutional credentials.
-                </p>
-
-                <div className="form-group" style={{ marginBottom: '14px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 700 }}>
-                    Recipient Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    placeholder="e.g. employee@evsu.edu.ph"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '12px',
-                    marginBottom: '14px',
-                  }}
-                >
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700 }}>Account Role</label>
-                    <select
-                      className="form-control"
-                      value={inviteRole}
-                      onChange={(e) => setInviteRole(e.target.value)}
-                    >
-                      <option value="COS Employee">COS Employee</option>
-                      <option value="Department Head">Department Head</option>
-                      <option value="HR Personnel">HR Personnel</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700 }}>Target Department</label>
-                    <select
-                      className="form-control"
-                      value={inviteDeptName}
-                      onChange={(e) => setInviteDeptName(e.target.value)}
-                    >
-                      {EVSU_DEPARTMENT_GROUPS.map((grp) => {
-                        const groupDepts = departments.filter((d) =>
-                          grp.departments.includes(d.name)
-                        );
-                        if (groupDepts.length === 0) return null;
-                        return (
-                          <optgroup key={grp.key} label={grp.name}>
-                            {groupDepts.map((d) => (
-                              <option key={d.id} value={d.name}>
-                                {d.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button type="button" className="btn btn-sm" onClick={() => setShowInviteModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-sm btn-primary">
-                    Generate Invitation Link
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div>
-                <div
-                  style={{
-                    padding: '16px',
-                    borderRadius: '8px',
-                    background: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    marginBottom: '18px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontWeight: 700, marginBottom: '6px' }}>
-                    <Check size={18} />
-                    <span>Invitation Successfully Generated!</span>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#166534' }}>
-                    Token: <b>{createdInvite.token}</b> · Role: <b>{createdInvite.role}</b>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
-                    Department: <b>{createdInvite.department}</b> · Sent to: <b>{createdInvite.email}</b>
-                  </div>
-                </div>
-
-                <div className="form-group" style={{ marginBottom: '18px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 700 }}>Single-Use Enrollment URL</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      className="form-control"
-                      readOnly
-                      value={createdInvite.url}
-                      style={{ background: '#f8fafc', fontSize: '12px' }}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
-                      onClick={handleCopyLink}
-                    >
-                      {copiedLink ? <Check size={14} /> : <Copy size={14} />}
-                      <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => {
-                      setCreatedInvite(null);
-                      setInviteEmail('');
-                    }}
-                  >
-                    Invite Another User
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    onClick={() => setShowInviteModal(false)}
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <OnboardingUserModal
+        isOpen={showInviteModal}
+        initialRole={inviteModalConfig.role}
+        initialDepartmentName={inviteModalConfig.departmentName}
+        scope={inviteModalConfig.scope}
+        departments={departments}
+        existingEmployeeIds={users.map((u) => u.employee_id_number).filter(Boolean)}
+        onClose={() => setShowInviteModal(false)}
+        onToast={showToast}
+        onUserCreated={async () => {
+          clearAllPerformaCache();
+          await loadData();
+        }}
+      />
     </div>
   );
 }

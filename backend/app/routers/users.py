@@ -3,14 +3,21 @@ routers/users.py — User account management & profile endpoints for PerformaCOS
 """
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from ..database import get_db
 from .. import models, schemas
-from ..auth import get_current_user, hash_password, verify_password
+from ..auth import (
+    get_current_user,
+    hash_password,
+    verify_password,
+    validate_password_complexity,
+    resolve_onboarding_department_id,
+)
 from .auth import _add_six_months
+from ..email_service import send_welcome_email
 from ..id_generator import generate_evsu_employee_id
 from .audit import log_audit
 
@@ -81,46 +88,98 @@ def get_user_detail(
     return user
 
 
+def _assemble_full_name(payload: schemas.UserAccountCreate) -> str:
+    """Assemble full legal name from structured parts or fall back to payload.full_name."""
+    if payload.full_name and payload.full_name.strip():
+        return payload.full_name.strip()
+    prefix = f"{payload.title.strip()} " if payload.title and payload.title.strip() and payload.title.strip() != "None" else ""
+    first = (payload.first_name or "").strip()
+    middle = (payload.middle_initial or "").strip().rstrip(".")
+    middle_part = f"{middle}. " if middle else ""
+    last = (payload.last_name or "").strip()
+    return f"{prefix}{first} {middle_part}{last}".strip()
+
+
 @router.post("", response_model=schemas.UserAccountOut, status_code=status.HTTP_201_CREATED)
 def create_user_manual(
     payload: schemas.UserAccountCreate,
+    background_tasks: BackgroundTasks,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """
     Manually creates an employee or administrator account without an invitation token (HR only).
+    Supports structured onboarding fields (title, first/M.I./last name, password complexity,
+    starting & contract dates, optional custom ID override, active status, and welcome email).
     """
     if current_user.role != "HR Personnel":
         raise HTTPException(status_code=403, detail="Only HR Personnel can manually create accounts.")
 
-    existing = db.query(models.UserAccount).filter(models.UserAccount.email == payload.email).first()
+    if payload.role not in {"COS Employee", "Department Head", "HR Personnel"}:
+        raise HTTPException(status_code=400, detail="Unsupported account role.")
+
+    clean_email = payload.email.strip()
+    existing = (
+        db.query(models.UserAccount)
+        .filter(func.lower(models.UserAccount.email) == clean_email.lower())
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Institutional email is already registered.")
 
-    emp_id = payload.employee_id_number
-    if not emp_id:
+    validate_password_complexity(payload.password)
+
+    full_name = _assemble_full_name(payload)
+    if not full_name:
+        raise HTTPException(status_code=400, detail="Full name is required.")
+
+    starting_date = payload.starting_date or payload.date_appointed or payload.contract_start_date or datetime.date.today()
+    contract_start_date = (payload.contract_start_date or starting_date) if payload.role == "COS Employee" else None
+    contract_end_date = payload.contract_end_date
+    if payload.role == "COS Employee":
+        if not contract_end_date:
+            contract_end_date = _add_six_months(contract_start_date)
+    else:
+        contract_end_date = None
+
+    emp_id = (payload.employee_id_number or "").strip()
+    if emp_id:
+        existing_id = (
+            db.query(models.UserAccount)
+            .filter(models.UserAccount.employee_id_number == emp_id)
+            .first()
+        )
+        if existing_id:
+            raise HTTPException(status_code=400, detail=f"Employee ID '{emp_id}' is already assigned.")
+    else:
         emp_id = generate_evsu_employee_id(
             db=db,
-            full_name=payload.full_name,
-            contract_start_date=payload.date_appointed or datetime.date.today(),
+            full_name=full_name,
+            contract_start_date=starting_date,
+            first_name=payload.first_name,
+            middle_name=payload.middle_initial,
+            last_name=payload.last_name,
         )
 
-    start_date = payload.contract_start_date or payload.date_appointed or datetime.date.today()
-    contract_end_date = payload.contract_end_date
-    if payload.role == "COS Employee" and not contract_end_date:
-        contract_end_date = _add_six_months(start_date)
+    dept_id = resolve_onboarding_department_id(
+        db=db,
+        role=payload.role,
+        department_id=payload.department_id,
+        department_name=payload.department_name,
+    )
 
     new_user = models.UserAccount(
         employee_id_number=emp_id,
-        full_name=payload.full_name,
-        email=payload.email,
+        full_name=full_name,
+        email=clean_email,
         password_hash=hash_password(payload.password),
         role=payload.role,
-        department_id=payload.department_id,
-        job_title=payload.job_title,
-        contact_number=payload.contact_number,
-        date_appointed=payload.date_appointed or datetime.date.today(),
-        contract_start_date=start_date if payload.role == "COS Employee" else None,
+        department_id=dept_id,
+        job_title=(payload.job_title or "").strip() or None,
+        contact_number=(payload.contact_number or "").strip() or None,
+        date_appointed=starting_date,
+        contract_start_date=contract_start_date,
         contract_end_date=contract_end_date,
         is_active=payload.is_active,
         is_archived=False,
@@ -133,6 +192,22 @@ def create_user_manual(
     db.add(models.NotificationPreference(user_id=new_user.id))
     db.commit()
     db.refresh(new_user)
+
+    log_audit(
+        db=db,
+        action="USER_CREATED_MANUAL",
+        target_scope=f"User #{new_user.id} ({new_user.email})",
+        operation_details=(
+            f"Manually provisioned {new_user.role} account {new_user.employee_id_number} "
+            f"for {new_user.full_name} by {current_user.full_name}."
+        ),
+        user=current_user,
+        request=request,
+    )
+
+    if payload.send_welcome_email:
+        background_tasks.add_task(send_welcome_email, new_user.email, new_user.full_name, new_user.role)
+
     return new_user
 
 

@@ -1,7 +1,6 @@
 """
 routers/auth.py — Authentication routes for PerformaCOS.
 """
-import re
 import random
 import string
 import datetime
@@ -13,7 +12,15 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import get_db
 from .. import models, schemas
-from ..auth import hash_password, verify_password, create_access_token, get_current_user, hash_token
+from ..auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+    hash_token,
+    validate_password_complexity,
+    resolve_onboarding_department_id,
+)
 from ..email_service import send_otp_email, send_welcome_email
 from ..id_generator import generate_evsu_employee_id
 from .audit import log_audit
@@ -122,29 +129,22 @@ def register(
         raise HTTPException(status_code=400, detail="Email is already registered.")
 
     # 3. Institutional password complexity validation
-    if len(payload.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
-    if not re.search(r'[A-Z]', payload.password):
-        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter (A-Z).")
-    if not re.search(r'[a-z]', payload.password):
-        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter (a-z).")
-    if not re.search(r'[0-9]', payload.password):
-        raise HTTPException(status_code=400, detail="Password must contain at least one number (0-9).")
-    if not re.search(r'[^A-Za-z0-9]', payload.password):
-        raise HTTPException(status_code=400, detail="Password must contain at least one special symbol.")
+    validate_password_complexity(payload.password)
 
     # 4. Determine role and department strictly bound to HR invite
     role = invite.role or payload.role or "COS Employee"
-    dept_id = invite.department_id or payload.department_id
+    dept_id = resolve_onboarding_department_id(db, role, invite.department_id or payload.department_id)
 
     # 4. Starting date & contract expiration logic
     starting_date = payload.starting_date or datetime.date.today()
-    contract_start_date = payload.contract_start_date or starting_date
+    contract_start_date = (payload.contract_start_date or starting_date) if role == "COS Employee" else None
     contract_end_date = payload.contract_end_date
 
     if role == "COS Employee":
         if not contract_end_date:
             contract_end_date = _add_six_months(contract_start_date)
+    else:
+        contract_end_date = None
 
     # 5. Generate employee ID using campus starting date
     emp_id = generate_evsu_employee_id(

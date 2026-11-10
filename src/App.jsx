@@ -112,6 +112,9 @@ export default function App() {
     return 'login';
   }); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
 
+  // Explicit ?token= / ?invite= onboarding links must open signup even if a previous session exists in localStorage
+  const isInviteSignup = Boolean(inviteToken) && authView === 'signup';
+
   const [currentView, setCurrentView] = useState(() => parseHashView());
 
   // Centralized navigation handler syncing React state with browser history & URL hash
@@ -132,7 +135,7 @@ export default function App() {
 
   // Browser Back (←) and Forward (→) history synchronization
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isInviteSignup) return;
 
     const handleHashSync = () => {
       const targetView = parseHashView();
@@ -154,7 +157,7 @@ export default function App() {
       window.removeEventListener('hashchange', handleHashSync);
       window.removeEventListener('popstate', handleHashSync);
     };
-  }, [isAuthenticated, currentView]);
+  }, [isAuthenticated, isInviteSignup, currentView]);
 
   // Password recovery flow states
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -181,7 +184,7 @@ export default function App() {
   }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
-    if (!currentUser || !currentUser.id) return;
+    if (!isAuthenticated || isInviteSignup || !currentUser || !currentUser.id) return;
     refreshNotifications();
 
     const intervalId = setInterval(refreshNotifications, 30000);
@@ -193,7 +196,7 @@ export default function App() {
       clearInterval(intervalId);
       window.removeEventListener('focus', onFocus);
     };
-  }, [currentUser?.id, currentUser?.role, refreshNotifications]);
+  }, [isAuthenticated, isInviteSignup, currentUser?.id, currentUser?.role, refreshNotifications]);
 
   const handleMarkAsRead = async (id, readState = false) => {
     setNotifications((prev) =>
@@ -304,7 +307,34 @@ export default function App() {
     }
   };
 
-  // 1. Unauthenticated Login & Recovery Flows (UC-08, UC-07)
+  // 1. Tokenized Invitation Onboarding & Unauthenticated Flows (UC-08, UC-07)
+  if (isInviteSignup || (!isAuthenticated && authView === 'signup')) {
+    return (
+      <TokenizedSignUp
+        initialToken={inviteToken}
+        onBackToLogin={() => {
+          api.auth.logout();
+          clearAllPerformaCache();
+          setIsAuthenticated(false);
+          setAuthView('login');
+          setInviteToken('');
+          if (typeof window !== 'undefined' && window.history?.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }}
+        onLoginAsNewUser={(newUser) => {
+          clearAllPerformaCache();
+          setInviteToken('');
+          setAuthView('login');
+          if (typeof window !== 'undefined' && window.history?.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+          handleLogin(newUser);
+        }}
+      />
+    );
+  }
+
   if (!isAuthenticated) {
     if (authView === 'login') {
       return (
@@ -314,26 +344,6 @@ export default function App() {
             setRecoveryError(null);
             setRecoveryStatusMsg(null);
             setAuthView('forgot');
-          }}
-        />
-      );
-    }
-    if (authView === 'signup') {
-      return (
-        <TokenizedSignUp
-          initialToken={inviteToken}
-          onBackToLogin={() => {
-            setAuthView('login');
-            setInviteToken('');
-            if (typeof window !== 'undefined' && window.history?.replaceState) {
-              window.history.replaceState({}, '', window.location.pathname);
-            }
-          }}
-          onLoginAsNewUser={(newUser) => {
-            if (typeof window !== 'undefined' && window.history?.replaceState) {
-              window.history.replaceState({}, '', window.location.pathname);
-            }
-            handleLogin(newUser);
           }}
         />
       );

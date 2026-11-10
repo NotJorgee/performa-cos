@@ -107,7 +107,15 @@ class UserAccountBase(BaseModel):
 
 
 class UserAccountCreate(UserAccountBase):
+    full_name: Optional[str] = None
     password: str
+    department_name: Optional[str] = None
+    first_name: Optional[str] = None
+    middle_initial: Optional[str] = None
+    last_name: Optional[str] = None
+    title: Optional[str] = None
+    starting_date: Optional[datetime.date] = None
+    send_welcome_email: bool = True
 
 
 class UserAccountOut(UserAccountBase):

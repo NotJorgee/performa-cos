@@ -16,20 +16,15 @@ import {
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
+import PasswordComplexityChecklist from '../common/PasswordComplexityChecklist';
+import {
+  UNIVERSITY_TITLES,
+  getTodayIsoDate as getTodayStr,
+  evaluatePasswordComplexity,
+  formatFullLegalName,
+} from '../../utils/onboardingHelpers';
 
-export const UNIVERSITY_TITLES = [
-  'None',
-  'Engr.',
-  'Dr.',
-  'Prof.',
-  'Assoc. Prof.',
-  'Asst. Prof.',
-  'Instr.',
-  'Atty.',
-  'Arch.',
-];
-
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+export { UNIVERSITY_TITLES };
 
 export default function TokenizedSignUp({
   initialToken = '',
@@ -166,14 +161,7 @@ export default function TokenizedSignUp({
 
   // Active password values and institutional complexity verification
   const currentPassword = roleMode === 'cos' ? cosPassword : adminPassword;
-  const currentConfirm = roleMode === 'cos' ? cosConfirm : adminConfirm;
-
-  const hasMinLength = currentPassword.length >= 8;
-  const hasUpper = /[A-Z]/.test(currentPassword);
-  const hasLower = /[a-z]/.test(currentPassword);
-  const hasNumber = /[0-9]/.test(currentPassword);
-  const hasSpecial = /[^A-Za-z0-9]/.test(currentPassword);
-  const isPasswordComplex = hasMinLength && hasUpper && hasLower && hasNumber && hasSpecial;
+  const { isValid: isPasswordComplex } = evaluatePasswordComplexity(currentPassword);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -222,9 +210,12 @@ export default function TokenizedSignUp({
     setIsSubmitting(true);
 
     try {
-      const prefix = titlePrefix && titlePrefix !== 'None' ? `${titlePrefix} ` : '';
-      const middle = middleInitial ? `${middleInitial.replace(/\.$/, '')}. ` : '';
-      const fullLegalName = `${prefix}${firstName} ${middle}${lastName}`.trim();
+      const fullLegalName = formatFullLegalName({
+        titlePrefix,
+        firstName,
+        middleInitial,
+        lastName,
+      });
 
       const payload = {
         invitation_token: tokenToUse,
@@ -251,6 +242,7 @@ export default function TokenizedSignUp({
         roleLabel: user.role,
         role: user.role,
         department: user.department,
+        departmentId: user.departmentId,
         jobTitle: user.jobTitle,
         employeeIdNumber: user.employeeIdNumber,
         email: user.email,
@@ -809,90 +801,7 @@ export default function TokenizedSignUp({
                 </div>
 
                 {/* Real-time Password Complexity Badges */}
-                {cosPassword.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasMinLength ? '#dcfce7' : '#f1f5f9',
-                        color: hasMinLength ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasMinLength ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasMinLength ? '✓' : '•'} 8+ Characters
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasUpper ? '#dcfce7' : '#f1f5f9',
-                        color: hasUpper ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasUpper ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasUpper ? '✓' : '•'} Uppercase (A-Z)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasLower ? '#dcfce7' : '#f1f5f9',
-                        color: hasLower ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasLower ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasLower ? '✓' : '•'} Lowercase (a-z)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasNumber ? '#dcfce7' : '#f1f5f9',
-                        color: hasNumber ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasNumber ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasNumber ? '✓' : '•'} Number (0-9)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasSpecial ? '#dcfce7' : '#f1f5f9',
-                        color: hasSpecial ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasSpecial ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasSpecial ? '✓' : '•'} Symbol (!@#$)
-                    </span>
-                  </div>
-                )}
+                <PasswordComplexityChecklist password={cosPassword} />
 
                 {/* Agreement Checkbox */}
                 <label
@@ -1243,90 +1152,7 @@ export default function TokenizedSignUp({
                 </div>
 
                 {/* Real-time Password Complexity Badges */}
-                {adminPassword.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasMinLength ? '#dcfce7' : '#f1f5f9',
-                        color: hasMinLength ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasMinLength ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasMinLength ? '✓' : '•'} 8+ Characters
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasUpper ? '#dcfce7' : '#f1f5f9',
-                        color: hasUpper ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasUpper ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasUpper ? '✓' : '•'} Uppercase (A-Z)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasLower ? '#dcfce7' : '#f1f5f9',
-                        color: hasLower ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasLower ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasLower ? '✓' : '•'} Lowercase (a-z)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasNumber ? '#dcfce7' : '#f1f5f9',
-                        color: hasNumber ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasNumber ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasNumber ? '✓' : '•'} Number (0-9)
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10.5px',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: hasSpecial ? '#dcfce7' : '#f1f5f9',
-                        color: hasSpecial ? '#15803d' : '#64748b',
-                        border: `1px solid ${hasSpecial ? '#86efac' : '#e2e8f0'}`,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      {hasSpecial ? '✓' : '•'} Symbol (!@#$)
-                    </span>
-                  </div>
-                )}
+                <PasswordComplexityChecklist password={adminPassword} />
 
                 {/* Admin Confidentiality Agreement */}
                 <label
