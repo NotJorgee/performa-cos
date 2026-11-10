@@ -37,7 +37,7 @@ def get_url() -> str:
     env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
     load_dotenv(env_path, override=False)
 
-    url = os.getenv("DATABASE_URL", "")
+    url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_POOLER_URL", "")
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
     return url
