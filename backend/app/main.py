@@ -295,6 +295,7 @@ def submit_evaluation_score(
     if payload.dimension_scores:
         ev.dimension_scores = payload.dimension_scores
 
+    ev.is_fast_track_rejected = False
     ev.status = "Completed"
     db.commit()
     db.refresh(ev)
@@ -353,6 +354,7 @@ def submit_employee_evaluation_score(
     if payload.dimension_scores:
         ev.dimension_scores = payload.dimension_scores
 
+    ev.is_fast_track_rejected = False
     ev.status = "Completed"
     db.commit()
     db.refresh(ev)
@@ -519,18 +521,130 @@ def submit_renewal(
 ):
     now = datetime.datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    is_decline = (payload.intent or "renew").strip().lower() == "decline"
 
-    # 1. Create Renewal Application record
-    renewal = models.RenewalApplication(
-        employee_id=current_user.id,
-        period=payload.period,
-        status="Submitted",
-        loi_file_url=payload.loi_file_url,
-        loi_original_filename=payload.loi_original_filename,
-        mar_narrative=payload.mar_narrative,
-        submitted_at=now,
+    dept_name = (
+        current_user.department.name
+        if current_user.department
+        else "your department"
     )
-    db.add(renewal)
+
+    if is_decline:
+        reason_text = (payload.reason or "").strip()
+        decline_narrative = (
+            f"[COS DECLINED RENEWAL]: {reason_text}"
+            if reason_text
+            else "[COS DECLINED RENEWAL]: Employee opted not to renew contract."
+        )
+
+        # Reuse an un-finalized renewal row in the active cycle if changing decision
+        existing_renewal = (
+            db.query(models.RenewalApplication)
+            .filter(
+                models.RenewalApplication.employee_id == current_user.id,
+                models.RenewalApplication.hrmo_approval == None,
+                models.RenewalApplication.status.in_(["Submitted", "Declined", "Pending HRMO"]),
+            )
+            .order_by(models.RenewalApplication.id.desc())
+            .first()
+        )
+        if existing_renewal and (not current_user.contract_start_date or (existing_renewal.submitted_at and existing_renewal.submitted_at.date() >= current_user.contract_start_date)):
+            existing_renewal.status = "Declined"
+            existing_renewal.department_head_endorsement = None
+            existing_renewal.mar_narrative = decline_narrative
+            existing_renewal.submitted_at = now
+            renewal = existing_renewal
+        else:
+            renewal = models.RenewalApplication(
+                employee_id=current_user.id,
+                period=payload.period,
+                status="Declined",
+                mar_narrative=decline_narrative,
+                submitted_at=now,
+            )
+            db.add(renewal)
+
+        # Remove any un-scored Open evaluation record for this period if employee switched to Decline
+        open_eval = (
+            db.query(models.EvaluationRecord)
+            .filter(
+                models.EvaluationRecord.employee_id == current_user.id,
+                models.EvaluationRecord.period == payload.period,
+                models.EvaluationRecord.status == "Open",
+            )
+            .first()
+        )
+        if open_eval:
+            db.delete(open_eval)
+
+        db.commit()
+        db.refresh(renewal)
+
+        db.add(
+            models.Notification(
+                user_id=current_user.id,
+                title="Non-Renewal Intent Recorded",
+                message=f"Your decision not to renew your contract for {payload.period} has been recorded and routed to HRMO for end-of-contract offboarding.",
+                category="contract",
+                is_read=False,
+                action_view="contract_status",
+                created_at=now,
+            )
+        )
+        reason_suffix = f" Reason: {reason_text}" if reason_text else ""
+        db.add(
+            models.Notification(
+                target_role="HR Personnel",
+                title=f"Contract Non-Renewal Intent: {current_user.full_name}",
+                message=f"{current_user.full_name} ({dept_name}) opted not to renew their contract.{reason_suffix} Ready for offboarding closure.",
+                category="contract",
+                is_read=False,
+                action_view="evaluation_management",
+                created_at=now,
+            )
+        )
+        db.commit()
+
+        log_audit(
+            db=db,
+            action="RENEWAL_INTENT_DECLINED",
+            target_scope=f"User #{current_user.id} ({current_user.full_name})",
+            operation_details=f"Employee declined contract renewal for period {payload.period}.{reason_suffix}",
+            user=current_user,
+        )
+        return renewal
+
+    # 1. Create (or update prior Declined row if user changed decision back to renew) Renewal Application record
+    prior_declined = (
+        db.query(models.RenewalApplication)
+        .filter(
+            models.RenewalApplication.employee_id == current_user.id,
+            models.RenewalApplication.hrmo_approval == None,
+            models.RenewalApplication.status == "Declined",
+        )
+        .order_by(models.RenewalApplication.id.desc())
+        .first()
+    )
+    if prior_declined:
+        prior_declined.period = payload.period
+        prior_declined.status = "Submitted"
+        prior_declined.department_head_endorsement = None
+        prior_declined.loi_file_url = payload.loi_file_url
+        prior_declined.loi_original_filename = payload.loi_original_filename
+        prior_declined.mar_narrative = payload.mar_narrative
+        prior_declined.submitted_at = now
+        renewal = prior_declined
+    else:
+        renewal = models.RenewalApplication(
+            employee_id=current_user.id,
+            period=payload.period,
+            status="Submitted",
+            loi_file_url=payload.loi_file_url,
+            loi_original_filename=payload.loi_original_filename,
+            mar_narrative=payload.mar_narrative,
+            submitted_at=now,
+        )
+        db.add(renewal)
 
     # Automatically initialize EvaluationRecord for Immediate Supervisor
     existing_eval = (
@@ -552,12 +666,6 @@ def submit_renewal(
 
     db.commit()
     db.refresh(renewal)
-
-    dept_name = (
-        current_user.department.name
-        if current_user.department
-        else "your department"
-    )
 
     # 2. Personal Confirmation Notification for Employee
     emp_notif = models.Notification(
@@ -746,11 +854,42 @@ def endorse_renewal(
     renewal.department_head_endorsement = "Endorsed" if is_rec else "Disapproved"
     renewal.status = "Pending HRMO" if is_rec else "Pending HR Mediation"
 
-    notes_or_grounds = payload.notes if is_rec else f"Grounds: {payload.category or 'Performance'}. Justification: {payload.justification or 'None provided'}"
+    justification_text = payload.justification or payload.notes or "None provided"
+    notes_or_grounds = (
+        payload.notes
+        if is_rec
+        else f"Grounds: {payload.category or 'Performance Appraisal'}. Justification: {justification_text}"
+    )
     if renewal.mar_narrative:
         renewal.mar_narrative += f"\n[Dept Head Endorsement]: {payload.status}. {notes_or_grounds}"
     else:
         renewal.mar_narrative = f"[Dept Head Endorsement]: {payload.status}. {notes_or_grounds}"
+
+    # Sync fast-track / non-recommendation metadata onto EvaluationRecord
+    if not is_rec:
+        ev = (
+            db.query(models.EvaluationRecord)
+            .filter(models.EvaluationRecord.employee_id == emp.id)
+            .order_by(models.EvaluationRecord.id.desc())
+            .first()
+        )
+        if not ev:
+            ev = models.EvaluationRecord(
+                period=renewal.period,
+                employee_id=emp.id,
+                supervisor_id=current_user.id,
+                status="Rejected",
+            )
+            db.add(ev)
+        # Preserve 'Completed' status if supervisor completed the quantitative rubric first
+        if ev.status != "Completed":
+            ev.is_fast_track_rejected = True
+            ev.status = "Rejected"
+            ev.rating_label = "Non-Renewal (Fast-Track)"
+        ev.fast_track_category = payload.category or "Unsatisfactory Performance Evaluation"
+        ev.fast_track_justification = justification_text
+        if payload.document_url:
+            ev.fast_track_document_url = payload.document_url
 
     now = datetime.datetime.utcnow()
     dept_name = emp.department.name if emp.department else "Department"
@@ -821,6 +960,227 @@ def endorse_renewal(
         "status": renewal.status,
         "department_head_endorsement": renewal.department_head_endorsement,
     }
+
+
+@app.post("/api/renewals/{renewal_id}/mediate")
+def mediate_renewal_rejection(
+    renewal_id: int,
+    payload: schemas.RenewalMediateSubmit,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    HR Personnel resolves a supervisory non-renewal recommendation via administrative mediation:
+    - 'offboard': Upholds non-renewal, archives employee account, and dispatches resolution notices.
+    - 'transfer': Transfers employee to target department and resets renewal to Pending Review for new Dept Head.
+    - 'authorize_eval': Overrules supervisory veto and opens/re-authorizes performance evaluation.
+    """
+    if current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only HR Personnel can execute administrative mediation resolutions.",
+        )
+
+    renewal = db.query(models.RenewalApplication).filter(models.RenewalApplication.id == renewal_id).first()
+    if not renewal:
+        raise HTTPException(status_code=404, detail="Renewal application not found.")
+
+    emp = db.query(models.UserAccount).filter(models.UserAccount.id == renewal.employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    now = datetime.datetime.utcnow()
+    resolution = (payload.resolution or "").strip().lower()
+
+    if resolution == "offboard":
+        emp.is_archived = True
+        emp.is_active = False
+        renewal.hrmo_approval = "Declined"
+        renewal.status = "Declined"
+        note = payload.remarks or "Supervisory non-renewal upheld in HR mediation. Account archived."
+        renewal.mar_narrative = (renewal.mar_narrative + "\n" if renewal.mar_narrative else "") + f"[HRMO Mediation]: {note}"
+
+        db.add(
+            models.Notification(
+                user_id=emp.id,
+                title="Official Contract Resolution Finalized",
+                message=f"HRMO has finalized non-renewal following administrative mediation. {note}",
+                category="contract",
+                is_read=False,
+                action_view="contract_status",
+                created_at=now,
+            )
+        )
+        db.commit()
+        if emp.email:
+            background_tasks.add_task(
+                send_contract_resolution_email,
+                to=emp.email,
+                emp_name=emp.full_name,
+                decision="No",
+                remarks=note,
+                period=renewal.period,
+            )
+        log_audit(
+            db=db,
+            action="HR_MEDIATION_OFFBOARD",
+            target_scope=f"Renewal #{renewal.id} ({emp.full_name})",
+            operation_details=note,
+            user=current_user,
+        )
+        return {"message": "Non-renewal upheld and employee archived.", "resolution": "offboard", "status": renewal.status}
+
+    if resolution == "transfer":
+        if not payload.target_department_id:
+            raise HTTPException(status_code=400, detail="target_department_id is required for intervention transfer.")
+        target_dept = db.query(models.Department).filter(models.Department.id == payload.target_department_id).first()
+        if not target_dept:
+            raise HTTPException(status_code=404, detail="Target department not found.")
+
+        old_dept_name = emp.department.name if emp.department else "Previous Department"
+        emp.department_id = target_dept.id
+        renewal.department_head_endorsement = None
+        renewal.status = "Submitted"
+        renewal.mar_narrative = (
+            (renewal.mar_narrative + "\n" if renewal.mar_narrative else "")
+            + f"[HRMO Mediation - Intervention Transfer]: Transferred from {old_dept_name} to {target_dept.name}. Cleared for new departmental review."
+        )
+
+        ev = (
+            db.query(models.EvaluationRecord)
+            .filter(models.EvaluationRecord.employee_id == emp.id)
+            .order_by(models.EvaluationRecord.id.desc())
+            .first()
+        )
+        if ev:
+            ev.is_fast_track_rejected = False
+            if ev.status == "Rejected":
+                ev.status = "Open"
+                ev.rating_label = None
+
+        new_head = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.department_id == target_dept.id,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if new_head:
+            db.add(
+                models.Notification(
+                    user_id=new_head.id,
+                    title=f"Transferred COS Personnel for Review: {emp.full_name}",
+                    message=f"HRMO executed an intervention transfer placing {emp.full_name} into {target_dept.name}. Please review their renewal intent and DAR portfolio.",
+                    category="contract",
+                    is_read=False,
+                    action_view="intent_review",
+                    created_at=now,
+                )
+            )
+        db.add(
+            models.Notification(
+                user_id=emp.id,
+                title="Department Intervention Transfer Executed",
+                message=f"HRMO resolved your mediation by transferring your assignment to {target_dept.name} for fresh departmental evaluation.",
+                category="contract",
+                is_read=False,
+                action_view="contract_status",
+                created_at=now,
+            )
+        )
+        db.commit()
+        log_audit(
+            db=db,
+            action="HR_MEDIATION_TRANSFER",
+            target_scope=f"Renewal #{renewal.id} ({emp.full_name})",
+            operation_details=f"Transferred from {old_dept_name} to {target_dept.name} and reopened renewal endorsement.",
+            user=current_user,
+        )
+        return {
+            "message": f"Employee transferred to {target_dept.name} and cleared for departmental review.",
+            "resolution": "transfer",
+            "status": renewal.status,
+            "department_id": target_dept.id,
+        }
+
+    if resolution == "authorize_eval":
+        renewal.department_head_endorsement = "Overruled"
+        renewal.status = "Under Review"
+        renewal.mar_narrative = (
+            (renewal.mar_narrative + "\n" if renewal.mar_narrative else "")
+            + "[HRMO Mediation]: Supervisory non-renewal overruled. Authorized for immediate supervisor performance evaluation."
+        )
+
+        ev = (
+            db.query(models.EvaluationRecord)
+            .filter(models.EvaluationRecord.employee_id == emp.id)
+            .order_by(models.EvaluationRecord.id.desc())
+            .first()
+        )
+        if not ev or ev.status == "Completed":
+            ev = models.EvaluationRecord(
+                period=renewal.period,
+                employee_id=emp.id,
+                status="Open",
+                created_at=now,
+            )
+            db.add(ev)
+        else:
+            ev.is_fast_track_rejected = False
+            ev.status = "Open"
+            ev.rating_label = None
+
+        dept_head = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.department_id == emp.department_id,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if dept_head:
+            db.add(
+                models.Notification(
+                    user_id=dept_head.id,
+                    title=f"HR Authorized Evaluation: {emp.full_name}",
+                    message=f"HRMO overruled non-renewal after mediation and authorized a formal rubric evaluation for {emp.full_name}.",
+                    category="evaluation",
+                    is_read=False,
+                    action_view="intent_review",
+                    created_at=now,
+                )
+            )
+        db.add(
+            models.Notification(
+                user_id=emp.id,
+                title="Evaluation Authorized Following Mediation",
+                message="HRMO overruled the non-renewal recommendation and authorized your performance evaluation.",
+                category="evaluation",
+                is_read=False,
+                action_view="contract_status",
+                created_at=now,
+            )
+        )
+        db.commit()
+        log_audit(
+            db=db,
+            action="HR_MEDIATION_OVERRULE_EVAL",
+            target_scope=f"Renewal #{renewal.id} ({emp.full_name})",
+            operation_details="Overruled non-renewal veto and authorized performance evaluation.",
+            user=current_user,
+        )
+        return {
+            "message": "Non-renewal overruled and evaluation authorized.",
+            "resolution": "authorize_eval",
+            "status": renewal.status,
+            "department_head_endorsement": renewal.department_head_endorsement,
+        }
+
+    raise HTTPException(status_code=400, detail="Unsupported mediation resolution action.")
 
 
 @app.post("/api/renewals/{renewal_id}/finalize-contract")

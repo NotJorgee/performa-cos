@@ -192,6 +192,7 @@ def get_employee_dashboard_metrics(
         .order_by(models.RenewalApplication.id.desc())
         .first()
     )
+    decline_reason = ""
     if days_until_expiration > 30:
         intent_status = "Contract Active"
     else:
@@ -199,7 +200,16 @@ def get_employee_dashboard_metrics(
         if latest_renewal and current_user.contract_start_date and latest_renewal.submitted_at:
             if current_user.contract_start_date <= today and latest_renewal.submitted_at.date() < current_user.contract_start_date:
                 latest_renewal = None
-        intent_status = latest_renewal.status if latest_renewal else "Open for Intent Confirmation"
+        if not latest_renewal:
+            intent_status = "Open for Intent Confirmation"
+        elif latest_renewal.hrmo_approval == "Approved":
+            intent_status = "Approved"
+        elif latest_renewal.hrmo_approval == "Declined":
+            intent_status = "Non-Renewal Finalized"
+        else:
+            intent_status = latest_renewal.status
+            if latest_renewal.status == "Declined" and latest_renewal.mar_narrative:
+                decline_reason = latest_renewal.mar_narrative.replace("[COS DECLINED RENEWAL]:", "").strip()
 
     return {
         "contractStartDate": contract_start.strftime("%B %d, %Y") if contract_start else "Not Specified",
@@ -210,6 +220,7 @@ def get_employee_dashboard_metrics(
         "darTasksToday": dar_today,
         "totalDarsLogged": total_dars,
         "renewalIntentStatus": intent_status,
+        "declineReason": decline_reason,
         "pendingPeerReviews": 0,
         "department": current_user.department.name if current_user.department else "Computer Studies Department",
         "employeeName": current_user.full_name,
@@ -658,10 +669,10 @@ def get_executive_analytics(
                 "outstandingEmployees": [],
                 "ratingDistribution": [
                     {"label": "Outstanding (90 – 100)", "count": 0, "pct": 0.0, "color": "#16a34a"},
-                    {"label": "Very Satisfactory (80 – 89.9)", "count": 0, "pct": 0.0, "color": "#2563eb"},
-                    {"label": "Satisfactory (70 – 79.9)", "count": 0, "pct": 0.0, "color": "#0284c7"},
-                    {"label": "Needs Improvement (60 – 69.9)", "count": 0, "pct": 0.0, "color": "#f59e0b"},
-                    {"label": "Unsatisfactory (Below 60)", "count": 0, "pct": 0.0, "color": "#dc2626"},
+                    {"label": "Very Satisfactory (70 – 89.9)", "count": 0, "pct": 0.0, "color": "#2563eb"},
+                    {"label": "Satisfactory (50 – 69.9)", "count": 0, "pct": 0.0, "color": "#0284c7"},
+                    {"label": "Needs Improvement (30 – 49.9)", "count": 0, "pct": 0.0, "color": "#f59e0b"},
+                    {"label": "Unsatisfactory (Below 30)", "count": 0, "pct": 0.0, "color": "#dc2626"},
                 ],
             }
             continue
@@ -760,8 +771,14 @@ def get_executive_analytics(
             user_eval = emp_month_evals.get(user.id)
             if user_eval:
                 score = round(user_eval.final_score, 1)
-                rating_label = user_eval.rating_label or ("Outstanding" if score >= 90 else "Very Satisfactory")
-                retention_status = "Recommended for Renewal" if score >= 80 else "Performance Review Required"
+                rating_label = user_eval.rating_label or (
+                    "Outstanding" if score >= 90
+                    else "Very Satisfactory" if score >= 70
+                    else "Satisfactory" if score >= 50
+                    else "Needs Improvement" if score >= 30
+                    else "Unsatisfactory"
+                )
+                retention_status = "Recommended for Renewal" if score >= 50 else "Performance Review Required"
                 highlight = user_eval.qualitative_strengths or f"Evaluated with verified score of {score} across institutional triad criteria."
             else:
                 score = None

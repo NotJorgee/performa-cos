@@ -71,8 +71,24 @@ export default function IntentReview({
 
           const mappedPromises = uniqueRenewals.map(async (r) => {
             const u = userMap.get(r.employee_id);
-            if (!u) return null;
+            if (!u || u.is_archived) return null;
 
+            // Skip voluntarily declined or HR-finalized applications
+            if (r.status === 'Declined' || r.hrmo_approval === 'Approved' || r.hrmo_approval === 'Declined') {
+              return null;
+            }
+
+            // Term guard: skip renewals belonging to a concluded prior contract term
+            const contractStart = u.contract_start_date || u.contractStartDate;
+            if (contractStart) {
+              const startDateObj = new Date(contractStart);
+              const now = new Date();
+              if (startDateObj <= now && r.submitted_at && new Date(r.submitted_at) < startDateObj) {
+                return null;
+              }
+            }
+
+            const isHrOverruled = r.department_head_endorsement === 'Overruled';
             let endorsementStatus = 'Pending Review';
             if (r.department_head_endorsement === 'Endorsed') {
               endorsementStatus = 'Recommended';
@@ -80,8 +96,8 @@ export default function IntentReview({
               endorsementStatus = 'Not Recommended';
             }
 
-            // Only pending renewals awaiting supervisor review belong in this action panel
-            if (endorsementStatus !== 'Pending Review') return null;
+            // Only pending reviews (or HR-overruled evaluations awaiting scoring) belong in this queue
+            if (endorsementStatus !== 'Pending Review' && !isHrOverruled) return null;
 
             const candidateDept = getSafeDeptName(u.department || u.department_name || displayDepartmentName);
             const fullName = u.fullName || u.full_name || 'COS Personnel';
@@ -133,6 +149,7 @@ export default function IntentReview({
               contractEndDate: u.contractEndDate || u.contract_end_date || 'Dec 31, 2026',
               daysUntilExpiration: aiDossier?.daysUntilExpiration ?? daysUntilExpiration,
               endorsementStatus,
+              isHrOverruled,
               contractPeriod: r.period || 'July 01, 2026 – December 31, 2026',
               totalDarEntries,
               latestScore,
@@ -270,10 +287,20 @@ export default function IntentReview({
     // 2. Submit renewal endorsement to backend
     try {
       if (evaluatingEmp.renewalId && api?.renewals?.endorse) {
-        await api.renewals.endorse(evaluatingEmp.renewalId, {
-          status: newStatus,
-          notes: strengths || `Evaluated with score of ${scaledScore}% (${recommendation}).`,
-        });
+        await api.renewals.endorse(
+          evaluatingEmp.renewalId,
+          isRecommended
+            ? {
+                status: newStatus,
+                notes: strengths || `Evaluated with score of ${scaledScore}% (${recommendation}).`,
+              }
+            : {
+                status: newStatus,
+                category: 'Unsatisfactory / Performance Appraisal',
+                justification: strengths || `Evaluated with score of ${scaledScore}% (${recommendation}).`,
+                notes: strengths || `Evaluated with score of ${scaledScore}% (${recommendation}).`,
+              }
+        );
       }
     } catch (err) {
       console.warn('Backend renewal endorsement warning:', err.message);
@@ -304,25 +331,37 @@ export default function IntentReview({
   /**
    * Submit Fast-Track Non-Renewal Recommendation on official grounds
    */
-  const handleConfirmRejection = ({ category, justification }) => {
+  const handleConfirmRejection = async ({ category, justification, file }) => {
     if (!rejectEmp) return;
-    setCandidates((prev) => prev.filter((c) => c.id !== rejectEmp.id));
-    if (rejectEmp.renewalId && api?.renewals?.endorse) {
-      api.renewals.endorse(rejectEmp.renewalId, {
+    let documentUrl = null;
+    try {
+      if (file && api?.uploads?.uploadFastTrack) {
+        const uploaded = await api.uploads.uploadFastTrack(file);
+        documentUrl = uploaded?.url || uploaded?.path || null;
+      }
+      if (rejectEmp.renewalId && api?.renewals?.endorse) {
+        await api.renewals.endorse(rejectEmp.renewalId, {
+          status: 'Not Recommended',
+          category,
+          justification,
+          document_url: documentUrl,
+        });
+      }
+      setCandidates((prev) => prev.filter((c) => c.id !== rejectEmp.id));
+      onEndorseEmployee({
+        employeeId: rejectEmp.id,
+        employeeName: rejectEmp.fullName,
         status: 'Not Recommended',
         category,
         justification,
-      }).catch((err) => console.warn('API non-renewal endorsement error:', err));
+        documentUrl,
+      });
+      showToast(`Non-renewal recommendation filed for "${rejectEmp.fullName}". Formal notice dispatched to HRMO and archived in Employee Records.`);
+      setRejectEmp(null);
+    } catch (err) {
+      console.warn('API non-renewal endorsement error:', err);
+      showToast(`Failed to file non-renewal recommendation: ${err.message || 'Upload or network error'}`);
     }
-    onEndorseEmployee({
-      employeeId: rejectEmp.id,
-      employeeName: rejectEmp.fullName,
-      status: 'Not Recommended',
-      category,
-      justification,
-    });
-    showToast(`Non-renewal recommendation filed for "${rejectEmp.fullName}". Formal notice dispatched to HRMO and archived in Employee Records.`);
-    setRejectEmp(null);
   };
 
   // Filter candidates: Action panel only retains pending renewals awaiting immediate supervisor evaluation
@@ -534,7 +573,9 @@ export default function IntentReview({
                       className={`badge badge-${isPending ? 'pending' : (candidate.endorsementStatus === 'Recommended' ? 'completed' : 'delayed')}`}
                       style={{ fontSize: '11.5px', fontWeight: 700 }}
                     >
-                      {isPending
+                      {candidate.isHrOverruled
+                        ? 'HR Overruled - Evaluation Required'
+                        : isPending
                         ? 'Pending Evaluation'
                         : (candidate.endorsementStatus === 'Recommended'
                           ? `Evaluated (${candidate.latestScore}%)`
@@ -643,24 +684,26 @@ export default function IntentReview({
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                       {isPending ? (
                         <>
-                          <button
-                            type="button"
-                            className="btn btn-sm"
-                            style={{
-                              color: 'var(--red-600)',
-                              borderColor: 'var(--red-300, #fca5a5)',
-                              background: '#fff',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                            }}
-                            onClick={() => setRejectEmp(candidate)}
-                          >
-                            <AlertTriangle size={14} />
-                            Do Not Recommend
-                          </button>
+                          {!candidate.isHrOverruled && (
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              style={{
+                                color: 'var(--red-600)',
+                                borderColor: 'var(--red-300, #fca5a5)',
+                                background: '#fff',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                              }}
+                              onClick={() => setRejectEmp(candidate)}
+                            >
+                              <AlertTriangle size={14} />
+                              Do Not Recommend
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -678,7 +721,7 @@ export default function IntentReview({
                             }}
                           >
                             <ClipboardCheck size={16} />
-                            Approve & Evaluate
+                            {candidate.isHrOverruled ? 'Proceed to Evaluation' : 'Approve & Evaluate'}
                           </button>
                         </>
                       ) : (

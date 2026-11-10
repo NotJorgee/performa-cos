@@ -107,6 +107,9 @@ export default function ContractStatus({
         if (data.renewalIntentStatus) {
           setStatus(data.renewalIntentStatus);
         }
+        if (data.declineReason) {
+          setDeclineReason(data.declineReason);
+        }
       })
       .catch((err) => {
         console.warn('Notice loading employee dashboard metrics for contract status:', err);
@@ -125,37 +128,55 @@ export default function ContractStatus({
     try {
       await api.renewals.submit({
         period: `${contract.startDate} – ${contract.endDate}`,
+        intent: 'renew',
         mar_narrative: `Aggregated DAR portfolio across ${contract.totalDarsLogged} logs submitted for supervisory review.`,
       });
+      setStatus('Renewal Intent Confirmed');
+      setShowActionModal(false);
+      setSelectedAction(null);
+      setToastMsg('Contract renewal intent confirmed! Accumulated DARs synthesized and evaluation workflow initiated.');
+      onConfirmRenewal({
+        action: 'renew',
+        department: contract.department,
+        contractCycle: `${contract.startDate} – ${contract.endDate}`,
+        totalDarsAggregated: contract.totalDarsLogged,
+        confirmedAt: new Date().toISOString(),
+      });
     } catch (err) {
-      console.warn('API renewal submission notice:', err);
+      setToastMsg(`Failed to submit renewal intent: ${err.message || 'Server error'}`);
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setToastMsg(null), 5000);
     }
-    setIsProcessing(false);
-    setStatus('Renewal Intent Confirmed');
-    setShowActionModal(false);
-    setSelectedAction(null);
-    setToastMsg('Contract renewal intent confirmed! Accumulated DARs synthesized and evaluation workflow initiated.');
-    onConfirmRenewal({
-      action: 'renew',
-      department: contract.department,
-      contractCycle: `${contract.startDate} – ${contract.endDate}`,
-      totalDarsAggregated: contract.totalDarsLogged,
-      confirmedAt: new Date().toISOString(),
-    });
-    setTimeout(() => setToastMsg(null), 5000);
   };
 
-  const handleFinalConfirmDecline = () => {
-    setStatus('Declined');
-    setShowActionModal(false);
-    setSelectedAction(null);
-    setToastMsg('Non-renewal decision recorded. HRMO has been notified for offboarding.');
-    onDeclineRenewal({
-      action: 'decline',
-      reason: declineReason.trim(),
-      declinedAt: new Date().toISOString(),
-    });
-    setTimeout(() => setToastMsg(null), 5000);
+  const handleFinalConfirmDecline = async () => {
+    setIsProcessing(true);
+    try {
+      const cleanReason = declineReason.trim();
+      await api.renewals.submit({
+        period: `${contract.startDate} – ${contract.endDate}`,
+        intent: 'decline',
+        reason: cleanReason,
+        mar_narrative: cleanReason
+          ? `[COS DECLINED RENEWAL]: ${cleanReason}`
+          : '[COS DECLINED RENEWAL]: Employee opted not to renew contract.',
+      });
+      setStatus('Declined');
+      setShowActionModal(false);
+      setSelectedAction(null);
+      setToastMsg('Non-renewal decision recorded. HRMO has been notified for offboarding.');
+      onDeclineRenewal({
+        action: 'decline',
+        reason: cleanReason,
+        declinedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      setToastMsg(`Failed to record non-renewal decision: ${err.message || 'Server error'}`);
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setToastMsg(null), 5000);
+    }
   };
 
   return (
@@ -287,7 +308,8 @@ export default function ContractStatus({
       )}
 
       {/* Confirmed State Feedback */}
-      {isExpiringSoon && status === 'Renewal Intent Confirmed' && (
+      {isExpiringSoon &&
+        ['Renewal Intent Confirmed', 'Submitted', 'Under Review', 'Pending HRMO', 'Pending HR Mediation'].includes(status) && (
         <div className="card" style={{ border: '1px solid #bfe8cd', background: 'var(--green-50)', marginBottom: '20px' }}>
           <div className="flex-between" style={{ alignItems: 'flex-start' }}>
             <div>
@@ -297,25 +319,27 @@ export default function ContractStatus({
               </div>
               <p style={{ margin: '0 0 8px', fontSize: '13.5px' }}>
                 All {contract.totalDarsLogged} DAR logs have been successfully aggregated into your Accomplishment Report.
-                Performance evaluation routing is now active:
+                Performance evaluation routing is now active (Status: <b>{status}</b>):
               </p>
               <ul style={{ margin: '0 0 12px', paddingLeft: '20px', fontSize: '13px', lineHeight: 1.6 }}>
                 <li><b>Immediate Supervisor Evaluation (100%):</b> Department Head notified with live DAR summary and performance rubric.</li>
                 <li><b>HRMO Compliance &amp; Contract Finalization:</b> Institutional review and renewal appointment determination.</li>
               </ul>
             </div>
-            <button
-              type="button"
-              className="btn btn-sm"
-              style={{ background: '#fff', borderColor: '#bfe8cd', color: '#0f6b32', whiteSpace: 'nowrap' }}
-              onClick={() => {
-                setStatus('Open for Intent Confirmation');
-                setShowActionModal(true);
-                setSelectedAction(null);
-              }}
-            >
-              Change Decision
-            </button>
+            {['Renewal Intent Confirmed', 'Submitted'].includes(status) && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{ background: '#fff', borderColor: '#bfe8cd', color: '#0f6b32', whiteSpace: 'nowrap' }}
+                onClick={() => {
+                  setStatus('Open for Intent Confirmation');
+                  setShowActionModal(true);
+                  setSelectedAction(null);
+                }}
+              >
+                Change Decision
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -334,6 +358,18 @@ export default function ContractStatus({
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* HR Finalized Non-Renewal Feedback */}
+      {status === 'Non-Renewal Finalized' && (
+        <div className="card" style={{ border: '1px solid #f3c2c2', background: 'var(--red-50)', marginBottom: '20px' }}>
+          <div className="card-title" style={{ color: 'var(--red-600)', margin: '0 0 6px' }}>
+            Contract Non-Renewal Finalized by HRMO
+          </div>
+          <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.5 }}>
+            Your contract renewal request was concluded as <b>Do Not Renew</b> by the Human Resource Management Office. Your current contract concludes on {contract.endDate}.
+          </p>
         </div>
       )}
 
@@ -562,6 +598,7 @@ export default function ContractStatus({
                       <button
                         type="button"
                         className="btn btn-sm btn-danger"
+                        disabled={isProcessing}
                         style={{
                           background: 'var(--red-600)',
                           color: '#fff',
@@ -570,7 +607,7 @@ export default function ContractStatus({
                         }}
                         onClick={handleFinalConfirmDecline}
                       >
-                        Confirm Decline &amp; Exit
+                        {isProcessing ? 'Recording Decline...' : 'Confirm Decline & Exit'}
                       </button>
                     </div>
                   </div>

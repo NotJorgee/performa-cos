@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import PredictiveTextarea from './PredictiveTextarea';
 
@@ -24,22 +24,38 @@ export default function FastTrackModal({
   const [justification, setJustification] = useState('');
   const [memoFile, setMemoFile] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCategory(NON_RENEWAL_GROUNDS[0]);
+      setJustification('');
+      setMemoFile(null);
+      setErrorMsg('');
+      setIsSubmitting(false);
+    }
+  }, [isOpen, employeeName]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!justification.trim()) {
       setErrorMsg('Please provide a substantive text justification for the non-renewal decision.');
       return;
     }
     setErrorMsg('');
-    onSubmitRejection({
-      category,
-      justification: justification.trim(),
-      file: memoFile,
-      timestamp: new Date().toLocaleString(),
-    });
+    setIsSubmitting(true);
+    try {
+      await onSubmitRejection({
+        category,
+        justification: justification.trim(),
+        file: memoFile,
+        timestamp: new Date().toLocaleString(),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -128,15 +144,16 @@ export default function FastTrackModal({
           </div>
 
           <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button type="button" className="btn" onClick={onClose}>
+            <button type="button" className="btn" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
             <button
               type="submit"
               className="btn btn-danger"
+              disabled={isSubmitting}
               style={{ background: 'var(--red-600)', color: '#fff', borderColor: 'var(--red-600)', fontWeight: 600 }}
             >
-              {submitButtonText}
+              {isSubmitting ? 'Submitting...' : submitButtonText}
             </button>
           </div>
         </form>

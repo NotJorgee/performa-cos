@@ -292,6 +292,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    mediate: (id, data) =>
+      request(`/renewals/${id}/mediate`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     finalizeContract: (id, data) =>
       request(`/renewals/${id}/finalize-contract`, {
         method: 'POST',

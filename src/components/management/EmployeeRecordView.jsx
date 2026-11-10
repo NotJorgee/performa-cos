@@ -184,105 +184,61 @@ export const getScoreInterpretationColor = (interpretation, score) => {
     const num = Number(score);
 
     if (num >= 90) {
-
       return {
-
         className: 'score-good',
-
         color: '#15803d',
-
         bg: '#f0fdf4',
-
         border: '#bbf7d0',
-
         badgeClass: 'badge-completed',
-
       };
-
-    }
-
-    if (num >= 80) {
-
-      return {
-
-        className: 'score-good',
-
-        color: '#1d4ed8',
-
-        bg: '#eff6ff',
-
-        border: '#bfdbfe',
-
-        badgeClass: 'badge-completed',
-
-      };
-
     }
 
     if (num >= 70) {
-
       return {
-
         className: 'score-good',
-
-        color: '#0284c7',
-
-        bg: '#f0f9ff',
-
-        border: '#bae6fd',
-
+        color: '#1d4ed8',
+        bg: '#eff6ff',
+        border: '#bfdbfe',
         badgeClass: 'badge-completed',
-
       };
-
     }
 
-    if (num >= 60) {
-
+    if (num >= 50) {
       return {
-
-        className: 'score-mid',
-
-        color: '#d97706',
-
-        bg: '#fffbeb',
-
-        border: '#fde68a',
-
-        badgeClass: 'badge-pending',
-
+        className: 'score-good',
+        color: '#0284c7',
+        bg: '#f0f9ff',
+        border: '#bae6fd',
+        badgeClass: 'badge-completed',
       };
+    }
 
+    if (num >= 30) {
+      return {
+        className: 'score-mid',
+        color: '#d97706',
+        bg: '#fffbeb',
+        border: '#fde68a',
+        badgeClass: 'badge-pending',
+      };
     }
 
     return {
-
       className: 'score-bad',
-
       color: 'var(--red-600)',
-
       bg: 'var(--red-50)',
-
       border: '#fecaca',
-
       badgeClass: 'badge-delayed',
-
     };
 
   }
 
   return {
-
     className: '',
-
     color: 'var(--ink-700)',
-
     bg: '#f8fafc',
-
     border: 'var(--line)',
-
     badgeClass: 'badge-dept',
-
   };
 
 };
@@ -296,69 +252,41 @@ export const getScoreInterpretationAndRecommendation = (score) => {
   const num = Number(score) || 0;
 
   if (num >= 90) {
-
     return {
-
       scoreRange: '90 – 100',
-
       interpretation: 'Outstanding',
-
       recommendation: 'Strongly Recommended for Renewal',
-
     };
-
-  }
-
-  if (num >= 80) {
-
-    return {
-
-      scoreRange: '80 – 89',
-
-      interpretation: 'Very Satisfactory',
-
-      recommendation: 'Recommended for Renewal',
-
-    };
-
   }
 
   if (num >= 70) {
-
     return {
-
-      scoreRange: '70 – 79',
-
-      interpretation: 'Satisfactory',
-
-      recommendation: 'Renewal with Monitoring',
-
+      scoreRange: '70 – 89.9',
+      interpretation: 'Very Satisfactory',
+      recommendation: 'Recommended for Renewal',
     };
-
   }
 
-  if (num >= 60) {
-
+  if (num >= 50) {
     return {
-
-      scoreRange: '60 – 69',
-
-      interpretation: 'Needs Improvement',
-
-      recommendation: 'Renewal Subject to Evaluation',
-
+      scoreRange: '50 – 69.9',
+      interpretation: 'Satisfactory',
+      recommendation: 'Recommended for Renewal',
     };
+  }
 
+  if (num >= 30) {
+    return {
+      scoreRange: '30 – 49.9',
+      interpretation: 'Needs Improvement',
+      recommendation: 'Recommended with Conditions',
+    };
   }
 
   return {
-
-    scoreRange: 'Below 60',
-
+    scoreRange: 'Below 30',
     interpretation: 'Unsatisfactory',
-
     recommendation: 'Not Recommended for Renewal',
-
   };
 
 };
@@ -2028,7 +1956,11 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', fontSize: '14.5px', color: 'var(--green-700)', fontWeight: 800 }}>
                   <span>Performance Rating:</span>
-                  <span>{viewingEvalCycle.supervisorScore || viewingEvalCycle.finalScore || 88}% ({viewingEvalCycle.interpretation || 'Very Satisfactory'})</span>
+                  <span>
+                    {(viewingEvalCycle.supervisorScore ?? viewingEvalCycle.finalScore) != null
+                      ? `${viewingEvalCycle.supervisorScore ?? viewingEvalCycle.finalScore}% (${viewingEvalCycle.interpretation || 'Evaluated'})`
+                      : 'Pending Rating'}
+                  </span>
                 </div>
               </div>
             </div>

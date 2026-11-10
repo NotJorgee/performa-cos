@@ -122,6 +122,9 @@ export default function EvaluationManagement({
             routingStatus = 'Contract Closure Pending';
             intentStatus = 'Declined';
             deptHeadEndorsement = 'N/A (Declined)';
+            rejectionJustification = (r.mar_narrative || '')
+              .replace('[COS DECLINED RENEWAL]:', '')
+              .trim();
           } else {
             intentStatus = 'Confirmed';
 
@@ -131,6 +134,12 @@ export default function EvaluationManagement({
             } else if (r.hrmo_approval === 'Declined') {
               routingStatus = 'Non-Renewal Finalized';
               deptHeadEndorsement = r.department_head_endorsement === 'Disapproved' ? 'Not Recommended' : 'Recommended';
+            } else if (r.department_head_endorsement === 'Overruled') {
+              deptHeadEndorsement = 'Recommended (Overruled by HR)';
+              routingStatus =
+                ev?.status === 'Completed' || (ev?.final_score != null && ev?.final_score > 0)
+                  ? 'Evaluation Completed'
+                  : 'Evaluation in Progress';
             } else if (
               ev?.is_fast_track_rejected ||
               ev?.status === 'Rejected' ||
@@ -141,6 +150,7 @@ export default function EvaluationManagement({
               rejectionCategory = ev?.fast_track_category || 'Supervisory Disapproval';
               rejectionJustification =
                 ev?.fast_track_justification ||
+                ev?.qualitative_strengths ||
                 r.mar_narrative ||
                 'Department Head submitted non-renewal recommendation.';
             } else if (ev?.status === 'Completed' || (ev?.final_score != null && ev?.final_score > 0)) {
@@ -190,13 +200,13 @@ export default function EvaluationManagement({
             })
           : 'Term Pending';
 
-        const supervisorScore = ev?.supervisor_score ?? (routingStatus === 'Evaluation Completed' ? 90.0 : null);
-        const peerScore = ev?.peer_score ?? 86.7;
-        const hrmoScore = ev?.hrmo_score ?? 90.0;
-        const finalScore = ev?.final_score ?? supervisorScore ?? (routingStatus === 'Evaluation Completed' ? 89.3 : null);
+        const supervisorScore = ev?.supervisor_score ?? null;
+        const peerScore = ev?.peer_score ?? null;
+        const hrmoScore = ev?.hrmo_score ?? null;
+        const finalScore = ev?.final_score ?? supervisorScore ?? null;
 
         let ratingLabel = ev?.rating_label;
-        if (!ratingLabel && finalScore) {
+        if (!ratingLabel && finalScore != null) {
           if (finalScore >= 90) ratingLabel = 'Outstanding';
           else if (finalScore >= 70) ratingLabel = 'Very Satisfactory';
           else if (finalScore >= 50) ratingLabel = 'Satisfactory';
@@ -224,11 +234,11 @@ export default function EvaluationManagement({
           rejectionJustification,
           finalContractRemarks: r?.mar_narrative || '',
           evaluationScores: {
-            supervisor: supervisorScore || 90.0,
+            supervisor: supervisorScore,
             peer: peerScore,
             hrmo: hrmoScore,
-            finalGrade: finalScore || 89.3,
-            interpretation: ratingLabel || 'Very Satisfactory',
+            finalGrade: finalScore,
+            interpretation: ratingLabel || 'Pending Rating',
             supervisorRecommendation:
               deptHeadEndorsement === 'Not Recommended'
                 ? 'Not Recommended'
@@ -383,14 +393,18 @@ export default function EvaluationManagement({
     setIsSubmitting(true);
     try {
       if (actionType === 'offboard') {
-        if (api?.users?.archive) {
-          await api.users.archive(mediateEmp.id);
-        }
-        if (mediateEmp.renewalId && api?.renewals?.finalizeContract) {
-          await api.renewals.finalizeContract(mediateEmp.renewalId, {
-            decision: 'No',
-            remarks: 'Supervisory non-renewal recommendation upheld in HR mediation. Account archived.',
-          }).catch(() => {});
+        if (mediateEmp.renewalId && api?.renewals?.mediate) {
+          await api.renewals.mediate(mediateEmp.renewalId, { resolution: 'offboard' });
+        } else {
+          if (api?.users?.archive) {
+            await api.users.archive(mediateEmp.id);
+          }
+          if (mediateEmp.renewalId && api?.renewals?.finalizeContract) {
+            await api.renewals.finalizeContract(mediateEmp.renewalId, {
+              decision: 'No',
+              remarks: 'Supervisory non-renewal recommendation upheld in HR mediation. Account archived.',
+            }).catch(() => {});
+          }
         }
         setEmployees((prev) =>
           prev.map((e) =>
@@ -408,7 +422,12 @@ export default function EvaluationManagement({
         const targetDeptId = targetDept ? targetDept.id : parseInt(transferTargetDeptId, 10);
         const targetDeptName = targetDept ? targetDept.name : transferTargetDeptId;
 
-        if (targetDeptId && api?.users?.transferDepartment) {
+        if (mediateEmp.renewalId && api?.renewals?.mediate && targetDeptId) {
+          await api.renewals.mediate(mediateEmp.renewalId, {
+            resolution: 'transfer',
+            target_department_id: targetDeptId,
+          });
+        } else if (targetDeptId && api?.users?.transferDepartment) {
           await api.users.transferDepartment(mediateEmp.id, targetDeptId);
         }
         setEmployees((prev) =>
@@ -416,8 +435,9 @@ export default function EvaluationManagement({
             e.id === mediateEmp.id
               ? {
                   ...e,
-                  routingStatus: 'Intervention Transfer Scheduled',
-                  department: `${e.department} -> ${targetDeptName}`,
+                  routingStatus: 'Awaiting Dept Head Endorsement',
+                  deptHeadEndorsement: 'Awaiting Dept Head Review',
+                  department: targetDeptName,
                 }
               : e
           )
@@ -428,17 +448,21 @@ export default function EvaluationManagement({
           newDepartment: targetDeptName,
         });
         setToastMsg(
-          `HR Mediation resolved: Intervention transfer scheduled for "${mediateEmp.fullName}" to ${targetDeptName} for the next cycle.`
+          `HR Mediation resolved: "${mediateEmp.fullName}" transferred to ${targetDeptName} and routed for fresh supervisory review.`
         );
       } else if (actionType === 'authorize_eval') {
-        if (mediateEmp.renewalId && api?.renewals?.endorse) {
-          await api.renewals.endorse(mediateEmp.renewalId, {
-            status: 'Recommended',
-            notes: 'Supervisory non-renewal recommendation overruled by HR in administrative mediation. Authorized for performance evaluation.',
-          }).catch(() => {});
-        }
-        if (api?.evaluations?.start) {
-          await api.evaluations.start(mediateEmp.id).catch(() => {});
+        if (mediateEmp.renewalId && api?.renewals?.mediate) {
+          await api.renewals.mediate(mediateEmp.renewalId, { resolution: 'authorize_eval' });
+        } else {
+          if (mediateEmp.renewalId && api?.renewals?.endorse) {
+            await api.renewals.endorse(mediateEmp.renewalId, {
+              status: 'Recommended',
+              notes: 'Supervisory non-renewal recommendation overruled by HR in administrative mediation. Authorized for performance evaluation.',
+            }).catch(() => {});
+          }
+          if (api?.evaluations?.start) {
+            await api.evaluations.start(mediateEmp.id).catch(() => {});
+          }
         }
         setEmployees((prev) =>
           prev.map((e) =>
@@ -459,10 +483,10 @@ export default function EvaluationManagement({
           `HR Mediation resolved: Non-renewal overruled. Performance evaluation opened for "${mediateEmp.fullName}".`
         );
       }
-      loadData();
+      await loadData();
     } catch (err) {
       console.warn('Mediation decision error:', err);
-      setToastMsg(`HR Mediation updated for "${mediateEmp.fullName}".`);
+      setToastMsg(`Failed to resolve HR mediation: ${err.message || 'Server error'}`);
     } finally {
       setIsSubmitting(false);
       setMediateEmp(null);
@@ -1259,6 +1283,15 @@ export default function EvaluationManagement({
                   <b>{mediateEmp.rejectionCategory || 'Gross Incompetence / Poor Performance'}</b>
                 </div>
 
+                {mediateEmp.evaluationScores?.finalGrade != null && (
+                  <div style={{ fontSize: '12.5px', marginTop: '6px' }}>
+                    <span className="muted">Supervisor Evaluation Rating: </span>
+                    <b>
+                      {Number(mediateEmp.evaluationScores.finalGrade).toFixed(1)}% ({mediateEmp.evaluationScores.interpretation})
+                    </b>
+                  </div>
+                )}
+
                 <div style={{ fontSize: '12.5px', marginTop: '6px', color: 'var(--ink)' }}>
                   <span className="muted">Supervisory Justification: </span>
                   <p style={{ margin: '4px 0 0', fontStyle: 'italic', background: '#fff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #fecaca' }}>
@@ -1538,16 +1571,18 @@ export default function EvaluationManagement({
                   <div>
                     <span className="muted" style={{ fontSize: '12px' }}>Immediate Supervisor Evaluation Rating (100%):</span>
                     <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--primary)' }}>
-                      {(finalizeEmp.evaluationScores?.finalGrade || 89.3).toFixed(2)} / 100
+                      {finalizeEmp.evaluationScores?.finalGrade != null
+                        ? `${Number(finalizeEmp.evaluationScores.finalGrade).toFixed(2)} / 100`
+                        : 'Pending'}
                       <span style={{ fontSize: '13px', fontWeight: 700, marginLeft: '8px', color: 'var(--green-700)' }}>
-                        ({finalizeEmp.evaluationScores?.interpretation || 'Very Satisfactory'})
+                        ({finalizeEmp.evaluationScores?.interpretation || 'Pending Rating'})
                       </span>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span className="muted" style={{ fontSize: '11.5px' }}>Evaluation Interpretation:</span>
                     <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--brand-700)' }}>
-                      {finalizeEmp.evaluationScores?.interpretation || 'Very Satisfactory'}
+                      {finalizeEmp.evaluationScores?.interpretation || 'Pending Rating'}
                     </div>
                   </div>
                 </div>

@@ -244,6 +244,8 @@ class EvaluationRecordOut(BaseModel):
 # --- Renewal Schemas ---
 class RenewalApplicationCreate(BaseModel):
     period: str
+    intent: Optional[str] = "renew"  # 'renew' | 'decline'
+    reason: Optional[str] = None
     loi_file_url: Optional[str] = None
     loi_original_filename: Optional[str] = None
     mar_narrative: Optional[str] = None
@@ -254,6 +256,13 @@ class RenewalEndorsementSubmit(BaseModel):
     notes: Optional[str] = None
     category: Optional[str] = None
     justification: Optional[str] = None
+    document_url: Optional[str] = None
+
+
+class RenewalMediateSubmit(BaseModel):
+    resolution: str  # 'offboard' | 'transfer' | 'authorize_eval'
+    target_department_id: Optional[int] = None
+    remarks: Optional[str] = None
 
 
 class RenewalFinalizeSubmit(BaseModel):
