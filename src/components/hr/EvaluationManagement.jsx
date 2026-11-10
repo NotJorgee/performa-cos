@@ -115,10 +115,21 @@ export default function EvaluationManagement({
 
         if (u.is_archived) {
           routingStatus = 'Offboarded / Archived';
-          intentStatus = r?.status === 'Declined' ? 'Declined' : 'Confirmed';
+          intentStatus =
+            r?.mar_narrative?.includes('DECLINED') || (r?.status === 'Declined' && !r?.department_head_endorsement)
+              ? 'Declined'
+              : 'Confirmed';
           deptHeadEndorsement = r?.department_head_endorsement || 'N/A';
         } else if (r) {
-          if (r.status === 'Declined' || r.mar_narrative?.includes('DECLINED')) {
+          if (r.hrmo_approval === 'Approved') {
+            intentStatus = 'Confirmed';
+            routingStatus = 'Contract Renewed';
+            deptHeadEndorsement = r.department_head_endorsement === 'Disapproved' ? 'Not Recommended' : 'Recommended';
+          } else if (r.hrmo_approval === 'Declined') {
+            intentStatus = 'Confirmed';
+            routingStatus = 'Non-Renewal Finalized';
+            deptHeadEndorsement = r.department_head_endorsement === 'Disapproved' ? 'Not Recommended' : 'Recommended';
+          } else if (r.status === 'Declined' || r.mar_narrative?.includes('DECLINED')) {
             routingStatus = 'Contract Closure Pending';
             intentStatus = 'Declined';
             deptHeadEndorsement = 'N/A (Declined)';
@@ -128,13 +139,7 @@ export default function EvaluationManagement({
           } else {
             intentStatus = 'Confirmed';
 
-            if (r.hrmo_approval === 'Approved') {
-              routingStatus = 'Contract Renewed';
-              deptHeadEndorsement = r.department_head_endorsement === 'Disapproved' ? 'Not Recommended' : 'Recommended';
-            } else if (r.hrmo_approval === 'Declined') {
-              routingStatus = 'Non-Renewal Finalized';
-              deptHeadEndorsement = r.department_head_endorsement === 'Disapproved' ? 'Not Recommended' : 'Recommended';
-            } else if (r.department_head_endorsement === 'Overruled') {
+            if (r.department_head_endorsement === 'Overruled') {
               deptHeadEndorsement = 'Recommended (Overruled by HR)';
               routingStatus =
                 ev?.status === 'Completed' || (ev?.final_score != null && ev?.final_score > 0)
@@ -156,15 +161,15 @@ export default function EvaluationManagement({
             } else if (ev?.status === 'Completed' || (ev?.final_score != null && ev?.final_score > 0)) {
               routingStatus = 'Evaluation Completed';
               deptHeadEndorsement = 'Recommended';
+            } else if (r.status === 'Submitted' && !r.department_head_endorsement) {
+              routingStatus = 'Awaiting Dept Head Endorsement';
+              deptHeadEndorsement = 'Awaiting Dept Head Review';
             } else if (ev?.status === 'Open') {
               routingStatus = 'Evaluation in Progress';
               deptHeadEndorsement = r.department_head_endorsement === 'Endorsed' ? 'Recommended' : 'Pending Review';
             } else if (r.department_head_endorsement === 'Endorsed') {
               routingStatus = 'Pending Initiation';
               deptHeadEndorsement = 'Recommended';
-            } else if (r.status === 'Submitted') {
-              routingStatus = 'Awaiting Dept Head Endorsement';
-              deptHeadEndorsement = 'Awaiting Dept Head Review';
             } else {
               routingStatus = 'Pending Initiation';
               deptHeadEndorsement = 'Recommended';
