@@ -13,7 +13,6 @@ export { default as ProfileSettings } from './auth/ProfileSettings';
 export { default as DynamicRubric } from './common/DynamicRubric';
 export { default as OfficialRatingSheetModal } from './common/OfficialRatingSheetModal';
 export { default as FastTrackModal } from './common/FastTrackModal';
-export { default as CampusGeofenceModal } from './common/CampusGeofenceModal';
 export { default as CampusGeofence } from './common/CampusGeofence';
 export { default as AiPerformanceAnalysis } from './common/AiPerformanceAnalysis';
 export { default as HistoricalAttendanceRoster } from './common/HistoricalAttendanceRoster';
@@ -29,7 +28,6 @@ export { default as AttendanceLogs } from './employee/AttendanceLogs';
 
 // 2. Department Head GUI Modules (SRS Section 8.1)
 export { default as DeptHeadDashboard } from './dashboard/DeptHeadDashboard';
-export { default as PendingEvaluations } from './depthead/PendingEvaluations';
 export { default as IntentReview } from './depthead/IntentReview';
 export { default as DepartmentAttendance } from './depthead/DepartmentAttendance';
 
@@ -42,10 +40,7 @@ export { default as EvaluationFormEditor } from './hr/EvaluationFormEditor';
 export { default as HREvaluationsProxy } from './hr/HREvaluationsProxy';
 export { default as CampusAttendance } from './hr/CampusAttendance';
 export { default as UserManagement } from './management/UserManagement';
-export { default as EmployeeManagement } from './management/EmployeeManagement';
 export { default as EmployeeRecordView } from './management/EmployeeRecordView';
-export { default as AdministratorManagement } from './management/AdministratorManagement';
-export { default as DepartmentManagement } from './management/DepartmentManagement';
 export { default as ReportGenerator } from './reports/ReportGenerator';
 export { default as AuditTrail } from './reports/AuditTrail';
 export { default as BackupData } from './reports/BackupData';

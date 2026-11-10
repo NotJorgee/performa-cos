@@ -19,7 +19,6 @@ import {
   AttendanceLogs,
   // Department Head GUI Modules (SRS Section 8.1)
   DeptHeadDashboard,
-  PendingEvaluations,
   IntentReview,
   DepartmentAttendance,
   // HR Personnel GUI Modules (SRS Section 8.1)
@@ -27,13 +26,9 @@ import {
   ExecutiveAnalytics,
   EvaluationManagement,
   EvaluationSettings,
-  EvaluationFormEditor,
   CampusAttendance,
   HREvaluationsProxy,
   UserManagement,
-  EmployeeManagement,
-  AdministratorManagement,
-  DepartmentManagement,
   ReportGenerator,
   AuditTrail,
   BackupData,
