@@ -15,4 +15,5 @@ dist
 public
 src
 *.md
-*.txt
+CHANGELOG.txt
+!requirements.txt
