@@ -1,6 +1,8 @@
 import os
+import json
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Union
 
 
 class Settings(BaseSettings):
@@ -27,7 +29,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     # CORS
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = [
         "https://localhost:5173",
         "https://127.0.0.1:5173",
         "http://localhost:5173",
@@ -35,6 +37,25 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            clean_v = v.strip()
+            if not clean_v:
+                return []
+            if clean_v.startswith("[") and clean_v.endswith("]"):
+                try:
+                    parsed = json.loads(clean_v)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                except Exception:
+                    pass
+            return [origin.strip() for origin in clean_v.split(",") if origin.strip()]
+        elif isinstance(v, list):
+            return [str(item).strip() for item in v if str(item).strip()]
+        return []
 
     # Geofence — EVSU Main Campus
     EVSU_MAIN_LATITUDE: float = 11.0065
@@ -83,8 +104,9 @@ class Settings(BaseSettings):
 
     @property
     def frontend_base_url(self) -> str:
-        """Return APP_FRONTEND_URL without a trailing slash for clean link joins."""
-        return (self.APP_FRONTEND_URL or "https://localhost:5173").rstrip("/")
+        """Return APP_FRONTEND_URL without trailing whitespace or slash for clean link joins."""
+        raw = (self.APP_FRONTEND_URL or "https://localhost:5173").strip()
+        return raw.rstrip("/")
 
 
 settings = Settings()

@@ -1,7 +1,8 @@
 // Centralized API client for PerformaCOS 3-Tier Architecture
 // Communicates strictly with the FastAPI backend over HTTP
 
-const API_BASE_URL = '/api';
+const rawApiUrl = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = rawApiUrl.replace(/\/+$/, '');
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('performa_token');
