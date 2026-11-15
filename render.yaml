@@ -49,7 +49,6 @@ services:
     name: performacos-frontend
     env: static
     plan: free
-    region: singapore
     buildCommand: npm run build
     staticPublishPath: ./dist
     routes:
