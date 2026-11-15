@@ -133,7 +133,7 @@ def seed():
                 print(f"  ~ Token already exists: {inv['token']}")
         db.commit()
 
-        print("\n✅ Seed complete!\n")
+        print("\n[SUCCESS] Seed complete!\n")
         print("Login credentials:")
         print(f"  Email:    {HR_ACCOUNT['email']}")
         print(f"  Password: {HR_ACCOUNT['password']}")
@@ -141,7 +141,7 @@ def seed():
 
     except Exception as e:
         db.rollback()
-        print(f"\n❌ Seed failed: {e}")
+        print(f"\n[ERROR] Seed failed: {e}")
         raise
     finally:
         db.close()
