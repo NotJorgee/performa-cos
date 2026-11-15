@@ -233,6 +233,7 @@ def forgot_password(
     db.add(models.OTPCode(email=payload.email, code=otp_code, expires_at=expires_at))
     db.commit()
 
+    print(f"[AUTH OTP] Generated OTP {otp_code} for {payload.email} (expires in {settings.OTP_EXPIRE_MINUTES}m)")
     background_tasks.add_task(send_otp_email, payload.email, otp_code, user.full_name)
     return generic_response
 

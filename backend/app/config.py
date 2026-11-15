@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_ANON_KEY: str = ""
 
+    # Resend HTTPS Email API (bypasses Render free-tier SMTP port restrictions)
+    RESEND_API_KEY: str = ""
+
     # OTP
     OTP_EXPIRE_MINUTES: int = 10
 

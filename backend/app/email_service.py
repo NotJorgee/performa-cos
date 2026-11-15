@@ -54,6 +54,44 @@ def _dispatch_smtp(to: str, subject: str, html: str) -> bool:
         return False
 
 
+def _dispatch_resend(to: str, subject: str, html: str) -> bool:
+    """Dispatches email via Resend HTTPS REST API (Port 443 - works on Render Free Tier)."""
+    if not settings.RESEND_API_KEY:
+        return False
+    try:
+        import resend
+        resend.api_key = settings.RESEND_API_KEY
+        sender_name = settings.SMTP_FROM_NAME or "EVSU PerformaCOS"
+        # On free sandbox, Resend requires onboarding@resend.dev unless a custom domain is verified
+        sender = f"{sender_name} <onboarding@resend.dev>"
+        res = resend.Emails.send({
+            "from": sender,
+            "to": [to],
+            "subject": subject,
+            "html": html,
+        })
+        if res and res.get("id"):
+            print(f"[email_service] Successfully dispatched '{subject}' to {to} via Resend HTTPS API (id={res['id']}).")
+            return True
+        return False
+    except Exception as exc:
+        print(f"[email_service] Resend HTTPS API dispatch to {to} failed: {exc}")
+        return False
+
+
+def _dispatch_email(to: str, subject: str, html: str) -> bool:
+    """
+    Unified email dispatcher for PerformaCOS.
+    1. Attempts Resend HTTPS REST API (Port 443 - works on Render Free Tier).
+    2. Falls back to direct SMTP (Port 587/465 - for local dev or mail servers).
+    """
+    if settings.RESEND_API_KEY:
+        if _dispatch_resend(to, subject, html):
+            return True
+
+    return _dispatch_smtp(to, subject, html)
+
+
 def send_otp_email(to: str, otp_code: str, name: str = "") -> bool:
     """Sends a 6-digit password reset OTP code with role-appropriate salutation."""
     salutation = f"Dear <strong>{name}</strong>," if name else "Dear User,"
@@ -73,7 +111,7 @@ def send_otp_email(to: str, otp_code: str, name: str = "") -> bool:
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS Performance Evaluation System</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject="PerformaCOS — Your One-Time Password (OTP)", html=html)
+    return _dispatch_email(to=to, subject="PerformaCOS — Your One-Time Password (OTP)", html=html)
 
 
 def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR Personnel") -> bool:
@@ -111,7 +149,7 @@ def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR 
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">Eastern Visayas State University · Performance Management System</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject=f"PerformaCOS — Invitation to Register as {role_label}", html=html)
+    return _dispatch_email(to=to, subject=f"PerformaCOS — Invitation to Register as {role_label}", html=html)
 
 
 def send_welcome_email(to: str, name: str, role: str) -> bool:
@@ -139,7 +177,7 @@ def send_welcome_email(to: str, name: str, role: str) -> bool:
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject="Welcome to PerformaCOS", html=html)
+    return _dispatch_email(to=to, subject="Welcome to PerformaCOS", html=html)
 
 
 def send_renewal_intent_submitted_email(to: str, emp_name: str, dept_name: str, period: str, dept_head_name: str = "") -> bool:
@@ -169,7 +207,7 @@ def send_renewal_intent_submitted_email(to: str, emp_name: str, dept_name: str, 
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject=f"PerformaCOS — Subordinate Renewal Intent: {emp_name}", html=html)
+    return _dispatch_email(to=to, subject=f"PerformaCOS — Subordinate Renewal Intent: {emp_name}", html=html)
 
 
 def send_endorsement_decision_email(to: str, emp_name: str, dept_name: str, status: str, notes_or_grounds: str, dept_head_name: str, hr_name: str = "") -> bool:
@@ -207,7 +245,7 @@ def send_endorsement_decision_email(to: str, emp_name: str, dept_name: str, stat
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject=f"PerformaCOS — Renewal Endorsement: {emp_name} ({status})", html=html)
+    return _dispatch_email(to=to, subject=f"PerformaCOS — Renewal Endorsement: {emp_name} ({status})", html=html)
 
 
 def send_contract_resolution_email(to: str, emp_name: str, decision: str, remarks: str, period: str) -> bool:
@@ -244,7 +282,7 @@ def send_contract_resolution_email(to: str, emp_name: str, decision: str, remark
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · Human Resource Management Office</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject=f"PerformaCOS Notice — Official Contract Disposition: {decision_title}", html=html)
+    return _dispatch_email(to=to, subject=f"PerformaCOS Notice — Official Contract Disposition: {decision_title}", html=html)
 
 
 def send_dept_head_contract_resolution_email(to: str, dept_head_name: str, emp_name: str, dept_name: str, decision: str, remarks: str, period: str) -> bool:
@@ -282,7 +320,7 @@ def send_dept_head_contract_resolution_email(to: str, dept_head_name: str, emp_n
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · Human Resource Management Office</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject=f"PerformaCOS Notice — Contract Disposition Finalized: {emp_name} ({decision_title})", html=html)
+    return _dispatch_email(to=to, subject=f"PerformaCOS Notice — Contract Disposition Finalized: {emp_name} ({decision_title})", html=html)
 
 
 def send_contract_window_alert_email(to: str, emp_name: str, days_left: int, end_date: str) -> bool:
@@ -312,4 +350,4 @@ def send_contract_window_alert_email(to: str, emp_name: str, days_left: int, end
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus · PerformaCOS System</p>
     </div>
     """
-    return _dispatch_smtp(to=to, subject=f"PerformaCOS {urgency_subject} — Contract Renewal Window Open ({days_left} Days Remaining)", html=html)
+    return _dispatch_email(to=to, subject=f"PerformaCOS {urgency_subject} — Contract Renewal Window Open ({days_left} Days Remaining)", html=html)
