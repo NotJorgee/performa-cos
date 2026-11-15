@@ -352,6 +352,7 @@ export default function App() {
       return (
         <ForgotPassword
           statusMessage={recoveryStatusMsg}
+          errorMessage={recoveryError}
           onSubmitEmail={handleForgotSubmit}
           onBackToLogin={() => setAuthView('login')}
         />

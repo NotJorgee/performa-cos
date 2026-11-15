@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
@@ -6,14 +6,25 @@ export default function ForgotPassword({
   onSubmitEmail = () => {},
   onBackToLogin = () => {},
   statusMessage = null,
+  errorMessage = null,
 }) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (errorMessage) {
+      setIsLoading(false);
+    }
+  }, [errorMessage]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    onSubmitEmail(email);
+    try {
+      await onSubmitEmail(email);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -39,6 +50,12 @@ export default function ForgotPassword({
             <span className="dot"></span>
             <span className="dot"></span>
           </div>
+
+            {errorMessage && (
+              <div className="flash-stack">
+                <div className="flash flash-danger flash-shake">{errorMessage}</div>
+              </div>
+            )}
 
             {statusMessage && (
               <div className="flash-stack">

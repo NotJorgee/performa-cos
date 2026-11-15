@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Check, Lock, Circle } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
@@ -11,6 +11,12 @@ export default function ResetNewPassword({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (errorMessage) {
+      setIsLoading(false);
+    }
+  }, [errorMessage]);
+
   // Password rules validation
   const hasMinLength = newPassword.length >= 12;
   const hasUpper = /[A-Z]/.test(newPassword);
@@ -20,11 +26,15 @@ export default function ResetNewPassword({
   const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
   const isValid = hasMinLength && hasUpper && hasLower && hasNumber && hasSymbol && passwordsMatch;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValid) return;
     setIsLoading(true);
-    onResetPassword({ newPassword, confirmPassword });
+    try {
+      await onResetPassword({ newPassword, confirmPassword });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

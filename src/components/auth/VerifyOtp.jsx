@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, RefreshCw, Hash } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 
@@ -12,10 +12,20 @@ export default function VerifyOtp({
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (errorMessage) {
+      setIsLoading(false);
+    }
+  }, [errorMessage]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    onVerifyOtp(otp);
+    try {
+      await onVerifyOtp(otp);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
