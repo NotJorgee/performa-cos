@@ -2,7 +2,7 @@ services:
   # 1. FastAPI Backend Web Service (Docker)
   - type: web
     name: performacos-backend
-    env: docker
+    runtime: docker
     plan: free
     region: singapore
     dockerfilePath: ./backend/Dockerfile
@@ -47,8 +47,7 @@ services:
   # 2. React Vite Frontend Static Site
   - type: web
     name: performacos-frontend
-    env: static
-    plan: free
+    runtime: static
     buildCommand: npm run build
     staticPublishPath: ./dist
     routes:
