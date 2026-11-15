@@ -1,6 +1,74 @@
-PerformaCOS - Update Notes (Since Commit 6915a27)
-Date: 2026-11-10
-Baseline Commit: 6915a27 (docs: add generalized setup README and .env.example)
+PerformaCOS - Release Notes & Technical Changelog
+================================================================================
+
+UPDATE NOTES: 2026-11-15 (Commit 836ad1a)
+Cloud Deployment, Brevo REST Email Delivery & Auth Flow Hardening
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Live Cloud Backend API is now available:
+   - Base API URL: https://performacos-api.onrender.com/api
+   - Live Health Check: https://performacos-api.onrender.com/api/health
+   - Web App URL: https://performacos.onrender.com
+   - Mobile app developers can target the live cloud API directly:
+     * Production: https://performacos-api.onrender.com/api
+     * Local Dev (Android Emulator): http://10.0.2.2:8000/api
+     * Local Dev (iOS Simulator): http://localhost:8000/api
+     * Local Dev (Physical Device via LAN): http://<host-ip>:8000/api
+
+2. Production Outbound Email Delivery (Brevo HTTPS REST API):
+   - Background: Cloud hosting firewalls (e.g. Render Free Tier) drop outbound
+     TCP traffic to standard SMTP ports (25, 465, 587).
+   - Solution: Integrated Brevo's HTTPS REST API (Port 443) via direct POST to
+     https://api.brevo.com/v3/smtp/email.
+   - Capability: Sends transactional emails (OTPs, invitations, welcome notes)
+     to ANY recipient domain worldwide without domain DNS locking (verified for
+     both @evsu.edu.ph institutional emails and @gmail.com personal accounts).
+   - Real-Time Debugging: In addition to sending email, all generated OTPs are
+     echoed to backend stdout ([AUTH OTP] Generated OTP ...) so you can inspect
+     the live server logs during app development if needed.
+
+3. Authentication & Password Recovery Endpoints:
+   - POST /api/auth/forgot-password:
+     * Request body: {"email": "user@evsu.edu.ph"}
+     * Response: {"message": "If that email is registered, an OTP has been sent."}
+     * Behavior: Generates a randomized 6-digit numeric OTP code valid for 10
+       minutes, marks old OTPs for that user as used, and dispatches email.
+   - POST /api/auth/verify-otp:
+     * Request body: {"email": "user@evsu.edu.ph", "otp_code": "123456"}
+     * Response: {"valid": true, "reset_token": "<jwt-reset-token>"}
+     * Behavior: Validates active OTP and returns single-use password reset token.
+   - POST /api/auth/reset-password:
+     * Request body: {"reset_token": "<jwt-reset-token>", "new_password": "..."}
+     * Response: {"message": "Password reset successful."}
+     * Password Rule: Unified to minimum 8+ characters (with at least 1 uppercase,
+       1 lowercase, 1 digit, and 1 special symbol).
+
+4. Frontend & Mobile UI State Hardening:
+   - Password Recovery Button Unfreeze: Fixed an issue where the OTP submit button
+     remained stuck on "Validating..." if an invalid code was entered. The state
+     now catches errors and immediately resets loading state to re-enable inputs.
+   - Independent Password Visibility Toggles: "New Password" and "Confirm New
+     Password" fields now have separate show/hide eye buttons.
+   - Password Requirements: Standardized on 8+ characters across the app.
+
+5. Cloud Infrastructure & Security:
+   - Containerization: Added backend/Dockerfile (Python 3.11-slim, unprivileged
+     appuser UID 1000, dynamic $PORT binding).
+   - Security Headers: Added FastAPI middleware enforcing X-Frame-Options: DENY,
+     X-Content-Type-Options: nosniff, X-XSS-Protection: 1, and Referrer-Policy.
+   - Flexible CORS: CORS_ORIGINS parser in backend/app/config.py supports both
+     comma-separated strings and JSON arrays.
+   - Single Page App Routing: Added public/_redirects (/* /index.html 200) for
+     clean client-side routing on CDN.
+   - Database Version: Supabase PostgreSQL alembic_version stamped to head
+     revision '050f6cfc45be' with all 16 tables synchronized.
+
+
+================================================================================
+UPDATE NOTES: 2026-11-10 (Commit db331f5 / Baseline 6915a27)
+Invitation Link HTTPS & Same-Browser Routing, Role Scoping & Manual User Creation
 ================================================================================
 
 SUMMARY OF CHANGES
