@@ -1,9 +1,13 @@
 """
-email_service.py — Direct SMTP-powered email delivery for PerformaCOS.
-Uses Python's standard smtplib and email.mime for zero-dependency,
-unrestricted delivery to any email domain (Gmail, EVSU, Outlook, etc.).
+email_service.py — Multi-provider email delivery for PerformaCOS.
+Supports:
+1. Brevo HTTPS REST API (Port 443 — bypasses cloud outbound SMTP port blocks, delivers to all domains).
+2. Resend HTTPS REST API (Port 443 — sandbox fallback).
+3. Direct SMTP (Ports 587/465 — local development fallback).
 """
+import json
 import smtplib
+import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
@@ -54,6 +58,41 @@ def _dispatch_smtp(to: str, subject: str, html: str) -> bool:
         return False
 
 
+def _dispatch_brevo(to: str, subject: str, html: str) -> bool:
+    """Dispatches email via Brevo HTTPS REST API (Port 443 - works on Render Free Tier and delivers to any external domain)."""
+    if not settings.BREVO_API_KEY:
+        return False
+    try:
+        sender_name = settings.SMTP_FROM_NAME or "EVSU PerformaCOS"
+        sender_email = settings.SMTP_USER or settings.SMTP_FROM_EMAIL or "performacos@gmail.com"
+
+        payload = json.dumps({
+            "sender": {"name": sender_name, "email": sender_email},
+            "to": [{"email": to}],
+            "subject": subject,
+            "htmlContent": html,
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=payload,
+            headers={
+                "accept": "application/json",
+                "content-type": "application/json",
+                "api-key": settings.BREVO_API_KEY,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            msg_id = data.get("messageId", "ok")
+            print(f"[email_service] Successfully dispatched '{subject}' to {to} via Brevo HTTPS API (msgId={msg_id}).")
+            return True
+    except Exception as exc:
+        print(f"[email_service] Brevo HTTPS API dispatch to {to} failed: {exc}")
+        return False
+
+
 def _dispatch_resend(to: str, subject: str, html: str) -> bool:
     """Dispatches email via Resend HTTPS REST API (Port 443 - works on Render Free Tier)."""
     if not settings.RESEND_API_KEY:
@@ -82,9 +121,14 @@ def _dispatch_resend(to: str, subject: str, html: str) -> bool:
 def _dispatch_email(to: str, subject: str, html: str) -> bool:
     """
     Unified email dispatcher for PerformaCOS.
-    1. Attempts Resend HTTPS REST API (Port 443 - works on Render Free Tier).
-    2. Falls back to direct SMTP (Port 587/465 - for local dev or mail servers).
+    1. Attempts Brevo HTTPS REST API (Port 443 - unblocked on Render, unrestricted recipient domains).
+    2. Falls back to Resend HTTPS REST API (Port 443 - sandbox).
+    3. Falls back to direct SMTP (Port 587/465 - local dev or unblocked servers).
     """
+    if settings.BREVO_API_KEY:
+        if _dispatch_brevo(to, subject, html):
+            return True
+
     if settings.RESEND_API_KEY:
         if _dispatch_resend(to, subject, html):
             return True

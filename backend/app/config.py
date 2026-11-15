@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     # Resend HTTPS Email API (bypasses Render free-tier SMTP port restrictions)
     RESEND_API_KEY: str = ""
 
+    # Brevo HTTPS Email API (Port 443 - supports sending to any external recipient without domain DNS verification)
+    BREVO_API_KEY: str = ""
+
     # OTP
     OTP_EXPIRE_MINUTES: int = 10
 
