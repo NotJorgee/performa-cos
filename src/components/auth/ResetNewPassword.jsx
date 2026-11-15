@@ -9,6 +9,7 @@ export default function ResetNewPassword({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function ResetNewPassword({
   }, [errorMessage]);
 
   // Password rules validation
-  const hasMinLength = newPassword.length >= 12;
+  const hasMinLength = newPassword.length >= 8;
   const hasUpper = /[A-Z]/.test(newPassword);
   const hasLower = /[a-z]/.test(newPassword);
   const hasNumber = /[0-9]/.test(newPassword);
@@ -83,7 +84,7 @@ export default function ResetNewPassword({
                     type={showPassword ? 'text' : 'password'}
                     id="newPassword"
                     name="newPassword"
-                    placeholder="At least 12 characters"
+                    placeholder="At least 8 characters"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -94,6 +95,7 @@ export default function ResetNewPassword({
                     className="password-toggle"
                     onClick={() => setShowPassword((prev) => !prev)}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -108,7 +110,7 @@ export default function ResetNewPassword({
                   </span>
                   <input
                     className="form-control"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     id="confirmPassword"
                     name="confirmPassword"
                     placeholder="Re-enter new password"
@@ -116,6 +118,15 @@ export default function ResetNewPassword({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 
@@ -124,7 +135,7 @@ export default function ResetNewPassword({
                 <div style={{ fontWeight: '600', marginBottom: '6px', color: 'var(--ink-700)' }}>Password Requirements:</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                   <span style={{ color: hasMinLength ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                    {hasMinLength ? <Check size={13} /> : <Circle size={13} />} 12+ Characters
+                    {hasMinLength ? <Check size={13} /> : <Circle size={13} />} 8+ Characters
                   </span>
                   <span style={{ color: hasUpper ? 'var(--green-600)' : 'var(--ink-500)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                     {hasUpper ? <Check size={13} /> : <Circle size={13} />} Uppercase Letter
