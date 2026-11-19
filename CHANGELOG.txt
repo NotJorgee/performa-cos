@@ -2,6 +2,47 @@ PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
 UPDATE NOTES: 2026-11-19
+Time & Shift Requests, Request Approvals, & Evening Overtime Gate Integration
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Unified Staff Portal: "Time & Shift Requests":
+   - Renamed Tab 2 from "Leave & Absence Filing" to "Time & Shift Requests".
+   - Expanded category selection to include:
+     * Sick Leave / Medical Excuse
+     * Emergency Leave
+     * Official Business (OB) — Off Campus
+     * Overtime (OT) / Extended Shift Authorization (NEW)
+     * Bereavement Leave
+     * Leave of Absence Without Pay
+   - Dynamic form adapts when "Overtime (OT)" is selected:
+     * Switches to a single Target Date picker.
+     * Provides an Estimated Hours selector (1.0 to 5.0 hours).
+     * Predictive textarea placeholder targets specific tasks and deliverables.
+   - History table renamed to "My Submitted Requests" with category badge pills
+     (Purple for Overtime, Blue for OB, Slate for Leaves).
+
+2. Unified Supervisor Portal: "Request Approvals":
+   - In Department Head Attendance (src/components/depthead/DepartmentAttendance.jsx),
+     Tab 2 is renamed from "Subordinate Leave Queue" to "Request Approvals".
+   - Displays all subordinate leaves, OB slips, and overtime authorization requests.
+   - Overtime requests clearly show target date, requested hours, and deliverable descriptions.
+   - Single-click Approve or Disapprove actions with optional review feedback notes.
+
+3. Evening Clock-In Gate (5:00 PM Closing Hours Enforcement):
+   - In backend/app/routers/attendance.py (attendance_time_in):
+     * Standard shift closing time is 5:00 PM (17:00 PHT).
+     * If an employee attempts initial Clock-In at or after 5:00 PM:
+       - The system checks for an approved Overtime (OT) request for today.
+       - If approved OT exists: Punch is accepted as OVERTIME with 0 minutes late.
+       - If no approved OT exists: Punch is blocked with HTTP 400:
+         "Regular check-in closed at 5:00 PM. An approved Overtime Request under Time & Shift Requests is required to clock in after hours."
+     * Clock-Out after 5:00 PM remains unblocked for employees who clocked in during regular hours.
+
+
+================================================================================
+UPDATE NOTES: 2026-11-19
 One-Touch GPS Attendance, DAR Clock-In Gating, & Sub-Second Predictive AI
 ================================================================================
 

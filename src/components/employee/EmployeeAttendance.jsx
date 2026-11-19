@@ -74,10 +74,11 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const [dtrPacket, setDtrPacket] = useState(() => getCachedData(cacheKeyDtr));
   const [isLoadingDtr, setIsLoadingDtr] = useState(!dtrPacket);
 
-  // Leave Filing State
+  // Leave & Shift Request State
   const [leaveType, setLeaveType] = useState('Sick Leave');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [overtimeHours, setOvertimeHours] = useState('2');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveRequests, setLeaveRequests] = useState(() => getCachedData(cacheKeyLeaves) || []);
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
@@ -275,25 +276,29 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
     }
   };
 
-  // Handle Leave Filing
+  // Handle Time & Shift Request Submission
   const handleSubmitLeave = async (e) => {
     e.preventDefault();
-    if (!startDate || !endDate || !leaveReason.trim()) {
+    const isOt = leaveType === 'Overtime (OT)';
+    if (!startDate || (!isOt && !endDate) || !leaveReason.trim()) {
       setToast({ type: 'error', message: 'Please complete all required fields.' });
       return;
     }
 
     setIsSubmittingLeave(true);
     try {
-      const res = await api.leaves.apply({
+      const payload = {
         leave_type: leaveType,
         start_date: startDate,
-        end_date: endDate,
+        end_date: isOt ? startDate : endDate,
         reason: leaveReason.trim(),
-      });
-      setToast({ type: 'success', message: res.message || 'Leave request submitted!' });
+        hours: isOt ? parseFloat(overtimeHours) || 2.0 : null,
+      };
+      const res = await api.leaves.apply(payload);
+      setToast({ type: 'success', message: res.message || (isOt ? 'Overtime authorization request submitted!' : 'Request submitted to Department Head!') });
       setStartDate('');
       setEndDate('');
+      setOvertimeHours('2');
       setLeaveReason('');
       // Action-Triggered Invalidation: update state & cache immediately
       invalidateCache('emp_leaves_');
@@ -301,7 +306,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
       await loadMyLeaves();
       await loadTodayStatus();
     } catch (err) {
-      setToast({ type: 'error', message: err.message || 'Failed to submit leave request.' });
+      setToast({ type: 'error', message: err.message || 'Failed to submit request.' });
     } finally {
       setIsSubmittingLeave(false);
     }
@@ -317,7 +322,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
           <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             {activeTab === 'leaves' ? (
               <>
-                <FileText size={28} color="var(--brand-700)" /> Leave &amp; Absence Filing
+                <FileText size={28} color="var(--brand-700)" /> Time &amp; Shift Requests
               </>
             ) : (
               <>
@@ -333,7 +338,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
             onClick={() => setActiveTab('dtr')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <ArrowLeft size={14} /> Back to Attendance Clock-In
+            <ArrowLeft size={14} /> Back to Attendance Clock
           </button>
         ) : (
           onBack && (
@@ -527,7 +532,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               marginBottom: '20px',
             }}
           >
-            {/* Left Button: Apply for Leave */}
+            {/* Left Button: Time & Shift Requests */}
             <div
               className="card stat-card-clickable"
               onClick={() => setActiveTab('leaves')}
@@ -558,12 +563,17 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 >
                   <FileText size={22} />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-900)' }}>
-                  Apply for Leave
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-900)' }}>
+                    Time &amp; Shift Requests
+                  </div>
+                  <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+                    File leaves, OB slips, or overtime permits
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brand-700)', fontWeight: 700, fontSize: '13.5px' }}>
-                <span>Apply Now</span>
+                <span>Manage</span>
                 <ArrowRight size={16} />
               </div>
             </div>
@@ -612,17 +622,17 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
         </div>
       )}
 
-      {/* TAB 2: LEAVE & ABSENCE FILING */}
+      {/* TAB 2: TIME & SHIFT REQUESTS */}
       {activeTab === 'leaves' && (
         <div>
           <div className="leave-management-grid">
-          {/* File a Leave Form */}
+          {/* File a Request Form */}
           <div className="card" style={{ padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '17px' }}>File Leave / Absence Notice</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: '17px' }}>New Time &amp; Shift Request</h3>
             <form onSubmit={handleSubmitLeave}>
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                  Leave / Absence Category
+                  Request Category
                 </label>
                 <select
                   value={leaveType}
@@ -633,51 +643,94 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                   <option value="Sick Leave">Sick Leave / Medical Excuse</option>
                   <option value="Emergency Leave">Emergency Leave</option>
                   <option value="Official Business (OB)">Official Business (OB) — Off Campus</option>
+                  <option value="Overtime (OT)">Overtime (OT) / Extended Shift Authorization</option>
                   <option value="Bereavement">Bereavement Leave</option>
                   <option value="Leave Without Pay">Leave of Absence Without Pay</option>
                 </select>
               </div>
 
-              <div className="leave-dates-row">
-                <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="form-control"
-                    style={{ width: '100%', padding: '9px 12px' }}
-                    required
-                  />
+              {leaveType === 'Overtime (OT)' ? (
+                <div className="leave-dates-row" style={{ marginBottom: '14px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                      Target Overtime Date
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setEndDate(e.target.value);
+                      }}
+                      className="form-control"
+                      style={{ width: '100%', padding: '9px 12px' }}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                      Estimated Hours
+                    </label>
+                    <select
+                      value={overtimeHours}
+                      onChange={(e) => setOvertimeHours(e.target.value)}
+                      className="form-control"
+                      style={{ width: '100%', padding: '9px 12px' }}
+                    >
+                      <option value="1">1.0 Hour (5:00 PM – 6:00 PM)</option>
+                      <option value="2">2.0 Hours (5:00 PM – 7:00 PM)</option>
+                      <option value="3">3.0 Hours (5:00 PM – 8:00 PM)</option>
+                      <option value="4">4.0 Hours (5:00 PM – 9:00 PM)</option>
+                      <option value="5">5.0 Hours (5:00 PM – 10:00 PM)</option>
+                    </select>
+                  </div>
                 </div>
+              ) : (
+                <div className="leave-dates-row">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="form-control"
+                      style={{ width: '100%', padding: '9px 12px' }}
+                      required
+                    />
+                  </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="form-control"
-                    style={{ width: '100%', padding: '9px 12px' }}
-                    required
-                  />
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="form-control"
+                      style={{ width: '100%', padding: '9px 12px' }}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div style={{ marginBottom: '18px' }}>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                  Justification / Specific Reason
+                  {leaveType === 'Overtime (OT)' ? 'Deliverables & Work Justification' : 'Justification / Specific Reason'}
                 </label>
                 <PredictiveTextarea
                   id="leaveReasonInput"
                   rows={4}
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
-                  placeholder="State the reason for absence for Department Head review..."
+                  placeholder={
+                    leaveType === 'Overtime (OT)'
+                      ? "Detail the urgent tasks, document preparations, or lab maintenance to be executed during overtime..."
+                      : "State the reason for absence or off-campus assignment for Department Head review..."
+                  }
                   contextType="leave"
                   fieldName={`leaveReason (${leaveType})`}
                   role={currentUser?.job_title || currentUser?.jobTitle || 'COS Personnel'}
@@ -701,16 +754,20 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 }}
               >
                 <Send size={15} />
-                {isSubmittingLeave ? 'Submitting Leave...' : 'Submit to Department Head'}
+                {isSubmittingLeave
+                  ? 'Submitting Request...'
+                  : leaveType === 'Overtime (OT)'
+                  ? 'Request Overtime Authorization'
+                  : 'Submit to Department Head'}
               </button>
             </form>
           </div>
 
-          {/* Past Leave Requests */}
+          {/* Past Requests History */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
               <div className="card-title" style={{ margin: 0 }}>
-                My Leave &amp; Absence History
+                My Submitted Requests
               </div>
             </div>
 
@@ -719,8 +776,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               <thead>
                 <tr>
                   <th>Category</th>
-                  <th>Dates</th>
-                  <th>Days</th>
+                  <th>Schedule</th>
+                  <th>Scope</th>
                   <th>Status</th>
                   <th>Notes</th>
                 </tr>
@@ -729,17 +786,37 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 {leaveRequests.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                      No leave requests filed yet.
+                      No requests submitted yet.
                     </td>
                   </tr>
                 ) : (
-                  leaveRequests.map((l) => (
-                    <tr key={l.id}>
-                      <td style={{ fontWeight: 600, fontSize: '13px' }}>{l.leave_type}</td>
-                      <td style={{ fontSize: '12.5px' }}>
-                        {l.start_date} to {l.end_date}
-                      </td>
-                      <td style={{ fontSize: '12.5px' }}>{l.days_count} day(s)</td>
+                  leaveRequests.map((l) => {
+                    const isOt = l.leave_type?.toLowerCase().includes('overtime');
+                    const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                    return (
+                      <tr key={l.id}>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
+                              color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
+                              border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
+                            }}
+                          >
+                            {l.leave_type}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '12.5px' }}>
+                          {l.start_date === l.end_date ? l.start_date : `${l.start_date} to ${l.end_date}`}
+                        </td>
+                        <td style={{ fontSize: '12.5px' }}>
+                          {isOt ? 'Overtime' : `${l.days_count} day(s)`}
+                        </td>
                       <td>
                         <span
                           className={`badge ${
@@ -758,7 +835,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                         {l.review_notes || '—'}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
               </table>

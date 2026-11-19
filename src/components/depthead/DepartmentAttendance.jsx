@@ -202,7 +202,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
             gap: '8px',
           }}
         >
-          <Calendar size={16} /> Subordinate Leave Queue
+          <Calendar size={16} /> Request Approvals
           {leaveQueue.filter((l) => l.status === 'PENDING_DEPT_HEAD').length > 0 && (
             <span
               style={{
@@ -364,10 +364,10 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
         </div>
       )}
 
-      {/* TAB 2: SUBORDINATE LEAVE QUEUE */}
+      {/* TAB 2: REQUEST APPROVALS QUEUE */}
       {activeTab === 'leaves' && (
         <div>
-          {/* Leave Queue Table */}
+          {/* Requests Queue Table */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div
               style={{
@@ -377,7 +377,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
               }}
             >
               <div className="card-title" style={{ margin: 0 }}>
-                Staff Leave Requests
+                Staff Time &amp; Shift Requests
               </div>
             </div>
 
@@ -387,8 +387,8 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                   <tr>
                     <th>Employee</th>
                     <th>Category</th>
-                    <th>Duration</th>
-                    <th>Reason</th>
+                    <th>Schedule / Scope</th>
+                    <th>Reason &amp; Deliverables</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Review Action</th>
                   </tr>
@@ -397,81 +397,104 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                   {isLoadingLeaves ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                        Loading leave requests...
+                        Loading requests...
                       </td>
                     </tr>
                   ) : leaveQueue.length === 0 ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                        No leave requests filed in your department.
+                        No time &amp; shift requests filed in your department.
                       </td>
                     </tr>
                   ) : (
-                    leaveQueue.map((l) => (
-                      <tr key={l.id}>
-                        <td>
-                          <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
-                          <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
-                        </td>
-                        <td style={{ fontWeight: 600, fontSize: '13px' }}>{l.leave_type}</td>
-                        <td style={{ fontSize: '12.5px' }}>
-                          {l.start_date} to {l.end_date} ({l.days_count}d)
-                        </td>
-                        <td style={{ fontSize: '12px', maxWidth: '240px' }}>
-                          {l.reason}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              l.status === 'APPROVED'
-                                ? 'badge-completed'
-                                : l.status === 'REJECTED'
-                                ? 'badge-reject'
-                                : 'badge-pending'
-                            }`}
-                            style={{ fontSize: '11.5px' }}
-                          >
-                            {l.status === 'PENDING_DEPT_HEAD'
-                              ? 'Pending Review'
-                              : l.status === 'APPROVED'
-                              ? 'Approved'
-                              : 'Disapproved'}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          {l.status === 'PENDING_DEPT_HEAD' ? (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-primary"
-                              onClick={() => {
-                                setSelectedLeave(l);
-                                setReviewNotes(l.review_notes || '');
+                    leaveQueue.map((l) => {
+                      const isOt = l.leave_type?.toLowerCase().includes('overtime');
+                      const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                      return (
+                        <tr key={l.id}>
+                          <td>
+                            <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
+                            <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
+                                color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
+                                border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
                               }}
-                              style={{ fontSize: '12px', padding: '6px 14px' }}
                             >
-                              Review Request
-                            </button>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                              {l.leave_type}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '12.5px' }}>
+                            {isOt
+                              ? `Overtime (${l.start_date})`
+                              : l.start_date === l.end_date
+                              ? `${l.start_date} (1d)`
+                              : `${l.start_date} to ${l.end_date} (${l.days_count}d)`}
+                          </td>
+                          <td style={{ fontSize: '12px', maxWidth: '240px' }}>
+                            {l.reason}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                l.status === 'APPROVED'
+                                  ? 'badge-completed'
+                                  : l.status === 'REJECTED'
+                                  ? 'badge-reject'
+                                  : 'badge-pending'
+                              }`}
+                              style={{ fontSize: '11.5px' }}
+                            >
+                              {l.status === 'PENDING_DEPT_HEAD'
+                                ? 'Pending Review'
+                                : l.status === 'APPROVED'
+                                ? 'Approved'
+                                : 'Disapproved'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {l.status === 'PENDING_DEPT_HEAD' ? (
                               <button
                                 type="button"
-                                className="btn btn-sm"
+                                className="btn btn-sm btn-primary"
                                 onClick={() => {
                                   setSelectedLeave(l);
                                   setReviewNotes(l.review_notes || '');
                                 }}
-                                style={{ fontSize: '11.5px', padding: '4px 10px', background: '#f1f5f9', color: 'var(--ink-700)' }}
+                                style={{ fontSize: '12px', padding: '6px 14px' }}
                               >
-                                View Details
+                                Review Request
                               </button>
-                              <span className="muted" style={{ fontSize: '11px' }}>
-                                Decided ({l.reviewed_by || 'Supervisor'})
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  onClick={() => {
+                                    setSelectedLeave(l);
+                                    setReviewNotes(l.review_notes || '');
+                                  }}
+                                  style={{ fontSize: '11.5px', padding: '4px 10px', background: '#f1f5f9', color: 'var(--ink-700)' }}
+                                >
+                                  View Details
+                                </button>
+                                <span className="muted" style={{ fontSize: '11px' }}>
+                                  Decided ({l.reviewed_by || 'Supervisor'})
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -509,8 +532,8 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                   <Calendar size={18} color="var(--brand-700)" />
                   <span>
                     {selectedLeave.status === 'PENDING_DEPT_HEAD'
-                      ? 'Review Subordinate Leave Request'
-                      : 'Subordinate Leave Request Details'}
+                      ? 'Review Time & Shift Request'
+                      : 'Time & Shift Request Details'}
                   </span>
                 </div>
                 <div className="muted" style={{ fontSize: '12.5px', marginTop: '2px' }}>

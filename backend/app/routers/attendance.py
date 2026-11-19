@@ -30,10 +30,11 @@ class PunchRequest(BaseModel):
 
 
 class LeaveApplyRequest(BaseModel):
-    leave_type: str  # 'Sick Leave' | 'Emergency Leave' | 'Official Business (OB)' | 'Bereavement' | 'Leave Without Pay'
+    leave_type: str  # 'Sick Leave' | 'Emergency Leave' | 'Official Business (OB)' | 'Overtime (OT)' | 'Bereavement' | 'Leave Without Pay'
     start_date: str  # 'YYYY-MM-DD'
-    end_date: str    # 'YYYY-MM-DD'
+    end_date: Optional[str] = None  # 'YYYY-MM-DD' (defaults to start_date if omitted)
     reason: str
+    hours: Optional[float] = None
     attachment_url: Optional[str] = None
 
 
@@ -207,12 +208,35 @@ def attendance_time_in(
     shift = get_user_shift_schedule(current_user, db)
     arrival_mins = pht_now.hour * 60 + pht_now.minute
     earliest_mins = shift["earliest_punch_hour"] * 60 + shift["earliest_punch_minute"]
+    end_mins = shift["end_hour"] * 60 + shift["end_minute"]
 
     if arrival_mins < earliest_mins:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Campus check-in is not yet open. Official morning gate check-in opens at {shift['earliest_punch_str']} (official shift starts at {shift['official_start_str']}).",
         )
+
+    # 1.1 Evening Closing Gate Check (5:00 PM Cutoff)
+    # If clocking in after official shift end, requires an approved Overtime Request
+    is_after_hours = (arrival_mins >= end_mins)
+    approved_ot = None
+    if is_after_hours:
+        approved_ot = (
+            db.query(models.LeaveRequest)
+            .filter(
+                models.LeaveRequest.user_id == current_user.id,
+                models.LeaveRequest.status == "APPROVED",
+                models.LeaveRequest.start_date <= today_date,
+                models.LeaveRequest.end_date >= today_date,
+                models.LeaveRequest.leave_type.ilike("%Overtime%"),
+            )
+            .first()
+        )
+        if not approved_ot:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Regular check-in closed at 5:00 PM. An approved Overtime Request under Time & Shift Requests is required to clock in after hours.",
+            )
 
     # 2. Check existing record today
     existing = (
@@ -257,7 +281,7 @@ def attendance_time_in(
     weekday = pht_now.weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
     is_saturday = (weekday == 5)
 
-    if is_saturday:
+    if is_saturday or is_after_hours:
         punch_status = "OVERTIME"
         is_ot = True
         minutes_late = 0
@@ -1087,16 +1111,26 @@ def apply_for_leave(
     Submits a formal leave request from a COS employee.
     Notifies the supervisor/Department Head for institutional review.
     """
+    is_overtime = "overtime" in payload.leave_type.lower()
+    is_ob = "official business" in payload.leave_type.lower() or "ob" in payload.leave_type.lower()
+
     try:
         start_d = datetime.date.fromisoformat(payload.start_date)
-        end_d = datetime.date.fromisoformat(payload.end_date)
+        if payload.end_date:
+            end_d = datetime.date.fromisoformat(payload.end_date)
+        else:
+            end_d = start_d
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
     if end_d < start_d:
-        raise HTTPException(status_code=400, detail="Leave end date cannot be earlier than start date.")
+        raise HTTPException(status_code=400, detail="End date cannot be earlier than start date.")
 
     days_cnt = (end_d - start_d).days + 1
+
+    formatted_reason = payload.reason
+    if is_overtime and payload.hours:
+        formatted_reason = f"[{payload.hours} hr(s) Overtime] {payload.reason}"
 
     leave_entry = models.LeaveRequest(
         user_id=current_user.id,
@@ -1105,7 +1139,7 @@ def apply_for_leave(
         start_date=start_d,
         end_date=end_d,
         days_count=days_cnt,
-        reason=payload.reason,
+        reason=formatted_reason,
         attachment_url=payload.attachment_url,
         status="PENDING_DEPT_HEAD",
     )
@@ -1125,11 +1159,13 @@ def apply_for_leave(
             .first()
         )
         if dept_head:
+            req_label = "Overtime Request" if is_overtime else ("Official Business (OB) Slip" if is_ob else "Leave Request")
+            hours_info = f" ({payload.hours} hr(s))" if is_overtime and payload.hours else f" ({days_cnt} day(s))"
             notif = models.Notification(
                 user_id=dept_head.id,
                 target_role="Department Head",
-                title=f"Leave Request: {current_user.full_name}",
-                message=f"{current_user.full_name} filed a {payload.leave_type} request ({start_d} to {end_d}, {days_cnt} day(s)). Reason: {payload.reason[:80]}",
+                title=f"{req_label}: {current_user.full_name}",
+                message=f"{current_user.full_name} submitted a {payload.leave_type} request for {start_d}{hours_info}. Reason: {payload.reason[:80]}",
                 category="leave_request",
                 is_read=False,
                 action_view="department_leaves",
@@ -1138,11 +1174,12 @@ def apply_for_leave(
             db.add(notif)
             db.commit()
 
+    action_label = "OVERTIME_REQUEST_FILED" if is_overtime else ("OFFICIAL_BUSINESS_FILED" if is_ob else "LEAVE_APPLICATION_FILED")
     log_audit(
         db=db,
-        action="LEAVE_APPLICATION_FILED",
+        action=action_label,
         target_scope=f"{payload.leave_type} ({days_cnt} day(s))",
-        operation_details=f"{current_user.full_name} applied for {payload.leave_type} from {start_d} to {end_d}.",
+        operation_details=f"{current_user.full_name} applied for {payload.leave_type} for {start_d} to {end_d}.",
         user=current_user,
     )
 

@@ -93,10 +93,10 @@ export default function DeptHeadDashboard({
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('department_attendance')}
-          title="Click to monitor subordinate arrival, verify daily accomplishment (DAR), and approve leaves"
+          title="Click to monitor subordinate arrival, verify daily accomplishment (DAR), and review requests"
         >
           <div className="stat-top">
-            <span className="stat-label">Attendance</span>
+            <span className="stat-label">Attendance &amp; Requests</span>
             <span className="stat-icon">
               <Clock size={18} />
             </span>
@@ -105,7 +105,7 @@ export default function DeptHeadDashboard({
             Staff Attendance Radar
           </div>
           <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>Check arrival, DAR &amp; leaves</span>
+            <span>Check arrival, DAR &amp; requests</span>
             <ArrowRight size={14} />
           </div>
         </div>
