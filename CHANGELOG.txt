@@ -2,6 +2,28 @@ PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
 UPDATE NOTES: 2026-11-19
+Notification Privacy Isolation & Role Broadcast Timeline Gating
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Notification Privacy Leak Resolution:
+   - In backend/app/routers/notifications.py (list_user_notifications, mark_all_notifications_as_read):
+     * Resolved a query leak where personal notifications containing target_role metadata
+       (e.g., leave approvals/disapprovals) were exposed to other users sharing the same role.
+     * Enforced strict partition: target_role matching only evaluates for unaddressed broadcasts (user_id IS NULL).
+     * Enforced timeline gating: newly created accounts only receive role-wide/system broadcasts created
+       on or after their registration timestamp (created_at).
+
+2. User-Specific Leave Notification Refinement:
+   - In backend/app/routers/attendance.py (apply_for_leave, review_leave_request):
+     * Set target_role=None on personal notifications addressed to specific user IDs (employees and supervisors)
+       to prevent accidental role broadcasts.
+   - Database remediation: Cleaned legacy notification records with dual user_id and target_role assignments.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-19
 Universal Confirmation Modal System & High-Risk Decision Guards
 ================================================================================
 

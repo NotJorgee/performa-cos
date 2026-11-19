@@ -1163,7 +1163,7 @@ def apply_for_leave(
             hours_info = f" ({payload.hours} hr(s))" if is_overtime and payload.hours else f" ({days_cnt} day(s))"
             notif = models.Notification(
                 user_id=dept_head.id,
-                target_role="Department Head",
+                target_role=None,
                 title=f"{req_label}: {current_user.full_name}",
                 message=f"{current_user.full_name} submitted a {payload.leave_type} request for {start_d}{hours_info}. Reason: {payload.reason[:80]}",
                 category="leave_request",
@@ -1284,7 +1284,7 @@ def review_leave_request(
     status_label = "Approved" if new_status == "APPROVED" else "Disapproved"
     notif = models.Notification(
         user_id=leave.user_id,
-        target_role="COS Employee",
+        target_role=None,
         title=f"Leave Request {status_label}",
         message=f"Your {leave.leave_type} request ({leave.start_date} to {leave.end_date}) was {status_label.lower()} by {current_user.full_name}. Notes: {payload.review_notes or 'None'}",
         category="leave_status",

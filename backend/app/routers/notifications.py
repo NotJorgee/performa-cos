@@ -143,11 +143,23 @@ def list_user_notifications(
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """Fetch notifications relevant to the logged-in user or their institutional role."""
+    created_gate = current_user.created_at if current_user.created_at else datetime.datetime.min
     query = db.query(models.Notification).filter(
         or_(
+            # Direct personal notification explicitly addressed to this user
             models.Notification.user_id == current_user.id,
-            models.Notification.target_role == current_user.role,
-            (models.Notification.user_id == None) & (models.Notification.target_role == None),
+            # Role-wide broadcast (unaddressed to a specific user, matching role, created after user joined)
+            (
+                (models.Notification.user_id == None)
+                & (models.Notification.target_role == current_user.role)
+                & (models.Notification.created_at >= created_gate)
+            ),
+            # Campus-wide broadcast (unaddressed to any user or role, created after user joined)
+            (
+                (models.Notification.user_id == None)
+                & (models.Notification.target_role == None)
+                & (models.Notification.created_at >= created_gate)
+            ),
         )
     )
 
@@ -219,10 +231,20 @@ def mark_all_notifications_as_read(
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """Mark all matching user notifications as read."""
+    created_gate = current_user.created_at if current_user.created_at else datetime.datetime.min
     db.query(models.Notification).filter(
         or_(
             models.Notification.user_id == current_user.id,
-            models.Notification.target_role == current_user.role,
+            (
+                (models.Notification.user_id == None)
+                & (models.Notification.target_role == current_user.role)
+                & (models.Notification.created_at >= created_gate)
+            ),
+            (
+                (models.Notification.user_id == None)
+                & (models.Notification.target_role == None)
+                & (models.Notification.created_at >= created_gate)
+            ),
         )
     ).update({"is_read": True}, synchronize_session=False)
 
@@ -240,6 +262,9 @@ def delete_notification(
     notif = db.query(models.Notification).filter(models.Notification.id == notification_id).first()
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found.")
+
+    if notif.user_id and notif.user_id != current_user.id and current_user.role != "HR Personnel":
+        raise HTTPException(status_code=403, detail="Not authorized to dismiss this notification.")
 
     db.delete(notif)
     db.commit()
