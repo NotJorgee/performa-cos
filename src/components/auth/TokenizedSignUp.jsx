@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   User,
-  Shield,
   Check,
   Eye,
   EyeOff,
@@ -134,7 +133,7 @@ export default function TokenizedSignUp({
         if (!isMounted) return;
         setTokenData(null);
         setTokenError(
-          err.message || 'Invalid or expired invitation token. Please check your link.'
+          err.message || 'Invalid or expired invitation link. Please check your link.'
         );
       })
       .finally(() => {
@@ -181,7 +180,7 @@ export default function TokenizedSignUp({
     const contractStartDate = isCos ? cosContractStartDate : null;
 
     if (!tokenToUse) {
-      setFormError('Please provide a valid invitation token.');
+      setFormError('Please provide a valid invitation link or code.');
       return;
     }
 
@@ -284,20 +283,6 @@ export default function TokenizedSignUp({
 
         {/* Card */}
         <div className="auth-card" style={{ padding: '28px 32px' }}>
-          {/* Top Bar: Official Onboarding Portal Indicator */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              marginBottom: '10px',
-            }}
-          >
-            <span style={{ fontSize: '11.5px', color: 'var(--ink-500)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Official Onboarding Portal
-            </span>
-          </div>
-
           {/* Title */}
           <div className="auth-card-brand" style={{ marginBottom: '16px' }}>
             <span className="auth-card-brand-title">
@@ -331,59 +316,6 @@ export default function TokenizedSignUp({
             </div>
           )}
 
-          {tokenData && (
-            <div
-              style={{
-                background: roleMode === 'cos' ? '#ecfdf5' : '#fdf2f4',
-                border: `1px solid ${roleMode === 'cos' ? '#a7f3d0' : '#fecdd3'}`,
-                borderRadius: '10px',
-                padding: '12px 16px',
-                marginBottom: '18px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-              }}
-            >
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: roleMode === 'cos' ? '#10b981' : '#7a1128',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {roleMode === 'cos' ? <Check size={20} strokeWidth={2.6} /> : <Shield size={19} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, color: roleMode === 'cos' ? '#065f46' : '#881337' }}>
-                  {roleMode === 'cos' ? 'Institutional COS Employee Onboarding' : 'Institutional Administrator Onboarding'}
-                </div>
-                <div style={{ fontSize: '12px', color: roleMode === 'cos' ? '#047857' : '#9f1239' }}>
-                  Assigned to <strong>{tokenData.department_name || 'Eastern Visayas State University'}</strong>
-                </div>
-              </div>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  background: roleMode === 'cos' ? '#d1fae5' : '#ffe4e6',
-                  color: roleMode === 'cos' ? '#065f46' : '#881337',
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.4px',
-                }}
-              >
-                {tokenData.role || (roleMode === 'cos' ? 'COS Staff' : 'Department Head')}
-              </span>
-            </div>
-          )}
-
           {tokenError && (
             <div
               style={{
@@ -407,7 +339,7 @@ export default function TokenizedSignUp({
             </div>
           )}
 
-          {/* Invitation Token Field (Shown if manual verification needed) */}
+          {/* Invitation Code Field (Shown if manual verification needed) */}
           {(!tokenData || tokenError) && (
             <div
               style={{
@@ -419,7 +351,7 @@ export default function TokenizedSignUp({
               }}
             >
               <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '6px' }}>
-                Invitation Token
+                Invitation Code
               </label>
               <input
                 type="text"

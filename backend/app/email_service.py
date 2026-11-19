@@ -184,11 +184,7 @@ def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR 
       <div style="text-align:center;margin:28px 0;">
         <a href="{registration_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(122,17,40,0.25);">Complete Your Registration</a>
       </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;text-align:center;margin-bottom:20px;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Official Invitation Token</div>
-        <code style="font-size:16px;font-weight:800;color:#0f172a;letter-spacing:1.5px;font-family:monospace;">{token}</code>
-      </div>
-      <p style="font-size:12px;color:#64748b;line-height:1.5;">This registration token is valid for 30 days. If the button above does not open directly, copy and paste this address into your browser:<br><a href="{registration_url}" style="color:#7a1128;word-break:break-all;">{registration_url}</a></p>
+      <p style="font-size:12px;color:#64748b;line-height:1.5;">This invitation link is valid for 30 days. If the button above does not open directly, copy and paste this link into your browser:<br><a href="{registration_url}" style="color:#7a1128;word-break:break-all;">{registration_url}</a></p>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
       <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">Eastern Visayas State University · Performance Management System</p>
     </div>
