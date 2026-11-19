@@ -179,7 +179,7 @@ def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR 
       </div>
       <p style="font-size:14px;line-height:1.6;margin-bottom:12px;">{salutation}</p>
       <p style="font-size:14px;line-height:1.6;color:#334155;">
-        You have been officially invited by <strong>{invited_by}</strong> to join the PerformaCOS portal as an authorized <strong>{role}</strong>.
+        You have been officially invited to join the PerformaCOS portal as an authorized <strong>{role}</strong>.
       </p>
       <div style="text-align:center;margin:28px 0;">
         <a href="{registration_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(122,17,40,0.25);">Complete Your Registration</a>

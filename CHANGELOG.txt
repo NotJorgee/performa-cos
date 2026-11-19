@@ -10,6 +10,7 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
 1. Streamlined Invitation Email Template:
    - In backend/app/email_service.py (send_invitation_email):
      * Removed the prominent boxed "OFFICIAL INVITATION TOKEN" container and raw token code block.
+     * Removed individual sender attribution ("invited by [HR Name]") to keep the institutional invitation direct and authoritative.
      * Simplified the user guidance copy to avoid confusing technical jargon regarding tokens:
        "This invitation link is valid for 30 days. If the button above does not open directly, copy and paste this link into your browser: [url]"
      * Maintained seamless 1-click registration behavior via the existing tokenized query parameter.
