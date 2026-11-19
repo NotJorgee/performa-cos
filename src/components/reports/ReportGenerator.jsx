@@ -188,7 +188,16 @@ export default function ReportGenerator({
           <button
             type="button"
             className="btn btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              background: '#16a34a',
+              color: '#ffffff',
+              borderColor: '#15803d',
+              fontWeight: 600,
+            }}
             onClick={handleExportRosterCsv}
             title={isDeptRestricted ? `Download CSV report of ${deptScope} records` : 'Download CSV report of current personnel records'}
           >

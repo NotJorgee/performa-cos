@@ -146,7 +146,15 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
             type="button"
             className="btn btn-sm"
             onClick={handleExportCsv}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#16a34a',
+              color: '#ffffff',
+              borderColor: '#15803d',
+              fontWeight: 600,
+            }}
           >
             <Download size={14} /> Export CSV
           </button>

@@ -246,7 +246,7 @@ export default function BackupData({ onBack = null }) {
 
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn"
             disabled={downloadingFormat === 'csv'}
             onClick={() => handleDownload('csv')}
             style={{
@@ -257,6 +257,9 @@ export default function BackupData({ onBack = null }) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
+              background: downloadingFormat === 'csv' ? undefined : '#16a34a',
+              color: '#ffffff',
+              borderColor: downloadingFormat === 'csv' ? undefined : '#15803d',
               cursor: downloadingFormat === 'csv' ? 'not-allowed' : 'pointer',
             }}
           >

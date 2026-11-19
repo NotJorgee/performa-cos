@@ -40,6 +40,13 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
          "Regular check-in closed at 5:00 PM. An approved Overtime Request under Time & Shift Requests is required to clock in after hours."
      * Clock-Out after 5:00 PM remains unblocked for employees who clocked in during regular hours.
 
+4. UI Polishing & Green Spreadsheet CSV Actions:
+   - Removed subtitle description on the "Time & Shift Requests" action card in
+     the attendance dashboard for clean, balanced alignment with the logs card.
+   - Standardized all CSV Export / Download action buttons across the application
+     (Executive Analytics, Attendance Logs, Campus Payroll, Security Audit Logs,
+     Data Backup, and Report Generator) to spreadsheet green (#16a34a / #15803d).
+
 
 ================================================================================
 UPDATE NOTES: 2026-11-19

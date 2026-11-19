@@ -460,6 +460,9 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                     alignItems: 'center',
                     gap: '6px',
                     fontWeight: 600,
+                    background: payrollPacket ? '#16a34a' : undefined,
+                    color: payrollPacket ? '#ffffff' : undefined,
+                    borderColor: payrollPacket ? '#15803d' : undefined,
                     cursor: payrollPacket ? 'pointer' : 'not-allowed',
                   }}
                 >

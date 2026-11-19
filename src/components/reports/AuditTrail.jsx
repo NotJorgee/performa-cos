@@ -239,10 +239,19 @@ export default function AuditTrail({
             </button>
           )}
           <button
-            className="btn btn-primary"
+            className="btn"
             type="button"
             onClick={() => setShowExportModal(true)}
-            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+            style={{
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 600,
+              background: '#16a34a',
+              color: '#ffffff',
+              borderColor: '#15803d',
+            }}
           >
             <Download size={16} /> Export Logs
           </button>
@@ -634,7 +643,7 @@ export default function AuditTrail({
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn"
                 disabled={getExportFilteredLogs().length === 0}
                 onClick={handleExecuteExport}
                 style={{
@@ -642,6 +651,9 @@ export default function AuditTrail({
                   alignItems: 'center',
                   gap: '6px',
                   fontWeight: 600,
+                  background: getExportFilteredLogs().length === 0 ? undefined : '#16a34a',
+                  color: getExportFilteredLogs().length === 0 ? undefined : '#ffffff',
+                  borderColor: getExportFilteredLogs().length === 0 ? undefined : '#15803d',
                   cursor: getExportFilteredLogs().length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >

@@ -563,13 +563,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 >
                   <FileText size={22} />
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-900)' }}>
-                    Time &amp; Shift Requests
-                  </div>
-                  <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                    File leaves, OB slips, or overtime permits
-                  </div>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-900)' }}>
+                  Time &amp; Shift Requests
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brand-700)', fontWeight: 700, fontSize: '13.5px' }}>

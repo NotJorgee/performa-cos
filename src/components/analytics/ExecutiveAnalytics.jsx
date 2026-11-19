@@ -438,7 +438,16 @@ export default function ExecutiveAnalytics({
             type="button"
             className="btn btn-sm"
             onClick={handleExportCsv}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              background: '#16a34a',
+              color: '#ffffff',
+              borderColor: '#15803d',
+              fontWeight: 600,
+            }}
             title="Download institutional executive metrics (CSV)"
           >
             <Download size={15} />
