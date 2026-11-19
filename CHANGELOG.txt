@@ -1,6 +1,43 @@
 PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
+UPDATE NOTES: 2026-11-19 (Commit 98b941e)
+Polygon Geofence Accuracy Buffer, Progressive GPS Refinement & Mobile Optimization
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Polygon Geofencing with Mobile Device Accuracy Buffer:
+   - Backend (backend/app/routers/attendance.py & geofence.py) and Frontend
+     (src/utils/campusGeofence.js) now support distance-to-polygon validation.
+   - Points inside polygon vertices are verified at 0.0m.
+   - For points outside the polygon perimeter, a dynamic tolerance buffer is
+     evaluated: tolerance = max(50m, min(accuracy, 150m)).
+   - This accommodates mobile GPS jitter, indoor concrete attenuation, and
+     cellular tower triangulation drift when on campus.
+   - Out-of-bounds rejection error messages now report the true perpendicular
+     distance to the campus boundary (e.g. "80m away from EVSU Main Campus")
+     rather than calculating Euclidean distance to the center coordinate.
+   - PunchRequest payload now accepts an optional accuracy parameter (float).
+
+2. Removal of Obsolete Hardcoded Fallback Coordinates:
+   - Removed the obsolete development mock coordinates (11.0065, 124.6075) that
+     were 494 meters south of EVSU Ormoc Main Campus.
+   - Standardized primary campus center across backend/app/config.py, models,
+     and frontend to the true campus coordinate: (11.010466, 124.605469).
+   - If GPS acquisition fails or times out, the system no longer sends a fake
+     location 494m away; it clearly notifies the employee to enable device GPS.
+
+3. Progressive High-Accuracy GPS Acquisition & Live UI Status:
+   - Replaced single-shot getCurrentPosition with navigator.geolocation.watchPosition
+     with enableHighAccuracy: true and an 8-second satellite lock window.
+   - Auto-locks immediately when satellite precision achieves <= 25 meters.
+   - Added a real-time GPS Status Bar in the Employee Attendance dashboard showing
+     live satellite accuracy (e.g. "Live GPS Ready (±12m)") and a manual
+     "Refresh GPS" action button.
+
+
+================================================================================
 UPDATE NOTES: 2026-11-15 (Commit 836ad1a)
 Cloud Deployment, Brevo REST Email Delivery & Auth Flow Hardening
 ================================================================================
