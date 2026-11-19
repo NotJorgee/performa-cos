@@ -359,12 +359,12 @@ export default function DailyReporting({
         </div>
 
         {/* Clock-In Required Gate Card */}
-        <div style={{ maxWidth: '640px', margin: '40px auto 0' }}>
+        <div style={{ maxWidth: '600px', margin: '40px auto 0' }}>
           <div className="card" style={{ padding: '36px 28px', textAlign: 'center', borderRadius: '12px' }}>
             <div
               style={{
-                width: '64px',
-                height: '64px',
+                width: '60px',
+                height: '60px',
                 borderRadius: '50%',
                 background: '#fef3c7',
                 color: '#d97706',
@@ -374,15 +374,15 @@ export default function DailyReporting({
                 margin: '0 auto 18px',
               }}
             >
-              <Clock size={32} />
+              <Clock size={30} />
             </div>
 
             <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 10px', color: 'var(--ink-900, #0f172a)' }}>
-              Shift Clock-In Required
+              Clock-In Required
             </h2>
 
-            <p style={{ fontSize: '14px', color: 'var(--ink-600, #475569)', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto 24px' }}>
-              In accordance with EVSU-Ormoc institutional attendance policy, employees must record their morning or shift Clock-In (or have an approved Official Business slip) before logging daily accomplishment outputs and photo evidence.
+            <p style={{ fontSize: '14px', color: 'var(--ink-600, #475569)', lineHeight: 1.6, maxWidth: '440px', margin: '0 auto 24px' }}>
+              You need to clock in first before submitting your Daily Accomplishment Report for today.
             </p>
 
             <div
@@ -404,10 +404,10 @@ export default function DailyReporting({
                 Today: <strong>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
               </span>
               <span style={{ margin: '0 4px' }}>|</span>
-              <span style={{ color: '#dc2626', fontWeight: 600 }}>Attendance: Not Clocked In</span>
+              <span style={{ color: '#dc2626', fontWeight: 600 }}>Not Clocked In</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '340px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '280px', margin: '0 auto' }}>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -419,6 +419,7 @@ export default function DailyReporting({
                   }
                 }}
                 style={{
+                  width: '100%',
                   padding: '12px 20px',
                   fontWeight: 700,
                   fontSize: '14px',
@@ -429,27 +430,7 @@ export default function DailyReporting({
                   cursor: 'pointer',
                 }}
               >
-                <Clock size={16} /> Proceed to Attendance &amp; Clock In
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  if (onNavigate) {
-                    onNavigate('leave_filing');
-                  } else if (onBack) {
-                    onBack();
-                  }
-                }}
-                style={{
-                  padding: '10px 16px',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                File Official Business (OB) Slip
+                <Clock size={16} /> Go to Attendance
               </button>
             </div>
           </div>

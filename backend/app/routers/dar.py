@@ -66,7 +66,7 @@ def submit_dar(
     if not (attendance_log and attendance_log.time_in) and not approved_ob:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Clock-in required: You must record your shift Time-In (or have an approved Official Business slip) before submitting a Daily Accomplishment Report.",
+            detail="Clock-in required: Please clock in first before submitting your Daily Accomplishment Report.",
         )
 
     is_valid_geofence = False

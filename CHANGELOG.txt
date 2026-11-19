@@ -18,14 +18,12 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
      and immediate lock when precision reaches <= 25 meters.
 
 2. Daily Accomplishment Report (DAR) Attendance Gate:
-   - In accordance with EVSU-Ormoc institutional policy and CSC Form 48 standards,
-     employees must now record their shift Clock-In (or have an approved Official
-     Business / OB slip) before accessing the Daily Accomplishment Report.
-   - If an employee navigates to DAR without clocking in, a dedicated gate card
-     is displayed informing them of the requirement, with direct action buttons:
-     "Proceed to Attendance & Clock In" and "File Official Business (OB) Slip".
-   - Backend API (backend/app/routers/dar.py) also strictly enforces this check
-     on POST /api/dar, rejecting unclocked submissions with HTTP 403 Forbidden.
+   - Employees need to clock in first before accessing and submitting the Daily
+     Accomplishment Report for today.
+   - If an employee navigates to DAR without clocking in, a prompt is displayed
+     explaining that clocking in is required, with a "Go to Attendance" shortcut button.
+   - Backend API (backend/app/routers/dar.py) verifies clock-in status on POST /api/dar,
+     preventing unclocked submissions with HTTP 403 Forbidden.
 
 3. Sub-Second Predictive AI Autocomplete:
    - Ghost-text completion latency reduced from 3-5 seconds down to ~0.9 seconds.
