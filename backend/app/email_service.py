@@ -162,14 +162,7 @@ def send_invitation_email(to: str, token: str, role: str, invited_by: str = "HR 
     """Sends an official institutional onboarding invitation with tokenized registration link and role-specific salutation."""
     registration_url = f"{settings.frontend_base_url}/?token={token}"
     role_label = "COS Employee" if "COS" in role else "Administrator / Department Head"
-    if "Department Head" in role or "Dept" in role:
-        salutation = "Dear Department Head,"
-    elif "HR" in role:
-        salutation = "Dear HR Personnel,"
-    elif "COS" in role:
-        salutation = "Dear COS Personnel,"
-    else:
-        salutation = "Dear Colleague,"
+    salutation = "Dear Recipient,"
 
     html = f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
