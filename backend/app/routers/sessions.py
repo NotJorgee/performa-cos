@@ -57,11 +57,21 @@ def list_active_sessions(
         token = auth_header.split(" ")[1]
         current_token_hash = hash_token(token)
 
+    # Auto-expire sessions older than 7 days (JWT token validity period)
+    cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    db.query(models.UserSession).filter(
+        models.UserSession.user_id == current_user.id,
+        models.UserSession.is_revoked == False,
+        models.UserSession.last_active < cutoff_time,
+    ).update({"is_revoked": True}, synchronize_session=False)
+    db.commit()
+
     sessions = (
         db.query(models.UserSession)
         .filter(
             models.UserSession.user_id == current_user.id,
             models.UserSession.is_revoked == False,
+            models.UserSession.last_active >= cutoff_time,
         )
         .order_by(desc(models.UserSession.last_active))
         .all()

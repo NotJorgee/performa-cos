@@ -47,6 +47,15 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
      (Executive Analytics, Attendance Logs, Campus Payroll, Security Audit Logs,
      Data Backup, and Report Generator) to spreadsheet green (#16a34a / #15803d).
 
+5. Permanent Active Session Cleanup & Graceful Logout:
+   - Automated Session Expiration: Sessions older than 7 days (the valid JWT lifespan)
+     are automatically marked as revoked and filtered from the active sessions list.
+   - Same-Device Deduplication: Logging in from the same device / IP automatically
+     prunes older duplicate sessions from that browser, preventing session list bloat.
+   - Backend Logout Handshake: Introduced POST /api/auth/logout. Logging out of the
+     application now informs the backend to immediately revoke the device's session
+     record rather than only clearing browser local storage.
+
 
 ================================================================================
 UPDATE NOTES: 2026-11-19

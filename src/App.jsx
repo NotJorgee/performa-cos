@@ -263,8 +263,12 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    api.auth.logout();
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+    } catch {
+      // Fallback
+    }
     clearAllPerformaCache();
     setIsAuthenticated(false);
     setAuthView('login');

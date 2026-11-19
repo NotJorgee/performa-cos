@@ -85,11 +85,31 @@ def login(creds: schemas.LoginRequest, request: Request, db: Session = Depends(g
 
     token = create_access_token({"user_id": user.id, "role": user.role})
 
-    # Record session
+    # Auto-prune expired or duplicate sessions on same device for this user
+    cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    db.query(models.UserSession).filter(
+        models.UserSession.user_id == user.id,
+        models.UserSession.is_revoked == False,
+        models.UserSession.last_active < cutoff_time,
+    ).update({"is_revoked": True}, synchronize_session=False)
+
+    dev_desc = request.headers.get("User-Agent", "Unknown device")[:255]
+    client_ip = request.client.host if request.client else None
+
+    # Revoke older sessions from the exact same device/IP to prevent duplicates
+    if client_ip:
+        db.query(models.UserSession).filter(
+            models.UserSession.user_id == user.id,
+            models.UserSession.is_revoked == False,
+            models.UserSession.ip_address == client_ip,
+            models.UserSession.device_description == dev_desc,
+        ).update({"is_revoked": True}, synchronize_session=False)
+
+    # Record fresh session
     session = models.UserSession(
         user_id=user.id,
-        ip_address=request.client.host if request.client else None,
-        device_description=request.headers.get("User-Agent", "Unknown device")[:255],
+        ip_address=client_ip,
+        device_description=dev_desc,
         token_hash=hash_token(token),
         last_active=datetime.datetime.utcnow(),
     )
@@ -106,6 +126,37 @@ def login(creds: schemas.LoginRequest, request: Request, db: Session = Depends(g
     )
 
     return {"access_token": token, "token_type": "bearer", "user": _build_user_response(user)}
+
+
+@router.post("/logout")
+def logout(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Revokes the current active session in the database upon client logout.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        token_hash = hash_token(token)
+        db.query(models.UserSession).filter(
+            models.UserSession.user_id == current_user.id,
+            models.UserSession.token_hash == token_hash,
+        ).update({"is_revoked": True}, synchronize_session=False)
+        db.commit()
+
+    log_audit(
+        db=db,
+        action="USER_LOGGED_OUT",
+        target_scope=f"User #{current_user.id} ({current_user.email})",
+        operation_details="User gracefully logged out; device session revoked.",
+        user=current_user,
+        request=request,
+    )
+
+    return {"message": "Logged out successfully."}
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

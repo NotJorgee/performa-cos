@@ -79,9 +79,15 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ reset_token, new_password }),
       }),
-    logout: () => {
-      localStorage.removeItem('performa_token');
-      localStorage.removeItem('performa_user');
+    logout: async () => {
+      try {
+        await request('/auth/logout', { method: 'POST' });
+      } catch (err) {
+        // Silent fallback in case of offline state or expired token
+      } finally {
+        localStorage.removeItem('performa_token');
+        localStorage.removeItem('performa_user');
+      }
     },
     getCurrentUser: () => {
       try {
