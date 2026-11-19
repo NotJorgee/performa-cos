@@ -11,6 +11,8 @@ import {
   Info,
   ZoomIn,
   X,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 import {
   verifyCoordinatesAgainstCampuses,
@@ -22,13 +24,18 @@ import { applyStyle2GeotagWatermark } from '../../utils/geotagWatermark';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
 import PredictiveTextarea from '../common/PredictiveTextarea';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function DailyReporting({
   onBack = null,
+  onNavigate = null,
   onSubmitDar = () => {},
   currentUser = null,
 }) {
   const [campuses, setCampuses] = useState(() => getCampusGeofences());
+  const cacheKeyToday = 'emp_attendance_today';
+  const [attendanceStatus, setAttendanceStatus] = useState(() => getCachedData(cacheKeyToday));
+  const [isCheckingAttendance, setIsCheckingAttendance] = useState(!attendanceStatus);
   const [jobDescription, setJobDescription] = useState('');
   const [workAccomplished, setWorkAccomplished] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -91,6 +98,40 @@ export default function DailyReporting({
       isMounted = false;
     };
   }, []);
+
+  // Verify today's attendance punch status (DAR gate requirement)
+  useEffect(() => {
+    let isMounted = true;
+    async function checkAttendanceStatus() {
+      try {
+        if (api?.attendance?.getTodayStatus) {
+          const res = await api.attendance.getTodayStatus();
+          if (isMounted) {
+            setAttendanceStatus(res);
+            setCachedData(cacheKeyToday, res);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not verify attendance status for DAR gate:', err.message);
+      } finally {
+        if (isMounted) {
+          setIsCheckingAttendance(false);
+        }
+      }
+    }
+    checkAttendanceStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const isOfficialBusiness = Boolean(
+    attendanceStatus?.on_approved_leave &&
+    (attendanceStatus?.leave_type?.toLowerCase().includes('official business') ||
+     attendanceStatus?.leave_type?.toLowerCase().includes('ob'))
+  );
+  const hasClockedIn = Boolean(attendanceStatus?.has_timed_in);
+  const canAccessDar = hasClockedIn || isOfficialBusiness;
 
   /**
    * Resilient GPS coordinate retriever.
@@ -293,6 +334,129 @@ export default function DailyReporting({
       setGeoError(msg);
     }
   };
+
+  if (!isCheckingAttendance && !canAccessDar) {
+    return (
+      <div>
+        {/* Module Header */}
+        <div className="flex-between" style={{ marginBottom: '20px' }}>
+          <div>
+            <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting</h1>
+            <p className="muted" style={{ margin: 0 }}>
+              Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.
+            </p>
+          </div>
+          {onBack && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={onBack}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+            >
+              <ArrowLeft size={14} /> Back to Dashboard
+            </button>
+          )}
+        </div>
+
+        {/* Clock-In Required Gate Card */}
+        <div style={{ maxWidth: '640px', margin: '40px auto 0' }}>
+          <div className="card" style={{ padding: '36px 28px', textAlign: 'center', borderRadius: '12px' }}>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#fef3c7',
+                color: '#d97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 18px',
+              }}
+            >
+              <Clock size={32} />
+            </div>
+
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 10px', color: 'var(--ink-900, #0f172a)' }}>
+              Shift Clock-In Required
+            </h2>
+
+            <p style={{ fontSize: '14px', color: 'var(--ink-600, #475569)', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto 24px' }}>
+              In accordance with EVSU-Ormoc institutional attendance policy, employees must record their morning or shift Clock-In (or have an approved Official Business slip) before logging daily accomplishment outputs and photo evidence.
+            </p>
+
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '24px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px',
+                color: '#64748b',
+              }}
+            >
+              <Calendar size={15} />
+              <span>
+                Today: <strong>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+              </span>
+              <span style={{ margin: '0 4px' }}>|</span>
+              <span style={{ color: '#dc2626', fontWeight: 600 }}>Attendance: Not Clocked In</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '340px', margin: '0 auto' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('employee_attendance');
+                  } else if (onBack) {
+                    onBack();
+                  }
+                }}
+                style={{
+                  padding: '12px 20px',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                <Clock size={16} /> Proceed to Attendance &amp; Clock In
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('leave_filing');
+                  } else if (onBack) {
+                    onBack();
+                  }
+                }}
+                style={{
+                  padding: '10px 16px',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                File Official Business (OB) Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

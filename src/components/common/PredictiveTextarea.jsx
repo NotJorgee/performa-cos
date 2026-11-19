@@ -105,7 +105,7 @@ export default function PredictiveTextarea({
 
     debounceTimerRef.current = setTimeout(() => {
       fetchPrediction(value);
-    }, 350);
+    }, 200);
 
     return () => {
       if (debounceTimerRef.current) {

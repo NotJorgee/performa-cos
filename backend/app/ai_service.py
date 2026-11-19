@@ -12,10 +12,8 @@ logger = logging.getLogger("ai_service")
 
 # Candidate models ranked by speed, quota efficiency, and availability
 CANDIDATE_MODELS = [
-    "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
+    "gemini-3.1-flash-lite-preview",
 ]
 
 
@@ -512,7 +510,7 @@ Return strictly valid JSON:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=3.5) as resp:
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 text_part = data["candidates"][0]["content"]["parts"][0]["text"]
                 parsed = json.loads(text_part.strip())

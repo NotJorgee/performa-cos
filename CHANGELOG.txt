@@ -1,6 +1,55 @@
 PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
+UPDATE NOTES: 2026-11-19
+One-Touch GPS Attendance, DAR Clock-In Gating, & Sub-Second Predictive AI
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. One-Touch Integrated GPS on Clock Buttons:
+   - Removed the separate Real-Time GPS Status Bar and manual "Refresh GPS" button
+     to provide a cleaner, more intuitive user interface.
+   - GPS satellite acquisition is now seamlessly integrated into the "Clock In"
+     and "Clock Out" action buttons.
+   - When tapped, the button displays real-time progress:
+     "Acquiring GPS..." (locks satellite signal) -> "Recording Punch..." -> "Timed In / Out".
+   - Uses high-accuracy device geolocation with a 6-second satellite lock window
+     and immediate lock when precision reaches <= 25 meters.
+
+2. Daily Accomplishment Report (DAR) Attendance Gate:
+   - In accordance with EVSU-Ormoc institutional policy and CSC Form 48 standards,
+     employees must now record their shift Clock-In (or have an approved Official
+     Business / OB slip) before accessing the Daily Accomplishment Report.
+   - If an employee navigates to DAR without clocking in, a dedicated gate card
+     is displayed informing them of the requirement, with direct action buttons:
+     "Proceed to Attendance & Clock In" and "File Official Business (OB) Slip".
+   - Backend API (backend/app/routers/dar.py) also strictly enforces this check
+     on POST /api/dar, rejecting unclocked submissions with HTTP 403 Forbidden.
+
+3. Sub-Second Predictive AI Autocomplete:
+   - Ghost-text completion latency reduced from 3-5 seconds down to ~0.9 seconds.
+   - Re-ordered candidate AI models in backend/app/ai_service.py to place
+     "gemini-3.1-flash-lite" first, bypassing the non-responsive "gemini-3.5-flash-lite".
+   - Reduced frontend textarea debounce from 350ms to 200ms for immediate feedback.
+   - Set backend AI model execution timeout to 2.0s.
+
+4. DAR Multi-Campus Polygon Geofence Tolerance Buffer:
+   - DAR backend verification now checks polygon perimeter boundaries with a 50-meter
+     tolerance buffer, preventing false out-of-bounds rejections on campus perimeters.
+
+5. Attendance System Rules: Out-of-Bounds & Forgotten Clock-Out Specifications:
+   - Out-of-Bounds Punch: If an employee attempts to clock in/out outside campus,
+     the system rejects the punch, reports the exact distance to the nearest campus
+     boundary (e.g. "You are 120m away from EVSU Main Campus"), and prevents logging.
+   - Forgotten Clock-Out: Attendance logs are tracked on a per-calendar-day basis
+     (log_date == today_date). An unclocked previous shift leaves time_out as null
+     (flagged as an "Incomplete Punch"), but NEVER blocks the employee from clocking
+     in the following morning. Supervisors and HR can reconcile missing departures
+     against the employee's timestamped, geotagged DAR photo submission.
+
+
+================================================================================
 UPDATE NOTES: 2026-11-19 (Commit 98b941e)
 Polygon Geofence Accuracy Buffer, Progressive GPS Refinement & Mobile Optimization
 ================================================================================

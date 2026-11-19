@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock,
-  MapPin,
   Calendar,
   CheckCircle2,
   AlertCircle,
@@ -29,6 +28,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   }, [initialTab]);
   const [toast, setToast] = useState(null);
   const [isPunching, setIsPunching] = useState(false);
+  const [punchAction, setPunchAction] = useState(null); // 'locating_in' | 'saving_in' | 'locating_out' | 'saving_out' | null
 
   // Real-Time Running Clock
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -62,10 +62,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const [todayData, setTodayData] = useState(() => getCachedData(cacheKeyToday));
   const [isLoading, setIsLoading] = useState(!todayData);
 
-  // GPS Location State
+  // GPS Location State (Cached from on-demand button tap)
   const [gpsLocation, setGpsLocation] = useState(null);
-  const [gpsError, setGpsError] = useState(null);
-  const [isLocating, setIsLocating] = useState(false);
 
   // Semi-Monthly DTR State
   const [cutoffPeriod, setCutoffPeriod] = useState('1st_half'); // '1st_half' | '2nd_half'
@@ -101,31 +99,13 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const watchIdRef = useRef(null);
   const timeoutIdRef = useRef(null);
 
-  // Progressive High-Accuracy GPS Acquisition
-  const fetchCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setGpsError('Geolocation is not supported by your device or browser.');
-      return;
-    }
+  // Acquire Fresh High-Accuracy Satellite GPS Position on Demand
+  const acquireFreshLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        return reject(new Error('Geolocation is not supported by your device or browser.'));
+      }
 
-    setIsLocating(true);
-    setGpsError(null);
-
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-    if (timeoutIdRef.current !== null) {
-      clearTimeout(timeoutIdRef.current);
-      timeoutIdRef.current = null;
-    }
-
-    let bestPos = null;
-    let completed = false;
-
-    const finalize = (finalPos = null) => {
-      if (completed) return;
-      completed = true;
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -134,55 +114,61 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
         clearTimeout(timeoutIdRef.current);
         timeoutIdRef.current = null;
       }
-      setIsLocating(false);
 
-      const target = finalPos || bestPos;
-      if (target) {
-        setGpsLocation({
-          latitude: target.coords.latitude,
-          longitude: target.coords.longitude,
-          accuracy: target.coords.accuracy,
-        });
-        setGpsError(null);
-      } else {
-        setGpsLocation(null);
-        setGpsError('Unable to acquire accurate GPS position. Please ensure device location is on and browser permission is granted.');
+      let bestPos = null;
+      let completed = false;
+
+      const finish = (finalPos = null) => {
+        if (completed) return;
+        completed = true;
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+        if (timeoutIdRef.current !== null) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
+
+        const target = finalPos || bestPos;
+        if (target) {
+          const loc = {
+            latitude: target.coords.latitude,
+            longitude: target.coords.longitude,
+            accuracy: target.coords.accuracy,
+          };
+          setGpsLocation(loc);
+          resolve(loc);
+        } else {
+          reject(new Error('Unable to acquire accurate GPS position. Please check your device location settings and try again.'));
+        }
+      };
+
+      // Failsafe timer (6 seconds maximum to lock satellites)
+      timeoutIdRef.current = setTimeout(() => {
+        finish();
+      }, 6000);
+
+      try {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+              bestPos = pos;
+            }
+            if (pos.coords.accuracy && pos.coords.accuracy <= 25) {
+              finish(pos);
+            }
+          },
+          (err) => {
+            console.warn('GPS acquisition warning:', err.message);
+            if (!bestPos) finish();
+          },
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+        );
+      } catch (err) {
+        finish();
       }
-    };
-
-    // Maximum 8-second window to allow mobile GPS chip satellite lock
-    timeoutIdRef.current = setTimeout(() => {
-      finalize();
-    }, 8000);
-
-    try {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
-            bestPos = pos;
-            setGpsLocation({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            });
-          }
-
-          // If satellite lock is high accuracy (<= 25 meters), lock in immediately
-          if (pos.coords.accuracy && pos.coords.accuracy <= 25) {
-            finalize(pos);
-          }
-        },
-        (err) => {
-          console.warn('GPS acquisition warning:', err.message);
-          if (!bestPos) {
-            finalize();
-          }
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-      );
-    } catch (err) {
-      finalize();
-    }
+    });
   };
 
   useEffect(() => {
@@ -227,7 +213,6 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
 
   useEffect(() => {
     loadTodayStatus();
-    fetchCurrentLocation();
     loadDtrPacket();
   }, []);
 
@@ -239,20 +224,32 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
     }
   }, [activeTab, cutoffPeriod, dtrMonth, dtrYear]);
 
-  // Handle Punch (Time-In or Time-Out)
+  // Handle Punch (Time-In or Time-Out) with Integrated On-Demand Satellite GPS Acquisition
   const handlePunch = async (type) => {
-    if (!gpsLocation) {
-      fetchCurrentLocation();
-      setToast({ type: 'error', message: 'Acquiring GPS location... Please ensure location permissions are enabled and retry in a moment.' });
-      return;
-    }
-
+    if (isPunching) return;
     setIsPunching(true);
+    setPunchAction(type === 'time_in' ? 'locating_in' : 'locating_out');
+
     try {
+      // 1. Automatically acquire fresh GPS satellite coordinates on button tap
+      let coords = null;
+      try {
+        coords = await acquireFreshLocation();
+      } catch (locErr) {
+        if (gpsLocation) {
+          coords = gpsLocation;
+        } else {
+          throw locErr;
+        }
+      }
+
+      setPunchAction(type === 'time_in' ? 'saving_in' : 'saving_out');
+
+      // 2. Submit punch with verified coordinates and accuracy
       const payload = {
-        latitude: gpsLocation.latitude,
-        longitude: gpsLocation.longitude,
-        accuracy: gpsLocation.accuracy,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy: coords.accuracy,
       };
 
       let res;
@@ -274,6 +271,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
       setToast({ type: 'error', message: err.message || 'Failed to record attendance punch.' });
     } finally {
       setIsPunching(false);
+      setPunchAction(null);
     }
   };
 
@@ -455,63 +453,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               </div>
             </div>
 
-            {/* GPS Live Status Bar */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                background: gpsError ? '#fef2f2' : isLocating ? '#eff6ff' : '#f0fdf4',
-                border: gpsError ? '1px solid #fecaca' : isLocating ? '1px solid #bfdbfe' : '1px solid #bbf7d0',
-                marginBottom: '16px',
-                fontSize: '12.5px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                <MapPin size={15} color={gpsError ? '#dc2626' : isLocating ? '#2563eb' : '#16a34a'} style={{ flexShrink: 0 }} />
-                <span
-                  style={{
-                    color: gpsError ? '#991b1b' : isLocating ? '#1e40af' : '#166534',
-                    fontWeight: 600,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {isLocating
-                    ? 'Acquiring high-accuracy GPS satellite lock...'
-                    : gpsError
-                    ? gpsError
-                    : gpsLocation
-                    ? `Live GPS Ready (${gpsLocation.latitude.toFixed(5)}°, ${gpsLocation.longitude.toFixed(5)}° · ±${Math.round(gpsLocation.accuracy || 0)}m)`
-                    : 'GPS inactive — tap Refresh GPS'}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={fetchCurrentLocation}
-                disabled={isLocating}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: isLocating ? '#94a3b8' : 'var(--brand-700)',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  cursor: isLocating ? 'not-allowed' : 'pointer',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  flexShrink: 0,
-                  marginLeft: '8px',
-                }}
-              >
-                {isLocating ? 'Locating...' : 'Refresh GPS'}
-              </button>
-            </div>
-
-            {/* Punch Action Buttons */}
-            <div style={{ display: 'flex', gap: '14px' }}>
+            {/* Punch Action Buttons with Integrated On-Demand Satellite GPS */}
+            <div style={{ display: 'flex', gap: '14px', marginTop: '16px' }}>
               <button
                 type="button"
                 className="btn"
@@ -534,7 +477,13 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 }}
               >
                 <CheckCircle2 size={16} />
-                {todayData?.has_timed_in ? 'Timed In' : 'Clock In'}
+                {todayData?.has_timed_in
+                  ? 'Timed In'
+                  : punchAction === 'locating_in'
+                  ? 'Acquiring GPS...'
+                  : punchAction === 'saving_in'
+                  ? 'Recording Punch...'
+                  : 'Clock In'}
               </button>
 
               <button
@@ -559,7 +508,13 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 }}
               >
                 <Clock size={16} />
-                {todayData?.has_timed_out ? 'Timed Out' : 'Clock Out'}
+                {todayData?.has_timed_out
+                  ? 'Timed Out'
+                  : punchAction === 'locating_out'
+                  ? 'Acquiring GPS...'
+                  : punchAction === 'saving_out'
+                  ? 'Recording Punch...'
+                  : 'Clock Out'}
               </button>
             </div>
           </div>

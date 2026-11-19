@@ -38,7 +38,37 @@ def submit_dar(
     """
     Submits a Daily Accomplishment Report with multi-campus geofence verification.
     Accepts both unified single task input or structured task list.
+    Requires employee to have timed in for today's shift or have approved Official Business.
     """
+    pht_now = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+    today_date = pht_now.date()
+
+    # Verify that employee has recorded shift attendance time-in or has approved OB
+    attendance_log = (
+        db.query(models.AttendanceLog)
+        .filter(
+            models.AttendanceLog.user_id == current_user.id,
+            models.AttendanceLog.log_date == today_date,
+        )
+        .first()
+    )
+    approved_ob = (
+        db.query(models.LeaveRequest)
+        .filter(
+            models.LeaveRequest.user_id == current_user.id,
+            models.LeaveRequest.status == "APPROVED",
+            models.LeaveRequest.start_date <= today_date,
+            models.LeaveRequest.end_date >= today_date,
+            models.LeaveRequest.leave_type.ilike("%Official Business%"),
+        )
+        .first()
+    )
+    if not (attendance_log and attendance_log.time_in) and not approved_ob:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Clock-in required: You must record your shift Time-In (or have an approved Official Business slip) before submitting a Daily Accomplishment Report.",
+        )
+
     is_valid_geofence = False
     verified_campus = None
 
@@ -47,9 +77,13 @@ def submit_dar(
         active_campuses = db.query(models.CampusGeofence).filter(models.CampusGeofence.enforce_geofence == True).all()
         if active_campuses:
             for campus in active_campuses:
-                from .geofence import is_point_in_polygon
+                from .geofence import is_point_in_polygon, distance_to_polygon_meters
                 if campus.boundary_type == "polygon" and campus.polygon_coords and len(campus.polygon_coords) >= 3:
                     if is_point_in_polygon(report.latitude, report.longitude, campus.polygon_coords):
+                        is_valid_geofence = True
+                        verified_campus = campus.name
+                        break
+                    elif distance_to_polygon_meters(report.latitude, report.longitude, campus.polygon_coords) <= 50.0:
                         is_valid_geofence = True
                         verified_campus = campus.name
                         break
