@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getInitialNotifications } from '../../utils/notificationsData';
+import ConfirmModal from '../common/ConfirmModal';
 
 export default function AppLayout({
   children,
@@ -35,6 +36,7 @@ export default function AppLayout({
   // Sidebar only pops up when pressing the menu button (Off-canvas drawer)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const notifRef = useRef(null);
 
   // Close notifications on outside click or mobile touch
@@ -226,7 +228,7 @@ export default function AppLayout({
             type="button"
             onClick={() => {
               closeSidebar();
-              onLogout();
+              setShowLogoutConfirm(true);
             }}
             className="nav-item logout"
           >
@@ -382,6 +384,22 @@ export default function AppLayout({
         {/* Page Content Body */}
         <main className="content">{children}</main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Log Out of PerformaCOS?"
+        message="Are you sure you want to end your current session? Any unsaved edits or in-progress drafts will be lost."
+        confirmText="Log Out"
+        cancelText="Stay Logged In"
+        variant="brand"
+        icon={LogOut}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          onLogout();
+        }}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
     </div>
   );
 }

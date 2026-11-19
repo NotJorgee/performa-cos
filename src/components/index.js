@@ -13,6 +13,7 @@ export { default as ProfileSettings } from './auth/ProfileSettings';
 export { default as DynamicRubric } from './common/DynamicRubric';
 export { default as OfficialRatingSheetModal } from './common/OfficialRatingSheetModal';
 export { default as FastTrackModal } from './common/FastTrackModal';
+export { default as ConfirmModal } from './common/ConfirmModal';
 export { default as CampusGeofence } from './common/CampusGeofence';
 export { default as AiPerformanceAnalysis } from './common/AiPerformanceAnalysis';
 export { default as HistoricalAttendanceRoster } from './common/HistoricalAttendanceRoster';

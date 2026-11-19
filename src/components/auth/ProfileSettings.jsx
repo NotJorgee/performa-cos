@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
+import ConfirmModal from '../common/ConfirmModal';
 import AvatarCropModal from './AvatarCropModal';
 
 export default function ProfileSettings({
@@ -97,6 +98,10 @@ export default function ProfileSettings({
   const [approvalAlerts, setApprovalAlerts] = useState(true);
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
   const [isSavingPrefs, setIsSavingPrefs] = useState(false);
+
+  // Session Revocation Confirmation Modal State
+  const [revokeTarget, setRevokeTarget] = useState(null); // null | 'ALL' | session object
+  const [isRevoking, setIsRevoking] = useState(false);
 
   // Load preferences from API
   useEffect(() => {
@@ -314,26 +319,26 @@ export default function ProfileSettings({
     }
   };
 
-  const handleRevokeSession = async (sessionId) => {
+  const handleConfirmRevoke = async () => {
+    if (!revokeTarget) return;
+    setIsRevoking(true);
     try {
-      await api.sessions.revoke(sessionId);
-      setOtherSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      setToastMsg('Selected device session was revoked successfully.');
+      if (revokeTarget === 'ALL') {
+        await api.sessions.revokeAllOthers();
+        setOtherSessions([]);
+        setToastMsg('All other device sessions have been terminated. You remain active on this computer.');
+      } else {
+        await api.sessions.revoke(revokeTarget.id);
+        setOtherSessions((prev) => prev.filter((s) => s.id !== revokeTarget.id));
+        setToastMsg(`Device session for "${revokeTarget.device}" was revoked successfully.`);
+      }
+      setRevokeTarget(null);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to revoke session.');
+    } finally {
+      setIsRevoking(false);
+      setTimeout(() => setToastMsg(null), 3500);
     }
-    setTimeout(() => setToastMsg(null), 3500);
-  };
-
-  const handleSignOutAllOther = async () => {
-    try {
-      await api.sessions.revokeAllOthers();
-      setOtherSessions([]);
-      setToastMsg('All other device sessions have been terminated. You remain active on this computer.');
-    } catch (err) {
-      setErrorMsg(err.message || 'Failed to revoke other sessions.');
-    }
-    setTimeout(() => setToastMsg(null), 4000);
   };
 
   const handleAvatarSelect = (e) => {
@@ -1083,7 +1088,7 @@ export default function ProfileSettings({
                 <button
                   type="button"
                   className="btn btn-sm"
-                  onClick={handleSignOutAllOther}
+                  onClick={() => setRevokeTarget('ALL')}
                   style={{
                     color: 'var(--red-600)',
                     borderColor: '#fecaca',
@@ -1170,7 +1175,7 @@ export default function ProfileSettings({
                   <button
                     type="button"
                     className="btn btn-sm"
-                    onClick={() => handleRevokeSession(session.id)}
+                    onClick={() => setRevokeTarget(session)}
                     style={{ fontSize: '12px', color: 'var(--red-600)', cursor: 'pointer' }}
                   >
                     Revoke Session
@@ -1198,6 +1203,24 @@ export default function ProfileSettings({
           setRawImageSrc(null);
         }}
         onCropComplete={handleCropComplete}
+      />
+
+      {/* Session Revocation Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(revokeTarget)}
+        title={revokeTarget === 'ALL' ? 'Sign Out All Other Devices?' : 'Revoke Device Session?'}
+        message={
+          revokeTarget === 'ALL'
+            ? 'Are you sure you want to terminate all other active web sessions? Anyone using those devices will be immediately signed out. You will remain logged in on this computer.'
+            : `Are you sure you want to sign out "${revokeTarget?.device}"? This device session will be terminated immediately.`
+        }
+        confirmText={revokeTarget === 'ALL' ? 'Sign Out All Devices' : 'Revoke Session'}
+        cancelText="Cancel"
+        variant="danger"
+        icon={LogOut}
+        isLoading={isRevoking}
+        onConfirm={handleConfirmRevoke}
+        onClose={() => !isRevoking && setRevokeTarget(null)}
       />
     </div>
   );

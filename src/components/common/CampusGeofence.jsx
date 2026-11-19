@@ -42,12 +42,15 @@ import {
 } from '../../utils/campusGeofence';
 import { api } from '../../services/api';
 import Toast from './Toast';
+import ConfirmModal from './ConfirmModal';
 
 export default function CampusGeofence({
   onSave = () => {},
   onBack = null,
 }) {
   const [campuses, setCampuses] = useState(() => getCampusGeofences());
+  const [campusToDelete, setCampusToDelete] = useState(null);
+  const [isDeletingCampus, setIsDeletingCampus] = useState(false);
   const [selectedCampusId, setSelectedCampusId] = useState(
     () => campuses[0]?.id || 'evsu_ormoc_main'
   );
@@ -894,17 +897,23 @@ export default function CampusGeofence({
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  // Delete campus handler
-  const handleDeleteCampus = async (idToDelete) => {
+  // Delete campus handler (triggers confirmation modal)
+  const handleDeleteCampus = (idToDelete) => {
     if (campuses.length <= 1) {
-      alert('At least one campus geofence perimeter must remain configured.');
+      setToastMsg('At least one campus geofence perimeter must remain configured.');
+      setTimeout(() => setToastMsg(null), 4000);
       return;
     }
     const toDelete = campuses.find((c) => c.id === idToDelete);
-    if (!window.confirm(`Are you sure you want to remove the geofence site "${toDelete?.name}"?`)) {
-      return;
+    if (toDelete) {
+      setCampusToDelete(toDelete);
     }
+  };
 
+  const handleConfirmDeleteCampus = async () => {
+    if (!campusToDelete) return;
+    setIsDeletingCampus(true);
+    const idToDelete = campusToDelete.id;
     try {
       if (api?.geofences?.delete) {
         await api.geofences.delete(idToDelete);
@@ -917,7 +926,9 @@ export default function CampusGeofence({
     setCampuses(updatedList);
     saveCampusGeofences(updatedList);
     setSelectedCampusId(updatedList[0].id);
-    setToastMsg(`Removed campus site "${toDelete?.name}".`);
+    setToastMsg(`Removed campus site "${campusToDelete.name}".`);
+    setCampusToDelete(null);
+    setIsDeletingCampus(false);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -2458,6 +2469,19 @@ export default function CampusGeofence({
           </div>
         </div>
       )}
+      {/* Geofence Perimeter Deletion Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(campusToDelete)}
+        title="Remove Campus Geofence Perimeter?"
+        message={`Are you sure you want to remove the geofence perimeter for "${campusToDelete?.name}"? Personnel assigned to this site will no longer be able to punch attendance within its boundaries.`}
+        confirmText="Remove Perimeter"
+        cancelText="Cancel"
+        variant="danger"
+        icon={Trash2}
+        isLoading={isDeletingCampus}
+        onConfirm={handleConfirmDeleteCampus}
+        onClose={() => !isDeletingCampus && setCampusToDelete(null)}
+      />
     </div>
   );
 }

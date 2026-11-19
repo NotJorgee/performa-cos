@@ -2,6 +2,35 @@ PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
 UPDATE NOTES: 2026-11-19
+Universal Confirmation Modal System & High-Risk Decision Guards
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Universal Reusable ConfirmModal Component:
+   - Added src/components/common/ConfirmModal.jsx:
+     * Built an accessible, institutionally styled confirmation modal.
+     * Supports multiple visual variants: 'brand' (maroon), 'danger' (red), 'warning' (amber), 'primary' (blue).
+     * Accessible keyboard ergonomics: Escape key dismisses, Cancel button receives auto-focus, Enter confirms.
+     * Reusable across destructive, security, and state-altering workflows.
+
+2. Logout Session Protection:
+   - In src/components/layout/AppLayout.jsx:
+     * Clicking "Logout" in the off-canvas navigation sidebar no longer terminates sessions instantly.
+     * Displays a clean confirmation dialog ("Log Out of PerformaCOS?") to protect against accidental clicks and lost in-progress work.
+
+3. Session Management & Hardware Revocation Guards:
+   - In src/components/auth/ProfileSettings.jsx:
+     * Integrated ConfirmModal for individual session revocation ("Revoke Device Session?").
+     * Added confirmation guard for bulk termination ("Sign Out All Other Devices?").
+
+4. Campus Geofence Deletion Modernization:
+   - In src/components/common/CampusGeofence.jsx:
+     * Replaced unstyled browser `window.confirm()` popup with the institutional ConfirmModal.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-19
 Invitation Email Simplification & Registration Interface Streamlining
 ================================================================================
 
