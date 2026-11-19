@@ -142,8 +142,9 @@ export default function DailyReporting({
       // 2. Obtain GPS coordinates with indoor fallback
       const gpsResult = await getCoordinatesWithFallback();
 
-      let latitude = 11.0065;
-      let longitude = 124.6075;
+      const primaryCampus = (campuses && campuses.find((c) => c.isPrimary || c.is_primary)) || (campuses && campuses[0]);
+      let latitude = primaryCampus ? Number(primaryCampus.latitude) : 11.010466;
+      let longitude = primaryCampus ? Number(primaryCampus.longitude) : 124.605469;
       let accuracy = null;
       let isGpsAvailable = false;
 
@@ -154,9 +155,9 @@ export default function DailyReporting({
         isGpsAvailable = true;
       }
 
-      // 3. Verify location against campus geofence perimeters
+      // 3. Verify location against campus geofence perimeters (with mobile accuracy buffer)
       const verification = isGpsAvailable
-        ? verifyCoordinatesAgainstCampuses(latitude, longitude, campuses)
+        ? verifyCoordinatesAgainstCampuses(latitude, longitude, campuses, accuracy)
         : { isValid: false, verifiedCampus: null, nearestCampus: null, nearestDistanceM: 0 };
 
       const campusLabel = verification.verifiedCampus

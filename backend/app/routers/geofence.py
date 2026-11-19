@@ -103,6 +103,45 @@ def is_point_in_polygon(lat: float, lon: float, polygon: Optional[List[List[floa
     return inside
 
 
+def distance_to_segment_meters(lat: float, lon: float, p1_lat: float, p1_lon: float, p2_lat: float, p2_lon: float) -> float:
+    """Calculates perpendicular Euclidean distance in meters from a point to a geographic line segment."""
+    mid_lat_rad = math.radians((lat + p1_lat + p2_lat) / 3.0)
+    m_per_deg_lat = 111139.0
+    m_per_deg_lon = 111139.0 * math.cos(mid_lat_rad)
+    px = (lon - p1_lon) * m_per_deg_lon
+    py = (lat - p1_lat) * m_per_deg_lat
+    bx = (p2_lon - p1_lon) * m_per_deg_lon
+    by = (p2_lat - p1_lat) * m_per_deg_lat
+    seg_len_sq = bx * bx + by * by
+    if seg_len_sq == 0:
+        return math.sqrt(px * px + py * py)
+    t = max(0.0, min(1.0, (px * bx + py * by) / seg_len_sq))
+    cx = t * bx
+    cy = t * by
+    return math.sqrt((px - cx) ** 2 + (py - cy) ** 2)
+
+
+def distance_to_polygon_meters(lat: float, lon: float, polygon: Optional[List[List[float]]]) -> float:
+    """
+    Returns 0.0 if the point is inside the polygon.
+    If outside, returns the shortest perpendicular distance in meters to any polygon boundary segment.
+    """
+    if not polygon or len(polygon) < 3:
+        return float("inf")
+    if is_point_in_polygon(lat, lon, polygon):
+        return 0.0
+
+    min_dist = float("inf")
+    n = len(polygon)
+    for i in range(n):
+        p1 = polygon[i]
+        p2 = polygon[(i + 1) % n]
+        dist = distance_to_segment_meters(lat, lon, p1[0], p1[1], p2[0], p2[1])
+        if dist < min_dist:
+            min_dist = dist
+    return min_dist
+
+
 # ---------------------------------------------------------------------------
 # Default Campuses Seeder
 # ---------------------------------------------------------------------------

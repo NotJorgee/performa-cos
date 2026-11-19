@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock,
   MapPin,
@@ -98,36 +98,103 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
     }
   };
 
-  // Acquire Live GPS Coordinates
+  const watchIdRef = useRef(null);
+  const timeoutIdRef = useRef(null);
+
+  // Progressive High-Accuracy GPS Acquisition
   const fetchCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setGpsError('Geolocation is not supported by your browser.');
+      setGpsError('Geolocation is not supported by your device or browser.');
       return;
     }
+
     setIsLocating(true);
     setGpsError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (timeoutIdRef.current !== null) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+
+    let bestPos = null;
+    let completed = false;
+
+    const finalize = (finalPos = null) => {
+      if (completed) return;
+      completed = true;
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+      setIsLocating(false);
+
+      const target = finalPos || bestPos;
+      if (target) {
         setGpsLocation({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
+          latitude: target.coords.latitude,
+          longitude: target.coords.longitude,
+          accuracy: target.coords.accuracy,
         });
-        setIsLocating(false);
-      },
-      (err) => {
-        console.warn('GPS location error:', err.message);
-        // Fallback to EVSU Ormoc Main Campus coordinates for smooth testing
-        setGpsLocation({
-          latitude: 11.0065,
-          longitude: 124.6075,
-          accuracy: 15,
-        });
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+        setGpsError(null);
+      } else {
+        setGpsLocation(null);
+        setGpsError('Unable to acquire accurate GPS position. Please ensure device location is on and browser permission is granted.');
+      }
+    };
+
+    // Maximum 8-second window to allow mobile GPS chip satellite lock
+    timeoutIdRef.current = setTimeout(() => {
+      finalize();
+    }, 8000);
+
+    try {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+            bestPos = pos;
+            setGpsLocation({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          }
+
+          // If satellite lock is high accuracy (<= 25 meters), lock in immediately
+          if (pos.coords.accuracy && pos.coords.accuracy <= 25) {
+            finalize(pos);
+          }
+        },
+        (err) => {
+          console.warn('GPS acquisition warning:', err.message);
+          if (!bestPos) {
+            finalize();
+          }
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    } catch (err) {
+      finalize();
+    }
   };
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+      }
+    };
+  }, []);
 
   // Load Semi-Monthly DTR Packet
   const loadDtrPacket = async (silent = Boolean(dtrPacket)) => {
@@ -175,7 +242,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   // Handle Punch (Time-In or Time-Out)
   const handlePunch = async (type) => {
     if (!gpsLocation) {
-      setToast({ type: 'error', message: 'Unable to detect your GPS location. Please allow location access.' });
+      fetchCurrentLocation();
+      setToast({ type: 'error', message: 'Acquiring GPS location... Please ensure location permissions are enabled and retry in a moment.' });
       return;
     }
 
@@ -184,6 +252,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
       const payload = {
         latitude: gpsLocation.latitude,
         longitude: gpsLocation.longitude,
+        accuracy: gpsLocation.accuracy,
       };
 
       let res;
@@ -386,7 +455,62 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               </div>
             </div>
 
-            {/* Punch Action Buttons (GPS Ready banner removed) */}
+            {/* GPS Live Status Bar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                background: gpsError ? '#fef2f2' : isLocating ? '#eff6ff' : '#f0fdf4',
+                border: gpsError ? '1px solid #fecaca' : isLocating ? '1px solid #bfdbfe' : '1px solid #bbf7d0',
+                marginBottom: '16px',
+                fontSize: '12.5px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                <MapPin size={15} color={gpsError ? '#dc2626' : isLocating ? '#2563eb' : '#16a34a'} style={{ flexShrink: 0 }} />
+                <span
+                  style={{
+                    color: gpsError ? '#991b1b' : isLocating ? '#1e40af' : '#166534',
+                    fontWeight: 600,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isLocating
+                    ? 'Acquiring high-accuracy GPS satellite lock...'
+                    : gpsError
+                    ? gpsError
+                    : gpsLocation
+                    ? `Live GPS Ready (${gpsLocation.latitude.toFixed(5)}°, ${gpsLocation.longitude.toFixed(5)}° · ±${Math.round(gpsLocation.accuracy || 0)}m)`
+                    : 'GPS inactive — tap Refresh GPS'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={fetchCurrentLocation}
+                disabled={isLocating}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: isLocating ? '#94a3b8' : 'var(--brand-700)',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  cursor: isLocating ? 'not-allowed' : 'pointer',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  flexShrink: 0,
+                  marginLeft: '8px',
+                }}
+              >
+                {isLocating ? 'Locating...' : 'Refresh GPS'}
+              </button>
+            </div>
+
+            {/* Punch Action Buttons */}
             <div style={{ display: 'flex', gap: '14px' }}>
               <button
                 type="button"

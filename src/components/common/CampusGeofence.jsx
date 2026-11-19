@@ -60,8 +60,8 @@ export default function CampusGeofence({
   const [locationNote, setLocationNote] = useState(
     selectedCampus?.locationNote || ''
   );
-  const [latitude, setLatitude] = useState(selectedCampus?.latitude || 11.0065);
-  const [longitude, setLongitude] = useState(selectedCampus?.longitude || 124.6075);
+  const [latitude, setLatitude] = useState(selectedCampus?.latitude || 11.010466);
+  const [longitude, setLongitude] = useState(selectedCampus?.longitude || 124.605469);
   const [radiusM, setRadiusM] = useState(selectedCampus?.radiusM || 500);
   const [boundaryType, setBoundaryType] = useState(
     selectedCampus?.boundaryType || 'radius'
@@ -119,7 +119,7 @@ export default function CampusGeofence({
 
   // Helper: calculate geometric centroid of polygon coordinates
   const calculatePolygonCentroid = (coords) => {
-    if (!coords || coords.length === 0) return [11.0065, 124.6075];
+    if (!coords || coords.length === 0) return [11.010466, 124.605469];
     const latSum = coords.reduce((acc, c) => acc + c[0], 0);
     const lngSum = coords.reduce((acc, c) => acc + c[1], 0);
     return [

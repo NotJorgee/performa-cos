@@ -14,7 +14,7 @@ from ..database import get_db
 from ..auth import get_current_user
 from .. import models
 from .audit import log_audit
-from .geofence import calculate_haversine_distance_meters, is_point_in_polygon
+from .geofence import calculate_haversine_distance_meters, is_point_in_polygon, distance_to_polygon_meters
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance & Leave Engine"])
 
@@ -26,6 +26,7 @@ class PunchRequest(BaseModel):
     latitude: float
     longitude: float
     remarks: Optional[str] = None
+    accuracy: Optional[float] = None
 
 
 class LeaveApplyRequest(BaseModel):
@@ -130,41 +131,53 @@ def resolve_normalized_time_in(
     return (time_in_dt.strftime("%I:%M %p"), False, 0)
 
 
-def verify_campus_perimeter(lat: float, lon: float, db: Session) -> tuple[bool, str, float]:
+def verify_campus_perimeter(lat: float, lon: float, db: Session, accuracy: Optional[float] = None) -> tuple[bool, str, float]:
     """
     Verifies if coordinates fall within any active EVSU Campus Geofence perimeter.
+    Supports both polygon boundaries (with mobile device accuracy buffer) and radial perimeters.
     Returns: (is_inside: bool, site_name: str, distance_meters: float)
-    Polygon campuses strictly require being inside the polygon boundary (no radius fallthrough).
-    Radial campuses evaluate distance against radius_meters.
     """
     campuses = db.query(models.CampusGeofence).all()
     if not campuses:
         # Fallback to EVSU Main coordinates if table not seeded
-        dist = calculate_haversine_distance_meters(lat, lon, 11.0065, 124.6075)
+        dist = calculate_haversine_distance_meters(lat, lon, 11.010466, 124.605469)
         return (dist <= 500.0, "EVSU Main Campus", round(dist, 1))
+
+    # Mobile device accuracy tolerance: minimum 50m buffer, or device accuracy capped at 150m
+    device_acc = accuracy if (accuracy is not None and accuracy > 0) else 0.0
+    tolerance_m = max(50.0, min(device_acc, 150.0))
 
     closest_site = None
     min_dist = float("inf")
     matched_sites = []
 
     for campus in campuses:
-        dist_to_center = calculate_haversine_distance_meters(lat, lon, campus.latitude, campus.longitude)
-        if dist_to_center < min_dist:
-            min_dist = dist_to_center
-            closest_site = campus
+        if campus.enforce_geofence is False:
+            continue
 
-        # Polygon-defined campus boundary: strictly check polygon vertices
+        # Polygon-defined campus boundary: check inside polygon or within mobile accuracy tolerance
         if campus.boundary_type == "polygon" and campus.polygon_coords:
-            if is_point_in_polygon(lat, lon, campus.polygon_coords):
-                matched_sites.append((campus, 0.0))
-        # Radial-defined campus boundary: check radial perimeter
+            poly_dist = distance_to_polygon_meters(lat, lon, campus.polygon_coords)
+            if poly_dist < min_dist:
+                min_dist = poly_dist
+                closest_site = campus
+
+            if poly_dist <= tolerance_m:
+                matched_sites.append((campus, poly_dist))
+        # Radial-defined campus boundary: check radial perimeter with tolerance
         else:
             radius = campus.radius_meters or 500.0
-            if dist_to_center <= radius:
-                matched_sites.append((campus, dist_to_center))
+            dist_to_center = calculate_haversine_distance_meters(lat, lon, campus.latitude, campus.longitude)
+            dist_to_perimeter = max(0.0, dist_to_center - radius)
+            if dist_to_perimeter < min_dist:
+                min_dist = dist_to_perimeter
+                closest_site = campus
+
+            if dist_to_center <= (radius + tolerance_m):
+                matched_sites.append((campus, dist_to_perimeter))
 
     if matched_sites:
-        # Sort by distance (polygon matches have 0.0, radial matches have dist_to_center)
+        # Sort by distance (polygon/radial matches with lowest distance first)
         matched_sites.sort(key=lambda x: x[1])
         best_campus, best_dist = matched_sites[0]
         return (True, best_campus.name, round(best_dist, 1))
@@ -233,7 +246,7 @@ def attendance_time_in(
         }
 
     # 3. Geofence Verification
-    is_inside, site_name, distance_m = verify_campus_perimeter(payload.latitude, payload.longitude, db)
+    is_inside, site_name, distance_m = verify_campus_perimeter(payload.latitude, payload.longitude, db, accuracy=payload.accuracy)
     if not is_inside:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -359,7 +372,7 @@ def attendance_time_out(
         )
 
     # Geofence Verification
-    is_inside, site_name, distance_m = verify_campus_perimeter(payload.latitude, payload.longitude, db)
+    is_inside, site_name, distance_m = verify_campus_perimeter(payload.latitude, payload.longitude, db, accuracy=payload.accuracy)
     if not is_inside:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

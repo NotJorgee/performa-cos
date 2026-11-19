@@ -58,18 +58,18 @@ class Settings(BaseSettings):
         return []
 
     # Geofence — EVSU Main Campus
-    EVSU_MAIN_LATITUDE: float = 11.0065
-    EVSU_MAIN_LONGITUDE: float = 124.6075
+    EVSU_MAIN_LATITUDE: float = 11.010466
+    EVSU_MAIN_LONGITUDE: float = 124.605469
     EVSU_MAIN_RADIUS_METERS: float = 500.0
 
     # Geofence — EVSU Luna Campus
-    EVSU_LUNA_LATITUDE: float = 11.0607
-    EVSU_LUNA_LONGITUDE: float = 124.6137
+    EVSU_LUNA_LATITUDE: float = 11.06428
+    EVSU_LUNA_LONGITUDE: float = 124.618097
     EVSU_LUNA_RADIUS_METERS: float = 500.0
 
     # Legacy geofence aliases
-    EVSU_LATITUDE: float = 11.0065
-    EVSU_LONGITUDE: float = 124.6075
+    EVSU_LATITUDE: float = 11.010466
+    EVSU_LONGITUDE: float = 124.605469
     GEOFENCE_RADIUS_METERS: float = 500.0
 
     # SMTP Email Configuration

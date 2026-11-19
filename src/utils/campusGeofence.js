@@ -25,10 +25,10 @@ export const DEFAULT_CAMPUSES = [
     name: 'EVSU Ormoc — Main Campus',
     shortName: 'Main Campus',
     locationNote: 'Brgy. Don Felipe Larrazabal, Ormoc City',
-    latitude: 11.0065,
-    longitude: 124.6075,
+    latitude: 11.010466,
+    longitude: 124.605469,
     radiusM: 500,
-    boundaryType: 'radius', // 'radius' | 'polygon'
+    boundaryType: 'polygon', // 'radius' | 'polygon'
     polygon: DEFAULT_MAIN_POLYGON,
     polygonCoords: DEFAULT_MAIN_POLYGON,
     enforceGeofence: true,
@@ -39,8 +39,8 @@ export const DEFAULT_CAMPUSES = [
     name: 'EVSU Ormoc — Luna Campus',
     shortName: 'Luna Campus',
     locationNote: 'Barangay Luna, Ormoc City',
-    latitude: 11.0607,
-    longitude: 124.6137,
+    latitude: 11.06428,
+    longitude: 124.618097,
     radiusM: 500,
     boundaryType: 'radius', // 'radius' | 'polygon'
     polygon: DEFAULT_LUNA_POLYGON,
@@ -100,6 +100,42 @@ export const isPointInPolygon = (lat, lon, polygon) => {
 };
 
 /**
+ * Calculates perpendicular Euclidean distance in meters from a point to a geographic line segment.
+ */
+export const distanceToSegmentMeters = (lat, lon, p1Lat, p1Lon, p2Lat, p2Lon) => {
+  const midLatRad = ((lat + p1Lat + p2Lat) / 3.0) * (Math.PI / 180);
+  const mPerDegLat = 111139.0;
+  const mPerDegLon = 111139.0 * Math.cos(midLatRad);
+  const px = (lon - p1Lon) * mPerDegLon;
+  const py = (lat - p1Lat) * mPerDegLat;
+  const bx = (p2Lon - p1Lon) * mPerDegLon;
+  const by = (p2Lat - p1Lat) * mPerDegLat;
+  const segLenSq = bx * bx + by * by;
+  if (segLenSq === 0) return Math.sqrt(px * px + py * py);
+  const t = Math.max(0.0, Math.min(1.0, (px * bx + py * by) / segLenSq));
+  const cx = t * bx;
+  const cy = t * by;
+  return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+};
+
+/**
+ * Returns 0.0 if inside polygon, or shortest distance in meters to any boundary segment.
+ */
+export const distanceToPolygonMeters = (lat, lon, polygon) => {
+  if (!polygon || polygon.length < 3) return Infinity;
+  if (isPointInPolygon(lat, lon, polygon)) return 0.0;
+  let minDist = Infinity;
+  const n = polygon.length;
+  for (let i = 0; i < n; i++) {
+    const p1 = polygon[i];
+    const p2 = polygon[(i + 1) % n];
+    const d = distanceToSegmentMeters(lat, lon, p1[0], p1[1], p2[0], p2[1]);
+    if (d < minDist) minDist = d;
+  }
+  return minDist;
+};
+
+/**
  * Calculates great-circle distance in meters between two GPS coordinates using the Haversine formula.
  */
 export const calculateHaversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -118,8 +154,9 @@ export const calculateHaversineDistanceMeters = (lat1, lon1, lat2, lon2) => {
 
 /**
  * Validates whether GPS coordinates fall within any active EVSU campus perimeter.
+ * Supports polygon perimeters with mobile accuracy tolerance buffer.
  */
-export const verifyCoordinatesAgainstCampuses = (userLat, userLng, customCampuses = null) => {
+export const verifyCoordinatesAgainstCampuses = (userLat, userLng, customCampuses = null, accuracy = null) => {
   const allCampuses = customCampuses || getCampusGeofences();
   const activeCampuses = allCampuses.filter((c) => c.enforceGeofence !== false);
 
@@ -133,31 +170,41 @@ export const verifyCoordinatesAgainstCampuses = (userLat, userLng, customCampuse
     };
   }
 
+  const deviceAcc = Number(accuracy) > 0 ? Number(accuracy) : 0;
+  const toleranceM = Math.max(50, Math.min(deviceAcc, 150));
+
   let matchedCampus = null;
   let nearestCampus = null;
   let nearestDistanceM = Infinity;
 
   for (const campus of activeCampuses) {
-    const dist = calculateHaversineDistanceMeters(
-      userLat,
-      userLng,
-      Number(campus.latitude),
-      Number(campus.longitude)
-    );
-
-    if (dist < nearestDistanceM) {
-      nearestDistanceM = dist;
-      nearestCampus = campus;
-    }
-
     const poly = campus.polygonCoords || campus.polygon;
+    let distToPerimeter = Infinity;
+
     if (campus.boundaryType === 'polygon' && poly && poly.length >= 3) {
-      if (isPointInPolygon(userLat, userLng, poly)) {
+      distToPerimeter = distanceToPolygonMeters(userLat, userLng, poly);
+      if (distToPerimeter < nearestDistanceM) {
+        nearestDistanceM = distToPerimeter;
+        nearestCampus = campus;
+      }
+      if (distToPerimeter <= toleranceM) {
         matchedCampus = campus;
         break;
       }
     } else {
-      if (dist <= Number(campus.radiusM || 500)) {
+      const distToCenter = calculateHaversineDistanceMeters(
+        userLat,
+        userLng,
+        Number(campus.latitude),
+        Number(campus.longitude)
+      );
+      const radius = Number(campus.radiusM || 500);
+      distToPerimeter = Math.max(0, distToCenter - radius);
+      if (distToPerimeter < nearestDistanceM) {
+        nearestDistanceM = distToPerimeter;
+        nearestCampus = campus;
+      }
+      if (distToCenter <= radius + toleranceM) {
         matchedCampus = campus;
         break;
       }
