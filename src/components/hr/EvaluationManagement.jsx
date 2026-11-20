@@ -1165,7 +1165,7 @@ export default function EvaluationManagement({
             </tr>
           </thead>
           <tbody>
-            {loading && employees.length === 0 ? (
+            {loading ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', background: '#fff' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>

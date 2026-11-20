@@ -2,6 +2,27 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Bugfix: Elimination of Empty State Flash in Intent Review & Evaluation Management
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Fix Premature Empty State Flash in IntentReview:
+   - In src/components/depthead/IntentReview.jsx:
+     * Added explicit `isLoading` state (initialized to true when no candidates exist).
+     * While asynchronous queries (`api.renewals.list()`, `api.users.list()`, and AI dossier telemetry) are in flight, render `<LoadingBuffer message="Loading..." />` instead of the empty candidate queue.
+     * Guarded the "All Caught Up!" card to render strictly when `!isLoading && pendingCandidates.length === 0`.
+     * Added a 4500ms safety timeout ensuring `isLoading` resolves even under slow networks or edge timeouts.
+     * Prevents the jarring sequence where the module showed "All Caught Up!" for half a second before candidate evaluation cards appeared.
+
+2. Guard Empty States in Evaluation Management:
+   - In src/components/hr/EvaluationManagement.jsx:
+     * Streamlined table loading guard to `{loading ? ... : actionableEmployees.length === 0 && pendingEmployees.length === 0 ? ...}`.
+     * Guarantees that the loading indicator displays consistently during query execution and never flashes "All Caught Up!" while data resolution is ongoing.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Bugfix: Transition Timer Lifecycle Decoupling & Dashboard Safety Timeouts
 ================================================================================
 

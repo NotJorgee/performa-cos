@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Toast from '../common/Toast';
+import LoadingBuffer from '../common/LoadingBuffer';
 import { api } from '../../services/api';
 import {
   UserCheck,
@@ -44,6 +45,9 @@ export default function IntentReview({
   const displayDepartmentName = getSafeDeptName(departmentName, 'Computer Studies Department');
 
   const [candidates, setCandidates] = useState(initialCandidates || []);
+  const [isLoading, setIsLoading] = useState(
+    !(Array.isArray(initialCandidates) && initialCandidates.length > 0)
+  );
   const [expandedEmpId, setExpandedEmpId] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
 
@@ -54,9 +58,18 @@ export default function IntentReview({
 
   useEffect(() => {
     let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 4500);
+
     api.renewals.list()
       .then((renewals) => {
-        if (!isMounted || !renewals || renewals.length === 0) return;
+        if (!isMounted) return;
+        if (!renewals || renewals.length === 0) {
+          setCandidates([]);
+          setIsLoading(false);
+          return;
+        }
         api.users.list({ role: 'COS Employee' }).then(async (users) => {
           if (!isMounted) return;
           const userMap = new Map((users || []).map((u) => [u.id, u]));
@@ -183,15 +196,21 @@ export default function IntentReview({
 
           const mapped = (await Promise.all(mappedPromises)).filter(Boolean);
           if (!isMounted) return;
-          if (mapped.length > 0) {
-            setCandidates(mapped);
-          }
-        }).catch(() => {});
+          setCandidates(mapped);
+          setIsLoading(false);
+        }).catch((err) => {
+          console.warn('Notice loading users in IntentReview:', err);
+          if (isMounted) setIsLoading(false);
+        });
       })
       .catch((err) => {
         console.warn('Notice loading renewals in IntentReview:', err);
+        if (isMounted) setIsLoading(false);
       });
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, [displayDepartmentName]);
 
   const showToast = (msg) => {
@@ -498,7 +517,33 @@ export default function IntentReview({
 
       {/* Pending Renewals Queue */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {pendingCandidates.map((candidate) => {
+        {isLoading ? (
+          <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingBuffer message="Loading..." />
+          </div>
+        ) : pendingCandidates.length === 0 ? (
+          <div className="card empty-state" style={{ padding: '48px 20px', textAlign: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--green-50)', color: 'var(--green-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <Check size={24} />
+            </div>
+            <h3 style={{ margin: '0 0 6px', color: 'var(--ink-800)' }}>All Caught Up!</h3>
+            <p className="muted" style={{ margin: '0 0 16px', fontSize: '13.5px', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
+              There are no pending renewal reviews for {displayDepartmentName}. Completed evaluation records and verified monthly accomplishment reports are permanently stored in Employee Records.
+            </p>
+            {onNavigate && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => onNavigate('employee_records')}
+                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <FileText size={15} />
+                View Employee Records
+              </button>
+            )}
+          </div>
+        ) : (
+          pendingCandidates.map((candidate) => {
           const isExpanded = expandedEmpId === candidate.id;
           const isPending = candidate.endorsementStatus === 'Pending Review';
 
@@ -752,30 +797,8 @@ export default function IntentReview({
               )}
             </div>
           );
-        })}
-
-        {pendingCandidates.length === 0 && (
-          <div className="card empty-state" style={{ padding: '48px 20px', textAlign: 'center' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--green-50)', color: 'var(--green-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-              <Check size={24} />
-            </div>
-            <h3 style={{ margin: '0 0 6px', color: 'var(--ink-800)' }}>All Caught Up!</h3>
-            <p className="muted" style={{ margin: '0 0 16px', fontSize: '13.5px', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
-              There are no pending renewal reviews for {displayDepartmentName}. Completed evaluation records and verified monthly accomplishment reports are permanently stored in Employee Records.
-            </p>
-            {onNavigate && (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => onNavigate('employee_records')}
-                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <FileText size={15} />
-                View Employee Records
-              </button>
-            )}
-          </div>
-        )}
+        })
+      )}
       </div>
 
       {/* MODAL: Non-Renewal Recommendation Modal (Fast-Track Grounds) */}
