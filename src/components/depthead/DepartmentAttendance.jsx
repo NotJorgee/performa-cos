@@ -434,10 +434,10 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                           </td>
                           <td style={{ fontSize: '12.5px' }}>
                             {isOt
-                              ? `Overtime (${l.start_date})`
+                              ? `Overtime · ${l.start_date}`
                               : l.start_date === l.end_date
-                              ? `${l.start_date} (1d)`
-                              : `${l.start_date} to ${l.end_date} (${l.days_count}d)`}
+                              ? `${l.start_date}`
+                              : `${l.start_date} to ${l.end_date}`}
                           </td>
                           <td style={{ fontSize: '12px', maxWidth: '240px' }}>
                             {l.reason}

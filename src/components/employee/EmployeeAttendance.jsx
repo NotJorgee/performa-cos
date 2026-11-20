@@ -83,6 +83,11 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const [leaveRequests, setLeaveRequests] = useState(() => getCachedData(cacheKeyLeaves) || []);
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
 
+  // Computed weekend overtime flags
+  const selectedDateObj = startDate ? new Date(startDate + 'T00:00:00') : null;
+  const isWeekendOt = selectedDateObj ? (selectedDateObj.getDay() === 0 || selectedDateObj.getDay() === 6) : false;
+  const weekendDayLabel = selectedDateObj ? selectedDateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+
   // Load Today's Status (Silent background revalidation when cached)
   const loadTodayStatus = async (silent = Boolean(todayData)) => {
     try {
@@ -645,39 +650,63 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               </div>
 
               {leaveType === 'Overtime (OT)' ? (
-                <div className="leave-dates-row" style={{ marginBottom: '14px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                      Target Overtime Date
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        setEndDate(e.target.value);
-                      }}
-                      className="form-control"
-                      style={{ width: '100%', padding: '9px 12px' }}
-                      required
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
-                      Estimated Hours
-                    </label>
-                    <select
-                      value={overtimeHours}
-                      onChange={(e) => setOvertimeHours(e.target.value)}
-                      className="form-control"
-                      style={{ width: '100%', padding: '9px 12px' }}
-                    >
-                      <option value="1">1.0 Hour (5:00 PM – 6:00 PM)</option>
-                      <option value="2">2.0 Hours (5:00 PM – 7:00 PM)</option>
-                      <option value="3">3.0 Hours (5:00 PM – 8:00 PM)</option>
-                      <option value="4">4.0 Hours (5:00 PM – 9:00 PM)</option>
-                      <option value="5">5.0 Hours (5:00 PM – 10:00 PM)</option>
-                    </select>
+                <div>
+                  {startDate && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: isWeekendOt ? '#f3e8ff' : '#f1f5f9',
+                          color: isWeekendOt ? '#7e22ce' : '#334155',
+                          border: `1px solid ${isWeekendOt ? '#d8b4fe' : '#cbd5e1'}`,
+                        }}
+                      >
+                        {isWeekendOt ? `Weekend Duty · ${weekendDayLabel}` : 'Weekday Evening Extended Shift'}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="leave-dates-row" style={{ marginBottom: '14px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                        Target Overtime Date
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value);
+                          setEndDate(e.target.value);
+                        }}
+                        className="form-control"
+                        style={{ width: '100%', padding: '9px 12px' }}
+                        required
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                        Estimated Hours
+                      </label>
+                      <select
+                        value={overtimeHours}
+                        onChange={(e) => setOvertimeHours(e.target.value)}
+                        className="form-control"
+                        style={{ width: '100%', padding: '9px 12px' }}
+                      >
+                        {(isWeekendOt
+                          ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                          : [1, 2, 3, 4, 5, 6, 7, 8]
+                        ).map((h) => (
+                          <option key={h} value={h}>
+                            {h}.0 {h === 1 ? 'Hour' : 'Hours'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -723,7 +752,9 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                   onChange={(e) => setLeaveReason(e.target.value)}
                   placeholder={
                     leaveType === 'Overtime (OT)'
-                      ? "Detail the urgent tasks, document preparations, or lab maintenance to be executed during overtime..."
+                      ? isWeekendOt
+                        ? "Detail the specific weekend tasks, student consultation, laboratory maintenance, or make-up deliverables to be executed on campus..."
+                        : "Detail the urgent tasks, document preparations, or lab maintenance to be executed during overtime..."
                       : "State the reason for absence or off-campus assignment for Department Head review..."
                   }
                   contextType="leave"

@@ -22,6 +22,10 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
      across the Monthly Attendance DTR Packet, Employee Attendance dashboard, and Campus Payroll reports.
    - Fully unifies weekday evening overtime (post-5:00 PM) and weekend overtime (Saturday/Sunday)
      under one consolidated institutional workflow.
+   - Refined the overtime request form in src/components/employee/EmployeeAttendance.jsx:
+     * Dynamically adapts the hour tiers based on target date (up to 12.0 hours on weekends for flexible duty/make-up time).
+     * Cleaned all parenthetical descriptions from the duration dropdown (e.g. "1.0 Hour", "2.0 Hours", "8.0 Hours").
+     * Added contextual status indicator ("Weekend Duty · Saturday" vs "Weekday Evening Extended Shift").
 
 ================================================================================
 
