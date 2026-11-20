@@ -476,22 +476,17 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                                 Review Request
                               </button>
                             ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm"
-                                  onClick={() => {
-                                    setSelectedLeave(l);
-                                    setReviewNotes(l.review_notes || '');
-                                  }}
-                                  style={{ fontSize: '11.5px', padding: '4px 10px', background: '#f1f5f9', color: 'var(--ink-700)' }}
-                                >
-                                  View Details
-                                </button>
-                                <span className="muted" style={{ fontSize: '11px' }}>
-                                  Decided ({l.reviewed_by || 'Supervisor'})
-                                </span>
-                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                onClick={() => {
+                                  setSelectedLeave(l);
+                                  setReviewNotes(l.review_notes || '');
+                                }}
+                                style={{ fontSize: '11.5px', padding: '4px 10px', background: '#f1f5f9', color: 'var(--ink-700)' }}
+                              >
+                                View Details
+                              </button>
                             )}
                           </td>
                         </tr>

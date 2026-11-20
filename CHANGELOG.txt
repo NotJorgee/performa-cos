@@ -2,6 +2,19 @@ PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
 UPDATE NOTES: 2026-11-20
+UI Cleanup: Review Action Cell Streamlining
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Request Approvals Table Streamlining:
+   - In src/components/depthead/DepartmentAttendance.jsx:
+     * Removed redundant "Decided (User)" sub-label under the "View Details" button in the Review Action column.
+     * Keeps table rows clean and aligned; the decision status remains clearly displayed in the Status column ("Approved" / "Disapproved"), and reviewer identity remains accessible inside the review drawer details.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 System-Wide Context-Aware AI Predictive Text & Case Metadata Injection
 ================================================================================
 
