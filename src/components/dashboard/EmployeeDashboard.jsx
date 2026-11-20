@@ -4,6 +4,7 @@ import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
+import LoadingBuffer from '../common/LoadingBuffer';
 
 export default function EmployeeDashboard({
   currentUser = {
@@ -20,41 +21,59 @@ export default function EmployeeDashboard({
   // SWR Instant 0ms Cache Initialization
   const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKeyMetrics));
   const [todayAttendance, setTodayAttendance] = useState(() => getCachedData(cacheKeyToday));
+  const [isLoading, setIsLoading] = useState(() => !propMetrics && !getCachedData(cacheKeyMetrics));
 
   useEffect(() => {
+    let isMounted = true;
     if (propMetrics) {
       setMetrics(propMetrics);
       setCachedData(cacheKeyMetrics, propMetrics);
-    } else {
-      const fetchMetrics = async () => {
-        try {
-          const data = await api.analytics.getEmployeeDashboard();
-          setMetrics(data);
-          setCachedData(cacheKeyMetrics, data);
-        } catch (err) {
-          console.error('Failed to load Employee dashboard analytics:', err);
-        }
-      };
-      fetchMetrics();
+      setIsLoading(false);
+      return;
     }
 
-    const fetchAttendance = async () => {
+    const loadData = async () => {
       try {
-        const att = await api.attendance.getTodayStatus();
-        setTodayAttendance(att);
-        setCachedData(cacheKeyToday, att);
+        const [dashMetrics, attStatus] = await Promise.allSettled([
+          api.analytics.getEmployeeDashboard(),
+          api.attendance.getTodayStatus().catch((err) => {
+            console.warn('Dashboard attendance status notice:', err.message);
+            return null;
+          }),
+        ]);
+
+        if (!isMounted) return;
+
+        if (dashMetrics.status === 'fulfilled' && dashMetrics.value) {
+          setMetrics(dashMetrics.value);
+          setCachedData(cacheKeyMetrics, dashMetrics.value);
+        }
+        if (attStatus.status === 'fulfilled' && attStatus.value) {
+          setTodayAttendance(attStatus.value);
+          setCachedData(cacheKeyToday, attStatus.value);
+        }
       } catch (err) {
-        console.warn('Dashboard attendance status notice:', err.message);
+        console.error('Failed to load Employee dashboard analytics:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
-    fetchAttendance();
+
+    loadData();
+    return () => { isMounted = false; };
   }, [propMetrics, cacheKeyMetrics, cacheKeyToday]);
 
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Personnel');
   const isExpiringSoon = ((metrics?.daysUntilExpiration ?? 0) <= 30) && ((metrics?.daysUntilExpiration ?? 0) > 0);
 
+  if (isLoading && !metrics) {
+    return <LoadingBuffer message="Loading..." />;
+  }
+
   return (
-    <div>
+    <div className="module-transition-enter">
       {/* Hero Banner */}
       <div className="hero-banner" style={{ marginBottom: '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />

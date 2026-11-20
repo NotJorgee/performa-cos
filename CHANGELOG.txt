@@ -2,6 +2,32 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Minimalist Loading Buffer Screen & Smooth Module Transitions
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Minimalist Generic Loading Buffer Component:
+   - Added src/components/common/LoadingBuffer.jsx:
+     * Non-flashy, clean filler screen displaying a refined slate ring spinner and a clean "Loading..." caption.
+     * Replaces awkward layout shifts, "half-loaded" screens, and empty skeleton pills with a consistent, understated buffer.
+   - In src/styles/style.css:
+     * Added .loading-buffer-wrap, .loading-buffer-spinner, .loading-buffer-text, @keyframes buffer-spin, and .module-transition-enter (@keyframes moduleEnter).
+
+2. Universal Module Navigation Transitions:
+   - In src/App.jsx:
+     * Centralized route transition in navigateTo() and handleHashSync(): whenever navigating to a different module via sidebar links, dashboard cards, back buttons, or browser history, the content pane smoothly displays the <LoadingBuffer message="Loading..." />.
+     * Wrapped destination views in .module-transition-enter for a hardware-accelerated fade-and-rise entrance animation.
+
+3. Database Data Loading Buffer across Dashboards:
+   - In src/components/dashboard/EmployeeDashboard.jsx, DeptHeadDashboard.jsx, and HRDashboard.jsx:
+     * Swapped out empty skeleton shimmers for the clean LoadingBuffer while initial database queries (analytics metrics and daily attendance status) are in-flight.
+     * Retains instant 0ms SWR cache rendering on repeat visits.
+     * Once database data arrives, smoothly transitions in the fully populated dashboard without layout jumping or missing numbers.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Predictive AI Optimization: Latency Buffer, Cache Unlocking & Domain Fallback
 ================================================================================
 

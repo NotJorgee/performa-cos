@@ -17,6 +17,7 @@ export { default as ConfirmModal } from './common/ConfirmModal';
 export { default as CampusGeofence } from './common/CampusGeofence';
 export { default as AiPerformanceAnalysis } from './common/AiPerformanceAnalysis';
 export { default as HistoricalAttendanceRoster } from './common/HistoricalAttendanceRoster';
+export { default as LoadingBuffer } from './common/LoadingBuffer';
 
 // 1. COS Employee GUI Modules (SRS Section 8.1)
 export { default as EmployeeDashboard } from './dashboard/EmployeeDashboard';

@@ -11,6 +11,7 @@ import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
+import LoadingBuffer from '../common/LoadingBuffer';
 
 export default function HRDashboard({
   currentUser = {
@@ -23,30 +24,42 @@ export default function HRDashboard({
   const cacheKey = `hr_dashboard_metrics_${currentUser?.id || 'me'}`;
   // SWR Instant 0ms perceived load time from cache
   const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKey));
+  const [isLoading, setIsLoading] = useState(() => !propMetrics && !getCachedData(cacheKey));
 
   useEffect(() => {
+    let isMounted = true;
     if (propMetrics) {
       setMetrics(propMetrics);
       setCachedData(cacheKey, propMetrics);
+      setIsLoading(false);
       return;
     }
     const fetchMetrics = async () => {
       try {
         const data = await api.analytics.getHRDashboard();
-        setMetrics(data);
-        setCachedData(cacheKey, data);
+        if (isMounted && data) {
+          setMetrics(data);
+          setCachedData(cacheKey, data);
+        }
       } catch (err) {
         console.error('Failed to load HR dashboard analytics:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchMetrics();
+    return () => { isMounted = false; };
   }, [propMetrics, cacheKey]);
 
   const expiringCount = metrics?.nearingExpiration ?? 0;
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'HR Officer');
 
+  if (isLoading && !metrics) {
+    return <LoadingBuffer message="Loading..." />;
+  }
+
   return (
-    <div>
+    <div className="module-transition-enter">
       {/* Hero Banner */}
       <div className="hero-banner" style={{ marginBottom: '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />

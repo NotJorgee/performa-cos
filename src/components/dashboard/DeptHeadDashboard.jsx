@@ -4,6 +4,7 @@ import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
+import LoadingBuffer from '../common/LoadingBuffer';
 
 export default function DeptHeadDashboard({
   currentUser = {
@@ -16,23 +17,31 @@ export default function DeptHeadDashboard({
   const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}`;
   // SWR Instant 0ms perceived load time from cache
   const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKey));
+  const [isLoading, setIsLoading] = useState(() => !propMetrics && !getCachedData(cacheKey));
 
   useEffect(() => {
+    let isMounted = true;
     if (propMetrics) {
       setMetrics(propMetrics);
       setCachedData(cacheKey, propMetrics);
+      setIsLoading(false);
       return;
     }
     const fetchMetrics = async () => {
       try {
         const data = await api.analytics.getDeptHeadDashboard();
-        setMetrics(data);
-        setCachedData(cacheKey, data);
+        if (isMounted && data) {
+          setMetrics(data);
+          setCachedData(cacheKey, data);
+        }
       } catch (err) {
         console.error('Failed to load Dept Head dashboard analytics:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchMetrics();
+    return () => { isMounted = false; };
   }, [propMetrics, cacheKey]);
 
   const pendingIntentsCount = metrics?.pendingIntents ?? 0;
@@ -43,8 +52,12 @@ export default function DeptHeadDashboard({
     ? (currentUser.department.name || 'Computer Studies Department')
     : (currentUser.department || 'Computer Studies Department');
 
+  if (isLoading && !metrics) {
+    return <LoadingBuffer message="Loading..." />;
+  }
+
   return (
-    <div>
+    <div className="module-transition-enter">
       {/* Hero Banner with EVSU Seal matching COS & HR */}
       <div className="hero-banner" style={{ marginBottom: '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />

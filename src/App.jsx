@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './styles/style.css';
 import {
   AppLayout,
@@ -9,6 +9,7 @@ import {
   ResetNewPassword,
   ProfileSettings,
   CampusGeofence,
+  LoadingBuffer,
   // COS Employee GUI Modules (SRS Section 8.1)
   EmployeeDashboard,
   DailyReporting,
@@ -116,11 +117,23 @@ export default function App() {
   const isInviteSignup = Boolean(inviteToken) && authView === 'signup';
 
   const [currentView, setCurrentView] = useState(() => parseHashView());
+  const [isModuleTransitioning, setIsModuleTransitioning] = useState(false);
+  const transitionTimerRef = useRef(null);
 
   // Centralized navigation handler syncing React state with browser history & URL hash
   const navigateTo = useCallback((viewPath, replace = false) => {
     const target = viewPath || 'dashboard';
-    setCurrentView(target);
+    if (target !== currentView) {
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current);
+      }
+      setIsModuleTransitioning(true);
+      setCurrentView(target);
+      transitionTimerRef.current = setTimeout(() => {
+        setIsModuleTransitioning(false);
+      }, 180);
+    }
+
     if (typeof window !== 'undefined') {
       const targetHash = `#/${target}`;
       if (window.location.hash !== targetHash) {
@@ -131,7 +144,7 @@ export default function App() {
         }
       }
     }
-  }, []);
+  }, [currentView]);
 
   // Browser Back (←) and Forward (→) history synchronization
   useEffect(() => {
@@ -139,7 +152,16 @@ export default function App() {
 
     const handleHashSync = () => {
       const targetView = parseHashView();
-      setCurrentView(targetView);
+      if (targetView !== currentView) {
+        if (transitionTimerRef.current) {
+          clearTimeout(transitionTimerRef.current);
+        }
+        setIsModuleTransitioning(true);
+        setCurrentView(targetView);
+        transitionTimerRef.current = setTimeout(() => {
+          setIsModuleTransitioning(false);
+        }, 180);
+      }
     };
 
     window.addEventListener('hashchange', handleHashSync);
@@ -156,6 +178,9 @@ export default function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashSync);
       window.removeEventListener('popstate', handleHashSync);
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current);
+      }
     };
   }, [isAuthenticated, isInviteSignup, currentView]);
 
@@ -394,9 +419,13 @@ export default function App() {
       onNavigate={(path) => navigateTo(path)}
       onLogout={handleLogout}
     >
-      {/* ========================================================
-          ROLE-SPECIFIC SCREEN ROUTING (SRS Section 8.1)
-         ======================================================== */}
+      {isModuleTransitioning ? (
+        <LoadingBuffer message="Loading..." />
+      ) : (
+        <div key={currentView} className="module-transition-enter">
+          {/* ========================================================
+              ROLE-SPECIFIC SCREEN ROUTING (SRS Section 8.1)
+             ======================================================== */}
 
       {/* Universal Dashboard */}
       {currentView === 'dashboard' && currentUser.role === 'COS Employee' && (
@@ -610,18 +639,20 @@ export default function App() {
         />
       )}
 
-      {/* Universal Notification Center & History (UC-09, SRS Section 8.1) */}
-      {(currentView === 'notifications' || currentView === 'notification_history') && (
-        <NotificationHistory
-          notifications={notifications}
-          currentUser={currentUser}
-          onMarkAsRead={handleMarkAsRead}
-          onMarkAllAsRead={handleMarkAllAsRead}
-          onDeleteNotification={handleDeleteNotification}
-          onRefreshNotifications={refreshNotifications}
-          onNavigate={navigateTo}
-          onBack={() => navigateTo('dashboard')}
-        />
+          {/* Universal Notification Center & History (UC-09, SRS Section 8.1) */}
+          {(currentView === 'notifications' || currentView === 'notification_history') && (
+            <NotificationHistory
+              notifications={notifications}
+              currentUser={currentUser}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              onDeleteNotification={handleDeleteNotification}
+              onRefreshNotifications={refreshNotifications}
+              onNavigate={navigateTo}
+              onBack={() => navigateTo('dashboard')}
+            />
+          )}
+        </div>
       )}
     </AppLayout>
   );
