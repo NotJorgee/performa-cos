@@ -171,6 +171,10 @@ def list_user_notifications(
     formatted = []
     for n in notifications:
         action_label = "View"
+        title_lower = (n.title or "").lower()
+        msg_lower = (n.message or "").lower()
+        is_overtime_notif = "overtime" in title_lower or "overtime" in msg_lower
+
         if n.action_view == "daily_report":
             action_label = "Submit DAR"
         elif n.action_view == "peer_evaluations":
@@ -188,11 +192,20 @@ def list_user_notifications(
         elif n.action_view == "hr_evaluations_proxy":
             action_label = "Input HR Scores"
         elif n.action_view in ("employee_attendance", "my_attendance", "leave_filing", "my_leaves"):
-            action_label = "View Leave Status" if "leave" in (n.category or "") else "Open Attendance"
+            if is_overtime_notif:
+                action_label = "View Overtime Status"
+            else:
+                action_label = "View Leave Status" if "leave" in (n.category or "") else "Open Attendance"
         elif n.action_view in ("department_attendance", "department_leaves", "subordinate_leaves"):
-            action_label = "Review Leave" if "leave" in (n.category or "") else "Open Attendance"
+            if is_overtime_notif:
+                action_label = "Review Overtime"
+            else:
+                action_label = "Review Leave" if "leave" in (n.category or "") else "Open Attendance"
         elif n.action_view in ("campus_attendance", "campus_leaves"):
-            action_label = "View Campus Leaves" if "leave" in (n.category or "") else "Open Attendance"
+            if is_overtime_notif:
+                action_label = "View Campus Overtime"
+            else:
+                action_label = "View Campus Leaves" if "leave" in (n.category or "") else "Open Attendance"
 
         formatted.append({
             "id": n.id,

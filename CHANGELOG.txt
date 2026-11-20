@@ -2,6 +2,47 @@ PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
 UPDATE NOTES: 2026-11-20
+Timezone Precision, Overtime Duration Formatting & Action Label Alignment
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Timezone-Accurate Date Filed Timestamps (PHT / UTC+8):
+   - In backend/app/routers/attendance.py (get_department_leave_queue, get_my_leave_requests):
+     * Added helper _format_pht() shifting UTC database timestamps by +8 hours to Philippine Standard Time.
+     * Fixed Date Filed display in the Supervisor Review Drawer (src/components/depthead/DepartmentAttendance.jsx)
+       so 4:00 PM / 5:00 PM PHT submissions correctly render the local hour (e.g., "Nov 20, 2026 05:00 PM")
+       instead of raw unadjusted UTC hours (e.g., 09:00 AM).
+
+2. Overtime Duration Isolation & Clean Justification:
+   - In backend/app/models.py (LeaveRequest):
+     * Added explicit hours column (Float, nullable=True) for storing authorized overtime hours.
+   - In backend/app/main.py (startup_event):
+     * Added non-destructive database migration: ALTER TABLE leave_request ADD COLUMN IF NOT EXISTS hours FLOAT.
+   - In backend/app/routers/attendance.py:
+     * apply_for_leave stores raw payload.hours and cleanly stores payload.reason without prepending bracketed tags.
+     * Added _parse_reason_and_hours() to retroactively extract hours and strip legacy bracketed prefixes
+       (e.g., "[5.0 hr(s) Overtime]") from existing database entries.
+   - In src/components/depthead/DepartmentAttendance.jsx:
+     * DURATION & INCLUSIVE DATES now highlights overtime length (e.g. "5.0 hr(s) Overtime") instead of "(1 working day)".
+     * Employee Justification & Particulars textarea displays the clean justification without prepended hours text.
+     * Drawer action buttons dynamically adapt to request type:
+       - Overtime: "Disapprove Overtime" and "Approve Overtime".
+       - Official Business: "Disapprove Request" and "Approve Request".
+       - Standard Leaves: "Disapprove Leave" and "Approve Leave".
+   - In src/components/employee/EmployeeAttendance.jsx & CampusAttendance.jsx:
+     * Updated request tables to display formatted overtime hours (e.g. "5.0 hr(s)") under the Duration column.
+
+3. Contextual Notification Action Link Labels:
+   - In backend/app/routers/notifications.py (list_user_notifications):
+     * Added intelligent overtime detection on notification titles and messages.
+     * Department Head action link dynamically resolves to "Review Overtime" (previously "Review Leave").
+     * Subordinate action link dynamically resolves to "View Overtime Status" (previously "View Leave Status").
+     * HR action link dynamically resolves to "View Campus Overtime" (previously "View Campus Leaves").
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Weekend Overtime Authorization Integration & Unified Attendance Gating
 ================================================================================
 

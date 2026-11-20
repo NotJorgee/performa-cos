@@ -410,6 +410,8 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                     leaveQueue.map((l) => {
                       const isOt = l.leave_type?.toLowerCase().includes('overtime');
                       const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                      const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
+                      const cleanReason = l.reason?.replace(/^\[[^\]]+\]\s*/, '') || l.reason;
                       return (
                         <tr key={l.id}>
                           <td>
@@ -434,13 +436,13 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                           </td>
                           <td style={{ fontSize: '12.5px' }}>
                             {isOt
-                              ? `Overtime · ${l.start_date}`
+                              ? `${l.start_date} (${otHours ? `${otHours} hrs` : 'Overtime'})`
                               : l.start_date === l.end_date
                               ? `${l.start_date}`
                               : `${l.start_date} to ${l.end_date}`}
                           </td>
                           <td style={{ fontSize: '12px', maxWidth: '240px' }}>
-                            {l.reason}
+                            {cleanReason}
                           </td>
                           <td>
                             <span
@@ -514,250 +516,267 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
       )}
 
       {/* Review / View Leave Modal */}
-      {selectedLeave && (
-        <div
-          className="modal-overlay open"
-          style={{ zIndex: 1100 }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setSelectedLeave(null);
-              setReviewNotes('');
-            }
-          }}
-        >
-          <div className="modal-card" style={{ maxWidth: '640px', width: '92%' }}>
-            <div className="modal-header">
-              <div>
-                <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={18} color="var(--brand-700)" />
-                  <span>
-                    {selectedLeave.status === 'PENDING_DEPT_HEAD'
-                      ? 'Review Time & Shift Request'
-                      : 'Time & Shift Request Details'}
-                  </span>
-                </div>
-                <div className="muted" style={{ fontSize: '12.5px', marginTop: '2px' }}>
-                  {selectedLeave.employee_name} &bull; {selectedLeave.employee_id_number}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => {
-                  setSelectedLeave(null);
-                  setReviewNotes('');
-                }}
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {selectedLeave && (() => {
+        const isOt = selectedLeave.leave_type?.toLowerCase().includes('overtime');
+        const isOb = selectedLeave.leave_type?.toLowerCase().includes('official business') || selectedLeave.leave_type?.toLowerCase().includes('ob');
+        const otHours = selectedLeave.hours || selectedLeave.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
+        const cleanReason = selectedLeave.reason?.replace(/^\[[^\]]+\]\s*/, '') || selectedLeave.reason;
 
-            {/* Leave Details Grid */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '14px',
-                marginBottom: '18px',
-                padding: '14px 16px',
-                background: '#f8fafc',
-                borderRadius: '8px',
-                border: '1px solid var(--line)',
-              }}
-            >
-              <div>
-                <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Leave Category
-                </span>
-                <strong style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
-                  {selectedLeave.leave_type}
-                </strong>
-              </div>
-
-              <div>
-                <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Duration &amp; Inclusive Dates
-                </span>
-                <strong style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
-                  {selectedLeave.start_date} to {selectedLeave.end_date}
-                </strong>
-                <div className="muted" style={{ fontSize: '11.5px' }}>
-                  ({selectedLeave.days_count} working day{selectedLeave.days_count > 1 ? 's' : ''})
-                </div>
-              </div>
-
-              <div>
-                <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Department Assignment
-                </span>
-                <span style={{ fontSize: '13px', color: 'var(--ink-800)', fontWeight: 500 }}>
-                  {selectedLeave.department || 'Computer Studies Department'}
-                </span>
-              </div>
-
-              <div>
-                <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Date Filed
-                </span>
-                <span style={{ fontSize: '13px', color: 'var(--ink-800)', fontWeight: 500 }}>
-                  {selectedLeave.created_at}
-                </span>
-              </div>
-            </div>
-
-            {/* Employee Justification */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink-800)' }}>
-                Employee Justification &amp; Particulars
-              </label>
-              <div
-                style={{
-                  padding: '12px 14px',
-                  background: '#ffffff',
-                  borderRadius: '6px',
-                  border: '1px solid var(--line)',
-                  fontSize: '13px',
-                  color: 'var(--ink-800)',
-                  lineHeight: '1.5',
-                }}
-              >
-                {selectedLeave.reason}
-              </div>
-            </div>
-
-            {/* Past Decision Box if already decided */}
-            {selectedLeave.status !== 'PENDING_DEPT_HEAD' && (
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '6px',
-                  marginBottom: '18px',
-                  background: selectedLeave.status === 'APPROVED' ? '#f0fdf4' : '#fef2f2',
-                  border: `1px solid ${selectedLeave.status === 'APPROVED' ? '#bbf7d0' : '#fecaca'}`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      color: selectedLeave.status === 'APPROVED' ? 'var(--green-700, #15803d)' : 'var(--red-600)',
-                    }}
-                  >
-                    Decision: {selectedLeave.status === 'APPROVED' ? 'Approved' : 'Disapproved'}
-                  </span>
-                  <span className="muted" style={{ fontSize: '11.5px' }}>
-                    Reviewed by: {selectedLeave.reviewed_by || 'Supervisor'}
-                  </span>
-                </div>
-                {selectedLeave.review_notes && (
-                  <div style={{ fontSize: '12.5px', color: 'var(--ink-800)', fontStyle: 'italic' }}>
-                    "{selectedLeave.review_notes}"
+        return (
+          <div
+            className="modal-overlay open"
+            style={{ zIndex: 1100 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedLeave(null);
+                setReviewNotes('');
+              }
+            }}
+          >
+            <div className="modal-card" style={{ maxWidth: '640px', width: '92%' }}>
+              <div className="modal-header">
+                <div>
+                  <div className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={18} color="var(--brand-700)" />
+                    <span>
+                      {selectedLeave.status === 'PENDING_DEPT_HEAD'
+                        ? (isOt ? 'Review Overtime Request' : 'Review Time & Shift Request')
+                        : (isOt ? 'Overtime Request Details' : 'Time & Shift Request Details')}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Supervisor Action Form for Pending Requests */}
-            {selectedLeave.status === 'PENDING_DEPT_HEAD' ? (
-              <form onSubmit={(e) => e.preventDefault()}>
-                <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink-800)' }}>
-                    Supervisor Endorsement Remarks (Optional)
-                  </label>
-                  <PredictiveTextarea
-                    id="supervisorLeaveRemarksInput"
-                    rows={3}
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Provide notes, conditions, or recommendations..."
-                    contextType="leave_review"
-                    fieldName={`supervisorRemarks (${selectedLeave?.category || 'Leave'})`}
-                    role={currentUser?.job_title || 'Department Head'}
-                    department={typeof currentUser?.department === 'object' ? (currentUser?.department?.name || selectedLeave?.department || 'Academic Department') : (currentUser?.department || selectedLeave?.department || 'Academic Department')}
-                    autoFocus
-                  />
+                  <div className="muted" style={{ fontSize: '12.5px', marginTop: '2px' }}>
+                    {selectedLeave.employee_name} &bull; {selectedLeave.employee_id_number}
+                  </div>
                 </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: '10px',
-                    paddingTop: '16px',
-                    borderTop: '1px solid var(--line, #e2e8f0)',
-                  }}
-                >
-                  <button
-                    type="button"
-                    disabled={isSubmittingReview}
-                    onClick={(e) => handleReviewLeave('REJECT', e)}
-                    className="btn btn-sm"
-                    style={{
-                      background: '#dc2626',
-                      border: '1px solid #dc2626',
-                      color: '#ffffff',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      padding: '8px 18px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <X size={15} /> Disapprove Leave
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isSubmittingReview}
-                    onClick={(e) => handleReviewLeave('APPROVE', e)}
-                    className="btn btn-sm"
-                    style={{
-                      background: '#15803d',
-                      border: '1px solid #15803d',
-                      color: '#ffffff',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      padding: '8px 18px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Check size={15} /> Approve Leave
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  paddingTop: '14px',
-                  borderTop: '1px solid var(--line)',
-                }}
-              >
                 <button
                   type="button"
+                  className="modal-close"
                   onClick={() => {
                     setSelectedLeave(null);
                     setReviewNotes('');
                   }}
-                  className="btn btn-sm btn-primary"
-                  style={{ fontSize: '13px', padding: '8px 16px' }}
+                  aria-label="Close"
                 >
-                  Close
+                  <X size={18} />
                 </button>
               </div>
-            )}
+
+              {/* Leave Details Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: '14px',
+                  marginBottom: '18px',
+                  padding: '14px 16px',
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid var(--line)',
+                }}
+              >
+                <div>
+                  <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Leave Category
+                  </span>
+                  <strong style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
+                    {selectedLeave.leave_type}
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Duration &amp; Inclusive Dates
+                  </span>
+                  <strong style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
+                    {selectedLeave.start_date === selectedLeave.end_date
+                      ? selectedLeave.start_date
+                      : `${selectedLeave.start_date} to ${selectedLeave.end_date}`}
+                  </strong>
+                  <div
+                    style={{
+                      fontSize: '11.5px',
+                      fontWeight: isOt ? 600 : 400,
+                      color: isOt ? '#6d28d9' : 'var(--ink-500)',
+                    }}
+                  >
+                    {isOt
+                      ? `${otHours ? `${otHours} hr(s) Overtime` : 'Overtime Request'}`
+                      : `(${selectedLeave.days_count} working day${selectedLeave.days_count > 1 ? 's' : ''})`}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Department Assignment
+                  </span>
+                  <span style={{ fontSize: '13px', color: 'var(--ink-800)', fontWeight: 500 }}>
+                    {selectedLeave.department || 'Computer Studies Department'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="muted" style={{ fontSize: '11.5px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Date Filed
+                  </span>
+                  <span style={{ fontSize: '13px', color: 'var(--ink-800)', fontWeight: 500 }}>
+                    {selectedLeave.created_at}
+                  </span>
+                </div>
+              </div>
+
+              {/* Employee Justification */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink-800)' }}>
+                  {isOt ? 'Employee Deliverables & Work Justification' : 'Employee Justification & Particulars'}
+                </label>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    background: '#ffffff',
+                    borderRadius: '6px',
+                    border: '1px solid var(--line)',
+                    fontSize: '13px',
+                    color: 'var(--ink-800)',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {cleanReason}
+                </div>
+              </div>
+
+              {/* Past Decision Box if already decided */}
+              {selectedLeave.status !== 'PENDING_DEPT_HEAD' && (
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: '6px',
+                    marginBottom: '18px',
+                    background: selectedLeave.status === 'APPROVED' ? '#f0fdf4' : '#fef2f2',
+                    border: `1px solid ${selectedLeave.status === 'APPROVED' ? '#bbf7d0' : '#fecaca'}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: selectedLeave.status === 'APPROVED' ? 'var(--green-700, #15803d)' : 'var(--red-600)',
+                      }}
+                    >
+                      Decision: {selectedLeave.status === 'APPROVED' ? 'Approved' : 'Disapproved'}
+                    </span>
+                    <span className="muted" style={{ fontSize: '11.5px' }}>
+                      Reviewed by: {selectedLeave.reviewed_by || 'Supervisor'}
+                    </span>
+                  </div>
+                  {selectedLeave.review_notes && (
+                    <div style={{ fontSize: '12.5px', color: 'var(--ink-800)', fontStyle: 'italic' }}>
+                      "{selectedLeave.review_notes}"
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Supervisor Action Form for Pending Requests */}
+              {selectedLeave.status === 'PENDING_DEPT_HEAD' ? (
+                <form onSubmit={(e) => e.preventDefault()}>
+                  <div style={{ marginBottom: '18px' }}>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink-800)' }}>
+                      Supervisor Endorsement Remarks (Optional)
+                    </label>
+                    <PredictiveTextarea
+                      id="supervisorLeaveRemarksInput"
+                      rows={3}
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      placeholder="Provide notes, conditions, or recommendations..."
+                      contextType="leave_review"
+                      fieldName={`supervisorRemarks (${selectedLeave?.category || 'Leave'})`}
+                      role={currentUser?.job_title || 'Department Head'}
+                      department={typeof currentUser?.department === 'object' ? (currentUser?.department?.name || selectedLeave?.department || 'Academic Department') : (currentUser?.department || selectedLeave?.department || 'Academic Department')}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      gap: '10px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid var(--line, #e2e8f0)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      disabled={isSubmittingReview}
+                      onClick={(e) => handleReviewLeave('REJECT', e)}
+                      className="btn btn-sm"
+                      style={{
+                        background: '#dc2626',
+                        border: '1px solid #dc2626',
+                        color: '#ffffff',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        padding: '8px 18px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <X size={15} /> {isOt ? 'Disapprove Overtime' : isOb ? 'Disapprove Request' : 'Disapprove Leave'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSubmittingReview}
+                      onClick={(e) => handleReviewLeave('APPROVE', e)}
+                      className="btn btn-sm"
+                      style={{
+                        background: '#15803d',
+                        border: '1px solid #15803d',
+                        color: '#ffffff',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        padding: '8px 18px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Check size={15} /> {isOt ? 'Approve Overtime' : isOb ? 'Approve Request' : 'Approve Leave'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    paddingTop: '14px',
+                    borderTop: '1px solid var(--line)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLeave(null);
+                      setReviewNotes('');
+                    }}
+                    className="btn btn-sm btn-primary"
+                    style={{ fontSize: '13px', padding: '8px 16px' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -4,7 +4,8 @@ Semi-Monthly 15-Day Payroll & DTR Aggregator, and Leave Management for PerformaC
 """
 import calendar
 import datetime
-from typing import List, Optional
+import re
+from typing import List, Optional, Tuple
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -1139,7 +1140,7 @@ def apply_for_leave(
 
     days_cnt = (end_d - start_d).days + 1
 
-    formatted_reason = payload.reason
+    ot_hours = payload.hours if is_overtime else None
     if is_overtime and payload.hours:
         is_weekend_ot = (start_d.weekday() in (5, 6))
         if not is_weekend_ot and payload.hours > 5.0:
@@ -1147,8 +1148,6 @@ def apply_for_leave(
                 status_code=400,
                 detail="Weekday evening overtime cannot exceed 5.0 hours (5:00 PM to 10:00 PM campus night closing).",
             )
-        prefix = f"[Weekend OT · {payload.hours} hr(s)]" if is_weekend_ot else f"[{payload.hours} hr(s) Overtime]"
-        formatted_reason = f"{prefix} {payload.reason}"
 
     leave_entry = models.LeaveRequest(
         user_id=current_user.id,
@@ -1157,7 +1156,8 @@ def apply_for_leave(
         start_date=start_d,
         end_date=end_d,
         days_count=days_cnt,
-        reason=formatted_reason,
+        hours=ot_hours,
+        reason=payload.reason.strip(),
         attachment_url=payload.attachment_url,
         status="PENDING_DEPT_HEAD",
     )
@@ -1183,7 +1183,7 @@ def apply_for_leave(
                 user_id=dept_head.id,
                 target_role=None,
                 title=f"{req_label}: {current_user.full_name}",
-                message=f"{current_user.full_name} submitted a {payload.leave_type} request for {start_d}{hours_info}. Reason: {payload.reason[:80]}",
+                message=f"{current_user.full_name} submitted a {payload.leave_type} request for {start_d}{hours_info}. Reason: {payload.reason.strip()[:80]}",
                 category="leave_request",
                 is_read=False,
                 action_view="department_leaves",
@@ -1208,6 +1208,33 @@ def apply_for_leave(
     }
 
 
+def _format_pht(dt: Optional[datetime.datetime], fmt: str = "%b %d, %Y %I:%M %p") -> Optional[str]:
+    """Formats a UTC timestamp to Philippine Standard Time (PHT, UTC+8)."""
+    if not dt:
+        return None
+    return (dt + datetime.timedelta(hours=8)).strftime(fmt)
+
+
+def _parse_reason_and_hours(raw_reason: Optional[str], db_hours: Optional[float] = None) -> Tuple[str, Optional[float]]:
+    """
+    Strips legacy bracketed prefix like '[5.0 hr(s) Overtime]' or '[Weekend OT · 4.0 hr(s)]'
+    from the reason string and resolves the overtime hours.
+    """
+    if not raw_reason:
+        return "", db_hours
+    hours = db_hours
+    match = re.search(r"\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)[^\]]*\]", raw_reason)
+    if match:
+        if hours is None:
+            try:
+                hours = float(match.group(1))
+            except ValueError:
+                pass
+        clean_reason = re.sub(r"\[(?:Weekend OT · )?[0-9.]+\s*hr\(s\)[^\]]*\]\s*", "", raw_reason).strip()
+        return clean_reason, hours
+    return raw_reason.strip(), hours
+
+
 @router.get("/leaves/my-requests")
 def get_my_leave_requests(
     db: Session = Depends(get_db),
@@ -1220,21 +1247,23 @@ def get_my_leave_requests(
         .order_by(desc(models.LeaveRequest.created_at))
         .all()
     )
-    return [
-        {
+    res = []
+    for l in leaves:
+        clean_reason, ot_hours = _parse_reason_and_hours(l.reason, getattr(l, "hours", None))
+        res.append({
             "id": l.id,
             "leave_type": l.leave_type,
             "start_date": str(l.start_date),
             "end_date": str(l.end_date),
             "days_count": l.days_count,
-            "reason": l.reason,
+            "hours": ot_hours,
+            "reason": clean_reason,
             "status": l.status,
             "review_notes": l.review_notes,
-            "reviewed_at": l.reviewed_at.strftime("%b %d, %Y") if l.reviewed_at else None,
-            "created_at": l.created_at.strftime("%b %d, %Y"),
-        }
-        for l in leaves
-    ]
+            "reviewed_at": _format_pht(l.reviewed_at, "%b %d, %Y"),
+            "created_at": _format_pht(l.created_at, "%b %d, %Y"),
+        })
+    return res
 
 
 @router.get("/leaves/department-queue")
@@ -1252,8 +1281,10 @@ def get_department_leave_queue(
 
     leaves = query.order_by(desc(models.LeaveRequest.created_at)).all()
 
-    return [
-        {
+    res = []
+    for l in leaves:
+        clean_reason, ot_hours = _parse_reason_and_hours(l.reason, getattr(l, "hours", None))
+        res.append({
             "id": l.id,
             "employee_id": l.user_id,
             "employee_name": l.user.full_name if l.user else "Unknown Employee",
@@ -1263,14 +1294,14 @@ def get_department_leave_queue(
             "start_date": str(l.start_date),
             "end_date": str(l.end_date),
             "days_count": l.days_count,
-            "reason": l.reason,
+            "hours": ot_hours,
+            "reason": clean_reason,
             "status": l.status,
             "review_notes": l.review_notes,
             "reviewed_by": l.reviewer.full_name if l.reviewer else None,
-            "created_at": l.created_at.strftime("%b %d, %Y %I:%M %p"),
-        }
-        for l in leaves
-    ]
+            "created_at": _format_pht(l.created_at, "%b %d, %Y %I:%M %p"),
+        })
+    return res
 
 
 @router.put("/leaves/{leave_id}/review")
@@ -1299,11 +1330,13 @@ def review_leave_request(
     db.commit()
 
     # Notify employee
+    is_overtime = "overtime" in (leave.leave_type or "").lower()
+    req_label = "Overtime Request" if is_overtime else "Leave Request"
     status_label = "Approved" if new_status == "APPROVED" else "Disapproved"
     notif = models.Notification(
         user_id=leave.user_id,
         target_role=None,
-        title=f"Leave Request {status_label}",
+        title=f"{req_label} {status_label}",
         message=f"Your {leave.leave_type} request ({leave.start_date} to {leave.end_date}) was {status_label.lower()} by {current_user.full_name}. Notes: {payload.review_notes or 'None'}",
         category="leave_status",
         is_read=False,

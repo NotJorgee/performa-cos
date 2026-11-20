@@ -674,37 +674,42 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                   </td>
                 </tr>
               ) : (
-                filteredLeaves.map((l) => (
-                  <tr key={l.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
-                      <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
-                    </td>
-                    <td style={{ fontSize: '12.5px' }}>{l.department}</td>
-                    <td style={{ fontWeight: 600, fontSize: '13px' }}>{l.leave_type}</td>
-                    <td style={{ fontSize: '12.5px' }}>
-                      {l.start_date} to {l.end_date}
-                    </td>
-                    <td style={{ fontSize: '12.5px' }}>{l.days_count}d</td>
-                    <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {l.reason}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          l.status === 'APPROVED'
-                            ? 'badge-completed'
-                            : l.status === 'REJECTED'
-                            ? 'badge-archived'
-                            : 'badge-active'
-                        }`}
-                        style={{ fontSize: '11.5px' }}
-                      >
-                        {l.status === 'PENDING_DEPT_HEAD' ? 'Pending Review' : l.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                filteredLeaves.map((l) => {
+                  const isOt = l.leave_type?.toLowerCase().includes('overtime');
+                  const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
+                  const cleanReason = l.reason?.replace(/^\[[^\]]+\]\s*/, '') || l.reason;
+                  return (
+                    <tr key={l.id}>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
+                        <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
+                      </td>
+                      <td style={{ fontSize: '12.5px' }}>{l.department}</td>
+                      <td style={{ fontWeight: 600, fontSize: '13px' }}>{l.leave_type}</td>
+                      <td style={{ fontSize: '12.5px' }}>
+                        {l.start_date === l.end_date ? l.start_date : `${l.start_date} to ${l.end_date}`}
+                      </td>
+                      <td style={{ fontSize: '12.5px' }}>{isOt ? `${otHours ? `${otHours}h` : 'OT'}` : `${l.days_count}d`}</td>
+                      <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {cleanReason}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            l.status === 'APPROVED'
+                              ? 'badge-completed'
+                              : l.status === 'REJECTED'
+                              ? 'badge-archived'
+                              : 'badge-active'
+                          }`}
+                          style={{ fontSize: '11.5px' }}
+                        >
+                          {l.status === 'PENDING_DEPT_HEAD' ? 'Pending Review' : l.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

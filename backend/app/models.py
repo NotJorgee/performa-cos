@@ -372,6 +372,7 @@ class LeaveRequest(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     days_count = Column(Integer, default=1)
+    hours = Column(Float, nullable=True)
     reason = Column(Text, nullable=False)
     attachment_url = Column(String(500), nullable=True)
     status = Column(String(50), default="PENDING_DEPT_HEAD")  # 'PENDING_DEPT_HEAD' | 'APPROVED' | 'REJECTED' | 'CANCELLED'

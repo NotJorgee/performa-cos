@@ -826,6 +826,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                   leaveRequests.map((l) => {
                     const isOt = l.leave_type?.toLowerCase().includes('overtime');
                     const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                    const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
                     return (
                       <tr key={l.id}>
                         <td>
@@ -848,7 +849,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                           {l.start_date === l.end_date ? l.start_date : `${l.start_date} to ${l.end_date}`}
                         </td>
                         <td style={{ fontSize: '12.5px' }}>
-                          {isOt ? 'Overtime' : `${l.days_count} day(s)`}
+                          {isOt ? `${otHours ? `${otHours} hr(s)` : 'Overtime'}` : `${l.days_count} day(s)`}
                         </td>
                       <td>
                         <span

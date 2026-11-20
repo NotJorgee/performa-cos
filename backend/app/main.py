@@ -86,6 +86,12 @@ async def startup_event():
     except Exception as e:
         print(f"[startup] Table creation check: {e}")
     try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE leave_request ADD COLUMN IF NOT EXISTS hours FLOAT;"))
+            conn.commit()
+    except Exception as e:
+        print(f"[startup] leave_request hours migration check: {e}")
+    try:
         ensure_buckets_exist()
     except Exception as e:
         print(f"[startup] Storage bucket check failed: {e}")
