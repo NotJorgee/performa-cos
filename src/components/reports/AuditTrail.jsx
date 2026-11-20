@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check } from 'lucide-react';
+import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check, RefreshCw } from 'lucide-react';
 import Toast from '../common/Toast';
 
 export const formatAuditAction = (action) => {
@@ -49,7 +49,7 @@ export default function AuditTrail({
   onBack = null,
 }) {
   const [logs, setLogs] = useState(initialLogs);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!(initialLogs && initialLogs.length > 0));
 
   useEffect(() => {
     if (initialLogs && initialLogs.length > 0) {
@@ -405,7 +405,18 @@ export default function AuditTrail({
                 <td style={{ fontSize: '13px' }}>{log.operationDetails}</td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {isLoading ? (
+              <tr>
+                <td colSpan="6" style={{ padding: '48px 16px', textAlign: 'center', background: '#fff' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <RefreshCw size={22} className="spin" style={{ color: 'var(--brand-700)' }} />
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13.5px' }}>
+                      Loading system audit logs...
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '48px 16px', textAlign: 'center', background: '#fff' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -421,7 +432,7 @@ export default function AuditTrail({
                   </div>
                 </td>
               </tr>
-            )}
+            ) : null}
           </tbody>
         </table>
       </div>

@@ -38,6 +38,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
 
   // University Leaves State
   const [campusLeaves, setCampusLeaves] = useState([]);
+  const [isLoadingLeaves, setIsLoadingLeaves] = useState(true);
   const [leaveSearch, setLeaveSearch] = useState('');
 
   // Load Campus Overview (silent background revalidation when cached)
@@ -94,6 +95,8 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       setCampusLeaves(res || []);
     } catch (err) {
       console.warn('Leaves load warning:', err.message);
+    } finally {
+      setIsLoadingLeaves(false);
     }
   };
 
@@ -667,7 +670,13 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
               </tr>
             </thead>
             <tbody>
-              {filteredLeaves.length === 0 ? (
+              {isLoadingLeaves ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
+                    Loading leave records...
+                  </td>
+                </tr>
+              ) : filteredLeaves.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                     No leave records found.

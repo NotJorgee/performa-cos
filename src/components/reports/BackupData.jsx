@@ -358,7 +358,13 @@ export default function BackupData({ onBack = null }) {
             </tr>
           </thead>
           <tbody>
-            {backupHistory.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                  Loading backup archive history...
+                </td>
+              </tr>
+            ) : backupHistory.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                   No backup files have been exported yet. Click an option above to generate your first backup.

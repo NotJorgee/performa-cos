@@ -81,6 +81,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const [overtimeHours, setOvertimeHours] = useState('2');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveRequests, setLeaveRequests] = useState(() => getCachedData(cacheKeyLeaves) || []);
+  const [isLoadingLeaves, setIsLoadingLeaves] = useState(!getCachedData(cacheKeyLeaves));
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
 
   // Computed weekend overtime flags
@@ -214,13 +215,16 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   };
 
   // Load User's Past Leaves
-  const loadMyLeaves = async () => {
+  const loadMyLeaves = async (silent = Boolean(getCachedData(cacheKeyLeaves))) => {
     try {
+      if (!silent) setIsLoadingLeaves(true);
       const res = await api.leaves.getMyRequests();
       setLeaveRequests(res || []);
       setCachedData(cacheKeyLeaves, res || []);
     } catch (err) {
       console.warn('Leaves load warning:', err.message);
+    } finally {
+      if (!silent) setIsLoadingLeaves(false);
     }
   };
 
@@ -833,7 +837,13 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 </tr>
               </thead>
               <tbody>
-                {leaveRequests.length === 0 ? (
+                {isLoadingLeaves ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                      Loading submitted requests...
+                    </td>
+                  </tr>
+                ) : leaveRequests.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                       No requests submitted yet.

@@ -2,23 +2,33 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
-Bugfix: Elimination of Empty State Flash in Intent Review & Evaluation Management
+System-Wide Audit & Fix: Universal Elimination of Empty State Flashes across All Modules
 ================================================================================
 
 SUMMARY FOR MOBILE & APP DEVELOPERS
 -----------------------------------
-1. Fix Premature Empty State Flash in IntentReview:
-   - In src/components/depthead/IntentReview.jsx:
-     * Added explicit `isLoading` state (initialized to true when no candidates exist).
-     * While asynchronous queries (`api.renewals.list()`, `api.users.list()`, and AI dossier telemetry) are in flight, render `<LoadingBuffer message="Loading..." />` instead of the empty candidate queue.
-     * Guarded the "All Caught Up!" card to render strictly when `!isLoading && pendingCandidates.length === 0`.
-     * Added a 4500ms safety timeout ensuring `isLoading` resolves even under slow networks or edge timeouts.
-     * Prevents the jarring sequence where the module showed "All Caught Up!" for half a second before candidate evaluation cards appeared.
+1. Comprehensive Cross-Module Audit & Resolution:
+   - In src/components/reports/AuditTrail.jsx:
+     * Added initial `isLoading` state and guarded table rows with `{isLoading ? Loading system audit logs... : filtered.length === 0 ? ...}`.
+     * Prevents premature "No Security Audit Events Logged" flash while database audit logs are loading.
+   - In src/components/reports/BackupData.jsx:
+     * Guarded backup history table with `{isLoading ? Loading backup archive history... : backupHistory.length === 0 ? ...}`.
+     * Prevents premature "No backup files have been exported yet" flash during initial archive query.
+   - In src/components/hr/CampusAttendance.jsx:
+     * Added `isLoadingLeaves` state to Campus Leaves queue.
+     * Guarded table with `{isLoadingLeaves ? Loading leave records... : filteredLeaves.length === 0 ? ...}`.
+   - In src/components/employee/EmployeeAttendance.jsx:
+     * Added `isLoadingLeaves` state to Employee Leave Filing & Request History.
+     * Guarded request table with `{isLoadingLeaves ? Loading submitted requests... : leaveRequests.length === 0 ? ...}`.
+   - In src/components/management/EmployeeRecordView.jsx:
+     * Guarded personnel performance history with `{dbEvaluations === null && staticEvaluations.length === 0 ? Loading... : historicalEvaluations.length === 0 ? ...}`.
 
-2. Guard Empty States in Evaluation Management:
+2. Previously Fixed Core Modules:
+   - In src/components/depthead/IntentReview.jsx:
+     * Added `isLoading` state; displays `<LoadingBuffer message="Loading..." />` while initial renewals and AI dossiers load, eliminating premature "All Caught Up!" flash.
    - In src/components/hr/EvaluationManagement.jsx:
-     * Streamlined table loading guard to `{loading ? ... : actionableEmployees.length === 0 && pendingEmployees.length === 0 ? ...}`.
-     * Guarantees that the loading indicator displays consistently during query execution and never flashes "All Caught Up!" while data resolution is ongoing.
+     * Streamlined table loading guard to prevent flashing "All Caught Up!" before database records resolve.
+   - Modules already adhering to this pattern: `AttendanceLogs.jsx`, `MonthlyReport.jsx`, `UserManagement.jsx`, `DepartmentAttendance.jsx`, `ReportGenerator.jsx`, and `EvaluationSettings.jsx`.
 
 ================================================================================
 

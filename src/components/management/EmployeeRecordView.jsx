@@ -3416,7 +3416,13 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-        {historicalEvaluations.length === 0 ? (
+        {dbEvaluations === null && staticEvaluations.length === 0 ? (
+          <div style={{ padding: '36px 24px', textAlign: 'center', background: '#fafbfc' }}>
+            <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
+              Loading performance evaluations on record...
+            </p>
+          </div>
+        ) : historicalEvaluations.length === 0 ? (
           <div style={{ padding: '36px 24px', textAlign: 'center', background: '#fafbfc' }}>
             <p style={{ margin: '0 0 6px', fontSize: '14.5px', fontWeight: 700, color: 'var(--ink-900)' }}>
               No completed performance evaluations on record for this personnel yet.
