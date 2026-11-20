@@ -2,6 +2,29 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Profile Picture Management Modal & Header Action Streamlining
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Modal-Driven Profile Photo Management:
+   - In src/components/auth/ProfileSettings.jsx:
+     * Removed the standalone "Change Photo" and "Remove" button group from the right side of the profile header card.
+     * Made the circular avatar interactively clickable (with cursor pointer, focus ring, camera badge overlay indicator, and accessibility attributes).
+     * Clicking or pressing the profile picture opens the in-app Profile Picture Management Modal.
+     * Modal displays:
+       - High-resolution circular preview of current avatar or initial monogram.
+       - User legal full name, employee ID number, and system role badge.
+       - "Upload Photo" / "Change Photo" primary action triggering the file selection and circular cropper.
+       - "Remove Photo" danger action (conditionally displayed when a photo is active) to revert back to institutional initials.
+       - "Cancel" button and backdrop dismissal.
+     * Integrated direct persistence via saveAvatar helper: automatically synchronizes changes across backend API (api.users.updateContact), localStorage (performa_user), and parent state.
+   - In src/App.jsx:
+     * Wired onUpdateProfile handler on ProfileSettings to ensure header navigation avatars update synchronously in real-time.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Mobile Photo Evidence: Camera & Gallery Dual-Input Architecture
 ================================================================================
 

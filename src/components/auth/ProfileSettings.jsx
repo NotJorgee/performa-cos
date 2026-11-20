@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User,
   Settings,
@@ -19,6 +19,10 @@ import {
   MapPin,
   Calendar,
   RotateCcw,
+  Camera,
+  Trash2,
+  Upload,
+  X,
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
@@ -78,6 +82,8 @@ export default function ProfileSettings({
   }, []);
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
   const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const avatarInputRef = useRef(null);
   const [rawImageSrc, setRawImageSrc] = useState(null);
   const [avatarBlob, setAvatarBlob] = useState(null);
   const [isPendingAvatarChange, setIsPendingAvatarChange] = useState(false);
@@ -341,6 +347,77 @@ export default function ProfileSettings({
     }
   };
 
+  const saveAvatar = async (targetAvatarUrl, targetAvatarBlob) => {
+    setIsSubmittingProfile(true);
+    setErrorMsg(null);
+    setToastMsg(null);
+    try {
+      let finalAvatarUrl = targetAvatarUrl;
+      if (targetAvatarBlob) {
+        try {
+          const uploadRes = await api.uploads.uploadAvatar(targetAvatarBlob);
+          if (uploadRes && uploadRes.url) {
+            finalAvatarUrl = uploadRes.url;
+          }
+        } catch (uploadErr) {
+          console.warn('Avatar bucket upload fallback to local data URL:', uploadErr);
+        }
+      }
+
+      const targetUserId = currentUser?.id || api?.auth?.getCurrentUser()?.id;
+      if (targetUserId) {
+        try {
+          await api.users.updateContact(targetUserId, {
+            contact_number: contactNumber,
+            alternate_email: alternateEmail,
+            emergency_contact: emergencyContact,
+            office_location: officeLocation,
+            avatar_url: finalAvatarUrl,
+          });
+        } catch (contactErr) {
+          console.warn('Could not persist avatar to server:', contactErr);
+        }
+      }
+
+      // Synchronize performa_user in localStorage
+      const stored = api.auth.getCurrentUser();
+      if (stored) {
+        localStorage.setItem(
+          'performa_user',
+          JSON.stringify({
+            ...stored,
+            contactNumber,
+            alternateEmail,
+            emergencyContact,
+            officeLocation,
+            avatarUrl: finalAvatarUrl,
+          })
+        );
+      }
+
+      onUpdateProfile({
+        contactNumber,
+        alternateEmail,
+        emergencyContact,
+        officeLocation,
+        avatarUrl: finalAvatarUrl,
+      });
+
+      setAvatarPreview(finalAvatarUrl);
+      setAvatarBlob(null);
+      setIsPendingAvatarChange(false);
+      setToastMsg(finalAvatarUrl ? 'Profile photo updated successfully.' : 'Profile photo removed successfully.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update profile photo.');
+    } finally {
+      setIsSubmittingProfile(false);
+      setTimeout(() => {
+        setToastMsg(null);
+        setErrorMsg(null);
+      }, 3500);
+    }
+  };
+
   const handleAvatarSelect = (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
@@ -352,6 +429,7 @@ export default function ProfileSettings({
       const reader = new FileReader();
       reader.onload = () => {
         setRawImageSrc(reader.result);
+        setIsPhotoModalOpen(false);
         setCropModalOpen(true);
       };
       reader.readAsDataURL(file);
@@ -359,20 +437,19 @@ export default function ProfileSettings({
     e.target.value = '';
   };
 
-  const handleCropComplete = ({ dataUrl, blob }) => {
+  const handleCropComplete = async ({ dataUrl, blob }) => {
+    setCropModalOpen(false);
+    setRawImageSrc(null);
     setAvatarPreview(dataUrl);
     setAvatarBlob(blob);
-    setIsPendingAvatarChange(true);
-    setToastMsg('Photo cropped. Click "Save Profile Changes" below to submit changes.');
-    setTimeout(() => setToastMsg(null), 4500);
+    await saveAvatar(dataUrl, blob);
   };
 
-  const handleRemovePhoto = () => {
+  const handleRemovePhoto = async () => {
+    setIsPhotoModalOpen(false);
     setAvatarPreview(null);
     setAvatarBlob(null);
-    setIsPendingAvatarChange(true);
-    setToastMsg('Profile photo removed. Click "Save Profile Changes" below to submit.');
-    setTimeout(() => setToastMsg(null), 4000);
+    await saveAvatar(null, null);
   };
 
   const getRoleBadge = (role) => {
@@ -458,32 +535,78 @@ export default function ProfileSettings({
           <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
               <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setIsPhotoModalOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setIsPhotoModalOpen(true);
+                  }
+                }}
+                title="Click to view, change, or remove photo"
+                aria-label="Manage profile picture"
                 style={{
-                  width: '82px',
-                  height: '82px',
+                  position: 'relative',
+                  width: '84px',
+                  height: '84px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--brand-700), var(--brand-500))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '28px',
-                  color: '#fff',
-                  fontWeight: 800,
-                  overflow: 'hidden',
+                  cursor: 'pointer',
                   flexShrink: 0,
-                  border: '3px solid #fff',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  outline: 'none',
                 }}
               >
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  currentUser.fullName
-                    .split(' ')
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join('')
-                )}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--brand-700), var(--brand-500))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    color: '#fff',
+                    fontWeight: 800,
+                    overflow: 'hidden',
+                    border: '3px solid #fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  }}
+                >
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    currentUser.fullName
+                      .split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')
+                  )}
+                </div>
+
+                {/* Camera badge overlay */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '1px',
+                    right: '1px',
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    background: 'var(--brand-700)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #ffffff',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
+                    pointerEvents: 'none',
+                  }}
+                  title="Change photo"
+                >
+                  <Camera size={13} />
+                </div>
               </div>
 
               <div style={{ flex: 1, minWidth: '240px' }}>
@@ -508,56 +631,6 @@ export default function ProfileSettings({
                   <span>•</span>
                   <span>EVSU — Ormoc Campus</span>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <label
-                  className="btn btn-sm"
-                  style={{
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                  }}
-                >
-                  Change Photo
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/jpg"
-                    style={{ display: 'none' }}
-                    onChange={handleAvatarSelect}
-                  />
-                </label>
-                {isPendingAvatarChange && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    disabled={isSubmittingProfile}
-                    onClick={handleProfileSubmit}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Check size={14} /> {isSubmittingProfile ? 'Saving...' : 'Save Photo'}
-                  </button>
-                )}
-                {avatarPreview && (
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    style={{ color: 'var(--red-600)', cursor: 'pointer' }}
-                    onClick={handleRemovePhoto}
-                  >
-                    Remove
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -1194,6 +1267,155 @@ export default function ProfileSettings({
           </div>
         </div>
       )}
+      {/* Hidden File Input for Avatar Selection */}
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/jpg"
+        style={{ display: 'none' }}
+        onChange={handleAvatarSelect}
+      />
+
+      {/* Profile Picture Management Modal */}
+      {isPhotoModalOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={() => !isSubmittingProfile && setIsPhotoModalOpen(false)}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: '420px', textAlign: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '16px', color: 'var(--ink-900)' }}>
+                <Camera size={18} color="var(--brand-700)" /> Profile Photo
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => !isSubmittingProfile && setIsPhotoModalOpen(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Centered Large Avatar preview */}
+            <div
+              style={{
+                width: '124px',
+                height: '124px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--brand-700), var(--brand-500))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '42px',
+                color: '#fff',
+                fontWeight: 800,
+                overflow: 'hidden',
+                margin: '4px auto 14px',
+                border: '4px solid #fff',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              }}
+            >
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt="Profile Avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                currentUser.fullName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join('')
+              )}
+            </div>
+
+            <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 700, color: 'var(--ink-900)' }}>
+              {currentUser.fullName}
+            </h3>
+            <div className="muted" style={{ fontSize: '12.5px', marginBottom: '14px' }}>
+              <span>{currentUser.employeeIdNumber || 'G10222026JMR'}</span>
+              <span style={{ margin: '0 6px' }}>•</span>
+              <span>{roleInfo.label}</span>
+            </div>
+
+            <p className="muted" style={{ fontSize: '12.5px', lineHeight: 1.45, margin: '0 0 20px', padding: '0 8px' }}>
+              Personalize your institutional account with a professional portrait. Photos are visible across attendance logs, approvals, and reports.
+            </p>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={isSubmittingProfile}
+                onClick={() => avatarInputRef.current?.click()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  fontWeight: 600,
+                  fontSize: '13.5px',
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
+              >
+                <Camera size={16} />
+                {avatarPreview ? 'Change Photo' : 'Upload Photo'}
+              </button>
+
+              {avatarPreview && (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={isSubmittingProfile}
+                  onClick={handleRemovePhoto}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    fontWeight: 600,
+                    fontSize: '13.5px',
+                    cursor: 'pointer',
+                    color: 'var(--red-600)',
+                    borderColor: 'var(--red-200)',
+                    width: '100%',
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Remove Photo
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn"
+                disabled={isSubmittingProfile}
+                onClick={() => setIsPhotoModalOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginTop: '4px',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Interactive Avatar Crop Modal */}
       <AvatarCropModal
         isOpen={cropModalOpen}

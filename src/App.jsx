@@ -600,6 +600,13 @@ export default function App() {
           currentUser={currentUser}
           initialTab={currentView}
           onBack={() => navigateTo('dashboard')}
+          onUpdateProfile={(updated) => {
+            setCurrentUser((prev) => ({
+              ...prev,
+              ...updated,
+              avatarUrl: updated.avatarUrl !== undefined ? updated.avatarUrl : prev.avatarUrl,
+            }));
+          }}
         />
       )}
 
