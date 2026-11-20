@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import PredictiveTextarea from './PredictiveTextarea';
 
@@ -58,14 +59,33 @@ export default function FastTrackModal({
     }
   };
 
-  return (
+  const modalElement = (
     <div
       className="modal-overlay open"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        overflowY: 'auto',
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-card" style={{ maxWidth: '540px' }}>
+      <div
+        className="modal-card"
+        style={{
+          maxWidth: '540px',
+          width: '100%',
+          margin: 'auto',
+          maxHeight: 'calc(100vh - 48px)',
+          overflowY: 'auto',
+        }}
+      >
         <div className="modal-header">
           <div className="card-title" style={{ margin: 0, color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={18} color="var(--red-600)" />
@@ -161,4 +181,8 @@ export default function FastTrackModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalElement, document.body)
+    : modalElement;
 }

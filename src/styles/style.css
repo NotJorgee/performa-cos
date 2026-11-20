@@ -904,17 +904,17 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 
 /* Smooth Module Fade-and-Rise Transition */
 .module-transition-enter {
-  animation: moduleEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: moduleEnter 0.2s ease-out;
 }
 
 @keyframes moduleEnter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -1201,16 +1201,39 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 /* ---------- Modal ---------- */
 .modal-overlay,
 .modal-backdrop {
-  position: fixed; inset: 0; background: rgba(16, 25, 43, .55); z-index: 1000;
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-  opacity: 0; pointer-events: none; transition: opacity .15s ease;
+  position: fixed;
+  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
 }
 .modal-overlay.open,
 .modal-backdrop { opacity: 1; pointer-events: auto; }
 .modal-card {
-  background: var(--white); border-radius: var(--radius); padding: 24px;
-  width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(16, 25, 43, .3); transform: translateY(10px);
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  margin: auto;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.35);
+  transform: translateY(10px);
   transition: transform .15s ease;
   color: var(--ink-900, #0f172a);
 }

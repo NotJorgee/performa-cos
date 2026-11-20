@@ -441,6 +441,7 @@ export default function IntentReview({
                 <DynamicRubric
                   key={evaluatingEmp.id}
                   evaluatorRole="Immediate Supervisor"
+                  employeeJobTitle={evaluatingEmp.role || evaluatingEmp.jobTitle || 'COS Employee'}
                   readOnly={evaluatingEmp.isReadOnly}
                   initialScores={currentDraft.scores || evaluatingEmp.submittedScores || {}}
                   initialStrengths={currentDraft.strengths || evaluatingEmp.submittedStrengths || ''}

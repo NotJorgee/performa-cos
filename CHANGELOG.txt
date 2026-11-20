@@ -2,6 +2,28 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Bugfix: Evaluation Rubric ReferenceError & Modal Viewport Centering
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Fix "Approve & Evaluate" Application Crash:
+   - In src/components/common/DynamicRubric.jsx:
+     * Fixed `ReferenceError: overallScore is not defined` on line 639 in the qualitative feedback PredictiveTextarea itemContext.
+     * Changed to `${scaledScore}% (${currentInterpretation?.interpretation || 'In Progress'})`.
+     * In src/components/depthead/IntentReview.jsx: passed `employeeJobTitle={evaluatingEmp.role || evaluatingEmp.jobTitle || 'COS Employee'}` to DynamicRubric for predictive prompt synthesis.
+
+2. Modal Viewport Centering & CSS Containing Block Fix:
+   - In src/styles/style.css:
+     * Fixed containing block bug where `.module-transition-enter` retained `transform: translateY(0)` permanently due to `forwards`, trapping `position: fixed` modals inside the scrolled container instead of the viewport.
+     * Removed `forwards` and set `to { opacity: 1; transform: none; }` so animations clear all transforms upon completion.
+     * Enhanced `.modal-overlay` and `.modal-backdrop` with `z-index: 9999`, `overflow-y: auto`, and `.modal-card` with `margin: auto; max-height: calc(100vh - 48px);`.
+   - In src/components/common/FastTrackModal.jsx & ConfirmModal.jsx:
+     * Wrapped modal dialogs in `createPortal(..., document.body)` so modals mount directly to `document.body`, guaranteeing perfect vertical/horizontal viewport centering and eliminating clipping when the underlying page is scrolled.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 System-Wide Audit & Fix: Universal Elimination of Empty State Flashes across All Modules
 ================================================================================
 

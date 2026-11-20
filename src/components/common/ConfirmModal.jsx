@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, HelpCircle, X } from 'lucide-react';
 
 /**
@@ -97,17 +98,18 @@ export default function ConfirmModal({
   const styleConfig = getVariantStyles();
   const IconComponent = icon || styleConfig.DefaultIcon;
 
-  return (
+  const modalElement = (
     <div
       className="modal-overlay open"
       style={{
-        zIndex: 1050,
-        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        zIndex: 9999,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
         backdropFilter: 'blur(3px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
+        padding: '24px 16px',
+        overflowY: 'auto',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !isLoading) {
@@ -123,6 +125,9 @@ export default function ConfirmModal({
         style={{
           maxWidth,
           width: '100%',
+          margin: 'auto',
+          maxHeight: 'calc(100vh - 48px)',
+          overflowY: 'auto',
           borderRadius: '12px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
           border: '1px solid var(--line, #e2e8f0)',
@@ -260,4 +265,8 @@ export default function ConfirmModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(modalElement, document.body)
+    : modalElement;
 }
