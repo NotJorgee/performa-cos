@@ -1,4 +1,24 @@
 PerformaCOS - Release Notes & Technical Changelog
+===============================================================================
+
+UPDATE NOTES: 2026-11-20
+Mobile Photo Evidence: Camera & Gallery Dual-Input Architecture
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Direct Camera vs Gallery Media Pipeline:
+   - In src/components/employee/DailyReporting.jsx:
+     * Replaced single capture="environment" file input with dedicated dual-input triggers:
+       - cameraInputRef: <input type="file" accept="image/*" capture="environment" />
+         Immediately launches native device Camera on both Android (Samsung) and iOS (Safari fullscreen).
+       - galleryInputRef: <input type="file" accept="image/*" />
+         Immediately launches native Photo Gallery / Photo Library on both Android (Samsung) and iOS.
+     * Viewfinder dropzone features explicit direct action buttons: "Take Photo (Camera)" and "Choose from Gallery".
+     * Added in-app Source Picker Modal providing strictly two choices: "Take Live Photo" or "Choose from Gallery" (with no file-manager browsing required).
+     * Connected to Retake actions on existing photo evidence.
+     * Both pathways preserve automated Style 2 Glassmorphism geotag watermark stamping and campus geofence validation.
+
 ================================================================================
 
 UPDATE NOTES: 2026-11-20

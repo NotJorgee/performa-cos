@@ -3,6 +3,7 @@ import {
   Check,
   AlertTriangle,
   Camera,
+  Image,
   MapPin,
   ArrowLeft,
   ShieldCheck,
@@ -49,8 +50,10 @@ export default function DailyReporting({
   const [geoError, setGeoError] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isSourcePickerOpen, setIsSourcePickerOpen] = useState(false);
 
-  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   // Active user details for tamper-proof watermark stamp
   const activeUser = currentUser || (() => {
@@ -166,13 +169,17 @@ export default function DailyReporting({
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
 
-    // Reset file input value so selecting the same photo or clicking retake always triggers change
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    // Reset file input values so selecting the same photo or clicking retake always triggers change
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
     }
 
     setGeoError(null);
     setIsGeotagging(true);
+    setIsSourcePickerOpen(false);
 
     // 1. Immediately display instant local preview so the user sees the photo right away
     const localUrl = URL.createObjectURL(rawFile);
@@ -569,12 +576,20 @@ export default function DailyReporting({
               </div>
             </div>
 
-            {/* Hidden native camera/file input */}
+            {/* Hidden native camera & gallery inputs */}
             <input
-              ref={fileInputRef}
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
+              disabled={isGeotagging}
+              style={{ display: 'none' }}
+              onChange={handlePhotoSelect}
+            />
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
               disabled={isGeotagging}
               style={{ display: 'none' }}
               onChange={handlePhotoSelect}
@@ -592,57 +607,127 @@ export default function DailyReporting({
               {/* Viewfinder Field: State 1 (No photo yet) vs State 2 (Photo captured & displayed) */}
               {!photoPreview ? (
                 <div
-                  onClick={() => !isGeotagging && fileInputRef.current?.click()}
                   style={{
                     border: '2px dashed var(--ink-300, #cbd5e1)',
                     borderRadius: '12px',
-                    padding: '36px 20px',
+                    padding: '32px 20px',
                     textAlign: 'center',
                     backgroundColor: 'var(--brand-50, #fbeaee)',
-                    cursor: isGeotagging ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s ease',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    minHeight: '200px',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--brand-600, #7a1128)';
-                    e.currentTarget.style.backgroundColor = '#fae4e9';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--ink-300, #cbd5e1)';
-                    e.currentTarget.style.backgroundColor = 'var(--brand-50, #fbeaee)';
+                    minHeight: '220px',
                   }}
                 >
                   <div
                     style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '50%',
-                      backgroundColor: 'rgba(122, 17, 40, 0.12)',
-                      color: 'var(--brand-600, #7a1128)',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '12px',
+                      gap: '12px',
+                      marginBottom: '14px',
                     }}
                   >
-                    <Camera size={30} />
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(122, 17, 40, 0.12)',
+                        color: 'var(--brand-600, #7a1128)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Camera size={26} />
+                    </div>
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(122, 17, 40, 0.12)',
+                        color: 'var(--brand-600, #7a1128)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Image size={26} />
+                    </div>
                   </div>
+
                   <div
                     style={{
                       fontWeight: 700,
-                      fontSize: '15.5px',
+                      fontSize: '16px',
                       color: 'var(--ink-900, #10192b)',
                       marginBottom: '4px',
                     }}
                   >
-                    Press here to capture live photo
+                    Attach Photo Evidence
                   </div>
-                  <div className="muted" style={{ fontSize: '12.5px', maxWidth: '380px', lineHeight: 1.45 }}>
-                    Tap to open your phone camera. Automatically records GPS coordinates, timestamp, and applies tamper-proof anti-spoofing watermark.
+                  <div className="muted" style={{ fontSize: '12.5px', maxWidth: '420px', lineHeight: 1.45, marginBottom: '18px' }}>
+                    Take a live photo with your camera or select an existing photo from your gallery. Physical presence within campus grounds will be verified and stamped with an official geotag.
+                  </div>
+
+                  {/* Dual Action Buttons: Camera vs Gallery */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      disabled={isGeotagging}
+                      onClick={() => !isGeotagging && cameraInputRef.current?.click()}
+                      className="btn"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 20px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        backgroundColor: 'var(--brand-700, #7a1128)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: isGeotagging ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 2px 6px rgba(122, 17, 40, 0.25)',
+                      }}
+                    >
+                      <Camera size={16} /> Take Photo (Camera)
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isGeotagging}
+                      onClick={() => !isGeotagging && galleryInputRef.current?.click()}
+                      className="btn"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 20px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        backgroundColor: '#ffffff',
+                        color: 'var(--ink-800, #1e293b)',
+                        border: '1px solid var(--line, #cbd5e1)',
+                        borderRadius: '8px',
+                        cursor: isGeotagging ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      }}
+                    >
+                      <Image size={16} /> Choose from Gallery
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -744,7 +829,7 @@ export default function DailyReporting({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          fileInputRef.current?.click();
+                          setIsSourcePickerOpen(true);
                         }}
                         style={{
                           position: 'absolute',
@@ -835,7 +920,7 @@ export default function DailyReporting({
 
                         <button
                           type="button"
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => setIsSourcePickerOpen(true)}
                           className="btn btn-sm"
                           style={{
                             display: 'inline-flex',
@@ -977,6 +1062,139 @@ export default function DailyReporting({
         </div>
       </div>
     )}
+
+      {/* Photo Source Modal: Strictly Camera or Gallery */}
+      {isSourcePickerOpen && (
+        <div
+          className="modal-overlay open"
+          style={{ zIndex: 1200 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsSourcePickerOpen(false);
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: '400px', width: '92%', padding: '22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--ink-900)' }}>
+                Select Photo Source
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setIsSourcePickerOpen(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: '12.5px', margin: '0 0 18px 0', lineHeight: 1.45 }}>
+              Choose whether to take a live photo or select an existing photo from your gallery:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSourcePickerOpen(false);
+                  cameraInputRef.current?.click();
+                }}
+                className="btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  padding: '14px 18px',
+                  borderRadius: '10px',
+                  backgroundColor: 'var(--brand-50, #fbeaee)',
+                  border: '1.5px solid var(--brand-200, #f8ccd5)',
+                  color: 'var(--brand-800, #5c0d1e)',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--brand-700, #7a1128)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Camera size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700 }}>Take Live Photo</div>
+                  <div className="muted" style={{ fontSize: '11.5px', marginTop: '2px' }}>
+                    Opens device camera app
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSourcePickerOpen(false);
+                  galleryInputRef.current?.click();
+                }}
+                className="btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  padding: '14px 18px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f8fafc',
+                  border: '1.5px solid var(--line, #e2e8f0)',
+                  color: 'var(--ink-800, #1e293b)',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: '#e2e8f0',
+                    color: 'var(--ink-700, #334155)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Image size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700 }}>Choose from Gallery</div>
+                  <div className="muted" style={{ fontSize: '11.5px', marginTop: '2px' }}>
+                    Select existing photo from phone gallery
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div style={{ marginTop: '18px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setIsSourcePickerOpen(false)}
+                className="btn btn-sm btn-outline"
+                style={{ padding: '7px 16px', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
