@@ -2,6 +2,24 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Bugfix: Transition Timer Lifecycle Decoupling & Dashboard Safety Timeouts
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Decoupled Route Transition Lifecycle:
+   - In src/App.jsx:
+     * Fixed stuck Loading... buffer caused by navigation state re-render prematurely executing the clearTimeout() cleanup in the hash synchronization effect.
+     * Dedicated a separate, self-contained useEffect listening strictly to currentView with hasMountedRef guard: smoothly runs the 220ms buffer and is guaranteed to dismiss the buffer without cancellation.
+     * Decoupled window hashchange and popstate event listeners so browser history changes never clear active transition timers.
+
+2. Dashboard Data Loading Safety Guards:
+   - In src/components/dashboard/EmployeeDashboard.jsx, DeptHeadDashboard.jsx, and HRDashboard.jsx:
+     * Added a 4000ms safety timeout that guarantees isLoading is set to false even if backend analytics endpoints experience intermittent timeouts or failures.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Minimalist Loading Buffer Screen & Smooth Module Transitions
 ================================================================================
 

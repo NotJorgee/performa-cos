@@ -32,6 +32,10 @@ export default function EmployeeDashboard({
       return;
     }
 
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 4000);
+
     const loadData = async () => {
       try {
         const [dashMetrics, attStatus] = await Promise.allSettled([
@@ -55,6 +59,7 @@ export default function EmployeeDashboard({
       } catch (err) {
         console.error('Failed to load Employee dashboard analytics:', err);
       } finally {
+        clearTimeout(safetyTimeout);
         if (isMounted) {
           setIsLoading(false);
         }
@@ -62,7 +67,10 @@ export default function EmployeeDashboard({
     };
 
     loadData();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+    };
   }, [propMetrics, cacheKeyMetrics, cacheKeyToday]);
 
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Personnel');

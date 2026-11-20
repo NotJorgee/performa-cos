@@ -34,6 +34,10 @@ export default function HRDashboard({
       setIsLoading(false);
       return;
     }
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 4000);
+
     const fetchMetrics = async () => {
       try {
         const data = await api.analytics.getHRDashboard();
@@ -44,11 +48,15 @@ export default function HRDashboard({
       } catch (err) {
         console.error('Failed to load HR dashboard analytics:', err);
       } finally {
+        clearTimeout(safetyTimeout);
         if (isMounted) setIsLoading(false);
       }
     };
     fetchMetrics();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+    };
   }, [propMetrics, cacheKey]);
 
   const expiringCount = metrics?.nearingExpiration ?? 0;

@@ -27,6 +27,10 @@ export default function DeptHeadDashboard({
       setIsLoading(false);
       return;
     }
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 4000);
+
     const fetchMetrics = async () => {
       try {
         const data = await api.analytics.getDeptHeadDashboard();
@@ -37,11 +41,15 @@ export default function DeptHeadDashboard({
       } catch (err) {
         console.error('Failed to load Dept Head dashboard analytics:', err);
       } finally {
+        clearTimeout(safetyTimeout);
         if (isMounted) setIsLoading(false);
       }
     };
     fetchMetrics();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+    };
   }, [propMetrics, cacheKey]);
 
   const pendingIntentsCount = metrics?.pendingIntents ?? 0;

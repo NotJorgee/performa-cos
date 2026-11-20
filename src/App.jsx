@@ -118,21 +118,12 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState(() => parseHashView());
   const [isModuleTransitioning, setIsModuleTransitioning] = useState(false);
-  const transitionTimerRef = useRef(null);
+  const hasMountedRef = useRef(false);
 
   // Centralized navigation handler syncing React state with browser history & URL hash
   const navigateTo = useCallback((viewPath, replace = false) => {
     const target = viewPath || 'dashboard';
-    if (target !== currentView) {
-      if (transitionTimerRef.current) {
-        clearTimeout(transitionTimerRef.current);
-      }
-      setIsModuleTransitioning(true);
-      setCurrentView(target);
-      transitionTimerRef.current = setTimeout(() => {
-        setIsModuleTransitioning(false);
-      }, 180);
-    }
+    setCurrentView((prev) => (prev !== target ? target : prev));
 
     if (typeof window !== 'undefined') {
       const targetHash = `#/${target}`;
@@ -144,6 +135,23 @@ export default function App() {
         }
       }
     }
+  }, []);
+
+  // Universal Module Transition Buffer: smoothly triggers on module changes
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    setIsModuleTransitioning(true);
+    const timer = setTimeout(() => {
+      setIsModuleTransitioning(false);
+    }, 220);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [currentView]);
 
   // Browser Back (←) and Forward (→) history synchronization
@@ -152,16 +160,7 @@ export default function App() {
 
     const handleHashSync = () => {
       const targetView = parseHashView();
-      if (targetView !== currentView) {
-        if (transitionTimerRef.current) {
-          clearTimeout(transitionTimerRef.current);
-        }
-        setIsModuleTransitioning(true);
-        setCurrentView(targetView);
-        transitionTimerRef.current = setTimeout(() => {
-          setIsModuleTransitioning(false);
-        }, 180);
-      }
+      setCurrentView((prev) => (prev !== targetView ? targetView : prev));
     };
 
     window.addEventListener('hashchange', handleHashSync);
@@ -178,11 +177,8 @@ export default function App() {
     return () => {
       window.removeEventListener('hashchange', handleHashSync);
       window.removeEventListener('popstate', handleHashSync);
-      if (transitionTimerRef.current) {
-        clearTimeout(transitionTimerRef.current);
-      }
     };
-  }, [isAuthenticated, isInviteSignup, currentView]);
+  }, [isAuthenticated, isInviteSignup]);
 
   // Password recovery flow states
   const [recoveryEmail, setRecoveryEmail] = useState('');
