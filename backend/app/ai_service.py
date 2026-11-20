@@ -13,6 +13,7 @@ logger = logging.getLogger("ai_service")
 # Candidate models ranked by speed, quota efficiency, and availability
 CANDIDATE_MODELS = [
     "gemini-3.1-flash-lite",
+    "gemini-flash-lite-latest",
     "gemini-3.1-flash-lite-preview",
 ]
 
@@ -276,6 +277,7 @@ def generate_fallback_prediction(
     role_lower = (employee_role or "").lower()
     
     if context_type == "dar":
+        ctx_lower = (item_context or "").lower()
         chips = [
             "conducted routine maintenance and operational verification",
             "assisted campus personnel with technical requirements",
@@ -284,6 +286,32 @@ def generate_fallback_prediction(
         ]
         if len(text_lower) < 3:
             ghost = ""
+        elif "notification" in text_lower or "notification" in ctx_lower:
+            if text_lower.endswith("to") or text_lower.endswith("and"):
+                ghost = " ensure reliable real-time delivery and system alert responsiveness."
+            elif text_lower.endswith("in"):
+                ghost = " dispatching urgent campus advisories and system notices."
+            else:
+                ghost = " and verified alert delivery across all designated user groups."
+        elif "test" in text_lower or "test" in ctx_lower:
+            if text_lower.endswith("to") or text_lower.endswith("and"):
+                ghost = " validate all software execution workflows and log defect resolutions."
+            elif text_lower.endswith("in"):
+                ghost = " executing comprehensive system regression and integration test runs."
+            else:
+                ghost = " and documented all test scenarios and resolution logs."
+        elif "system" in text_lower or "module" in text_lower or "system" in ctx_lower or "software" in ctx_lower:
+            if text_lower.endswith("to") or text_lower.endswith("and"):
+                ghost = " optimize operational performance and ensure integration stability."
+            elif text_lower.endswith("in"):
+                ghost = " coordinating feature enhancements with departmental requirements."
+            else:
+                ghost = " and verified seamless integration with existing institutional databases."
+        elif "report" in text_lower or "document" in text_lower or "file" in text_lower:
+            if text_lower.endswith("to") or text_lower.endswith("and"):
+                ghost = " prepare complete records for supervisory endorsement and archiving."
+            else:
+                ghost = " and compiled all supporting attachments for official review."
         elif "instructor" in role_lower or "faculty" in role_lower or "teacher" in role_lower:
             if text_lower.endswith("completed") or text_lower.endswith("prepared"):
                 ghost = " instructional modules and conducted student academic assessments."
@@ -309,7 +337,7 @@ def generate_fallback_prediction(
         elif text_lower.endswith("to"):
             ghost = " support departmental operational requirements in a timely manner."
         else:
-            ghost = " in accordance with university standard operating procedures."
+            ghost = " and verified task deliverables for compliance with departmental targets."
     elif context_type == "overtime":
         chips = [
             "execute urgent document preparation and data validation",
@@ -608,7 +636,7 @@ Return strictly valid JSON:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
+            with urllib.request.urlopen(req, timeout=3.5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 text_part = data["candidates"][0]["content"]["parts"][0]["text"]
                 parsed = json.loads(text_part.strip())

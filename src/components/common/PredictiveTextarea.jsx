@@ -75,12 +75,20 @@ export default function PredictiveTextarea({
 
           if (currentTrimmed.length >= 3 && currentTrimmed === trimmed) {
             setGhostText(res.ghost_text || '');
+            if (!res.ghost_text) {
+              // Unblock cache if empty ghost text was returned so subsequent keystrokes can retry
+              lastFetchedTextRef.current = '';
+            }
           } else {
             setGhostText('');
           }
+        } else {
+          lastFetchedTextRef.current = '';
         }
       } catch (err) {
         console.warn('Predictive text notice (using offline rules):', err.message);
+        // Unblock cache on failure so user is not permanently stuck on failure
+        lastFetchedTextRef.current = '';
       }
     },
     [contextType, fieldName, role, department, dimensionScores, recentTasks, itemContext, disabled, value]
@@ -107,7 +115,7 @@ export default function PredictiveTextarea({
 
     debounceTimerRef.current = setTimeout(() => {
       fetchPrediction(value);
-    }, 200);
+    }, 350);
 
     return () => {
       if (debounceTimerRef.current) {
@@ -115,6 +123,15 @@ export default function PredictiveTextarea({
       }
     };
   }, [value, disabled, fetchPrediction]);
+
+  // Re-attempt prediction on focus if ghost text is currently empty
+  const handleFocus = () => {
+    const trimmed = (textareaRef.current ? textareaRef.current.value : value || '').trim();
+    if (!ghostText && trimmed.length >= 3) {
+      lastFetchedTextRef.current = '';
+      fetchPrediction(textareaRef.current ? textareaRef.current.value : value);
+    }
+  };
 
   // Accept ghost text completion with clean space separation
   const acceptGhostText = useCallback(() => {
@@ -276,6 +293,7 @@ export default function PredictiveTextarea({
           onChange={onChange}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
+          onFocus={handleFocus}
           style={{
             position: 'relative',
             zIndex: 2,

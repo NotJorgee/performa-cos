@@ -2,6 +2,35 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Predictive AI Optimization: Latency Buffer, Cache Unlocking & Domain Fallback
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Increased LLM Timeout Runway:
+   - In backend/app/ai_service.py:
+     * Increased Gemini Flash API execution timeout from 2.0s to 3.5s.
+     * Prevents false timeouts during intermittent cellular (LTE/5G) or cloud network latency spikes, allowing Gemini to finish its generation instead of prematurely falling back.
+     * Added gemini-flash-lite-latest to CANDIDATE_MODELS fallback chain.
+
+2. Enriched Contextual Fallback Engine:
+   - In backend/app/ai_service.py (generate_fallback_prediction):
+     * Integrated item_context matching for DAR entries.
+     * Replaced generic "university standard operating procedures" with topic-anchored continuations (notifications, systems testing, software integrations, student grading, documentation, laboratory diagnostics) derived from both current_text and the stated Job Description.
+
+3. Frontend Cache Unlocking & Focus Re-Trigger:
+   - In src/components/common/PredictiveTextarea.jsx:
+     * Increased typing debounce from 200ms to 350ms to align with natural mobile touch pauses and conserve Gemini 15 RPM rate limit quota.
+     * Auto-cleared lastFetchedTextRef cache lock whenever an API call fails or returns empty, preventing the input from becoming permanently stuck.
+     * Added onFocus re-fetch trigger: tapping or clicking an active textarea with >= 3 characters automatically re-evaluates ghost text if it is currently blank.
+
+4. Job Description Metadata Injection:
+   - In src/components/employee/DailyReporting.jsx:
+     * Dynamically injected the entered jobDescription state into itemContext for the workAccomplished predictive textarea, providing full task scope to the AI engine.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Profile Picture Management Modal & Header Action Streamlining
 ================================================================================
 
