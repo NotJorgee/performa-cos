@@ -2,6 +2,25 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-20
+Bugfix: Evaluation Viewport Scroll Reset & Sticky Top Alignment
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Viewport Scroll Position Reset on View Switch:
+   - In src/components/depthead/IntentReview.jsx:
+     * When opening the Split-Panel Evaluation view via "Approve & Evaluate" or returning via "Back to Renewals", automatically executed `window.scrollTo({ top: 0, left: 0, behavior: 'instant' })`.
+     * Added a reactive `useEffect([evaluatingEmp, viewingMarEmp])` scroll-to-top handler.
+     * Prevents the evaluation interface from starting scrolled halfway down ("centered") when entering from a candidate card at the bottom of the page.
+     * Updated right sticky panel offset to `top: 88px` (accounting for the 72px sticky topbar + 16px buffer) so both panels align at the top of the viewport.
+
+2. Universal Navigation Scroll-to-Top:
+   - In src/App.jsx:
+     * Added `window.scrollTo({ top: 0, left: 0, behavior: 'instant' })` whenever `currentView` changes so every module transition starts at the very top.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Bugfix: Evaluation Rubric ReferenceError & Modal Viewport Centering
 ================================================================================
 

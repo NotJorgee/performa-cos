@@ -253,6 +253,9 @@ export default function IntentReview({
 
   const handleOpenEvaluation = async (candidate, isReadOnly = false) => {
     setEvaluatingEmp({ ...candidate, isReadOnly });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
     try {
       const stats = await api.attendance.getEmployeeStats(candidate.id);
       if (stats) {
@@ -275,7 +278,17 @@ export default function IntentReview({
 
   const handleBackFromEvaluation = () => {
     setEvaluatingEmp(null);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
   };
+
+  // Ensure view transitions within IntentReview always start at the very top of both panels
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [evaluatingEmp, viewingMarEmp]);
 
   /**
    * Submit Completed Performance Evaluation & Renewal Recommendation
@@ -454,7 +467,7 @@ export default function IntentReview({
           </div>
 
           {/* RIGHT: Sticky AI DAR Performance Analysis & MAR Shortcut */}
-          <div style={{ position: 'sticky', top: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ position: 'sticky', top: '88px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <AiPerformanceAnalysis
               aiSummary={evaluatingEmp.aiSummary}
               totalDarEntries={evaluatingEmp.totalDarEntries}

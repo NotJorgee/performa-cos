@@ -139,6 +139,10 @@ export default function App() {
 
   // Universal Module Transition Buffer: smoothly triggers on module changes
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
       return;
