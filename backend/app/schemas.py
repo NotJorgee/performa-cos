@@ -432,13 +432,14 @@ class EvaluationTemplateOut(BaseModel):
 
 
 class PredictiveTextRequest(BaseModel):
-    context_type: str = "evaluation"  # "evaluation" | "dar"
+    context_type: str = "evaluation"  # "evaluation" | "dar" | "leave" | "leave_review" | "overtime" | "overtime_review" | "official_business" | "ob_review" | "fast_track" | "hr_renewal" | "exit_reason"
     current_text: str = ""
     field_name: Optional[str] = "strengths"
     employee_role: Optional[str] = "COS Personnel"
     department: Optional[str] = "Academic Affairs"
     dimension_scores: Optional[Dict[str, Any]] = None
     recent_tasks: Optional[List[str]] = None
+    item_context: Optional[str] = None
 
 
 class PredictiveTextResponse(BaseModel):

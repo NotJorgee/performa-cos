@@ -764,10 +764,27 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                         : "Detail the urgent tasks, document preparations, or lab maintenance to be executed during overtime..."
                       : "State the reason for absence or off-campus assignment for Department Head review..."
                   }
-                  contextType="leave"
-                  fieldName={`leaveReason (${leaveType})`}
+                  contextType={
+                    leaveType === 'Overtime (OT)'
+                      ? 'overtime'
+                      : leaveType?.toLowerCase().includes('official business') || leaveType?.toLowerCase().includes('ob')
+                      ? 'official_business'
+                      : 'leave'
+                  }
+                  fieldName={
+                    leaveType === 'Overtime (OT)'
+                      ? `overtimeDeliverables (${overtimeHours} hrs)`
+                      : `leaveReason (${leaveType})`
+                  }
                   role={currentUser?.job_title || currentUser?.jobTitle || 'COS Personnel'}
                   department={typeof currentUser?.department === 'object' ? (currentUser?.department?.name || 'Computer Studies Department') : (currentUser?.department || 'Computer Studies Department')}
+                  itemContext={
+                    leaveType === 'Overtime (OT)'
+                      ? `Overtime Request for ${startDate || 'target date'} (${overtimeHours} hours${isWeekendOt ? `, ${weekendDayLabel} Weekend Duty` : ', Weekday Evening Shift'}). Planned work outputs and tasks.`
+                      : leaveType?.toLowerCase().includes('official business') || leaveType?.toLowerCase().includes('ob')
+                      ? `Official Business (OB) Slip for ${startDate || 'date'} to ${endDate || 'date'}. University off-campus travel assignment.`
+                      : `Leave Request (${leaveType}) for ${startDate || 'date'} to ${endDate || 'date'}. Absence from campus with handover.`
+                  }
                   required
                 />
               </div>

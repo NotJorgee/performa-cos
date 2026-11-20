@@ -124,6 +124,7 @@ export default function FastTrackModal({
               fieldName={`justification (${category})`}
               role={employee?.role || employee?.jobTitle || employee?.job_title || 'COS Personnel'}
               department={typeof employee?.department === 'object' ? (employee?.department?.name || 'Academic Affairs') : (employee?.department || 'Academic Affairs')}
+              itemContext={`Substantive Non-Renewal Justification for ${employee?.name || 'Staff'} (${employee?.role || employee?.jobTitle || 'COS Personnel'}). Cited Grounds: "${category}". Department: ${typeof employee?.department === 'object' ? (employee?.department?.name || 'Academic Affairs') : (employee?.department || 'Academic Affairs')}.`}
             />
           </div>
 

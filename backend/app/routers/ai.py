@@ -34,6 +34,7 @@ def get_predictive_text_completion(
             department=dept_name,
             dimension_scores=payload.dimension_scores,
             recent_tasks=payload.recent_tasks,
+            item_context=payload.item_context,
         )
 
         return schemas.PredictiveTextResponse(

@@ -532,6 +532,7 @@ export default function DailyReporting({
                 fieldName="workAccomplished"
                 role={activeUser?.job_title || 'COS Personnel'}
                 department={typeof activeUser?.department === 'object' ? (activeUser?.department?.name || 'Computer Studies Department') : (activeUser?.department || 'Computer Studies Department')}
+                itemContext={`Employee: ${activeUser?.full_name || 'Personnel'} (${activeUser?.job_title || 'COS Staff'}). Daily Accomplishment Report (DAR) deliverables for ${typeof activeUser?.department === 'object' ? (activeUser?.department?.name || 'Academic Department') : (activeUser?.department || 'Academic Department')}.`}
               />
             </div>
 

@@ -2,6 +2,47 @@ PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
 UPDATE NOTES: 2026-11-20
+System-Wide Context-Aware AI Predictive Text & Case Metadata Injection
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Granular Predictive Context Types & Case Payload Pipeline:
+   - In backend/app/schemas.py (PredictiveTextRequest):
+     * Added item_context field for passing rich case details (e.g., stated deliverables, schedule, cited grounds, rubric scores).
+     * Expanded supported context_type keys: overtime, overtime_review, official_business, ob_review, dar, leave, leave_review, fast_track, hr_renewal, exit_reason, evaluation.
+   - In backend/app/routers/ai.py & backend/app/ai_service.py:
+     * Injected item_context into Gemini prompt and fallback deterministic rules.
+     * Enforced strict domain boundary rules in LLM system prompt:
+       - Overtime/Overtime Review: Anchors predictions to employee's stated deliverables (e.g., testing, laboratory preparations, student support), evening/weekend shifts, and safety checkout protocols. Strictly prohibits absence or medical phrases.
+       - Leave/Leave Review: Focuses on absence handover, class coverage, and medical compliance.
+       - Official Business/OB Review: Focuses on university representation, travel orders, and Certificate of Appearance.
+       - DAR Accomplishments: Contextualized to specific role specializations (e.g., instructor instructional tasks vs IT laboratory maintenance).
+     * Enhanced deterministic fallback rules with rich domain-specific phrases for all 10 context types.
+
+2. Full Frontend Component Wiring:
+   - In src/components/common/PredictiveTextarea.jsx:
+     * Added itemContext prop and forwarded to api.ai.predictText payload.
+   - In src/components/depthead/DepartmentAttendance.jsx:
+     * Differentiates contextType (overtime_review, ob_review, leave_review).
+     * Forwards full case payload: employee name, request type, hours, date, and stated deliverables (cleanReason).
+   - In src/components/employee/EmployeeAttendance.jsx:
+     * Differentiates contextType (overtime, official_business, leave).
+     * Injects target date, duration, shift type (weekend duty vs weekday evening).
+   - In src/components/employee/DailyReporting.jsx:
+     * Injects employee job title and department context to steer DAR predictions.
+   - In src/components/common/DynamicRubric.jsx:
+     * Injects evaluator role, job title, and calculated composite scores.
+   - In src/components/common/FastTrackModal.jsx:
+     * Injects employee name, role, department, and specific non-renewal grounds.
+   - In src/components/hr/EvaluationManagement.jsx:
+     * Injects employee name, renewal decision, and contract end date.
+   - In src/components/employee/ContractStatus.jsx:
+     * Injects employee name, job title, and contract expiration date into voluntary exit statements.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-20
 Timezone Precision, Overtime Duration Formatting & Action Label Alignment
 ================================================================================
 

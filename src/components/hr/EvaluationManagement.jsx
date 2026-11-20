@@ -1844,6 +1844,7 @@ export default function EvaluationManagement({
                   fieldName={`hrRenewalNotes (${hrRenewalDecision === 'Yes' ? 'Contract Renewed' : 'Non-Renewal Finalized'})`}
                   role={finalizeEmp?.role || finalizeEmp?.jobTitle || 'COS Personnel'}
                   department={typeof finalizeEmp?.department === 'object' ? (finalizeEmp?.department?.name || 'Academic Affairs') : (finalizeEmp?.department || 'Academic Affairs')}
+                  itemContext={`HR Renewal Finalization for ${finalizeEmp?.name || 'Employee'}. Decision: ${hrRenewalDecision === 'Yes' ? 'Contract Renewed' : 'Non-Renewal Finalized'}. Contract End Date: ${finalizeEmp?.contractEndDate || 'Term End'}. Supervisor Remarks: "${finalizeEmp?.evaluationScores?.supervisorStrengths || 'Satisfactory performance'}".`}
                 />
               </div>
 

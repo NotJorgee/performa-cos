@@ -584,6 +584,7 @@ export default function ContractStatus({
                         fieldName="declineReason"
                         role={currentUser?.job_title || currentUser?.jobTitle || 'COS Personnel'}
                         department={contractDetails.department}
+                        itemContext={`Voluntary Contract Non-Renewal by ${currentUser?.full_name || 'Employee'} (${currentUser?.job_title || 'COS Staff'}). Contract term ending on ${formatDisplayDate(contractDetails.contractEndDate)}. Department: ${contractDetails.department}.`}
                       />
                     </div>
 

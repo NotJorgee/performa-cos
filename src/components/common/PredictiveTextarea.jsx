@@ -25,6 +25,7 @@ export default function PredictiveTextarea({
   department = 'Computer Studies Department',
   dimensionScores = null,
   recentTasks = null,
+  itemContext = null,
   className = 'form-control',
   style = {},
 }) {
@@ -64,6 +65,7 @@ export default function PredictiveTextarea({
           department: department,
           dimension_scores: dimensionScores,
           recent_tasks: recentTasks,
+          item_context: itemContext,
         });
 
         if (res) {
@@ -81,7 +83,7 @@ export default function PredictiveTextarea({
         console.warn('Predictive text notice (using offline rules):', err.message);
       }
     },
-    [contextType, fieldName, role, department, dimensionScores, recentTasks, disabled, value]
+    [contextType, fieldName, role, department, dimensionScores, recentTasks, itemContext, disabled, value]
   );
 
   // Trigger prediction on typing after 350ms debounce

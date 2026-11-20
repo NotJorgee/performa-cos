@@ -636,6 +636,7 @@ export default function DynamicRubric({
             fieldName="strengths"
             role={employeeJobTitle}
             dimensionScores={scores}
+            itemContext={`Performance Evaluation by ${evaluatorRole} for ${employeeJobTitle}. Computed Score: ${overallScore} (${interpretation.interpretation}).`}
           />
         </div>
 

@@ -266,12 +266,14 @@ def generate_fallback_prediction(
     employee_role: str = "COS Personnel",
     department: str = "Academic Affairs",
     dimension_scores: Optional[Dict[str, Any]] = None,
+    item_context: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Deterministic predictive text generator when API is offline or latency threshold is reached.
     Guarantees formal civil-service phrased completions and contextual suggestion chips.
     """
     text_lower = current_text.lower().strip()
+    role_lower = (employee_role or "").lower()
     
     if context_type == "dar":
         chips = [
@@ -282,6 +284,20 @@ def generate_fallback_prediction(
         ]
         if len(text_lower) < 3:
             ghost = ""
+        elif "instructor" in role_lower or "faculty" in role_lower or "teacher" in role_lower:
+            if text_lower.endswith("completed") or text_lower.endswith("prepared"):
+                ghost = " instructional modules and conducted student academic assessments."
+            elif text_lower.endswith("and"):
+                ghost = " updated student grading records and course learning materials."
+            else:
+                ghost = " in preparation for upcoming departmental class sessions and laboratory activities."
+        elif "lab" in role_lower or "custodian" in role_lower or "technician" in role_lower or "it" in role_lower:
+            if text_lower.endswith("completed") or text_lower.endswith("performed"):
+                ghost = " workstation diagnostics, software installations, and laboratory cable checks."
+            elif text_lower.endswith("and"):
+                ghost = " secured all departmental hardware and laboratory inventory before checkout."
+            else:
+                ghost = " to maintain operational readiness across computer laboratory terminals."
         elif text_lower.endswith("completed") or text_lower.endswith("performed"):
             ghost = " routine maintenance and inspection of assigned departmental facilities."
         elif text_lower.endswith("assisted") or text_lower.endswith("coordinated with"):
@@ -294,6 +310,75 @@ def generate_fallback_prediction(
             ghost = " support departmental operational requirements in a timely manner."
         else:
             ghost = " in accordance with university standard operating procedures."
+    elif context_type == "overtime":
+        chips = [
+            "execute urgent document preparation and data validation",
+            "conduct extended computer laboratory setup and diagnostics",
+            "finalize pending departmental deliverables for institutional reporting",
+        ]
+        if len(text_lower) < 3:
+            ghost = ""
+        elif "test" in text_lower or "system" in text_lower:
+            ghost = " and verify all software modules and defect resolution logs."
+        elif "lab" in text_lower or "workstation" in text_lower:
+            ghost = " and verify that all laboratory terminals and peripheral units are secured."
+        elif "student" in text_lower or "consult" in text_lower:
+            ghost = " for academic consultation and makeup practical examination requirements."
+        elif text_lower.endswith("continue") or text_lower.endswith("working on") or text_lower.endswith("to"):
+            ghost = " execute essential project deliverables within the authorized overtime window."
+        elif text_lower.endswith("and"):
+            ghost = " ensure all task milestones are documented before campus night closing."
+        else:
+            ghost = " to fulfill essential institutional deliverables requiring extended campus hours."
+    elif context_type == "overtime_review":
+        chips = [
+            "approved subject to campus night closing protocols",
+            "ensure all accomplished deliverables are submitted for verification",
+            "endorsed with strict adherence to authorized hours",
+        ]
+        if len(text_lower) < 3:
+            ghost = ""
+        elif "continue" in text_lower or "proceed" in text_lower:
+            ghost = " on the designated deliverables ensuring all output targets are completed."
+        elif "approved" in text_lower or "endorsed" in text_lower:
+            ghost = " subject to adherence to campus night closing protocols and output verification."
+        elif "disapproved" in text_lower or "reject" in text_lower:
+            ghost = " due to schedule conflicts and non-essential nature of proposed after-hours duty."
+        elif text_lower.endswith("and"):
+            ghost = " submit the verified overtime accomplishment report to the department head."
+        elif text_lower.endswith("to"):
+            ghost = " complete the specified deliverables within the approved overtime window."
+        else:
+            ghost = " with strict adherence to authorized overtime hours and campus safety guidelines."
+    elif context_type == "official_business":
+        chips = [
+            "represent university in designated official capacity",
+            "attend official campus coordination conference",
+            "submit Certificate of Appearance upon return",
+        ]
+        if len(text_lower) < 3:
+            ghost = ""
+        elif text_lower.endswith("and"):
+            ghost = " submit Certificate of Appearance along with post-activity documentation."
+        elif text_lower.endswith("to"):
+            ghost = " represent the university in the designated official capacity and proceedings."
+        else:
+            ghost = " with official travel order endorsed for administrative filing."
+    elif context_type == "ob_review":
+        chips = [
+            "endorsed subject to Certificate of Appearance submission",
+            "approved with designated academic class coverage",
+        ]
+        if len(text_lower) < 3:
+            ghost = ""
+        elif "approved" in text_lower or "endorsed" in text_lower:
+            ghost = " subject to class coverage coordination and submission of Certificate of Appearance."
+        elif text_lower.endswith("and"):
+            ghost = " ensure all off-campus proceedings are fully documented in the travel report."
+        elif text_lower.endswith("to"):
+            ghost = " participate in the designated official institutional engagement."
+        else:
+            ghost = " endorsed for official business travel in accordance with university policy."
     elif context_type == "leave":
         chips = []
         if len(text_lower) < 3:
@@ -427,6 +512,7 @@ def generate_predictive_completion(
     department: str = "Academic Affairs",
     dimension_scores: Optional[Dict[str, Any]] = None,
     recent_tasks: Optional[List[str]] = None,
+    item_context: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Predictive text autocomplete and chip generator using Gemini Flash Lite with instant deterministic fallback.
@@ -439,6 +525,7 @@ def generate_predictive_completion(
         employee_role=employee_role,
         department=department,
         dimension_scores=dimension_scores,
+        item_context=item_context,
     )
 
     if not current_text or len(current_text.strip()) < 3:
@@ -457,9 +544,13 @@ def generate_predictive_completion(
     context_descriptions = {
         "evaluation": "Official Performance Appraisal Qualitative Evaluation (Strengths / Areas for Improvement)",
         "dar": "Employee Daily Accomplishment Report (DAR) Work Deliverables Entry",
-        "leave": "Official Employee Leave of Absence Request Justification",
+        "leave": "Official Employee Leave of Absence Request Justification (Sick Leave / Vacation / Emergency)",
+        "leave_review": "Department Head Supervisory Leave of Absence Review and Endorsement",
+        "overtime": "Employee Overtime (OT) & Extended Shift Authorization Work Plan / Stated Deliverables",
+        "overtime_review": "Department Head Supervisory Overtime (OT) Authorization Endorsement & Conditions",
+        "official_business": "Employee Official Business (OB) Slip / Campus Travel Order Justification",
+        "ob_review": "Department Head Supervisory Official Business (OB) Travel Order Endorsement",
         "fast_track": "Official Supervisory Recommendation for Contract Non-Renewal / Performance Non-Compliance Justification",
-        "leave_review": "Department Head Supervisory Leave Endorsement / Review Remarks",
         "hr_renewal": "HRMO Administrative Contract Finalization and Renewal Resolution Official Remarks",
         "exit_reason": "COS Employee Voluntary Non-Renewal of Contract Statement / Exit Reason",
     }
@@ -475,6 +566,7 @@ Employee Role: {employee_role}
 Department: {department}
 Evaluation Criteria Scores: {scores_str}
 Recent Accomplishment Deliverables: {tasks_str}
+Specific Request / Case Details: {item_context or 'None specified'}
 
 Current Text Typed By User:
 "{current_text}"
@@ -482,6 +574,12 @@ Current Text Typed By User:
 Rules:
 1. "ghost_text": Predict ONLY the immediate next 6 to 12 words that naturally complete the current sentence or thought.
    - Maintain a formal, objective Philippine Civil Service / State University tone.
+   - Strictly honor the specific context:
+     * For Overtime / Overtime Review: Focus on the specific stated deliverables (e.g. testing, laboratory setups, student support), evening or weekend duty tasks, campus night safety, and checkout protocols. NEVER suggest absence, leave of absence, or medical phrases.
+     * For Leave / Leave Review: Focus on absence handover, coverage arrangements, medical consultation, and return to duty.
+     * For Official Business: Focus on off-campus university representation, seminars, conferences, and travel documentation.
+     * For DAR: Align with the employee's specific role (instructional tasks, IT laboratory maintenance, clerical filing, utility work).
+   - If Specific Request / Case Details are provided, anchor your continuation directly to those details.
    - Do NOT repeat words already typed in the current text.
    - If the current text does not end in a space, start ghost_text with a single space.
 

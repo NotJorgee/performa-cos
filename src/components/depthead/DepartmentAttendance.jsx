@@ -689,11 +689,19 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                       rows={3}
                       value={reviewNotes}
                       onChange={(e) => setReviewNotes(e.target.value)}
-                      placeholder="Provide notes, conditions, or recommendations..."
-                      contextType="leave_review"
-                      fieldName={`supervisorRemarks (${selectedLeave?.category || 'Leave'})`}
+                      placeholder={
+                        isOt
+                          ? "State overtime endorsement conditions, deliverables verification, or safety protocols..."
+                          : isOb
+                          ? "State official business endorsement notes or reporting requirements..."
+                          : "Provide notes, conditions, or recommendations..."
+                      }
+                      contextType={isOt ? 'overtime_review' : isOb ? 'ob_review' : 'leave_review'}
+                      fieldName={isOt ? 'supervisorOvertimeRemarks' : isOb ? 'supervisorObRemarks' : 'supervisorLeaveRemarks'}
                       role={currentUser?.job_title || 'Department Head'}
                       department={typeof currentUser?.department === 'object' ? (currentUser?.department?.name || selectedLeave?.department || 'Academic Department') : (currentUser?.department || selectedLeave?.department || 'Academic Department')}
+                      itemContext={`Employee: ${selectedLeave.employee_name}. Request Type: ${selectedLeave.leave_type}${otHours ? ` (${otHours} hrs Overtime)` : ''}. Date: ${selectedLeave.start_date}. Employee Stated Deliverables/Reason: "${cleanReason}"`}
+                      recentTasks={[cleanReason]}
                       autoFocus
                     />
                   </div>
