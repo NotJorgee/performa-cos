@@ -1141,7 +1141,14 @@ def apply_for_leave(
 
     formatted_reason = payload.reason
     if is_overtime and payload.hours:
-        formatted_reason = f"[{payload.hours} hr(s) Overtime] {payload.reason}"
+        is_weekend_ot = (start_d.weekday() in (5, 6))
+        if not is_weekend_ot and payload.hours > 5.0:
+            raise HTTPException(
+                status_code=400,
+                detail="Weekday evening overtime cannot exceed 5.0 hours (5:00 PM to 10:00 PM campus night closing).",
+            )
+        prefix = f"[Weekend OT · {payload.hours} hr(s)]" if is_weekend_ot else f"[{payload.hours} hr(s) Overtime]"
+        formatted_reason = f"{prefix} {payload.reason}"
 
     leave_entry = models.LeaveRequest(
         user_id=current_user.id,

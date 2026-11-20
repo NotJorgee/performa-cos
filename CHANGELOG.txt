@@ -23,9 +23,12 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
    - Fully unifies weekday evening overtime (post-5:00 PM) and weekend overtime (Saturday/Sunday)
      under one consolidated institutional workflow.
    - Refined the overtime request form in src/components/employee/EmployeeAttendance.jsx:
-     * Dynamically adapts the hour tiers based on target date (up to 12.0 hours on weekends for flexible duty/make-up time).
-     * Cleaned all parenthetical descriptions from the duration dropdown (e.g. "1.0 Hour", "2.0 Hours", "8.0 Hours").
+     * Dynamically adapts the hour tiers based on target date:
+       - Weekdays: Strictly capped at 1.0 to 5.0 hours (5:00 PM to 10:00 PM campus night closing, avoiding crossing midnight into the next day).
+       - Weekends: Full flexible range from 1.0 to 12.0 hours (for daytime make-up time and event duties).
+     * Cleaned all parenthetical descriptions from the duration dropdown (e.g. "1.0 Hour", "2.0 Hours", "5.0 Hours").
      * Added contextual status indicator ("Weekend Duty · Saturday" vs "Weekday Evening Extended Shift").
+     * Added backend safeguard in attendance.py (apply_for_leave) rejecting weekday overtime > 5.0 hours.
 
 ================================================================================
 

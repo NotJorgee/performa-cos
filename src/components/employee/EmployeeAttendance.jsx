@@ -88,6 +88,13 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const isWeekendOt = selectedDateObj ? (selectedDateObj.getDay() === 0 || selectedDateObj.getDay() === 6) : false;
   const weekendDayLabel = selectedDateObj ? selectedDateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
 
+  // Clamp weekday evening overtime to maximum 5.0 hours (5:00 PM to 10:00 PM campus night closing)
+  useEffect(() => {
+    if (!isWeekendOt && parseInt(overtimeHours, 10) > 5) {
+      setOvertimeHours('5');
+    }
+  }, [isWeekendOt, overtimeHours]);
+
   // Load Today's Status (Silent background revalidation when cached)
   const loadTodayStatus = async (silent = Boolean(todayData)) => {
     try {
@@ -699,7 +706,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                       >
                         {(isWeekendOt
                           ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-                          : [1, 2, 3, 4, 5, 6, 7, 8]
+                          : [1, 2, 3, 4, 5]
                         ).map((h) => (
                           <option key={h} value={h}>
                             {h}.0 {h === 1 ? 'Hour' : 'Hours'}
