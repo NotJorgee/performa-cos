@@ -1,6 +1,30 @@
 PerformaCOS - Release Notes & Technical Changelog
 ================================================================================
 
+UPDATE NOTES: 2026-11-20
+Weekend Overtime Authorization Integration & Unified Attendance Gating
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Weekend Attendance Gating via Official Overtime Authorization:
+   - In backend/app/routers/attendance.py (attendance_time_in):
+     * Replaced open weekend punch with mandatory supervisor pre-authorization.
+     * Weekend check-ins on Saturday and Sunday now strictly require an approved Overtime Request
+       (filed under Time & Shift Requests and approved by the Department Head).
+     * Unapproved weekend punches are blocked with HTTP 400:
+       "Weekend attendance on [Saturday/Sunday] requires an approved Overtime Request. Please file an Overtime (OT) / Extended Shift Authorization under Time & Shift Requests before reporting for weekend duty."
+     * Approved weekend punches are recorded with punch_status="OVERTIME", is_overtime=True, and 0 minutes late.
+     * Overtime hours worked are calculated upon Time-Out and logged into overtime_hours.
+
+2. DTR & UI Terminology Standardization:
+   - Standardized status badges and summary labels from rigid "Saturday OT" to "Authorized Overtime"
+     across the Monthly Attendance DTR Packet, Employee Attendance dashboard, and Campus Payroll reports.
+   - Fully unifies weekday evening overtime (post-5:00 PM) and weekend overtime (Saturday/Sunday)
+     under one consolidated institutional workflow.
+
+================================================================================
+
 UPDATE NOTES: 2026-11-19
 Notification Privacy Isolation & Role Broadcast Timeline Gating
 ================================================================================

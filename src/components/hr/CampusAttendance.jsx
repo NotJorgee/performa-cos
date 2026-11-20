@@ -497,7 +497,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                   {payrollPacket.summary.total_late_minutes}m Late
                 </div>
                 <div className="stat-sub">
-                  Undertime: {payrollPacket.summary.total_undertime_minutes}m &bull; Saturday OT: {payrollPacket.summary.total_overtime_hours}h
+                  Undertime: {payrollPacket.summary.total_undertime_minutes}m &bull; Authorized OT: {payrollPacket.summary.total_overtime_hours}h
                 </div>
               </div>
 

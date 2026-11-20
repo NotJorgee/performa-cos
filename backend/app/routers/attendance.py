@@ -204,23 +204,20 @@ def attendance_time_in(
     pht_now = get_pht_now()
     today_date = pht_now.date()
 
-    # 1. Shift Schedule Resolution & Gate Opening Check
+    # 1. Shift Schedule Resolution
     shift = get_user_shift_schedule(current_user, db)
     arrival_mins = pht_now.hour * 60 + pht_now.minute
     earliest_mins = shift["earliest_punch_hour"] * 60 + shift["earliest_punch_minute"]
     end_mins = shift["end_hour"] * 60 + shift["end_minute"]
 
-    if arrival_mins < earliest_mins:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Campus check-in is not yet open. Official morning gate check-in opens at {shift['earliest_punch_str']} (official shift starts at {shift['official_start_str']}).",
-        )
+    weekday = pht_now.weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
+    is_weekend = (weekday in (5, 6))
+    is_after_hours = (not is_weekend and arrival_mins >= end_mins)
 
-    # 1.1 Evening Closing Gate Check (5:00 PM Cutoff)
-    # If clocking in after official shift end, requires an approved Overtime Request
-    is_after_hours = (arrival_mins >= end_mins)
+    # 1.1 Overtime Authorization Gate Check (Weekends & Weekdays after 5:00 PM)
+    # Requires an approved Overtime Request under Time & Shift Requests
     approved_ot = None
-    if is_after_hours:
+    if is_weekend or is_after_hours:
         approved_ot = (
             db.query(models.LeaveRequest)
             .filter(
@@ -233,10 +230,24 @@ def attendance_time_in(
             .first()
         )
         if not approved_ot:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Regular check-in closed at 5:00 PM. An approved Overtime Request under Time & Shift Requests is required to clock in after hours.",
-            )
+            if is_weekend:
+                day_name = pht_now.strftime("%A")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Weekend attendance on {day_name} requires an approved Overtime Request. Please file an Overtime (OT) / Extended Shift Authorization under Time & Shift Requests before reporting for weekend duty.",
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Regular check-in closed at 5:00 PM. An approved Overtime Request under Time & Shift Requests is required to clock in after hours.",
+                )
+
+    # 1.2 Morning Gate Opening Check (Regular weekday shifts)
+    if not is_weekend and not is_after_hours and arrival_mins < earliest_mins:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Campus check-in is not yet open. Official morning gate check-in opens at {shift['earliest_punch_str']} (official shift starts at {shift['official_start_str']}).",
+        )
 
     # 2. Check existing record today
     existing = (
@@ -278,10 +289,7 @@ def attendance_time_in(
         )
 
     # 4. Shift and Tardiness Resolution
-    weekday = pht_now.weekday()  # 0=Mon, ..., 5=Sat, 6=Sun
-    is_saturday = (weekday == 5)
-
-    if is_saturday or is_after_hours:
+    if is_weekend or is_after_hours:
         punch_status = "OVERTIME"
         is_ot = True
         minutes_late = 0
@@ -336,7 +344,9 @@ def attendance_time_in(
     db.refresh(log_record)
 
     audit_details = f"Time-In recorded at {pht_now.strftime('%I:%M %p')}. Status: {punch_status} ({site_name})"
-    if is_early:
+    if is_ot and approved_ot:
+        audit_details += f" [Approved Overtime Authorization #{approved_ot.id}]"
+    elif is_early:
         audit_details += f" [Approach B: Early arrival normalized to {credited_time_in_str}]"
 
     log_audit(
@@ -506,6 +516,7 @@ def get_today_status(
         "shift": shift,
         "is_weekend": pht_now.weekday() in (5, 6),
         "is_saturday": pht_now.weekday() == 5,
+        "is_overtime": log.is_overtime if log else False,
         "has_timed_in": bool(log and log.time_in),
         "has_timed_out": bool(log and log.time_out),
         "time_in": log.time_in.strftime("%I:%M %p") if (log and log.time_in) else None,
@@ -904,7 +915,7 @@ def get_payroll_dtr_packet(
         time_in_str = att.time_in.strftime("%I:%M %p") if (att and att.time_in) else "—"
         time_out_str = att.time_out.strftime("%I:%M %p") if (att and att.time_out) else "—"
         dtr_cred_str, dtr_early_flag, dtr_early_mins = resolve_normalized_time_in(
-            att.time_in if att else None, shift, is_overtime=bool(att and (att.is_overtime or is_sat))
+            att.time_in if att else None, shift, is_overtime=bool(att and (att.is_overtime or is_weekend))
         )
 
         discrepancy = None
@@ -914,8 +925,8 @@ def get_payroll_dtr_packet(
             badge_type = "leave"
         elif att and att.time_in:
             days_present += 1
-            if att.is_overtime or is_sat:
-                day_status = "Saturday Overtime"
+            if att.is_overtime or is_weekend:
+                day_status = "Authorized Overtime"
                 total_overtime_hours += att.overtime_hours
                 badge_type = "overtime"
             elif att.status == "UNDERTIME" or att.undertime_minutes > 0:

@@ -438,7 +438,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 )}
                 {todayData?.overtime_hours > 0 && (
                   <span style={{ fontSize: '11.5px', color: 'var(--green-600)', fontWeight: 600 }}>
-                    Saturday OT: {todayData.overtime_hours} hr(s)
+                    Authorized OT: {todayData.overtime_hours} hr(s)
                   </span>
                 )}
               </div>
