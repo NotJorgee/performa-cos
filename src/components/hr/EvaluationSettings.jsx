@@ -327,8 +327,14 @@ export default function EvaluationSettings({
     <div style={{ maxWidth: '1240px', margin: '0 auto', paddingBottom: '60px' }}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Top Bar Navigation (Back to Dashboard on the Right) */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '18px', alignItems: 'center' }}>
+      {/* Top Header */}
+      <div className="flex-between" style={{ marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Sliders size={26} color="var(--brand-700)" />
+            Evaluation Settings
+          </h1>
+        </div>
         <button
           type="button"
           className="btn btn-sm"
@@ -336,57 +342,12 @@ export default function EvaluationSettings({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            background: '#fff',
-            borderColor: 'var(--line)',
-            fontWeight: 600,
             cursor: 'pointer',
           }}
           onClick={onBack || (() => onNavigate && onNavigate('dashboard'))}
         >
-          <ArrowLeft size={15} /> Back to Dashboard
+          <ArrowLeft size={14} /> Back to Dashboard
         </button>
-      </div>
-
-      {/* Institutional Header */}
-      <div
-        className="card"
-        style={{
-          padding: '24px 28px',
-          marginBottom: '20px',
-          border: '1px solid var(--line)',
-          background: 'linear-gradient(180deg, #ffffff 0%, #fafbfc 100%)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div
-            style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #701a28, #991b1b)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(112, 26, 40, 0.22)',
-            }}
-          >
-            <Sliders size={24} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '21px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
-                Evaluation Settings
-              </h1>
-              <span className="badge badge-dept" style={{ fontSize: '11px', fontWeight: 700 }}>
-                HR Administration
-              </span>
-            </div>
-            <p className="muted" style={{ margin: '3px 0 0', fontSize: '13px' }}>
-              Configure appraisal rubric architecture and manage institutional Contract of Service durations
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Primary Tab Navigation */}
@@ -462,15 +423,12 @@ export default function EvaluationSettings({
               background: '#ffffff',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Clock size={19} color="var(--brand-700)" />
               <h2 style={{ fontSize: '16.5px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
                 University Directive Contract Tweak (Batch Adjustment)
               </h2>
             </div>
-            <p className="muted" style={{ margin: '0 0 18px', fontSize: '13px' }}>
-              Extend or shorten contract lengths when university management or the Board issues term adjustments.
-            </p>
 
             <div
               style={{
@@ -669,9 +627,6 @@ export default function EvaluationSettings({
                 <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
                   Active Contract of Service Personnel ({filteredEmployees.length})
                 </h3>
-                <p className="muted" style={{ margin: '2px 0 0', fontSize: '12.5px' }}>
-                  Fine-tune contract start/end dates individually or apply quick extensions.
-                </p>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>

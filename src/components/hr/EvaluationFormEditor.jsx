@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileText,
   Plus,
   Trash2,
   ArrowUp,
@@ -257,58 +256,35 @@ export default function EvaluationFormEditor({
         </div>
       )}
 
-      {/* Header & Mode Switcher */}
+      {/* Sub-Header Toolbar: Status & Mode Switcher */}
       <div
+        className="flex-between"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
+          marginBottom: '16px',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '12px',
-          marginBottom: '20px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span
+            className="badge"
             style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #701a28, #991b1b)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(112, 26, 40, 0.25)',
+              background: hasUnsavedChanges ? '#fef3c7' : '#f0fdf4',
+              color: hasUnsavedChanges ? '#b45309' : '#15803d',
+              border: `1px solid ${hasUnsavedChanges ? '#fde68a' : '#bbf7d0'}`,
+              fontSize: '11.5px',
+              fontWeight: 700,
             }}
           >
-            <FileText size={22} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
-                Evaluation Form Editor
-              </h1>
-              <span
-                className="badge"
-                style={{
-                  background: hasUnsavedChanges ? '#fef3c7' : '#f0fdf4',
-                  color: hasUnsavedChanges ? '#b45309' : '#15803d',
-                  border: `1px solid ${hasUnsavedChanges ? '#fde68a' : '#bbf7d0'}`,
-                  fontSize: '11px',
-                  fontWeight: 700,
-                }}
-              >
-                {hasUnsavedChanges ? 'Unsaved Changes' : 'Active Template'}
-              </span>
-            </div>
-            <p className="muted" style={{ margin: '2px 0 0', fontSize: '13px' }}>
-              Institutional Evaluation Rubric for Contract of Service (COS) Personnel
-            </p>
-          </div>
+            {hasUnsavedChanges ? 'Unsaved Changes' : 'Active Template'}
+          </span>
+          <span className="muted" style={{ fontSize: '12.5px' }}>
+            Form Series of 2026 (v{template.version})
+          </span>
         </div>
 
-        {/* Mode Switcher: Edit Form vs Evaluator View */}
+        {/* Mode Switcher: Edit Rubric vs Evaluator View */}
         <div
           style={{
             display: 'inline-flex',
@@ -364,24 +340,24 @@ export default function EvaluationFormEditor({
         </div>
       </div>
 
-      {/* Editing Instructions Banner */}
+      {/* Editing Instructions Tip */}
       {isEditMode && (
         <div
           style={{
             background: '#fffbeb',
             border: '1px solid #fde68a',
-            borderRadius: '8px',
-            padding: '10px 16px',
-            marginBottom: '16px',
+            borderRadius: '6px',
+            padding: '7px 12px',
+            marginBottom: '14px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
+            fontSize: '12.5px',
+            color: '#92400e',
           }}
         >
-          <CircleAlert size={16} color="#d97706" style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: '13px', color: '#92400e', fontWeight: 600 }}>
-            <b>Inline Editing Active:</b> You can modify criteria titles, update behavioral descriptions, reorder rows, and test the Likert rating buttons directly on the evaluation rubric below.
-          </span>
+          <CircleAlert size={14} color="#d97706" style={{ flexShrink: 0 }} />
+          <span>Click any criterion title or description below to edit inline. Reorder rows with the action controls.</span>
         </div>
       )}
 

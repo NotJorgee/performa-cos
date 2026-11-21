@@ -2,6 +2,24 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-21
+UI/UX Streamline: Evaluation Settings & Rubric Form Editor Layout Cleanup
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. De-clutter Evaluation Settings & Rubric Form Editor:
+   - In src/components/hr/EvaluationSettings.jsx:
+     * Standardized page header to unified `flex-between` layout (`<h1>Evaluation Settings</h1>` + "Back to Dashboard" button).
+     * Removed the isolated floating back-button row and the bulky, non-standard gradient card wrapper.
+     * Cleaned up redundant subtexts across the directive contract tweak and active personnel sections.
+   - In src/components/hr/EvaluationFormEditor.jsx:
+     * Eliminated redundant secondary `<h1>Evaluation Form Editor</h1>` card, duplicate icon box, and subtext from underneath the tab bar.
+     * Replaced with a streamlined sub-header utility toolbar containing the template version status badge and the mode switcher pill (`[ Edit Rubric (Inline) | Evaluator View ]`).
+     * Streamlined the inline editing notice into a concise, single-line guide.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-21
 UI/UX Streamline: Universal Removal of Page-Header Subtext for Minimalist Layout
 ================================================================================
 
