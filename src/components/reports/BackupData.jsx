@@ -111,12 +111,9 @@ export default function BackupData({ onBack = null }) {
       {/* Page Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Database size={28} color="var(--brand-700)" /> Institutional Data Backup &amp; Archiving
           </h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Generate and export authenticated copies of Eastern Visayas State University COS records for regulatory compliance, disaster recovery, and offline archiving.
-          </p>
         </div>
         {onBack && (
           <button

@@ -175,14 +175,9 @@ export default function ReportGenerator({
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>
+          <h1 style={{ margin: 0 }}>
             {isDeptRestricted ? 'Departmental Employee Records' : 'COS Employee Records & Evaluations'}
           </h1>
-          <p className="muted" style={{ margin: 0 }}>
-            {isDeptRestricted
-              ? `Inspect historical evaluation records, view verified MARs, and review performance reports for ${deptScope}.`
-              : 'Inspect employee historical evaluation records, view verified MARs, and download official performance reports for institutional records.'}
-          </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button

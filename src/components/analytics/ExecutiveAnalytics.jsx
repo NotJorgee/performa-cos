@@ -425,13 +425,10 @@ export default function ExecutiveAnalytics({
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <TrendingUp size={26} color="var(--brand-700)" />
             Executive Performance Analytics
           </h1>
-          <p className="muted" style={{ margin: 0 }}>
-            High-level institutional insight into Eastern Visayas State University Contract of Service (COS) performance standards.
-          </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button

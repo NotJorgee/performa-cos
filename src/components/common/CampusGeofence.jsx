@@ -1017,7 +1017,7 @@ export default function CampusGeofence({
         <div>
           <h1
             style={{
-              margin: '0 0 6px',
+              margin: 0,
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
@@ -1025,9 +1025,6 @@ export default function CampusGeofence({
           >
             <MapPin size={28} color="var(--brand-700)" /> Multi-Campus Geofence Configuration
           </h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Interactive GIS map &amp; spatial perimeter engine for Eastern Visayas State University COS attendance verification.
-          </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {onBack && (

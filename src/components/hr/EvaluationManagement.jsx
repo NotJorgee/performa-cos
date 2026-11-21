@@ -1107,10 +1107,7 @@ export default function EvaluationManagement({
     <div style={{ paddingBottom: '32px' }}>
       <div className="flex-between" style={{ marginBottom: '20px', paddingTop: '4px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Evaluation Management Module</h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Track contract expiration dates, review supervisor recommendations, and finalize renewal decisions for Contract of Service personnel.
-          </p>
+          <h1 style={{ margin: 0 }}>Evaluation Management Module</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {onNavigate && (

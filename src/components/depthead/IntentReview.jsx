@@ -510,13 +510,10 @@ export default function IntentReview({
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <UserCheck size={26} color="var(--brand-700)" />
             Renewals &amp; Evaluations
           </h1>
-          <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-            Review subordinate renewal intentions, inspect daily accomplishment summaries, and complete official evaluations for <b>{displayDepartmentName}</b>.
-          </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {onBack && (

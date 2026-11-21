@@ -562,9 +562,6 @@ export default function UserManagement({
                 <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: 'var(--ink-900)' }}>
                   User Management
                 </h1>
-                <p className="muted" style={{ margin: '2px 0 0', fontSize: '13px' }}>
-                  Unified institutional directory: manage university departments, immediate supervisors, and Contract of Service personnel.
-                </p>
               </div>
             </div>
           </div>

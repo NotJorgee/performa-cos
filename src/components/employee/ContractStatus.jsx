@@ -183,10 +183,7 @@ export default function ContractStatus({
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Contract Status</h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Monitor your Contract of Service lifecycle and submit your formal digital renewal confirmation.
-          </p>
+          <h1 style={{ margin: 0 }}>Contract Status</h1>
         </div>
         {onBack && (
           <button type="button" className="btn btn-sm" onClick={onBack}>

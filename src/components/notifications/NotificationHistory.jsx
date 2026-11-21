@@ -158,14 +158,10 @@ export default function NotificationHistory({
         }}
       >
         <div>
-          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Bell size={26} color="var(--brand-700)" />
             Notification Center &amp; History
           </h1>
-          <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-            Audit trail of system notices, DAR reminders, evaluation milestones, and contract renewals for{' '}
-            <b>{currentUser.fullName}</b> ({currentUser.role}).
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

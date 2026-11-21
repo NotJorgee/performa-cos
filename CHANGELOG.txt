@@ -1,6 +1,35 @@
 PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
+UPDATE NOTES: 2026-11-21
+UI/UX Streamline: Universal Removal of Page-Header Subtext for Minimalist Layout
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Minimalist Page Headers Across All Modules:
+   - Systematically removed redundant, generic descriptive subtexts (`<p className="muted">`) underneath top-level `<h1>` page headers across all application modules:
+     * Contract Status (`src/components/employee/ContractStatus.jsx`)
+     * Daily Accomplishment Reporting (`src/components/employee/DailyReporting.jsx` - both gate card & active reporting headers)
+     * Renewals & Evaluations (`src/components/depthead/IntentReview.jsx`)
+     * Evaluation Management Module (`src/components/hr/EvaluationManagement.jsx`)
+     * Pending HR Evaluations (`src/components/hr/HREvaluationsProxy.jsx`)
+     * User Management (`src/components/management/UserManagement.jsx`)
+     * Multi-Campus Geofence Configuration (`src/components/common/CampusGeofence.jsx`)
+     * Executive Performance Analytics (`src/components/analytics/ExecutiveAnalytics.jsx`)
+     * COS Employee Records & Evaluations (`src/components/reports/ReportGenerator.jsx`)
+     * Security Logs & Audit Trail (`src/components/reports/AuditTrail.jsx`)
+     * Institutional Data Backup & Archiving (`src/components/reports/BackupData.jsx`)
+     * Personal Profile & Security (`src/components/auth/ProfileSettings.jsx`)
+     * Notification Center & History (`src/components/notifications/NotificationHistory.jsx`)
+     * Personnel Records (`src/components/management/EmployeeRecordView.jsx`)
+
+2. Layout & Spacing Consistency:
+   - Set `margin: 0` on `<h1>` headers where bottom subtext margins previously caused excessive vertical white space.
+   - Retained essential dynamic employee context and contract metadata where applicable (e.g. employee department, contract cycle, and quincena period range).
+
+================================================================================
+
 UPDATE NOTES: 2026-11-20
 Bugfix: Evaluation Viewport Scroll Reset & Sticky Top Alignment
 ================================================================================

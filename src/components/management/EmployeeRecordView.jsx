@@ -2647,13 +2647,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         <div>
 
-          <h1 style={{ margin: '0 0 6px' }}>Personnel Record: {employee.fullName}</h1>
-
-          <p className="muted" style={{ margin: 0 }}>
-
-            Historical evaluation cycles, Immediate Supervisor performance ratings, and downloadable official PDF records.
-
-          </p>
+          <h1 style={{ margin: 0 }}>Personnel Record: {employee.fullName}</h1>
 
         </div>
 

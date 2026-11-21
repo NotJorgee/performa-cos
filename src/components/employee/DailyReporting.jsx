@@ -348,10 +348,7 @@ export default function DailyReporting({
         {/* Module Header */}
         <div className="flex-between" style={{ marginBottom: '20px' }}>
           <div>
-            <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting</h1>
-            <p className="muted" style={{ margin: 0 }}>
-              Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.
-            </p>
+            <h1 style={{ margin: 0 }}>Daily Accomplishment Reporting</h1>
           </div>
           {onBack && (
             <button
@@ -451,10 +448,7 @@ export default function DailyReporting({
       {/* Module Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Daily Accomplishment Reporting</h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.
-          </p>
+          <h1 style={{ margin: 0 }}>Daily Accomplishment Reporting</h1>
         </div>
         {onBack && (
           <button

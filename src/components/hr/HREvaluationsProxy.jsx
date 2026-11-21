@@ -28,10 +28,7 @@ export default function HREvaluationsProxy({
     <div>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px' }}>Pending HR Evaluations</h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Input the 30% HR administrative compliance ratings and monitor supervisor (50%) and peer (20%) evaluation progress for COS personnel.
-          </p>
+          <h1 style={{ margin: 0 }}>Pending HR Evaluations</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           {selectedEvalId && (

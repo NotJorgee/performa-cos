@@ -225,12 +225,9 @@ export default function AuditTrail({
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ShieldAlert size={28} color="var(--brand-700)" /> Security Logs &amp; Audit Trail
           </h1>
-          <p className="muted" style={{ margin: 0 }}>
-            Activity log of all evaluation actions, daily report submissions, and account updates across the system.
-          </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {onBack && (
