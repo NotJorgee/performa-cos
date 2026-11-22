@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
  * Exports tabular data as a true Microsoft Excel (.xlsx) workbook with auto-fitted column widths.
  *
  * @param {Object} options
- * @param {string} options.filename - The output filename (e.g., 'EVSU_Executive_Personnel_Records.xlsx')
+ * @param {string} options.filename - The output filename (e.g., 'EVSU_COS_Personnel_Records.xlsx')
  * @param {string} [options.sheetName='Sheet1'] - Name of the worksheet tab
  * @param {Array<string>} [options.headers=[]] - Array of header strings (optional if rows already contain headers)
  * @param {Array<Array<any>>} [options.rows=[]] - 2D array of row cell values

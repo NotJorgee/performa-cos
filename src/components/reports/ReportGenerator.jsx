@@ -153,8 +153,8 @@ export default function ReportGenerator({
     ]);
 
     const fileName = isDeptRestricted
-      ? `EVSU_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
-      : `EVSU_Executive_Personnel_Records_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      ? `EVSU_COS_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      : `EVSU_COS_Personnel_Records_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
     exportToExcel({
       filename: fileName,
@@ -166,7 +166,7 @@ export default function ReportGenerator({
     setToastMsg(
       isDeptRestricted
         ? `Departmental personnel records for ${deptScope} exported as Excel (.xlsx) with auto-fitted columns!`
-        : 'Executive personnel records successfully exported as Excel (.xlsx) with auto-fitted columns!'
+        : 'COS personnel records successfully exported as Excel (.xlsx) with auto-fitted columns!'
     );
     setTimeout(() => setToastMsg(null), 4000);
   };
