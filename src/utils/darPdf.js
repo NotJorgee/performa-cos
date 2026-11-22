@@ -104,13 +104,6 @@ export async function generateDarPdf({
                   const mainDate = dateParts[0] || '—';
                   const timePart = dateParts.slice(1).join(',').trim();
 
-                  const verificationText = [
-                    row.isGeofenceValid ? '✓ Geotag Verified' : '',
-                    row.remarks || '',
-                  ]
-                    .filter(Boolean)
-                    .join('<br>');
-
                   return `
             <tr style="border-bottom: 1px solid #000;">
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top; white-space: nowrap;">
@@ -127,7 +120,7 @@ export async function generateDarPdf({
                 ${row.quantity || '1 task'}
               </td>
               <td style="padding: 6px 8px; vertical-align: top; font-size: 10.5px; line-height: 1.3;">
-                ${verificationText || '—'}
+                ${row.remarks || '—'}
               </td>
             </tr>
           `;

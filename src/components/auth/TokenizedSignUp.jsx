@@ -934,6 +934,34 @@ export default function TokenizedSignUp({
                       style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
                     />
                   </div>
+
+                  {adminRole === 'Department Head' && (
+                    <div
+                      style={{
+                        marginTop: '6px',
+                        padding: '8px 12px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        fontSize: '11.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                      }}
+                    >
+                      <span style={{ color: 'var(--ink-500)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <User size={13} color="var(--brand-700)" />
+                        Current Department Head on Record:
+                      </span>
+                      <b style={{ color: tokenData?.current_department_head ? 'var(--brand-700)' : 'var(--amber-700)' }}>
+                        {tokenData?.current_department_head
+                          ? `${tokenData.current_department_head.full_name} (${tokenData.current_department_head.email})`
+                          : 'Vacant / No Department Head Currently Assigned'}
+                      </b>
+                    </div>
+                  )}
                 </div>
 
                 {/* Job Position & Contact Phone */}

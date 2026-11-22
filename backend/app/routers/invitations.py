@@ -159,16 +159,35 @@ def validate_invitation(token: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invitation token has expired.")
 
     dept_name = None
+    current_dept_head = None
     if invite.department_id:
         dept = db.query(models.Department).filter(models.Department.id == invite.department_id).first()
         if dept:
             dept_name = dept.name
+        # Find active Department Head in this department
+        dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.department_id == invite.department_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+            )
+            .first()
+        )
+        if dh:
+            current_dept_head = {
+                "id": dh.id,
+                "full_name": dh.full_name,
+                "email": dh.email,
+                "employee_id_number": dh.employee_id_number,
+            }
 
     return {
         "valid": True,
         "role": invite.role,
         "department_id": invite.department_id,
         "department_name": dept_name,
+        "current_department_head": current_dept_head,
         "email": invite.email,
         "token": invite.token,
         "invite_url": _build_invite_url(invite.token),
