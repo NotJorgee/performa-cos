@@ -13,6 +13,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import api from '../../services/api';
+import Toast from '../common/Toast';
 import { getDepartmentDomain } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -30,6 +31,8 @@ export default function ExecutiveAnalytics({
   const [hiddenSeries, setHiddenSeries] = useState(new Set());
   const [analyticsData, setAnalyticsData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   const toggleSeries = (id) => {
     setHiddenSeries((prev) => {
@@ -360,11 +363,25 @@ export default function ExecutiveAnalytics({
       ]),
     ];
 
-    exportToExcel({
-      filename: `EVSU_Executive_Analytics_Report_${new Date().toISOString().split('T')[0]}.xlsx`,
-      sheetName: 'Executive Analytics',
-      rows: excelRows,
-    });
+    setToastType('info');
+    setToastMsg('Generating Executive Analytics Excel report...');
+    setTimeout(() => {
+      try {
+        exportToExcel({
+          filename: `EVSU_Executive_Analytics_Report_${new Date().toISOString().split('T')[0]}.xlsx`,
+          sheetName: 'Executive Analytics',
+          rows: excelRows,
+        });
+        setToastType('success');
+        setToastMsg('Executive Analytics report exported successfully as Excel (.xlsx).');
+      } catch (err) {
+        console.error('Failed to export executive analytics:', err);
+        setToastType('error');
+        setToastMsg('Failed to export executive analytics. Please try again.');
+      } finally {
+        setTimeout(() => setToastMsg(null), 4500);
+      }
+    }, 250);
   };
 
 
@@ -420,6 +437,8 @@ export default function ExecutiveAnalytics({
 
   return (
     <div style={{ paddingBottom: '32px' }}>
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
+
       {/* Top Header */}
       <div className="flex-between" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>

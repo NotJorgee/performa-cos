@@ -17,6 +17,7 @@ import Toast from '../common/Toast';
 
 export default function BackupData({ onBack = null }) {
   const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
   const [errorMsg, setErrorMsg] = useState(null);
   const [downloadingFormat, setDownloadingFormat] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +69,9 @@ export default function BackupData({ onBack = null }) {
   const handleDownload = async (format) => {
     setDownloadingFormat(format);
     setErrorMsg(null);
+    const typeLabel = format === 'sql' ? 'SQL Database Backup' : 'CSV Spreadsheet Archive';
+    setToastType('info');
+    setToastMsg(`Generating ${typeLabel}...`);
 
     try {
       let result;
@@ -87,7 +91,7 @@ export default function BackupData({ onBack = null }) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      const typeLabel = format === 'sql' ? 'SQL Database Backup' : 'CSV Spreadsheet Archive';
+      setToastType('success');
       setToastMsg(`${typeLabel} (${filename}) generated and downloaded successfully.`);
       setTimeout(() => setToastMsg(null), 5000);
 
@@ -95,7 +99,10 @@ export default function BackupData({ onBack = null }) {
       loadStatsAndHistory();
     } catch (err) {
       console.error('Download error:', err);
+      setToastType('error');
+      setToastMsg(`Failed to export ${format.toUpperCase()} backup: ${err.message}`);
       setErrorMsg(`Failed to export ${format.toUpperCase()} backup: ${err.message}`);
+      setTimeout(() => setToastMsg(null), 5000);
     } finally {
       setDownloadingFormat(null);
     }
@@ -130,7 +137,7 @@ export default function BackupData({ onBack = null }) {
 
       <Toast
         message={errorMsg || toastMsg}
-        type={errorMsg ? 'error' : 'success'}
+        type={errorMsg ? 'error' : toastType}
         onClose={() => {
           setToastMsg(null);
           setErrorMsg(null);

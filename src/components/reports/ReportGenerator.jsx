@@ -201,6 +201,7 @@ export default function ReportGenerator({
   const [selectedDept, setSelectedDept] = useState(deptScope || 'All');
   const [showArchived, setShowArchived] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   const getStoredEmpId = () => {
     if (typeof window === 'undefined') return '';
@@ -292,49 +293,69 @@ export default function ReportGenerator({
   };
 
   const handleExportData = () => {
-    const headers = [
-      'Employee ID',
-      'Full Name',
-      'Institutional Email',
-      'Department',
-      'Total Contracts',
-      'Avg Score',
-      'Latest Score',
-      'Performance Rating',
-      'Comparative Trajectory',
-      'Status',
-    ];
+    if (filteredEmployees.length === 0) {
+      setToastType('warning');
+      setToastMsg('No personnel records to export.');
+      setTimeout(() => setToastMsg(null), 3500);
+      return;
+    }
 
-    const rows = filteredEmployees.map((emp) => [
-      emp.idNumber || '',
-      emp.fullName || '',
-      emp.email || '',
-      emp.department || '',
-      emp.totalContracts || 1,
-      emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
-      emp.latestScore !== undefined && emp.latestScore !== null ? Number(emp.latestScore).toFixed(1) : 'N/A',
-      emp.latestRating || 'Unrated',
-      getCleanTrajectoryText(emp),
-      emp.status || 'Active',
-    ]);
+    setToastType('info');
+    setToastMsg('Generating Excel personnel records...');
 
-    const fileName = isDeptRestricted
-      ? `EVSU_COS_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
-      : `EVSU_COS_Personnel_Records_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    setTimeout(() => {
+      try {
+        const headers = [
+          'Employee ID',
+          'Full Name',
+          'Institutional Email',
+          'Department',
+          'Total Contracts',
+          'Avg Score',
+          'Latest Score',
+          'Performance Rating',
+          'Comparative Trajectory',
+          'Status',
+        ];
 
-    exportToExcel({
-      filename: fileName,
-      sheetName: isDeptRestricted ? `${deptScope.slice(0, 28)}` : 'Personnel Records',
-      headers,
-      rows,
-    });
+        const rows = filteredEmployees.map((emp) => [
+          emp.idNumber || '',
+          emp.fullName || '',
+          emp.email || '',
+          emp.department || '',
+          emp.totalContracts || 1,
+          emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
+          emp.latestScore !== undefined && emp.latestScore !== null ? Number(emp.latestScore).toFixed(1) : 'N/A',
+          emp.latestRating || 'Unrated',
+          getCleanTrajectoryText(emp),
+          emp.status || 'Active',
+        ]);
 
-    setToastMsg(
-      isDeptRestricted
-        ? `Departmental personnel records for ${deptScope} exported as Excel (.xlsx) with auto-fitted columns!`
-        : 'COS personnel records successfully exported as Excel (.xlsx) with auto-fitted columns!'
-    );
-    setTimeout(() => setToastMsg(null), 4000);
+        const fileName = isDeptRestricted
+          ? `EVSU_COS_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
+          : `EVSU_COS_Personnel_Records_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        exportToExcel({
+          filename: fileName,
+          sheetName: isDeptRestricted ? `${deptScope.slice(0, 28)}` : 'Personnel Records',
+          headers,
+          rows,
+        });
+
+        setToastType('success');
+        setToastMsg(
+          isDeptRestricted
+            ? `Departmental personnel records for ${deptScope} exported as Excel (.xlsx)!`
+            : 'COS personnel records successfully exported as Excel (.xlsx)!'
+        );
+      } catch (err) {
+        console.error('Failed to export personnel records:', err);
+        setToastType('error');
+        setToastMsg('Failed to export personnel records. Please try again.');
+      } finally {
+        setTimeout(() => setToastMsg(null), 4500);
+      }
+    }, 250);
   };
 
   return (
@@ -373,7 +394,7 @@ export default function ReportGenerator({
         </div>
       </div>
 
-      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
 
       {/* Personnel Records Table Card */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

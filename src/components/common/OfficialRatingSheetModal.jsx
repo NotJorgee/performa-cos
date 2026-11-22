@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Printer, X, Download, FileText } from 'lucide-react';
 import evsuLogo from '../../assets/images/evsu-seal.png';
+import Toast from './Toast';
 import {
   EVSU_PERFORMANCE_CRITERIA,
   EVSU_RATING_SCALE,
@@ -482,6 +483,8 @@ export default function OfficialRatingSheetModal({
         ];
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('info');
 
   const handlePrint = () => {
     window.print();
@@ -494,11 +497,18 @@ export default function OfficialRatingSheetModal({
     const filename = `EVSU_COS_RatingSheet_${safeEmpId}_${cleanPeriod}.pdf`;
     try {
       setIsExportingPdf(true);
+      setToastType('info');
+      setToastMsg('Generating official PDF rating sheet...');
       await exportElementToPdf(printAreaRef.current, filename);
+      setToastType('success');
+      setToastMsg(`Successfully generated and downloaded PDF: ${filename}`);
     } catch (err) {
       console.error('Failed to export PDF:', err);
+      setToastType('error');
+      setToastMsg('Failed to generate PDF. Please try again.');
     } finally {
       setIsExportingPdf(false);
+      setTimeout(() => setToastMsg(null), 4500);
     }
   };
 
@@ -517,6 +527,7 @@ export default function OfficialRatingSheetModal({
         overflowY: 'auto',
       }}
     >
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
       <div
         className="modal-container official-sheet-modal"
         style={{

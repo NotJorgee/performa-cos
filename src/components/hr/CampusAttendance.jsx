@@ -170,15 +170,23 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       [],
     ];
 
-    exportToExcel({
-      filename: `evsu_dtr_payroll_${payrollPacket.employee.employee_id}_${payrollPacket.cutoff_code}_${payrollPacket.year}${String(payrollPacket.month).padStart(2, '0')}.xlsx`,
-      sheetName: 'DTR & Payroll',
-      headers,
-      rows,
-      titleRows,
-    });
+    setToast({ type: 'info', message: 'Generating DTR & Payroll Excel archive...' });
+    setTimeout(() => {
+      try {
+        exportToExcel({
+          filename: `evsu_dtr_payroll_${payrollPacket.employee.employee_id}_${payrollPacket.cutoff_code}_${payrollPacket.year}${String(payrollPacket.month).padStart(2, '0')}.xlsx`,
+          sheetName: 'DTR & Payroll',
+          headers,
+          rows,
+          titleRows,
+        });
 
-    setToast({ type: 'success', message: 'DTR & Payroll Excel archive exported successfully.' });
+        setToast({ type: 'success', message: 'DTR & Payroll Excel archive exported successfully.' });
+      } catch (err) {
+        console.error('Failed to export DTR payroll archive:', err);
+        setToast({ type: 'error', message: 'Failed to export DTR payroll archive. Please try again.' });
+      }
+    }, 250);
   };
 
   const filteredDepts = (overviewData?.department_summaries || []).filter((d) => {

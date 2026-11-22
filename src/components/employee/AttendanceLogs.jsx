@@ -74,25 +74,33 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
       setToast({ type: 'warning', message: 'No attendance records available for export.' });
       return;
     }
-    const headers = ['Date', 'Day', 'Time In', 'Credited Time In', 'Time Out', 'Status', 'Shift', 'Campus Site', 'DAR Tasks'];
-    const rows = dtrPacket.records.map((r) => [
-      r.date || '',
-      r.day_of_week || '',
-      r.time_in || '—',
-      r.credited_time_in || r.time_in || '—',
-      r.time_out || '—',
-      r.status || '',
-      r.shift_type || '',
-      r.geofence_site || '',
-      r.dar_tasks_count || 0,
-    ]);
-    exportToExcel({
-      filename: `attendance_logs_${dtrYear}_${dtrMonth}_${cutoffPeriod}.xlsx`,
-      sheetName: 'Attendance Logs',
-      headers,
-      rows,
-    });
-    setToast({ type: 'success', message: 'Attendance logs exported successfully as Excel (.xlsx).' });
+    setToast({ type: 'info', message: 'Generating Excel attendance logs...' });
+    setTimeout(() => {
+      try {
+        const headers = ['Date', 'Day', 'Time In', 'Credited Time In', 'Time Out', 'Status', 'Shift', 'Campus Site', 'DAR Tasks'];
+        const rows = dtrPacket.records.map((r) => [
+          r.date || '',
+          r.day_of_week || '',
+          r.time_in || '—',
+          r.credited_time_in || r.time_in || '—',
+          r.time_out || '—',
+          r.status || '',
+          r.shift_type || '',
+          r.geofence_site || '',
+          r.dar_tasks_count || 0,
+        ]);
+        exportToExcel({
+          filename: `attendance_logs_${dtrYear}_${dtrMonth}_${cutoffPeriod}.xlsx`,
+          sheetName: 'Attendance Logs',
+          headers,
+          rows,
+        });
+        setToast({ type: 'success', message: 'Attendance logs exported successfully as Excel (.xlsx).' });
+      } catch (err) {
+        console.error('Failed to export attendance logs:', err);
+        setToast({ type: 'error', message: 'Failed to export attendance logs. Please try again.' });
+      }
+    }, 250);
   };
 
   const getStatusBadgeStyle = (status, badgeType) => {

@@ -83,6 +83,7 @@ export default function AuditTrail({
   const [customStartDate, setCustomStartDate] = useState(thirtyDaysAgoIso);
   const [customEndDate, setCustomEndDate] = useState(todayIso);
   const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   const availableActionTypes = [
     { key: 'USER_LOGGED_IN', label: 'User Sign-Ins' },
@@ -191,28 +192,41 @@ export default function AuditTrail({
       return;
     }
 
-    // Map selected columns to headers
-    const headerLabels = exportColumns.map((colKey) => {
-      const found = availableColumns.find((c) => c.key === colKey);
-      return found ? found.label : colKey;
-    });
-
-    const rows = candidateLogs.map((log) => {
-      return exportColumns.map((colKey) => {
-        return colKey === 'action' ? formatAuditAction(log.action) : (log[colKey] || '');
-      });
-    });
-
-    exportToExcel({
-      filename: `EVSU_Security_Audit_Trail_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      sheetName: 'Security Logs',
-      headers: headerLabels,
-      rows,
-    });
-
     setShowExportModal(false);
-    setToastMsg(`Successfully exported ${candidateLogs.length} security log records to Excel!`);
-    setTimeout(() => setToastMsg(null), 4500);
+    setToastType('info');
+    setToastMsg('Exporting security audit logs to Excel...');
+
+    setTimeout(() => {
+      try {
+        // Map selected columns to headers
+        const headerLabels = exportColumns.map((colKey) => {
+          const found = availableColumns.find((c) => c.key === colKey);
+          return found ? found.label : colKey;
+        });
+
+        const rows = candidateLogs.map((log) => {
+          return exportColumns.map((colKey) => {
+            return colKey === 'action' ? formatAuditAction(log.action) : (log[colKey] || '');
+          });
+        });
+
+        exportToExcel({
+          filename: `EVSU_Security_Audit_Trail_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          sheetName: 'Security Logs',
+          headers: headerLabels,
+          rows,
+        });
+
+        setToastType('success');
+        setToastMsg(`Successfully exported ${candidateLogs.length} security log records to Excel!`);
+      } catch (err) {
+        console.error('Failed to export audit logs:', err);
+        setToastType('error');
+        setToastMsg('Failed to export security logs. Please try again.');
+      } finally {
+        setTimeout(() => setToastMsg(null), 4500);
+      }
+    }, 250);
   };
 
   return (
@@ -251,7 +265,7 @@ export default function AuditTrail({
         </div>
       </div>
 
-      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
 
       {/* Security Logs Data Table Card with Integrated Header Filters */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

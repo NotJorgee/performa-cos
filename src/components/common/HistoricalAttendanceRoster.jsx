@@ -58,48 +58,56 @@ export default function HistoricalAttendanceRoster({
   const handleExportData = () => {
     const list = rosterData?.roster || [];
     if (list.length === 0) {
-      setToast({ type: 'info', message: 'No records available to export for this date.' });
+      setToast({ type: 'warning', message: 'No records available to export for this date.' });
       return;
     }
 
-    const headers = [
-      'Employee ID',
-      'Personnel Name',
-      'Department',
-      'Shift Schedule',
-      'Time In',
-      'Time Out',
-      'Presence Status',
-      'Campus Site',
-      'DAR Accomplishment',
-      'Tasks Count',
-    ];
+    setToast({ type: 'info', message: 'Generating Excel attendance roster...' });
+    setTimeout(() => {
+      try {
+        const headers = [
+          'Employee ID',
+          'Personnel Name',
+          'Department',
+          'Shift Schedule',
+          'Time In',
+          'Time Out',
+          'Presence Status',
+          'Campus Site',
+          'DAR Accomplishment',
+          'Tasks Count',
+        ];
 
-    const rows = list.map((item) => [
-      item.employee_id_number || '',
-      item.name || '',
-      item.department || '',
-      item.official_time || '8:00 AM - 5:00 PM',
-      item.time_in || '—',
-      item.time_out || '—',
-      item.status || 'Not Timed In',
-      item.geofence_site || '—',
-      item.dar_submitted ? 'Submitted' : 'Not submitted',
-      item.dar_tasks_count || 0,
-    ]);
+        const rows = list.map((item) => [
+          item.employee_id_number || '',
+          item.name || '',
+          item.department || '',
+          item.official_time || '8:00 AM - 5:00 PM',
+          item.time_in || '—',
+          item.time_out || '—',
+          item.status || 'Not Timed In',
+          item.geofence_site || '—',
+          item.dar_submitted ? 'Submitted' : 'Not submitted',
+          item.dar_tasks_count || 0,
+        ]);
 
-    const safeDept = (selectedDept === 'ALL' ? (departmentName || 'All_Departments') : selectedDept).replace(/[^a-zA-Z0-9_-]/g, '_');
-    exportToExcel({
-      filename: `EVSU_Department_Attendance_Roster_${safeDept}_${selectedDate}.xlsx`,
-      sheetName: 'Attendance Roster',
-      headers,
-      rows,
-    });
+        const safeDept = (selectedDept === 'ALL' ? (departmentName || 'All_Departments') : selectedDept).replace(/[^a-zA-Z0-9_-]/g, '_');
+        exportToExcel({
+          filename: `EVSU_Department_Attendance_Roster_${safeDept}_${selectedDate}.xlsx`,
+          sheetName: 'Attendance Roster',
+          headers,
+          rows,
+        });
 
-    setToast({
-      type: 'success',
-      message: `Roster for ${rosterData?.date || selectedDate} exported successfully as Excel (.xlsx).`,
-    });
+        setToast({
+          type: 'success',
+          message: `Roster for ${rosterData?.date || selectedDate} exported successfully as Excel (.xlsx).`,
+        });
+      } catch (err) {
+        console.error('Failed to export roster:', err);
+        setToast({ type: 'error', message: 'Failed to export roster. Please try again.' });
+      }
+    }, 250);
   };
 
   // Filter roster by search and presence status

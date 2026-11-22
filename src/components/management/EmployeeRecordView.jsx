@@ -1207,6 +1207,7 @@ export default function EmployeeRecordView({
     : (employee?.department || 'Computer Studies Department');
 
   const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   const [viewingMarCycle, setViewingMarCycle] = useState(null);
   const [viewingAttendanceCycle, setViewingAttendanceCycle] = useState(null);
@@ -1507,6 +1508,7 @@ export default function EmployeeRecordView({
 
     try {
       setIsExportingPdf(true);
+      setToastType('info');
       setToastMsg('Generating official PDF rating sheet...');
       const savedFilename = await generateEvaluationPdf({
         employee,
@@ -1515,9 +1517,11 @@ export default function EmployeeRecordView({
         qualitativeStrengths: targetCycle.strengths || currentEval.strengths,
         qualitativeRecommendations: targetCycle.recommendation || currentEval.recommendation,
       });
+      setToastType('success');
       setToastMsg(`Successfully generated and downloaded PDF: ${savedFilename}`);
     } catch (err) {
       console.error('Failed to generate evaluation PDF:', err);
+      setToastType('error');
       setToastMsg('PDF generation failed. Please try again.');
     } finally {
       setIsExportingPdf(false);
@@ -1637,7 +1641,7 @@ export default function EmployeeRecordView({
           </div>
         </div>
 
-        <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+        <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
 
 
 
@@ -1930,7 +1934,7 @@ export default function EmployeeRecordView({
 
 
 
-      <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
 
 
 
