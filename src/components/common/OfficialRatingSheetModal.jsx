@@ -219,16 +219,6 @@ function SingleRatingSheet({
                       {item.description}
                     </span>
                   </div>
-                  <div
-                    style={{
-                      marginTop: '6px',
-                      fontSize: '11px',
-                      fontStyle: 'italic',
-                      color: '#333',
-                    }}
-                  >
-                    Comments:
-                  </div>
                 </td>
                 {[2, 4, 6, 8, 10].map((val) => (
                   <td
@@ -392,13 +382,11 @@ function SingleRatingSheet({
       <div
         style={{
           marginTop: '18px',
-          display: 'flex',
-          justifyContent: 'space-between',
           fontSize: '12.5px',
           lineHeight: 1.8,
         }}
       >
-        <div style={{ width: '55%' }}>
+        <div style={{ width: '100%' }}>
           <div>
             <b>Rated by:</b>{' '}
             <span
@@ -446,31 +434,6 @@ function SingleRatingSheet({
             >
               {isPeer ? '(Anonymous Peer Submission)' : '_____________________'}
             </span>
-          </div>
-        </div>
-
-        <div
-          style={{
-            width: '40%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '11px',
-              fontStyle: 'italic',
-              color: '#444',
-              border: '1px dashed #999',
-              padding: '8px 12px',
-              borderRadius: '4px',
-            }}
-          >
-            Official EVSU-Ormoc Performance Evaluation Instrument · Verified
-            Digital Record
           </div>
         </div>
       </div>

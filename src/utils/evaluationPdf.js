@@ -4,25 +4,20 @@ import { EVSU_PERFORMANCE_CRITERIA, getPerformanceInterpretation } from '../comp
 import { EVSU_SEAL_BASE64 } from './evsuSealBase64';
 
 /**
- * Distribute a percentage score (0-100) across 6 rubric criteria (0-10 scale each, totaling max 60 pts)
+ * Distribute a percentage score (0-100) across 6 rubric criteria using valid discrete scale values (2, 4, 6, 8, 10, totaling max 60 pts)
  */
 function generateCriteriaScores(scorePercent) {
-  const scaled = Math.min(60, Math.max(0, Math.round(((Number(scorePercent) || 85) / 100) * 60)));
-  const base = Math.min(10, Math.floor(scaled / 6));
-  let rem = scaled - base * 6;
-  const res = {
-    job_knowledge: base,
-    work_quality: base,
-    attendance: base,
-    work_attitude: base,
-    initiative: base,
-    dependability: base,
-  };
+  const rawScaled = Math.min(60, Math.max(12, Math.round(((Number(scorePercent) || 85) / 100) * 60)));
+  const scaled = Math.round(rawScaled / 2) * 2;
+  const baseEven = Math.min(10, Math.max(2, Math.floor(scaled / 12) * 2));
+  let rem = scaled - baseEven * 6;
   const keys = ['job_knowledge', 'work_quality', 'attendance', 'work_attitude', 'initiative', 'dependability'];
+  const res = {};
+  keys.forEach((k) => { res[k] = baseEven; });
   for (let i = 0; i < keys.length && rem > 0; i++) {
     if (res[keys[i]] < 10) {
-      res[keys[i]] += 1;
-      rem -= 1;
+      res[keys[i]] += 2;
+      rem -= 2;
     }
   }
   return res;
@@ -191,7 +186,6 @@ export async function generateEvaluationPdf({
             <tr style="border-bottom: 1px solid #000;">
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top;">
                 <div style="font-weight: bold;">${item.title} – <span style="font-weight: normal;">${item.description}</span></div>
-                <div style="margin-top: 3px; font-size: 10px; font-style: italic; color: #444;">Comments: Consistent fulfillment of institutional targets.</div>
               </td>
               ${[2, 4, 6, 8, 10]
                 .map(
@@ -253,17 +247,12 @@ export async function generateEvaluationPdf({
     </div>
 
     <!-- Sign-Off Block -->
-    <div style="display: flex; justify-content: space-between; font-size: 11.5px; line-height: 1.7;">
-      <div style="width: 55%;">
-        <div><b>Rated by:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 200px;">${supervisorName}</span></div>
-        <div><b>Position:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 200px;">Immediate Supervisor (Dept Head)</span></div>
-        <div><b>Date:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 200px;">${cycle.evaluationDate || 'Dec 18, 2026'}</span></div>
-        <div><b>Signature:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 200px;">&nbsp;</span></div>
-      </div>
-      <div style="width: 40%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; text-align: center;">
-        <div style="font-size: 10px; font-style: italic; color: #444; border: 1px dashed #999; padding: 6px 10px; border-radius: 4px;">
-          Official EVSU-Ormoc Performance Evaluation Instrument · Verified Digital Record
-        </div>
+    <div style="font-size: 11.5px; line-height: 1.7;">
+      <div style="width: 100%;">
+        <div><b>Rated by:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${supervisorName}</span></div>
+        <div><b>Position:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">Immediate Supervisor (Dept Head)</span></div>
+        <div><b>Date:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${cycle.evaluationDate || 'Dec 18, 2026'}</span></div>
+        <div><b>Signature:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">&nbsp;</span></div>
       </div>
     </div>
   `;

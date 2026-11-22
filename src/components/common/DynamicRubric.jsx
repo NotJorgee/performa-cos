@@ -200,6 +200,24 @@ export default function DynamicRubric({
   const [strengths, setStrengths] = useState(defaultStrengths);
   const [recommendation, setRecommendation] = useState(initialRecommendation || '');
 
+  useEffect(() => {
+    if (initialScores && Object.keys(initialScores).length > 0) {
+      setScores(initialScores);
+    }
+  }, [JSON.stringify(initialScores)]);
+
+  useEffect(() => {
+    if (initialStrengths !== undefined && initialStrengths !== null) {
+      setStrengths(initialStrengths);
+    }
+  }, [initialStrengths]);
+
+  useEffect(() => {
+    if (initialRecommendation !== undefined && initialRecommendation !== null) {
+      setRecommendation(initialRecommendation);
+    }
+  }, [initialRecommendation]);
+
   const totalItems = criteria.length;
   const maxRawScore = totalItems > 0 ? totalItems * 10 : 60;
   const scoredCount = Object.keys(scores).filter((k) =>

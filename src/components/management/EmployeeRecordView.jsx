@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import AttendanceLogs from '../employee/AttendanceLogs';
 
@@ -291,48 +291,22 @@ export const getScoreInterpretationAndRecommendation = (score) => {
 
 
 
-// Helper to distribute a percentage score (0-100) across 6 rubric criteria (0-10 scale each, totaling max 60 pts)
-
+// Helper to distribute a percentage score (0-100) across 6 rubric criteria using valid discrete scale values (2, 4, 6, 8, 10, totaling max 60 pts)
 const generateCriteriaScores = (scorePercent) => {
-
-  const scaled = Math.min(60, Math.max(0, Math.round(((Number(scorePercent) || 85) / 100) * 60)));
-
-  const base = Math.min(10, Math.floor(scaled / 6));
-
-  let rem = scaled - base * 6;
-
-  const res = {
-
-    job_knowledge: base,
-
-    work_quality: base,
-
-    attendance: base,
-
-    work_attitude: base,
-
-    initiative: base,
-
-    dependability: base,
-
-  };
-
+  const rawScaled = Math.min(60, Math.max(12, Math.round(((Number(scorePercent) || 85) / 100) * 60)));
+  const scaled = Math.round(rawScaled / 2) * 2;
+  const baseEven = Math.min(10, Math.max(2, Math.floor(scaled / 12) * 2));
+  let rem = scaled - baseEven * 6;
   const keys = ['job_knowledge', 'work_quality', 'attendance', 'work_attitude', 'initiative', 'dependability'];
-
+  const res = {};
+  keys.forEach((k) => { res[k] = baseEven; });
   for (let i = 0; i < keys.length && rem > 0; i++) {
-
     if (res[keys[i]] < 10) {
-
-      res[keys[i]] += 1;
-
-      rem -= 1;
-
+      res[keys[i]] += 2;
+      rem -= 2;
     }
-
   }
-
   return res;
-
 };
 
 
@@ -1403,23 +1377,39 @@ export default function EmployeeRecordView({
             (r) => r.employee_id === employee.id && r.status === 'Completed'
           );
           if (userRecords.length > 0) {
-            setDbEvaluations(
-              userRecords.map((r) => ({
-                id: r.id,
-                periodDates: r.period || 'Contract Evaluation Cycle',
-                supervisorScore: r.supervisor_score ?? (r.final_score || 0),
-                peerScore: r.peer_score ?? (r.final_score || 0),
-                hrmoScore: r.hrmo_score ?? (r.final_score || 0),
-                finalGrade: r.final_score || 0,
-                interpretation: r.rating_label || 'Satisfactory',
-                marCount: 0,
-                strengths: r.qualitative_strengths || 'Performance targets completed.',
-                recommendation: r.qualitative_recommendations || 'Recommended for Renewal',
-                dimensionScores: r.dimension_scores || null,
-                supervisorId: r.supervisor_id || null,
-                supervisorName: r.supervisor_name || null,
-              }))
-            );
+            const mappedRecords = userRecords.map((r) => ({
+              id: r.id,
+              periodDates: r.period || 'Contract Evaluation Cycle',
+              supervisorScore: r.supervisor_score ?? (r.final_score || 0),
+              peerScore: r.peer_score ?? (r.final_score || 0),
+              hrmoScore: r.hrmo_score ?? (r.final_score || 0),
+              finalGrade: r.final_score || 0,
+              interpretation: r.rating_label || 'Satisfactory',
+              marCount: 0,
+              strengths: r.qualitative_strengths || 'Performance targets completed.',
+              recommendation: r.qualitative_recommendations || 'Recommended for Renewal',
+              dimensionScores: r.dimension_scores || null,
+              supervisorId: r.supervisor_id || null,
+              supervisorName: r.supervisor_name || null,
+            }));
+            setDbEvaluations(mappedRecords);
+
+            const { sub, cycle } = getSubRecordParam();
+            if (sub === 'eval') {
+              const matched =
+                mappedRecords.find((e) => String(e.id) === String(cycle) || e.periodDates === cycle) ||
+                mappedRecords[0];
+              if (matched) {
+                setViewingEvalCycle(matched);
+                setActiveEvaluatorTab('depthead');
+              }
+            } else if (sub === 'attendance') {
+              const matched = mappedRecords.find((e) => String(e.id) === String(cycle) || e.periodDates === cycle);
+              if (matched) setViewingAttendanceCycle(matched);
+            } else if (sub === 'dar') {
+              const matched = mappedRecords.find((e) => String(e.id) === String(cycle) || e.periodDates === cycle);
+              if (matched) setViewingMarCycle(matched);
+            }
           } else {
             setDbEvaluations([]);
           }
@@ -1432,10 +1422,12 @@ export default function EmployeeRecordView({
   }, [employee?.id]);
 
   // Dynamically resolve the employee's historical evaluations matching their actual demo scoring
-  const staticEvaluations = getEmployeeHistoricalEvaluations(employee);
-  const historicalEvaluations = (dbEvaluations && dbEvaluations.length > 0)
-    ? dbEvaluations
-    : (dbEvaluations !== null ? [] : staticEvaluations);
+  const staticEvaluations = useMemo(() => getEmployeeHistoricalEvaluations(employee), [employee]);
+  const historicalEvaluations = useMemo(() => {
+    if (dbEvaluations && dbEvaluations.length > 0) return dbEvaluations;
+    if (dbEvaluations !== null) return [];
+    return staticEvaluations;
+  }, [dbEvaluations, staticEvaluations]);
 
   // Derive latest completed evaluation metrics from the newest evaluation record
   const latestEvaluation = historicalEvaluations && historicalEvaluations.length > 0 ? historicalEvaluations[0] : null;
@@ -1467,7 +1459,19 @@ export default function EmployeeRecordView({
         setActiveEvaluatorTab('depthead');
       }
     }
-  }, [historicalEvaluations?.length, employee?.latestScore]);
+  }, [historicalEvaluations, employee?.latestScore, dbEvaluations]);
+
+  // Synchronize viewingEvalCycle with authentic dbEvaluations dimension scores when loaded
+  useEffect(() => {
+    if (viewingEvalCycle && dbEvaluations && dbEvaluations.length > 0) {
+      const matched =
+        dbEvaluations.find((e) => String(e.id) === String(viewingEvalCycle.id) || e.periodDates === viewingEvalCycle.periodDates) ||
+        dbEvaluations[0];
+      if (matched && (!viewingEvalCycle.dimensionScores || String(viewingEvalCycle.id) !== String(matched.id))) {
+        setViewingEvalCycle(matched);
+      }
+    }
+  }, [dbEvaluations, viewingEvalCycle]);
 
   // Resolved active evaluation details for the rubric and rating sheet view
   const getActiveEvalDetails = () => {
@@ -1885,7 +1889,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
             <DynamicRubric
 
-              key={`${viewingEvalCycle.id}_${activeEvaluatorTab}`}
+              key={`${viewingEvalCycle.id}_${activeEvaluatorTab}_${JSON.stringify(currentEval.scores || {})}`}
 
               employeeJobTitle={employee.jobTitle || 'Admin Aide'}
 
