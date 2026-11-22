@@ -1518,92 +1518,6 @@ export default function EmployeeRecordView({
 
 
 
-  const handleDownloadPdf = (docType, cycle) => {
-
-    const isMar = docType === 'mar';
-
-    const cleanPeriod = (cycle?.periodDates || 'Active_Term').replace(/[^a-zA-Z0-9]/g, '_');
-
-    const filename = `${employee.idNumber}_${isMar ? 'MAR' : 'Evaluation'}_${cleanPeriod}.pdf`;
-
-
-
-    const content = `EASTERN VISAYAS STATE UNIVERSITY - ORMOC CAMPUS
-
-OFFICIAL INSTITUTIONAL PERFORMANCE RECORD
-
-============================================================
-
-Document Type: ${isMar ? 'Compiled Monthly Accomplishment Report (MAR)' : 'Immediate Supervisor Performance Evaluation Report'}
-
-Employee ID: ${employee.idNumber}
-
-Full Name: ${employee.fullName}
-
-Institutional Email: ${employee.email}
-
-Department: ${employee.department}
-
-Contract Cycle Period: ${cycle.periodDates}
-
-------------------------------------------------------------
-
-SCORES & EVALUATION SUMMARY:
-
-Immediate Supervisor Rating (100%): ${cycle.supervisorScore || cycle.finalGrade}%
-
-Official Performance Grade: ${cycle.finalGrade} / 100
-
-Adjectival Rating: ${cycle.interpretation}
-
-Verified Monthly Logs (MAR): ${cycle.marCount} Verified Tasks
-
-Recommendation: ${cycle.recommendation || 'Recommended for Renewal'}
-
-------------------------------------------------------------
-
-Status: Verified & Digitally Archived via PerformaCOS
-
-Campus: EVSU Ormoc Campus
-
-Generated Timestamp: ${new Date().toLocaleString()}
-
-============================================================`;
-
-
-
-    const blob = new Blob([content], { type: 'application/pdf' });
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-
-    a.href = url;
-
-    a.download = filename;
-
-    document.body.appendChild(a);
-
-    a.click();
-
-    document.body.removeChild(a);
-
-    URL.revokeObjectURL(url);
-
-
-
-    setToastMsg(
-
-      `Successfully generated and downloaded ${isMar ? 'MAR' : 'Evaluation'} PDF for ${cycle.periodDates}!`
-
-    );
-
-    setTimeout(() => setToastMsg(null), 4000);
-
-  };
-
-
-
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleDownloadEvaluationDoc = async (evalCycle = viewingEvalCycle) => {
@@ -1700,12 +1614,12 @@ Generated Timestamp: ${new Date().toLocaleString()}
       <div>
         <MonthlyReport
           employeeId={employee.id}
+          employeeIdNumber={employee.idNumber}
           employeeName={employee.fullName}
           department={employee.department}
           cyclePeriod={viewingMarCycle.periodDates}
           backLabel="Back to Personnel Record"
           onBack={handleCloseMar}
-          onDownload={() => handleDownloadPdf('mar', viewingMarCycle)}
           downloadLabel="Download DAR Report (PDF)"
         />
       </div>

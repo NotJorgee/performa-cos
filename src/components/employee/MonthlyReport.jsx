@@ -4,6 +4,7 @@ import {
   Camera,
   X,
   Printer,
+  FileDown,
   ArrowLeft,
   Calendar,
   ExternalLink,
@@ -12,16 +13,18 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import evsuSeal from '../../assets/images/evsu-seal.png';
+import { generateDarPdf } from '../../utils/darPdf';
 
 export default function MonthlyReport({
   employeeId = null,
+  employeeIdNumber = null,
   employeeName = 'Jorge Mikhael Gubantes',
   department = 'Computer Studies Department',
   onBack = null,
   backLabel = 'Back to Renewals & Evaluations',
   onNavigate = null,
   onDownload = null,
-  downloadLabel = 'Print / Save DAR Report (PDF)',
+  downloadLabel = 'Download DAR Report (PDF)',
   cyclePeriod = null,
   initialRecords = null,
 }) {
@@ -168,12 +171,30 @@ export default function MonthlyReport({
     });
   }, [records, selectedMonth, selectedYear, cutoffPeriod]);
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   // Handle Print / PDF Export
-  const handlePrint = () => {
-    if (onDownload) {
-      onDownload();
-    } else {
+  const handlePrint = async () => {
+    if (isExportingPdf) return;
+    try {
+      setIsExportingPdf(true);
+      if (onDownload) {
+        await onDownload(filteredRecords, cutoffLabel);
+      } else {
+        await generateDarPdf({
+          employee: { idNumber: employeeIdNumber },
+          employeeName,
+          employeeIdNumber,
+          department: safeDeptName,
+          cutoffLabel,
+          records: filteredRecords,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to export DAR PDF:', err);
       window.print();
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -218,11 +239,12 @@ export default function MonthlyReport({
             type="button"
             className="btn btn-primary btn-sm"
             onClick={handlePrint}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-            title="Open browser print dialog to save as official PDF"
+            disabled={isExportingPdf}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: isExportingPdf ? 'not-allowed' : 'pointer' }}
+            title="Download official Daily Accomplishment Report as PDF"
           >
-            <Printer size={15} />
-            <span>{downloadLabel}</span>
+            <FileDown size={15} />
+            <span>{isExportingPdf ? 'Generating PDF...' : downloadLabel}</span>
           </button>
 
           {onBack && (
@@ -355,7 +377,7 @@ export default function MonthlyReport({
                 <th style={{ width: '25%' }}>Job Description / Task</th>
                 <th style={{ width: '28%' }}>Specific Work Accomplished</th>
                 <th style={{ width: '10%' }}>Quantity</th>
-                <th style={{ width: '10%', textAlign: 'center' }}>Photo Evidence</th>
+                <th style={{ width: '10%', textAlign: 'center' }} className="no-print">Photo Evidence</th>
                 <th style={{ width: '12%' }}>Verification &amp; Remarks</th>
               </tr>
             </thead>
@@ -389,7 +411,7 @@ export default function MonthlyReport({
                         {row.quantity || '1 task'}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center' }} className="no-print">
                       {row.photoEvidenceUrl ? (
                         <button
                           type="button"
