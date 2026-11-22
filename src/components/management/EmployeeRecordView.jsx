@@ -1630,7 +1630,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
       setToastMsg(`Successfully generated and downloaded PDF: ${savedFilename}`);
     } catch (err) {
       console.error('Failed to generate evaluation PDF:', err);
-      setToastMsg('PDF generation failed. Please try the Print / Preview Sheet option.');
+      setToastMsg('PDF generation failed. Please try again.');
     } finally {
       setIsExportingPdf(false);
       setTimeout(() => setToastMsg(null), 4500);
@@ -1736,15 +1736,6 @@ Generated Timestamp: ${new Date().toLocaleString()}
               title="Automatically generate and download official rating sheet PDF"
             >
               <FileDown size={14} /> {isExportingPdf ? 'Generating PDF...' : 'Download Evaluation (PDF)'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-              onClick={() => handleOpenOfficialRatingSheet(viewingEvalCycle)}
-              title="Preview or print official rating sheet"
-            >
-              <Printer size={14} /> Print / Preview Sheet
             </button>
             <button
               type="button"
