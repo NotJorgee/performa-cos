@@ -31,11 +31,13 @@ import {
   ShieldAlert,
   Award,
   Calendar,
+  Printer,
+  Download,
 } from 'lucide-react';
 
 import MonthlyReport from '../employee/MonthlyReport';
 
-import DynamicRubric from '../common/DynamicRubric';
+import DynamicRubric, { EVSU_PERFORMANCE_CRITERIA, getPerformanceInterpretation } from '../common/DynamicRubric';
 import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
 import { getActiveEvaluationTemplate, fetchActiveTemplateFromApi } from '../../utils/evaluationTemplate';
 
@@ -1259,11 +1261,76 @@ export default function EmployeeRecordView({
 
   const [viewingMarCycle, setViewingMarCycle] = useState(null);
   const [viewingAttendanceCycle, setViewingAttendanceCycle] = useState(null);
-
   const [viewingEvalCycle, setViewingEvalCycle] = useState(null);
-
   const [activeEvaluatorTab, setActiveEvaluatorTab] = useState('depthead');
   const [officialSheetData, setOfficialSheetData] = useState(null);
+
+  const getSubRecordParam = () => {
+    if (typeof window === 'undefined') return { sub: '', cycle: '' };
+    const hashQuery = window.location.hash.split('?')[1] || '';
+    const params = new URLSearchParams(hashQuery || window.location.search);
+    const sub = params.get('sub') || sessionStorage.getItem('performa_records_subview') || '';
+    const cycle = params.get('cycle') || sessionStorage.getItem('performa_records_cycle') || '';
+    return { sub, cycle };
+  };
+
+  const updateSubRecordState = (subview, cycleData) => {
+    if (typeof window === 'undefined') return;
+    const baseHash = window.location.hash.split('?')[0] || '#/employee_records';
+    const empKey = employee?.idNumber || employee?.id || '';
+    if (subview) {
+      const cycleKey = cycleData?.id || cycleData?.periodDates || 'active';
+      sessionStorage.setItem('performa_records_subview', subview);
+      sessionStorage.setItem('performa_records_cycle', String(cycleKey));
+      window.history.replaceState(
+        null,
+        '',
+        `${baseHash}?empId=${encodeURIComponent(empKey)}&sub=${subview}&cycle=${encodeURIComponent(cycleKey)}`
+      );
+    } else {
+      sessionStorage.removeItem('performa_records_subview');
+      sessionStorage.removeItem('performa_records_cycle');
+      window.history.replaceState(null, '', `${baseHash}?empId=${encodeURIComponent(empKey)}`);
+    }
+  };
+
+  const handleOpenAttendance = (cycle) => {
+    const cycleObj = cycle || { periodDates: 'Active Contract Period' };
+    setViewingAttendanceCycle(cycleObj);
+    updateSubRecordState('attendance', cycleObj);
+  };
+
+  const handleCloseAttendance = () => {
+    setViewingAttendanceCycle(null);
+    updateSubRecordState(null);
+  };
+
+  const handleOpenMar = (cycle) => {
+    const cycleObj = cycle || { periodDates: 'Active Contract Period' };
+    setViewingMarCycle(cycleObj);
+    updateSubRecordState('dar', cycleObj);
+  };
+
+  const handleCloseMar = () => {
+    setViewingMarCycle(null);
+    updateSubRecordState(null);
+  };
+
+  const handleOpenEval = (cycle) => {
+    const targetCycle =
+      cycle ||
+      historicalEvaluations?.[0] ||
+      (employee?.latestScore ? { periodDates: employee.contractPeriod || 'Contract Evaluation Cycle', supervisorScore: employee.latestScore, finalGrade: employee.latestScore, interpretation: employee.latestRating || 'Satisfactory' } : null);
+    setViewingEvalCycle(targetCycle);
+    setActiveEvaluatorTab('depthead');
+    updateSubRecordState('eval', targetCycle);
+  };
+
+  const handleCloseEval = () => {
+    setViewingEvalCycle(null);
+    setActiveEvaluatorTab('depthead');
+    updateSubRecordState(null);
+  };
 
 
 
@@ -1377,6 +1444,29 @@ export default function EmployeeRecordView({
   const effectiveLatestRating = latestEvaluation
     ? (latestEvaluation.interpretation || 'Satisfactory')
     : (employee.latestRating || (effectiveLatestScore ? 'Evaluated' : null));
+
+  // Auto-restore active subview (Attendance, DARs, or Evaluation) across page refreshes
+  useEffect(() => {
+    const { sub, cycle } = getSubRecordParam();
+    if (!sub) return;
+
+    if (sub === 'attendance') {
+      const matched = historicalEvaluations?.find((e) => String(e.id) === String(cycle) || e.periodDates === cycle);
+      setViewingAttendanceCycle(matched || { periodDates: cycle !== 'active' && cycle ? cycle : 'Active Contract Period' });
+    } else if (sub === 'dar') {
+      const matched = historicalEvaluations?.find((e) => String(e.id) === String(cycle) || e.periodDates === cycle);
+      setViewingMarCycle(matched || { periodDates: cycle !== 'active' && cycle ? cycle : 'Active Contract Period' });
+    } else if (sub === 'eval') {
+      const matched =
+        historicalEvaluations?.find((e) => String(e.id) === String(cycle) || e.periodDates === cycle) ||
+        historicalEvaluations?.[0] ||
+        (employee?.latestScore ? { periodDates: employee.contractPeriod || 'Contract Evaluation Cycle', supervisorScore: employee.latestScore, finalGrade: employee.latestScore, interpretation: employee.latestRating || 'Satisfactory' } : null);
+      if (matched) {
+        setViewingEvalCycle(matched);
+        setActiveEvaluatorTab('depthead');
+      }
+    }
+  }, [historicalEvaluations?.length, employee?.latestScore]);
 
   // Resolved active evaluation details for the rubric and rating sheet view
   const getActiveEvalDetails = () => {
@@ -1509,12 +1599,164 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-  const handleOpenOfficialRatingSheet = () => {
-    if (!viewingEvalCycle) return;
+  const handleDownloadEvaluationDoc = (evalCycle = viewingEvalCycle) => {
+    const targetCycle = evalCycle || viewingEvalCycle;
+    if (!targetCycle) return;
     const currentEval = getActiveEvalDetails();
-    const scoreVal = Number(viewingEvalCycle.supervisorScore ?? viewingEvalCycle.finalGrade ?? 0);
+    const scoreVal = Number(targetCycle.supervisorScore ?? targetCycle.finalGrade ?? employee?.latestScore ?? 85);
     const supervisorName =
-      viewingEvalCycle.supervisorName ||
+      targetCycle.supervisorName ||
+      (employee?.department && typeof employee.department === 'object' && employee.department.supervisor
+        ? employee.department.supervisor.full_name
+        : null) ||
+      getDepartmentSupervisor(employee?.department);
+
+    const interpretation = targetCycle.interpretation || getPerformanceInterpretation(scoreVal)?.interpretation || 'Satisfactory';
+    const periodLabel = targetCycle.periodDates || employee?.contractPeriod || 'Contract Evaluation Cycle';
+    const cleanPeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+    const safeEmpId = employee.idNumber || employee.fullName || 'Personnel';
+    const filename = `EVSU_COS_Evaluation_${safeEmpId}_${cleanPeriod}.html`;
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EVSU Employee Performance Rating - ${employee.fullName}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 12.5px; line-height: 1.35; color: #000; margin: 0; padding: 24px; background: #fff; }
+    .header { text-align: center; margin-bottom: 16px; }
+    .header h2 { font-size: 15.5px; margin: 2px 0; text-transform: uppercase; font-weight: bold; }
+    .header h3 { font-size: 13.5px; margin: 2px 0; font-weight: bold; }
+    .header p { font-size: 12px; margin: 2px 0; font-style: italic; }
+    .header .doc-title { font-size: 15px; font-weight: bold; margin-top: 10px; letter-spacing: 1px; }
+    .info-table, .criteria-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 14px; font-size: 12.5px; }
+    .info-table td, .criteria-table td, .criteria-table th { border: 1px solid #000; padding: 5px 8px; }
+    .criteria-table th { background: #f1f5f9; text-align: center; font-weight: bold; }
+    .box-title { font-weight: bold; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #000; padding: 4px 8px; font-size: 12px; }
+    .comments-box { border: 2px solid #000; padding: 10px 12px; margin-bottom: 16px; font-size: 12px; }
+    .sig-block { margin-top: 24px; display: flex; justify-content: space-between; font-size: 12.5px; }
+    .sig-line { border-bottom: 1px solid #000; display: inline-block; min-width: 200px; }
+    .check-box { width: 16px; height: 16px; border: 1.5px solid #000; display: inline-block; text-align: center; line-height: 16px; font-weight: bold; font-size: 11px; margin-right: 6px; }
+    .no-print-bar { background: #1e293b; color: #fff; padding: 12px 18px; margin: -24px -24px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; font-family: sans-serif; }
+    .no-print-bar button { background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    @media print { .no-print-bar, .no-print { display: none !important; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="no-print-bar">
+    <span><b>Official Rating Sheet Document:</b> ${employee.fullName} (${periodLabel})</span>
+    <button onclick="window.print()">Print / Save as PDF</button>
+  </div>
+  <div class="header">
+    <p>Republic of the Philippines</p>
+    <h2>EASTERN VISAYAS STATE UNIVERSITY</h2>
+    <h3>Ormoc Campus</h3>
+    <p>Ormoc City</p>
+    <div class="doc-title">EMPLOYEE PERFORMANCE RATING</div>
+  </div>
+  <div style="border: 2px solid #000; margin-bottom: 14px;">
+    <div class="box-title">EMPLOYEE INFORMATION</div>
+    <table class="info-table" style="border: none; margin: 0;">
+      <tr>
+        <td style="width: 50%;"><b>Name:</b> ${employee.fullName || '—'}</td>
+        <td style="width: 50%;"><b>Employee Job Title:</b> ${employee.jobTitle || 'Admin Aide'}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><b>Department:</b> ${typeof employee.department === 'object' && employee.department !== null ? (employee.department.name || '—') : (employee.department || '—')}</td>
+      </tr>
+      <tr>
+        <td style="width: 50%;"><b>Supervisor:</b> ${supervisorName}</td>
+        <td style="width: 50%;"><b>Period:</b> ${periodLabel}</td>
+      </tr>
+    </table>
+  </div>
+  <table class="criteria-table">
+    <thead>
+      <tr>
+        <th style="width: 60%; text-align: left;">Rating</th>
+        <th style="width: 8%;">2</th>
+        <th style="width: 8%;">4</th>
+        <th style="width: 8%;">6</th>
+        <th style="width: 8%;">8</th>
+        <th style="width: 8%;">10</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${EVSU_PERFORMANCE_CRITERIA.map((crit) => {
+        const cScore = Number((targetCycle.dimensionScores || {})[crit.id] || Math.min(10, Math.floor(scoreVal / 10)));
+        return `<tr>
+          <td><b>${crit.title}</b> – ${crit.description}<br><span style="font-size: 10.5px; font-style: italic; color: #555;">Comments: Consistent fulfillment of institutional targets.</span></td>
+          ${[2, 4, 6, 8, 10].map((v) => `<td style="text-align: center; font-weight: bold; font-size: 13px;">${cScore === v ? '✓' : ''}</td>`).join('')}
+        </tr>`;
+      }).join('')}
+      <tr style="background: #f8fafc; font-weight: bold;">
+        <td style="text-align: center;">Overall rating</td>
+        <td colspan="5" style="text-align: center;">
+          <div style="border: 1.5px solid #000; padding: 4px 10px; display: inline-block; min-width: 120px;">
+            ${scoreVal.toFixed(1)}% (${interpretation})
+          </div>
+          <div style="font-size: 11px; font-weight: normal; margin-top: 2px;">
+            Raw Score: ${Math.round((scoreVal / 100) * 60)} / 60
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="comments-box">
+    <div style="font-weight: bold; margin-bottom: 8px;">COMMENTS AND RECOMMENDATIONS</div>
+    <div style="margin-bottom: 10px;">
+      <b>Strengths of the Employee/Areas for Improvement:</b><br>
+      <div style="margin-top: 4px; padding-bottom: 4px; border-bottom: 1px solid #555;">
+        ${targetCycle.strengths || currentEval.strengths || 'Fulfills duties with consistent diligence and reliable university service.'}
+      </div>
+    </div>
+    <div>
+      <b>Recommendation:</b><br>
+      <div style="margin-top: 4px;">
+        <span class="check-box">${(targetCycle.recommendation || currentEval.recommendation) === 'Recommended for Renewal' ? '✓' : ''}</span> Recommended for Renewal<br>
+        <span class="check-box">${(targetCycle.recommendation || currentEval.recommendation) === 'Recommended with Conditions' ? '✓' : ''}</span> Recommended with Conditions<br>
+        <span class="check-box">${(targetCycle.recommendation || currentEval.recommendation) === 'Not Recommended for Renewal' ? '✓' : ''}</span> Not Recommended for Renewal
+      </div>
+    </div>
+  </div>
+  <div class="sig-block">
+    <div style="width: 55%; line-height: 1.8;">
+      <div><b>Rated by:</b> <span class="sig-line">${supervisorName}</span></div>
+      <div><b>Position:</b> <span class="sig-line">Immediate Supervisor (Dept Head)</span></div>
+      <div><b>Date:</b> <span class="sig-line">${targetCycle.evaluationDate || 'Dec 18, 2026'}</span></div>
+      <div><b>Signature:</b> <span class="sig-line">&nbsp;</span></div>
+    </div>
+    <div style="width: 40%; text-align: center; display: flex; align-items: flex-end; justify-content: center;">
+      <div style="border: 1px dashed #777; padding: 6px 10px; font-size: 11px; font-style: italic;">
+        Official EVSU-Ormoc Performance Evaluation Instrument · Verified Digital Record
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    setToastMsg(`Successfully generated and downloaded Evaluation Document: ${filename}`);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const handleOpenOfficialRatingSheet = (evalCycle = viewingEvalCycle) => {
+    const targetCycle = evalCycle || viewingEvalCycle;
+    if (!targetCycle) return;
+    const currentEval = getActiveEvalDetails();
+    const scoreVal = Number(targetCycle.supervisorScore ?? targetCycle.finalGrade ?? employee?.latestScore ?? 85);
+    const supervisorName =
+      targetCycle.supervisorName ||
       (employee?.department && typeof employee.department === 'object' && employee.department.supervisor
         ? employee.department.supervisor.full_name
         : null) ||
@@ -1526,10 +1768,10 @@ Generated Timestamp: ${new Date().toLocaleString()}
       evaluatorRole: 'Immediate Supervisor',
       evaluatorName: supervisorName,
       evaluatorPosition: 'Department Head',
-      evaluationDate: viewingEvalCycle.evaluationDate || 'Dec 18, 2026',
-      scores: viewingEvalCycle.dimensionScores || generateCriteriaScores(scoreVal || 85),
-      strengths: viewingEvalCycle.strengths || currentEval.strengths,
-      recommendation: viewingEvalCycle.recommendation || currentEval.recommendation,
+      evaluationDate: targetCycle.evaluationDate || 'Dec 18, 2026',
+      scores: targetCycle.dimensionScores || generateCriteriaScores(scoreVal || 85),
+      strengths: targetCycle.strengths || currentEval.strengths,
+      recommendation: targetCycle.recommendation || currentEval.recommendation,
       rawScore: Math.round((scoreVal / 100) * 60),
       scaledScore: scoreVal,
     };
@@ -1537,7 +1779,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
     setOfficialSheetData({
       employee,
       supervisorName,
-      contractPeriod: viewingEvalCycle.periodDates,
+      contractPeriod: targetCycle.periodDates || employee?.contractPeriod || 'Contract Evaluation Cycle',
       sheets: [singleSheet],
       evaluatorRole: 'Immediate Supervisor',
       evaluatorName: supervisorName,
@@ -1550,9 +1792,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
     });
   };
 
-
-
-    // 1. VIEW ATTENDANCE LOGS PAGE
+  // 1. VIEW ATTENDANCE LOGS PAGE
   if (viewingAttendanceCycle) {
     return (
       <div>
@@ -1561,7 +1801,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
           employeeId={employee.id}
           employeeName={employee.fullName}
           backLabel="Back to Personnel Record"
-          onBack={() => setViewingAttendanceCycle(null)}
+          onBack={handleCloseAttendance}
         />
       </div>
     );
@@ -1577,7 +1817,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
           department={employee.department}
           cyclePeriod={viewingMarCycle.periodDates}
           backLabel="Back to Personnel Record"
-          onBack={() => setViewingMarCycle(null)}
+          onBack={handleCloseMar}
           onDownload={() => handleDownloadPdf('mar', viewingMarCycle)}
           downloadLabel="Download DAR Report (PDF)"
         />
@@ -1589,67 +1829,45 @@ Generated Timestamp: ${new Date().toLocaleString()}
   if (viewingEvalCycle) {
     const currentEval = getActiveEvalDetails();
 
-
-
     return (
-
       <div>
-
         {/* Top Header with Back Navigation & PDF Download */}
-
         <div className="flex-between" style={{ marginBottom: '18px' }}>
-
           <div>
-
             <h1 style={{ margin: '0 0 6px' }}>Performance Evaluation Record: {employee.fullName}</h1>
-
             <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-
               Contract Cycle: <b>{viewingEvalCycle.periodDates}</b> • Department: <b>{empDepartment}</b>
-
             </p>
-
           </div>
-
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-
             <button
               type="button"
               className="btn btn-primary btn-sm"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-              onClick={handleOpenOfficialRatingSheet}
-              title="Download or Print Performance Evaluation Sheet (PDF)"
+              onClick={() => handleDownloadEvaluationDoc(viewingEvalCycle)}
+              title="Download official performance evaluation rating sheet (.html / PDF)"
             >
               <FileDown size={14} /> Download Evaluation (PDF)
             </button>
-
             <button
-
               type="button"
-
-              className="btn btn-sm"
-
-              style={{ cursor: 'pointer' }}
-
-              onClick={() => {
-
-                setViewingEvalCycle(null);
-
-                setActiveEvaluatorTab('depthead');
-
-              }}
-
+              className="btn btn-outline btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              onClick={() => handleOpenOfficialRatingSheet(viewingEvalCycle)}
+              title="Preview or print official rating sheet"
             >
-
-              ← Back to Historical Evaluations
-
+              <Printer size={14} /> Print / Preview Sheet
             </button>
-
+            <button
+              type="button"
+              className="btn btn-sm"
+              style={{ cursor: 'pointer' }}
+              onClick={handleCloseEval}
+            >
+              ← Back to Historical Evaluations
+            </button>
           </div>
-
         </div>
-
-
 
         <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
@@ -2320,7 +2538,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
               border: '1.5px solid var(--line)',
               borderRadius: '6px',
             }}
-            onClick={() => setViewingAttendanceCycle({ periodDates: 'Active Contract Period' })}
+            onClick={() => handleOpenAttendance({ periodDates: 'Active Contract Period' })}
             title="Inspect current contract DTR and attendance punches"
           >
             <Calendar size={14} color="var(--brand-700)" />
@@ -2342,7 +2560,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
               border: '1.5px solid var(--line)',
               borderRadius: '6px',
             }}
-            onClick={() => setViewingMarCycle({ periodDates: 'Active Contract Period' })}
+            onClick={() => handleOpenMar({ periodDates: 'Active Contract Period' })}
             title="Inspect current contract Daily Accomplishment Reports"
           >
             <FileText size={14} color="var(--brand-700)" />
@@ -2712,7 +2930,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 type="button"
                 className="btn btn-sm btn-primary"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '7px 14px' }}
-                onClick={() => setViewingAttendanceCycle({ periodDates: 'Active Contract Period' })}
+                onClick={() => handleOpenAttendance({ periodDates: 'Active Contract Period' })}
               >
                 <Calendar size={14} />
                 <span>View Attendance Logs</span>
@@ -2721,7 +2939,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                 type="button"
                 className="btn btn-sm btn-primary"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '7px 14px' }}
-                onClick={() => setViewingMarCycle({ periodDates: 'Active Contract Period' })}
+                onClick={() => handleOpenMar({ periodDates: 'Active Contract Period' })}
               >
                 <FileText size={14} />
                 <span>View DAR Logs</span>
@@ -2833,7 +3051,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                       fontSize: '12.5px',
                       cursor: 'pointer',
                     }}
-                    onClick={() => setViewingAttendanceCycle(evalItem)}
+                    onClick={() => handleOpenAttendance(evalItem)}
                     title={`View Attendance Logs for ${evalItem.periodDates}`}
                   >
                     <Calendar size={13} /> View Attendance
@@ -2850,7 +3068,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
                       fontSize: '12.5px',
                       cursor: 'pointer',
                     }}
-                    onClick={() => setViewingMarCycle(evalItem)}
+                    onClick={() => handleOpenMar(evalItem)}
                     title={`View Accumulated DARs for ${evalItem.periodDates}`}
                   >
                     <FileText size={13} /> View DARs
@@ -2879,13 +3097,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                     }}
 
-                    onClick={() => {
-
-                      setViewingEvalCycle(evalItem);
-
-                      setActiveEvaluatorTab('depthead');
-
-                    }}
+                    onClick={() => handleOpenEval(evalItem)}
 
                     title={`View Evaluation Record for ${evalItem.periodDates}`}
 

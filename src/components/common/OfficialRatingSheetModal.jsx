@@ -20,15 +20,17 @@ function SingleRatingSheet({
   const currentScores = sheet.scores || {};
   const computedRawSum =
     sheet.rawScore !== null && sheet.rawScore !== undefined
-      ? sheet.rawScore
+      ? Number(sheet.rawScore)
       : criteria.reduce((acc, curr) => acc + (Number(currentScores[curr.id]) || 0), 0);
 
   const computedScaledScore =
-    sheet.scaledScore !== null && sheet.scaledScore !== undefined
-      ? sheet.scaledScore
-      : Math.round(((computedRawSum / 60) * 100) * 10) / 10;
+    Number(
+      sheet.scaledScore !== null && sheet.scaledScore !== undefined
+        ? sheet.scaledScore
+        : Math.round(((computedRawSum / 60) * 100) * 10) / 10
+    ) || 0;
 
-  const interpretationObj = getPerformanceInterpretation(computedScaledScore);
+  const interpretationObj = getPerformanceInterpretation(computedScaledScore) || { interpretation: 'Satisfactory' };
 
   const isPeer = sheet.evaluatorRole === 'Peer';
   const displayEvaluatorName = isPeer ? 'Peer Evaluator (Anonymized)' : (sheet.evaluatorName || '—');
@@ -290,10 +292,10 @@ function SingleRatingSheet({
                   background: '#fff',
                 }}
               >
-                {computedScaledScore.toFixed(1)}% ({interpretationObj.interpretation})
+                {Number(computedScaledScore || 0).toFixed(1)}% ({interpretationObj?.interpretation || 'Satisfactory'})
               </div>
               <div style={{ fontSize: '11px', fontWeight: 'normal', marginTop: '2px' }}>
-                Raw Score: {computedRawSum} / 60
+                Raw Score: {Number(computedRawSum || 0).toFixed(0)} / 60
               </div>
             </td>
           </tr>
@@ -519,6 +521,46 @@ export default function OfficialRatingSheetModal({
     window.print();
   };
 
+  const handleDownloadDoc = () => {
+    if (!printAreaRef.current) return;
+    const cleanPeriod = (contractPeriod || 'Cycle').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeEmpId = employee.idNumber || employee.fullName || 'Personnel';
+    const filename = `EVSU_COS_RatingSheet_${safeEmpId}_${cleanPeriod}.html`;
+    const printableHtml = printAreaRef.current.innerHTML;
+
+    const fullDocument = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EVSU Employee Performance Rating - ${employee.fullName || 'Official Form'}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 12.5px; line-height: 1.35; color: #000; margin: 0; padding: 24px; background: #fff; }
+    .no-print-bar { background: #1e293b; color: #fff; padding: 12px 18px; margin: -24px -24px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; font-family: sans-serif; }
+    .no-print-bar button { background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    @media print { .no-print-bar, .no-print { display: none !important; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="no-print-bar">
+    <span><b>Official Rating Sheet Document:</b> ${employee.fullName || 'Personnel'} (${contractPeriod})</span>
+    <button onclick="window.print()">Print / Save as PDF</button>
+  </div>
+  ${printableHtml}
+</body>
+</html>`;
+
+    const blob = new Blob([fullDocument], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       className="modal-overlay"
@@ -568,6 +610,16 @@ export default function OfficialRatingSheetModal({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={handleDownloadDoc}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+              title="Download official rating sheet document (.html / PDF)"
+            >
+              <Download size={15} />
+              <span>Download Form</span>
+            </button>
             <button
               type="button"
               className="btn btn-primary btn-sm"

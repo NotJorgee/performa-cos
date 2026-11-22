@@ -202,15 +202,56 @@ export default function ReportGenerator({
   const [showArchived, setShowArchived] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
 
+  const getStoredEmpId = () => {
+    if (typeof window === 'undefined') return '';
+    const hashQuery = window.location.hash.split('?')[1] || '';
+    const params = new URLSearchParams(hashQuery || window.location.search);
+    return params.get('empId') || sessionStorage.getItem('performa_records_empid') || '';
+  };
+
+  const handleSelectEmployee = (emp) => {
+    setSelectedEmp(emp);
+    if (typeof window !== 'undefined' && emp) {
+      const idKey = emp.idNumber || emp.id;
+      sessionStorage.setItem('performa_records_empid', idKey);
+      const baseHash = window.location.hash.split('?')[0] || '#/employee_records';
+      window.history.replaceState(null, '', `${baseHash}?empId=${encodeURIComponent(idKey)}`);
+    }
+  };
+
+  const handleBackToRoster = () => {
+    setSelectedEmp(null);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('performa_records_empid');
+      sessionStorage.removeItem('performa_records_subview');
+      sessionStorage.removeItem('performa_records_cycle');
+      const baseHash = window.location.hash.split('?')[0] || '#/employee_records';
+      window.history.replaceState(null, '', baseHash);
+    }
+    loadData();
+  };
+
+  // Restore selected employee on page refresh / direct link if available
+  useEffect(() => {
+    if (!selectedEmp && employees.length > 0) {
+      const storedId = getStoredEmpId();
+      if (storedId) {
+        const found = employees.find(
+          (e) => String(e.id) === String(storedId) || String(e.idNumber) === String(storedId)
+        );
+        if (found) {
+          setSelectedEmp(found);
+        }
+      }
+    }
+  }, [employees, selectedEmp]);
+
   // If viewing an employee's historical records
   if (selectedEmp) {
     return (
       <EmployeeRecordView
         employee={selectedEmp}
-        onBack={() => {
-          setSelectedEmp(null);
-          loadData();
-        }}
+        onBack={handleBackToRoster}
         backLabel={isDeptRestricted ? '← Back to Department Records' : '← Back to Employee Records'}
       />
     );
@@ -509,7 +550,7 @@ export default function ReportGenerator({
                       cursor: 'pointer',
                       fontWeight: 600,
                     }}
-                    onClick={() => setSelectedEmp(emp)}
+                    onClick={() => handleSelectEmployee(emp)}
                     title={`View and extract records for ${emp.fullName}`}
                   >
                     <FileText size={14} /> View Records
@@ -684,7 +725,7 @@ export default function ReportGenerator({
                           cursor: 'pointer',
                           background: '#fff',
                         }}
-                        onClick={() => setSelectedEmp(emp)}
+                        onClick={() => handleSelectEmployee(emp)}
                         title={`View historical evaluation records for ${emp.fullName}`}
                       >
                         <FileText size={14} /> View Records
