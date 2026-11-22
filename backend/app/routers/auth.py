@@ -186,6 +186,24 @@ def register(
     role = invite.role or payload.role or "COS Employee"
     dept_id = resolve_onboarding_department_id(db, role, invite.department_id or payload.department_id)
 
+    # Enforce single Department Head per department constraint
+    if role == "Department Head" and dept_id:
+        existing_dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.department_id == dept_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if existing_dh:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Registration blocked: This department already has an active Department Head ({existing_dh.full_name}). A new Department Head cannot be assigned until the incumbent is reassigned or archived by HR.",
+            )
+
     # 4. Starting date & contract expiration logic
     starting_date = payload.starting_date or datetime.date.today()
     contract_start_date = (payload.contract_start_date or starting_date) if role == "COS Employee" else None

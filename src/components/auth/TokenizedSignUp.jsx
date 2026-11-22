@@ -162,9 +162,21 @@ export default function TokenizedSignUp({
   const currentPassword = roleMode === 'cos' ? cosPassword : adminPassword;
   const { isValid: isPasswordComplex } = evaluatePasswordComplexity(currentPassword);
 
+  const isDeptHeadBlocked =
+    roleMode === 'admin' &&
+    adminRole === 'Department Head' &&
+    Boolean(tokenData?.current_department_head);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError(null);
+
+    if (isDeptHeadBlocked) {
+      setFormError(
+        `Registration blocked: This department already has an active Department Head (${tokenData.current_department_head.full_name}). A department cannot have multiple Department Heads. The incumbent must be reassigned or archived by HR before a new Department Head can register.`
+      );
+      return;
+    }
 
     const isCos = roleMode === 'cos';
     const pwd = isCos ? cosPassword : adminPassword;
@@ -938,28 +950,31 @@ export default function TokenizedSignUp({
                   {adminRole === 'Department Head' && (
                     <div
                       style={{
-                        marginTop: '6px',
-                        padding: '8px 12px',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        fontSize: '11.5px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '6px',
+                        marginTop: '8px',
+                        padding: '10px 14px',
+                        background: tokenData?.current_department_head ? '#fffbeb' : '#f0fdf4',
+                        border: `1.5px solid ${tokenData?.current_department_head ? '#fde68a' : '#bbf7d0'}`,
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        lineHeight: 1.5,
                       }}
                     >
-                      <span style={{ color: 'var(--ink-500)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <User size={13} color="var(--brand-700)" />
-                        Current Department Head on Record:
-                      </span>
-                      <b style={{ color: tokenData?.current_department_head ? 'var(--brand-700)' : 'var(--amber-700)' }}>
-                        {tokenData?.current_department_head
-                          ? `${tokenData.current_department_head.full_name} (${tokenData.current_department_head.email})`
-                          : 'Vacant / No Department Head Currently Assigned'}
-                      </b>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                        <span style={{ color: 'var(--ink-700)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <User size={14} color="var(--brand-700)" />
+                          Current Department Head on Record:
+                        </span>
+                        <b style={{ color: tokenData?.current_department_head ? '#b45309' : '#15803d' }}>
+                          {tokenData?.current_department_head
+                            ? `${tokenData.current_department_head.full_name} (${tokenData.current_department_head.email})`
+                            : 'Vacant (No Active Department Head)'}
+                        </b>
+                      </div>
+                      {tokenData?.current_department_head && (
+                        <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#92400e', borderTop: '1px solid #fef3c7', paddingTop: '6px' }}>
+                          <strong>Assignment Notice:</strong> A department cannot have more than one Department Head. A new Department Head cannot register for this department until the current incumbent is reassigned or archived by HR.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1144,21 +1159,27 @@ export default function TokenizedSignUp({
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={isSubmitting || isValidatingToken || !adminAgreed}
+                    disabled={isSubmitting || isValidatingToken || !adminAgreed || isDeptHeadBlocked}
                     style={{
                       width: '100%',
                       padding: '12px',
                       fontSize: '14px',
                       fontWeight: 800,
-                      cursor: adminAgreed ? 'pointer' : 'not-allowed',
-                      opacity: adminAgreed ? 1 : 0.45,
-                      filter: adminAgreed ? 'none' : 'grayscale(0.6)',
-                      background: adminAgreed ? 'var(--brand-700, #7a1128)' : '#6b7280',
+                      cursor: adminAgreed && !isDeptHeadBlocked ? 'pointer' : 'not-allowed',
+                      opacity: adminAgreed && !isDeptHeadBlocked ? 1 : 0.45,
+                      filter: adminAgreed && !isDeptHeadBlocked ? 'none' : 'grayscale(0.6)',
+                      background: isDeptHeadBlocked
+                        ? '#dc2626'
+                        : adminAgreed
+                        ? 'var(--brand-700, #7a1128)'
+                        : '#6b7280',
                       transition: 'all 0.2s ease',
-                      boxShadow: adminAgreed ? '0 2px 6px rgba(122, 12, 46, 0.25)' : 'none',
+                      boxShadow: adminAgreed && !isDeptHeadBlocked ? '0 2px 6px rgba(122, 12, 46, 0.25)' : 'none',
                     }}
                   >
-                    {isSubmitting
+                    {isDeptHeadBlocked
+                      ? 'Registration Blocked: Active Department Head Already Exists'
+                      : isSubmitting
                       ? 'Registering & Activating...'
                       : `Complete ${roleMode === 'cos' ? 'COS Staff' : 'Administrator'} Registration`}
                   </button>

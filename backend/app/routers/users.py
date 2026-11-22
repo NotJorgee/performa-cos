@@ -266,6 +266,26 @@ def admin_update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    target_role = payload.role if payload.role is not None else user.role
+    target_dept_id = payload.department_id if payload.department_id is not None else user.department_id
+    if target_role == "Department Head" and target_dept_id:
+        existing_dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.id != user_id,
+                models.UserAccount.department_id == target_dept_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if existing_dh:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot assign Department Head: {existing_dh.full_name} is already the active Department Head for this department. The incumbent must be reassigned or archived first.",
+            )
+
     if payload.full_name is not None:
         user.full_name = payload.full_name
     if payload.email is not None:
@@ -315,6 +335,24 @@ def transfer_department(
     dept = db.query(models.Department).filter(models.Department.id == payload.department_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Target department not found.")
+
+    if user.role == "Department Head":
+        existing_dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.id != user_id,
+                models.UserAccount.department_id == payload.department_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if existing_dh:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot transfer Department Head: {existing_dh.full_name} is already the active Department Head for {dept.name}. The incumbent must be reassigned or archived first.",
+            )
 
     old_dept_id = user.department_id
     user.department_id = payload.department_id

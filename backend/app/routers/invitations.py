@@ -51,6 +51,24 @@ def create_invitation(
 
     dept_id = resolve_onboarding_department_id(db, payload.role, payload.department_id, payload.department_name)
 
+    # Prevent issuing Department Head invitations for departments with an active Department Head
+    if payload.role == "Department Head" and dept_id:
+        existing_dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.department_id == dept_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if existing_dh:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot issue invitation: {existing_dh.full_name} is currently the active Department Head for this department. The incumbent must be reassigned or archived before a new Department Head can be invited.",
+            )
+
     invitation = models.InvitationToken(
         token=token_str,
         email=payload.email,
