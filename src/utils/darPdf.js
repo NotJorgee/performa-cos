@@ -1,6 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { EVSU_SEAL_BASE64 } from './evsuSealBase64';
+import { getDepartmentSupervisor } from './departments';
 
 /**
  * Generate and automatically trigger download of an official EVSU Daily Accomplishment Report (DAR) PDF
@@ -13,15 +14,22 @@ export async function generateDarPdf({
   department = '',
   cutoffLabel = '',
   records = [],
-  supervisorName = 'Immediate Supervisor (Dept Head)',
+  supervisorName = '',
 }) {
   const empName = employeeName || employee?.fullName || 'COS Personnel';
   const empId = employeeIdNumber || employee?.idNumber || employee?.id || '—';
   const deptName =
     typeof department === 'object' && department !== null
       ? department.name || '—'
-    : department || employee?.department || '—';
+      : department || employee?.department || '—';
   const period = cutoffLabel || 'Accumulated DAR Logs';
+
+  const resolvedSupervisor =
+    supervisorName &&
+    supervisorName !== 'Immediate Supervisor (Dept Head)' &&
+    supervisorName !== 'Immediate Supervisor'
+      ? supervisorName
+      : getDepartmentSupervisor(department || employee?.department);
 
   const cleanPeriod = period.replace(/[^a-zA-Z0-9]/g, '_');
   const safeEmp = (employee?.idNumber || employeeIdNumber || empName).replace(/[^a-zA-Z0-9]/g, '_');
@@ -147,25 +155,25 @@ export async function generateDarPdf({
 
     <!-- Official Sign-Off Signatures -->
     <div style="display: flex; justify-content: space-between; margin-top: 28px; font-size: 11px; line-height: 1.6;">
-      <div style="width: 30%; text-align: center;">
+      <div style="width: 31%; text-align: center;">
         <div style="font-weight: bold; margin-bottom: 38px;">Prepared By:</div>
-        <div style="border-top: 1px solid #000; paddingTop: 4px; font-weight: bold; font-size: 11.5px;">
+        <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 11.5px; white-space: nowrap;">
           ${empName.toUpperCase()}
         </div>
         <div style="font-size: 10px; color: #333;">COS Employee / Personnel</div>
       </div>
 
-      <div style="width: 30%; text-align: center;">
+      <div style="width: 31%; text-align: center;">
         <div style="font-weight: bold; margin-bottom: 38px;">Noted &amp; Verified By:</div>
-        <div style="border-top: 1px solid #000; paddingTop: 4px; font-weight: bold; font-size: 11.5px;">
-          ${supervisorName.toUpperCase()}
+        <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 11.5px; white-space: nowrap;">
+          ${resolvedSupervisor.toUpperCase()}
         </div>
         <div style="font-size: 10px; color: #333;">Immediate Supervisor (Dept Head)</div>
       </div>
 
-      <div style="width: 30%; text-align: center;">
+      <div style="width: 31%; text-align: center;">
         <div style="font-weight: bold; margin-bottom: 38px;">Approved &amp; Audited:</div>
-        <div style="border-top: 1px solid #000; paddingTop: 4px; font-weight: bold; font-size: 11.5px;">
+        <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 11.5px; white-space: nowrap;">
           HRMDO IN-CHARGE
         </div>
         <div style="font-size: 10px; color: #333;">Human Resource Management Office</div>

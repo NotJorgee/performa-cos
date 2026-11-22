@@ -211,4 +211,44 @@ export function getDepartmentDomain(deptName, explicitDomain = null) {
   };
 }
 
+/**
+ * Resolves the designated Department Head / Immediate Supervisor name
+ * for official signing on evaluation sheets and Daily Accomplishment Reports (DAR).
+ *
+ * @param {string|object} department
+ * @returns {string} Supervisor full name
+ */
+export function getDepartmentSupervisor(department) {
+  if (department && typeof department === 'object') {
+    if (department.supervisor && department.supervisor.full_name) {
+      return department.supervisor.full_name;
+    }
+    if (department.head_name) {
+      return department.head_name;
+    }
+    if (department.headName) {
+      return department.headName;
+    }
+  }
+
+  const deptStr = typeof department === 'object' && department !== null ? (department.name || '') : (department || '');
+  const norm = deptStr.toLowerCase().trim();
+
+  if (norm.includes('computer studies') || norm.includes('csd')) return 'Jane A. Doe';
+  if (norm.includes('technology')) return 'Engr. Juan Perez';
+  if (norm.includes('mechanical') || norm.includes('civil') || norm.includes('engineering')) return 'Engr. David Lim';
+  if (norm.includes('library')) return 'Mrs. Rosalina Gomez';
+  if (norm.includes('maintenance') || norm.includes('janitorial') || norm.includes('meso')) return 'Engr. Mario Delgado';
+  if (norm.includes('education')) return 'Dr. Alicia Tan';
+  if (norm.includes('hospitality') || norm.includes('tourism')) return 'Prof. Maria Santos';
+  if (norm.includes('guidance')) return 'Mrs. Elena Cruz';
+  if (norm.includes('registrar')) return 'Mr. Roberto Reyes';
+  if (norm.includes('clinic')) return 'Dr. Carmela Bautista';
+  if (norm.includes('procurement')) return 'Atty. Victoriano Flores';
+  if (norm.includes('hrmdo') || norm.includes('hr')) return 'Dr. Maria Clara Ramos';
+  if (norm.includes('finance') || norm.includes('cashier')) return 'Mr. Antonio Silva';
+
+  return 'Jane A. Doe';
+}
+
 export default EVSU_DEPARTMENTS;

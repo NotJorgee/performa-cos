@@ -406,6 +406,7 @@ export default function IntentReview({
         employeeId={viewingMarEmp.id || viewingMarEmp.userId}
         employeeName={viewingMarEmp.fullName}
         department={viewingMarEmp.department}
+        supervisorName={api?.auth?.getCurrentUser()?.fullName}
         onBack={() => setViewingMarEmp(null)}
         backLabel={evaluatingEmp ? "Back to Evaluation" : "Back to Renewals & Evaluations"}
       />

@@ -45,6 +45,7 @@ import OfficialRatingSheetModal from '../common/OfficialRatingSheetModal';
 import { generateEvaluationPdf } from '../../utils/evaluationPdf';
 
 import Toast from '../common/Toast';
+import { getDepartmentSupervisor } from '../../utils/departments';
 
 import {
 
@@ -55,33 +56,6 @@ import {
   ComparativeTrajectoryBadge,
 
 } from '../../utils/comparativeAnalytics';
-
-
-
-// Department Head (Immediate Supervisor) Mapping Helper
-
-const getDepartmentSupervisor = (department) => {
-
-  const deptStr = typeof department === 'object' && department !== null ? (department.name || '') : (department || '');
-  const norm = deptStr.toLowerCase();
-
-  if (norm.includes('computer studies')) return 'Jane A. Doe';
-
-  if (norm.includes('technology')) return 'Engr. Juan Perez';
-
-  if (norm.includes('mechanical') || norm.includes('civil') || norm.includes('engineering')) return 'Engr. David Lim';
-
-  if (norm.includes('library')) return 'Mrs. Rosalina Gomez';
-
-  if (norm.includes('maintenance') || norm.includes('janitorial') || norm.includes('meso')) return 'Engr. Mario Delgado';
-
-  if (norm.includes('education')) return 'Dr. Alicia Tan';
-
-  return 'Immediate Supervisor (Dept Head)';
-
-};
-
-
 
 export const getScoreInterpretationColor = (interpretation, score) => {
 
@@ -1617,6 +1591,7 @@ export default function EmployeeRecordView({
           employeeIdNumber={employee.idNumber}
           employeeName={employee.fullName}
           department={employee.department}
+          supervisorName={getDepartmentSupervisor(employee.department)}
           cyclePeriod={viewingMarCycle.periodDates}
           backLabel="Back to Personnel Record"
           onBack={handleCloseMar}

@@ -13,13 +13,16 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import evsuSeal from '../../assets/images/evsu-seal.png';
+import Toast from '../common/Toast';
 import { generateDarPdf } from '../../utils/darPdf';
+import { getDepartmentSupervisor } from '../../utils/departments';
 
 export default function MonthlyReport({
   employeeId = null,
   employeeIdNumber = null,
   employeeName = 'Jorge Mikhael Gubantes',
   department = 'Computer Studies Department',
+  supervisorName = null,
   onBack = null,
   backLabel = 'Back to Renewals & Evaluations',
   onNavigate = null,
@@ -32,9 +35,16 @@ export default function MonthlyReport({
     ? (department.name || 'Computer Studies Department')
     : (department || 'Computer Studies Department');
 
+  const resolvedSupervisor =
+    supervisorName ||
+    (typeof department === 'object' && department?.supervisor?.full_name ? department.supervisor.full_name : null) ||
+    getDepartmentSupervisor(department);
+
   const [records, setRecords] = useState(Array.isArray(initialRecords) ? initialRecords : []);
   const [isLoading, setIsLoading] = useState(!Array.isArray(initialRecords));
   const [fetchError, setFetchError] = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   // Quincena & Filter States
   const now = new Date();
@@ -178,28 +188,41 @@ export default function MonthlyReport({
     if (isExportingPdf) return;
     try {
       setIsExportingPdf(true);
+      setToastType('info');
+      setToastMsg('Generating official DAR report PDF...');
+      let savedFilename = 'EVSU_COS_DAR.pdf';
       if (onDownload) {
-        await onDownload(filteredRecords, cutoffLabel);
+        const res = await onDownload(filteredRecords, cutoffLabel);
+        if (typeof res === 'string') savedFilename = res;
       } else {
-        await generateDarPdf({
+        savedFilename = await generateDarPdf({
           employee: { idNumber: employeeIdNumber },
           employeeName,
           employeeIdNumber,
           department: safeDeptName,
           cutoffLabel,
           records: filteredRecords,
+          supervisorName: resolvedSupervisor,
         });
       }
+      setToastType('success');
+      setToastMsg(`Successfully generated and downloaded DAR PDF: ${savedFilename}`);
     } catch (err) {
       console.error('Failed to export DAR PDF:', err);
+      setToastType('error');
+      setToastMsg('Failed to generate DAR PDF. Opening print dialog...');
       window.print();
     } finally {
       setIsExportingPdf(false);
+      setTimeout(() => setToastMsg(null), 4500);
     }
   };
 
   return (
     <div className="mar-container">
+      {/* Institutional Floating Toast Notification */}
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
+
       {/* Printable Letterhead Header (Always rendered for @media print, hidden on screen) */}
       <div className="mar-print-header" style={{ display: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginBottom: '8px' }}>
@@ -503,10 +526,10 @@ export default function MonthlyReport({
 
         <div style={{ width: '30%', textAlign: 'center' }}>
           <div style={{ fontSize: '10pt', marginBottom: '40px', fontWeight: 600 }}>Noted &amp; Verified By:</div>
-          <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontWeight: 700, fontSize: '10pt' }}>
-            DEPARTMENT HEAD
+          <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontWeight: 700, fontSize: '10pt', whiteSpace: 'nowrap' }}>
+            {resolvedSupervisor.toUpperCase()}
           </div>
-          <div style={{ fontSize: '9pt', color: '#444' }}>{safeDeptName}</div>
+          <div style={{ fontSize: '9pt', color: '#444' }}>Immediate Supervisor (Dept Head)</div>
         </div>
 
         <div style={{ width: '30%', textAlign: 'center' }}>
