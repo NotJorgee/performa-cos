@@ -275,7 +275,14 @@ def list_evaluations(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    return db.query(models.EvaluationRecord).all()
+    query = db.query(models.EvaluationRecord)
+    if current_user.role == "COS Employee":
+        query = query.filter(models.EvaluationRecord.employee_id == current_user.id)
+    elif current_user.role == "Department Head" and current_user.department_id:
+        query = query.join(models.UserAccount, models.EvaluationRecord.employee_id == models.UserAccount.id).filter(
+            models.UserAccount.department_id == current_user.department_id
+        )
+    return query.all()
 
 
 @app.post("/api/evaluations/{eval_id}/score")
@@ -285,9 +292,22 @@ def submit_evaluation_score(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
+    if current_user.role not in ["Department Head", "HR Personnel"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Department Heads or HR Personnel can record evaluation scores.",
+        )
+
     ev = db.query(models.EvaluationRecord).filter(models.EvaluationRecord.id == eval_id).first()
     if not ev:
         raise HTTPException(status_code=404, detail="Evaluation record not found.")
+
+    target_emp = db.query(models.UserAccount).filter(models.UserAccount.id == ev.employee_id).first()
+    if current_user.role == "Department Head" and target_emp and target_emp.department_id != current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Department Heads can only evaluate personnel within their assigned department.",
+        )
 
     # Universal Immediate Supervisor Evaluation (100% Definitive Score)
     ev.supervisor_score = payload.raw_score
@@ -332,6 +352,22 @@ def submit_employee_evaluation_score(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
+    if current_user.role not in ["Department Head", "HR Personnel"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Department Heads or HR Personnel can submit evaluation scores.",
+        )
+
+    target_emp = db.query(models.UserAccount).filter(models.UserAccount.id == employee_id).first()
+    if not target_emp:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    if current_user.role == "Department Head" and target_emp.department_id != current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Department Heads can only evaluate personnel within their assigned department.",
+        )
+
     ev = (
         db.query(models.EvaluationRecord)
         .filter(models.EvaluationRecord.employee_id == employee_id)
@@ -393,9 +429,22 @@ def fast_track_reject(
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """Fast-Track Non-Renewal Rejection (UC-06)."""
+    if current_user.role not in ["Department Head", "HR Personnel"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Department Heads or HR Personnel can record fast-track rejection grounds.",
+        )
+
     ev = db.query(models.EvaluationRecord).filter(models.EvaluationRecord.id == eval_id).first()
     if not ev:
         raise HTTPException(status_code=404, detail="Evaluation record not found.")
+
+    target_emp = db.query(models.UserAccount).filter(models.UserAccount.id == ev.employee_id).first()
+    if current_user.role == "Department Head" and target_emp and target_emp.department_id != current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Department Heads can only review personnel within their assigned department.",
+        )
 
     ev.is_fast_track_rejected = True
     ev.fast_track_category = payload.category
@@ -427,6 +476,12 @@ def start_employee_evaluation(
     emp = db.query(models.UserAccount).filter(models.UserAccount.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
+
+    if current_user.role == "Department Head" and emp.department_id != current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Department Heads can only initiate evaluations for personnel within their own department.",
+        )
 
     ev = (
         db.query(models.EvaluationRecord)
@@ -522,7 +577,9 @@ def list_renewals(
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     query = db.query(models.RenewalApplication)
-    if current_user.role == "Department Head" and current_user.department_id:
+    if current_user.role == "COS Employee":
+        query = query.filter(models.RenewalApplication.employee_id == current_user.id)
+    elif current_user.role == "Department Head" and current_user.department_id:
         query = query.join(models.UserAccount, models.RenewalApplication.employee_id == models.UserAccount.id).filter(
             models.UserAccount.department_id == current_user.department_id
         )
@@ -866,6 +923,12 @@ def endorse_renewal(
     emp = db.query(models.UserAccount).filter(models.UserAccount.id == renewal.employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found.")
+
+    if current_user.role == "Department Head" and emp.department_id != current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Department Heads can only endorse personnel within their assigned department.",
+        )
 
     is_rec = payload.status == "Recommended"
     renewal.department_head_endorsement = "Endorsed" if is_rec else "Disapproved"

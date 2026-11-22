@@ -68,6 +68,25 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account not found or inactive.",
         )
+
+    # Token revocation check: block replayed JWTs after logout or session termination
+    t_hash = hash_token(token)
+    revoked = (
+        db.query(models.UserSession)
+        .filter(
+            models.UserSession.user_id == user_id,
+            models.UserSession.token_hash == t_hash,
+            models.UserSession.is_revoked == True,
+        )
+        .first()
+    )
+    if revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked or logged out. Please re-authenticate.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
 
 
