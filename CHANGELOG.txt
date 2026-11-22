@@ -2,6 +2,23 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-22
+Fix: Dynamic Evaluation Scoring Resolution in COS Personnel Records & Excel Exports
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Dynamic Evaluation Scoring & Ratings in ReportGenerator:
+   - In src/components/reports/ReportGenerator.jsx:
+     * Resolved issue where `avgScore`, `latestScore`, `previousScore`, and `latestRating` were hardcoded to `null`, causing the main table to display blank dashes (`—`) and Excel exports to output `N/A` and `Unrated`.
+     * Upgraded data loading to execute parallel requests via `Promise.allSettled([api.users.list({ role: 'COS Employee' }), api.evaluations.list()])`.
+     * Added `enrichEmployeesWithEvaluations` engine that cross-references live database evaluation records (`models.EvaluationRecord`) by `employee_id` and employee number, resolving completed scores, official SPMS adjectival ratings, and cycle histories.
+     * Integrated fallback historical evaluation cycles for seed/demo personnel via `getEmployeeHistoricalEvaluations`.
+     * Updated `onBack` in `EmployeeRecordView` modal to automatically trigger `loadData()`, ensuring that evaluations completed or edited inside a personnel dossier immediately update in the roster table and Excel exports without page reload.
+     * Formatted numeric scores to 1 decimal place across both the active/archived tables and the `.xlsx` export.
+
+================================================================================
+
+UPDATE NOTES: 2026-11-22
 Feature: System-Wide Transition to Auto-Fitted Excel (.xlsx) & "Export Data" Button Standardization
 ================================================================================
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Download, Check, Archive, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import Toast from '../common/Toast';
-import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
+import EmployeeRecordView, { getScoreInterpretationColor, getEmployeeHistoricalEvaluations } from '../management/EmployeeRecordView';
 import { getComparativeTrajectory, ComparativeTrajectoryBadge } from '../../utils/comparativeAnalytics';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -12,6 +12,120 @@ import {
   EVSU_DEPARTMENT_GROUPS,
   getDepartmentDomain,
 } from '../../utils/departments';
+
+const getScoreLabel = (score) => {
+  if (score === null || score === undefined || Number.isNaN(Number(score))) return 'Unrated';
+  const num = Number(score);
+  if (num >= 90) return 'Outstanding';
+  if (num >= 70) return 'Very Satisfactory';
+  if (num >= 50) return 'Satisfactory';
+  if (num >= 30) return 'Needs Improvement';
+  return 'Unsatisfactory';
+};
+
+const enrichEmployeesWithEvaluations = (rawUsers, evalsList = []) => {
+  if (!Array.isArray(rawUsers)) return [];
+  return rawUsers.map((u) => {
+    const uId = u.id;
+    const uEmpNum = (u.employee_id_number || u.idNumber || '').trim();
+    const uName = (u.full_name || u.fullName || '').trim();
+    const uEmail = u.email || '';
+    const uDept = (u.department && typeof u.department === 'object' && u.department.name)
+      ? u.department.name
+      : (u.department_name || u.department || 'HRMDO Office');
+
+    // 1. Check live completed evaluations from database (models.EvaluationRecord)
+    const userEvals = (evalsList || []).filter((e) => {
+      const matchId = e.employee_id && (Number(e.employee_id) === Number(uId));
+      const matchEmpNum = uEmpNum && e.employee_id_number && (e.employee_id_number.trim() === uEmpNum);
+      const isCandidate = matchId || matchEmpNum;
+      const hasScore = e.status === 'Completed' || (e.final_score !== null && e.final_score !== undefined) || (e.supervisor_score !== null && e.supervisor_score !== undefined);
+      return isCandidate && hasScore;
+    });
+
+    userEvals.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || b.id - a.id);
+
+    let latestScore = u.latestScore ?? null;
+    let latestRating = u.latestRating ?? null;
+    let previousScore = u.previousScore ?? null;
+    let avgScore = u.avgScore ?? null;
+    let totalContracts = u.total_contracts || u.totalContracts || 0;
+
+    if (userEvals.length > 0) {
+      const latest = userEvals[0];
+      const rawLatest = latest.final_score ?? latest.supervisor_score ?? null;
+      latestScore = rawLatest !== null && rawLatest !== undefined ? Number(rawLatest) : null;
+      latestRating = latest.rating_label || (latestScore !== null ? getScoreLabel(latestScore) : 'Evaluated');
+
+      if (userEvals.length > 1) {
+        const rawPrev = userEvals[1].final_score ?? userEvals[1].supervisor_score ?? null;
+        previousScore = rawPrev !== null && rawPrev !== undefined ? Number(rawPrev) : null;
+      }
+
+      const validScores = userEvals
+        .map((e) => e.final_score ?? e.supervisor_score)
+        .filter((s) => s !== null && s !== undefined && !Number.isNaN(Number(s)))
+        .map(Number);
+
+      avgScore = validScores.length > 0
+        ? validScores.reduce((sum, s) => sum + s, 0) / validScores.length
+        : latestScore;
+
+      totalContracts = Math.max(totalContracts, userEvals.length, 1);
+    } else {
+      // 2. Check fallback historical evaluations for demo/seed personnel
+      const pseudoEmp = { idNumber: uEmpNum, fullName: uName, email: uEmail, department: uDept };
+      const historical = getEmployeeHistoricalEvaluations(pseudoEmp);
+      if (historical && historical.length > 0) {
+        const latestHist = historical[0];
+        const rawLatest = latestHist.finalGrade ?? latestHist.supervisorScore ?? null;
+        latestScore = rawLatest !== null && rawLatest !== undefined ? Number(rawLatest) : null;
+        latestRating = latestHist.interpretation || (latestScore !== null ? getScoreLabel(latestScore) : 'Evaluated');
+
+        if (historical.length > 1) {
+          const rawPrev = historical[1].finalGrade ?? historical[1].supervisorScore ?? null;
+          previousScore = rawPrev !== null && rawPrev !== undefined ? Number(rawPrev) : null;
+        }
+
+        const validScores = historical
+          .map((h) => h.finalGrade ?? h.supervisorScore)
+          .filter((s) => s !== null && s !== undefined && !Number.isNaN(Number(s)))
+          .map(Number);
+
+        avgScore = validScores.length > 0
+          ? validScores.reduce((sum, s) => sum + s, 0) / validScores.length
+          : latestScore;
+
+        totalContracts = Math.max(totalContracts, historical.length, 1);
+      }
+    }
+
+    if (latestScore !== null && !latestRating) {
+      latestRating = getScoreLabel(latestScore);
+    }
+
+    return {
+      id: uId,
+      idNumber: uEmpNum || 'N/A',
+      fullName: uName,
+      email: uEmail,
+      department: uDept,
+      dateAppointed: u.date_appointed || u.dateAppointed || 'N/A',
+      contractEndDate: u.contract_end_date || u.contractEndDate || 'N/A',
+      totalContracts: totalContracts || 1,
+      contactNumber: u.contact_number || u.contactNumber || '',
+      officeLocation: u.office_location || u.officeLocation || '',
+      alternateEmail: u.alternate_email || u.alternateEmail || '',
+      emergencyContact: u.emergency_contact || u.emergencyContact || '',
+      avatarUrl: u.avatar_url || u.avatarUrl || null,
+      avgScore: avgScore !== null && avgScore !== undefined ? Number(avgScore) : null,
+      latestScore: latestScore !== null && latestScore !== undefined ? Number(latestScore) : null,
+      previousScore: previousScore !== null && previousScore !== undefined ? Number(previousScore) : null,
+      latestRating,
+      status: u.is_archived || u.status === 'Archived' ? 'Archived' : (u.is_active === false || u.status === 'Inactive' ? 'Inactive' : 'Active'),
+    };
+  });
+};
 
 export default function ReportGenerator({
   employees: propEmployees = [],
@@ -27,51 +141,38 @@ export default function ReportGenerator({
   const [employees, setEmployees] = useState(propEmployees);
   const [isLoading, setIsLoading] = useState(propEmployees.length === 0);
 
-  useEffect(() => {
-    if (propEmployees && propEmployees.length > 0) {
-      setEmployees(propEmployees.filter((u) => !u.role || u.role === 'COS Employee'));
-      return;
-    }
-    let isMounted = true;
+  const loadData = async () => {
     setIsLoading(true);
-    api.users
-      .list({ role: 'COS Employee' })
-      .then((users) => {
-        if (!isMounted) return;
-        if (Array.isArray(users)) {
-          const cosUsers = users.filter((u) => u.role === 'COS Employee');
-          const mapped = cosUsers.map((u) => ({
-            id: u.id,
-            idNumber: u.employee_id_number || 'N/A',
-            fullName: u.full_name,
-            email: u.email,
-            department: (u.department && typeof u.department === 'object' && u.department.name) ? u.department.name : (u.department_name || 'HRMDO Office'),
-            dateAppointed: u.date_appointed || 'N/A',
-            contractEndDate: u.contract_end_date || 'N/A',
-            totalContracts: u.total_contracts || 0,
-            contactNumber: u.contact_number || '',
-            officeLocation: u.office_location || '',
-            alternateEmail: u.alternate_email || '',
-            emergencyContact: u.emergency_contact || '',
-            avatarUrl: u.avatar_url || null,
-            avgScore: null,
-            latestScore: null,
-            previousScore: null,
-            latestRating: null,
-            status: u.is_archived ? 'Archived' : u.is_active ? 'Active' : 'Inactive',
-          }));
-          setEmployees(mapped);
+    try {
+      if (propEmployees && propEmployees.length > 0) {
+        let evals = [];
+        try {
+          const evalsRes = await api.evaluations.list();
+          if (Array.isArray(evalsRes)) evals = evalsRes;
+        } catch (e) {
+          console.warn('Evaluations fetch warning:', e);
         }
-      })
-      .catch((err) => {
-        console.warn('API users fetch notice in ReportGenerator:', err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
+        const filtered = propEmployees.filter((u) => !u.role || u.role === 'COS Employee');
+        setEmployees(enrichEmployeesWithEvaluations(filtered, evals));
+      } else {
+        const [usersRes, evalsRes] = await Promise.allSettled([
+          api.users.list({ role: 'COS Employee' }),
+          api.evaluations.list(),
+        ]);
+        const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
+        const evals = evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value) ? evalsRes.value : [];
+        const cosUsers = users.filter((u) => u.role === 'COS Employee');
+        setEmployees(enrichEmployeesWithEvaluations(cosUsers, evals));
+      }
+    } catch (err) {
+      console.warn('API users/evaluations fetch notice in ReportGenerator:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [propEmployees]);
 
   const [selectedEmp, setSelectedEmp] = useState(null);
@@ -85,7 +186,10 @@ export default function ReportGenerator({
     return (
       <EmployeeRecordView
         employee={selectedEmp}
-        onBack={() => setSelectedEmp(null)}
+        onBack={() => {
+          setSelectedEmp(null);
+          loadData();
+        }}
         backLabel={isDeptRestricted ? '← Back to Department Records' : '← Back to Employee Records'}
       />
     );
@@ -146,7 +250,7 @@ export default function ReportGenerator({
       emp.department || '',
       emp.totalContracts || 1,
       emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
-      emp.latestScore || 'N/A',
+      emp.latestScore !== undefined && emp.latestScore !== null ? Number(emp.latestScore).toFixed(1) : 'N/A',
       emp.latestRating || 'Unrated',
       getCleanTrajectoryText(emp),
       emp.status || 'Active',
@@ -358,7 +462,7 @@ export default function ReportGenerator({
                             getScoreInterpretationColor(emp.latestRating, emp.latestScore).className
                           }`}
                         >
-                          {emp.latestScore}
+                          {Number(emp.latestScore).toFixed(1)}
                         </span>
                         <ComparativeTrajectoryBadge
                           currentScore={emp.latestScore}
@@ -533,7 +637,7 @@ export default function ReportGenerator({
                                 getScoreInterpretationColor(emp.latestRating, emp.latestScore).className
                               }`}
                             >
-                              {emp.latestScore}
+                              {Number(emp.latestScore).toFixed(1)}
                             </span>
                             <ComparativeTrajectoryBadge
                               currentScore={emp.latestScore}
