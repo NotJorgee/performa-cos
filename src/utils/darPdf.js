@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { EVSU_SEAL_BASE64 } from './evsuSealBase64';
-import { getDepartmentSupervisor } from './departments';
+import { getDepartmentSupervisor, isGenericSupervisorPlaceholder } from './departments';
 
 /**
  * Generate and automatically trigger download of an official EVSU Daily Accomplishment Report (DAR) PDF
@@ -25,9 +25,7 @@ export async function generateDarPdf({
   const period = cutoffLabel || 'Accumulated DAR Logs';
 
   const resolvedSupervisor =
-    supervisorName &&
-    supervisorName !== 'Immediate Supervisor (Dept Head)' &&
-    supervisorName !== 'Immediate Supervisor'
+    supervisorName && !isGenericSupervisorPlaceholder(supervisorName)
       ? supervisorName
       : getDepartmentSupervisor(department || employee?.department);
 

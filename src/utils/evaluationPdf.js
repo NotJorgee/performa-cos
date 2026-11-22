@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { EVSU_PERFORMANCE_CRITERIA, getPerformanceInterpretation } from '../components/common/DynamicRubric';
 import { EVSU_SEAL_BASE64 } from './evsuSealBase64';
+import { getDepartmentSupervisor, isGenericSupervisorPlaceholder } from './departments';
 
 /**
  * Distribute a percentage score (0-100) across 6 rubric criteria using valid discrete scale values (2, 4, 6, 8, 10, totaling max 60 pts)
@@ -73,10 +74,15 @@ export async function exportElementToPdf(element, filename = 'document.pdf') {
 export async function generateEvaluationPdf({
   employee = {},
   cycle = {},
-  supervisorName = 'Immediate Supervisor (Dept Head)',
+  supervisorName = '',
   qualitativeStrengths = '',
   qualitativeRecommendations = '',
 }) {
+  const resolvedSupervisor =
+    supervisorName && !isGenericSupervisorPlaceholder(supervisorName)
+      ? supervisorName
+      : getDepartmentSupervisor(employee?.department);
+
   const scoreVal = Number(cycle.supervisorScore ?? cycle.finalGrade ?? employee?.latestScore ?? 85);
   const rawSum =
     cycle.rawScore !== undefined && cycle.rawScore !== null
@@ -249,7 +255,7 @@ export async function generateEvaluationPdf({
     <!-- Sign-Off Block -->
     <div style="font-size: 11.5px; line-height: 1.7;">
       <div style="width: 100%;">
-        <div><b>Rated by:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${supervisorName}</span></div>
+        <div><b>Rated by:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${resolvedSupervisor}</span></div>
         <div><b>Position:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">Immediate Supervisor (Dept Head)</span></div>
         <div><b>Date:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${cycle.evaluationDate || 'Dec 18, 2026'}</span></div>
         <div><b>Signature:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">&nbsp;</span></div>

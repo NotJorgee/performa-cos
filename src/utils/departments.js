@@ -212,6 +212,27 @@ export function getDepartmentDomain(deptName, explicitDomain = null) {
 }
 
 /**
+ * Checks whether a given supervisor name string is a generic role placeholder
+ * rather than an actual person's full name.
+ *
+ * @param {string} name
+ * @returns {boolean} true if name is a generic role label
+ */
+export function isGenericSupervisorPlaceholder(name) {
+  if (!name || typeof name !== 'string') return true;
+  const clean = name.trim().toLowerCase();
+  if (!clean || clean === '—' || clean === '-' || clean === 'n/a') return true;
+  return (
+    clean.includes('immediate supervisor') ||
+    clean.includes('dept head') ||
+    clean.includes('department head') ||
+    clean === 'supervisor' ||
+    clean === 'evaluator' ||
+    clean === 'hrmdo in-charge'
+  );
+}
+
+/**
  * Resolves the designated Department Head / Immediate Supervisor name
  * for official signing on evaluation sheets and Daily Accomplishment Reports (DAR).
  *

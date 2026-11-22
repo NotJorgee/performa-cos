@@ -15,7 +15,7 @@ import { api } from '../../services/api';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import Toast from '../common/Toast';
 import { generateDarPdf } from '../../utils/darPdf';
-import { getDepartmentSupervisor } from '../../utils/departments';
+import { getDepartmentSupervisor, isGenericSupervisorPlaceholder } from '../../utils/departments';
 
 export default function MonthlyReport({
   employeeId = null,
@@ -36,7 +36,7 @@ export default function MonthlyReport({
     : (department || 'Computer Studies Department');
 
   const resolvedSupervisor =
-    supervisorName ||
+    (supervisorName && !isGenericSupervisorPlaceholder(supervisorName) ? supervisorName : null) ||
     (typeof department === 'object' && department?.supervisor?.full_name ? department.supervisor.full_name : null) ||
     getDepartmentSupervisor(department);
 
