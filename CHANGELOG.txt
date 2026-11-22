@@ -2,6 +2,27 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-22
+Feature: Auto-Fitted Excel (.xlsx) Export & Unicode BOM Formatting
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Auto-Fitted Microsoft Excel (.xlsx) Export:
+   - In src/utils/excelExport.js:
+     * Implemented `exportToExcel` utility powered by `xlsx`.
+     * Dynamically computes character column widths (`!cols`) based on cell contents with comfortable character padding (+4 chars, minimum 12 chars).
+     * Eliminates text truncation in Microsoft Excel without requiring manual column extension or header dragging.
+   - In src/components/reports/ReportGenerator.jsx:
+     * Added prominent "Export Excel (.xlsx)" action alongside "Export CSV".
+     * Generates native Excel workbook with auto-fitted columns for Employee ID, Full Name, Institutional Email, Department, and Performance Ratings.
+     * Cleaned trajectory text to remove corrupted symbol glyphs.
+
+2. CSV UTF-8 Encoding Fix:
+   - Added UTF-8 Byte Order Mark (`\uFEFF`) to CSV exports in ReportGenerator and ExecutiveAnalytics to prevent Excel ANSI character corruption (`â"...`).
+
+================================================================================
+
+UPDATE NOTES: 2026-11-22
 Terminology Standardization: Universal Adoption of "Performance Evaluation"
 ================================================================================
 

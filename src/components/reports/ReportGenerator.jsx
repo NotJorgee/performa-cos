@@ -4,6 +4,7 @@ import { Download, Check, Archive, FileText, ChevronDown, ChevronUp } from 'luci
 import Toast from '../common/Toast';
 import EmployeeRecordView, { getScoreInterpretationColor } from '../management/EmployeeRecordView';
 import { getComparativeTrajectory, ComparativeTrajectoryBadge } from '../../utils/comparativeAnalytics';
+import { exportToExcel } from '../../utils/excelExport';
 
 import {
   EVSU_DEPARTMENTS,
@@ -116,6 +117,60 @@ export default function ReportGenerator({
   const activeEmployees = filteredEmployees.filter((emp) => emp.status !== 'Archived');
   const archivedEmployees = filteredEmployees.filter((emp) => emp.status === 'Archived');
 
+  const getCleanTrajectoryText = (emp) => {
+    const traj = getComparativeTrajectory(emp.latestScore, emp.previousScore);
+    if (!traj) return 'Baseline (Initial Contract)';
+    return (traj.badgeText || 'Baseline')
+      .replace(/^[→▲▼▬]\s*/, '')
+      .trim();
+  };
+
+  const handleExportRosterExcel = () => {
+    const headers = [
+      'Employee ID',
+      'Full Name',
+      'Institutional Email',
+      'Department',
+      'Total Contracts',
+      'Avg Score',
+      'Latest Score',
+      'Performance Rating',
+      'Comparative Trajectory',
+      'Status',
+    ];
+
+    const rows = filteredEmployees.map((emp) => [
+      emp.idNumber || '',
+      emp.fullName || '',
+      emp.email || '',
+      emp.department || '',
+      emp.totalContracts || 1,
+      emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
+      emp.latestScore || 'N/A',
+      emp.latestRating || 'Unrated',
+      getCleanTrajectoryText(emp),
+      emp.status || 'Active',
+    ]);
+
+    const fileName = isDeptRestricted
+      ? `EVSU_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      : `EVSU_Executive_Personnel_Records_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    exportToExcel({
+      filename: fileName,
+      sheetName: isDeptRestricted ? `${deptScope.slice(0, 28)}` : 'Personnel Records',
+      headers,
+      rows,
+    });
+
+    setToastMsg(
+      isDeptRestricted
+        ? `Departmental personnel records for ${deptScope} exported as Excel (.xlsx) with auto-fitted columns!`
+        : 'Executive personnel records successfully exported as Excel (.xlsx) with auto-fitted columns!'
+    );
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
   const handleExportRosterCsv = () => {
     const headers = [
       'Employee ID',
@@ -125,29 +180,26 @@ export default function ReportGenerator({
       'Total Contracts',
       'Avg Score',
       'Latest Score',
-      'Adjectival Rating',
+      'Performance Rating',
       'Comparative Trajectory',
       'Status',
     ];
 
-    const rows = filteredEmployees.map((emp) => {
-      const traj = getComparativeTrajectory(emp.latestScore, emp.previousScore);
-      return [
-        `"${emp.idNumber}"`,
-        `"${emp.fullName}"`,
-        `"${emp.email}"`,
-        `"${emp.department}"`,
-        emp.totalContracts || 1,
-        emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
-        emp.latestScore || 'N/A',
-        `"${emp.latestRating || 'Unrated'}"`,
-        `"${traj.badgeText}"`,
-        `"${emp.status}"`,
-      ];
-    });
+    const rows = filteredEmployees.map((emp) => [
+      `"${emp.idNumber}"`,
+      `"${emp.fullName}"`,
+      `"${emp.email}"`,
+      `"${emp.department}"`,
+      emp.totalContracts || 1,
+      emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
+      emp.latestScore || 'N/A',
+      `"${emp.latestRating || 'Unrated'}"`,
+      `"${getCleanTrajectoryText(emp)}"`,
+      `"${emp.status}"`,
+    ]);
 
     const csvContent =
-      'data:text/csv;charset=utf-8,' +
+      'data:text/csv;charset=utf-8,\uFEFF' +
       [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
 
     const fileName = isDeptRestricted
@@ -179,7 +231,7 @@ export default function ReportGenerator({
             {isDeptRestricted ? 'Departmental Employee Records' : 'COS Employee Records & Evaluations'}
           </h1>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-sm"
@@ -193,10 +245,24 @@ export default function ReportGenerator({
               borderColor: '#15803d',
               fontWeight: 600,
             }}
-            onClick={handleExportRosterCsv}
-            title={isDeptRestricted ? `Download CSV report of ${deptScope} records` : 'Download CSV report of current personnel records'}
+            onClick={handleExportRosterExcel}
+            title={isDeptRestricted ? `Download Excel spreadsheet with auto-fitted columns for ${deptScope}` : 'Download Excel spreadsheet with auto-fitted columns'}
           >
-            <Download size={14} /> Export Roster (CSV)
+            <Download size={14} /> Export Excel (.xlsx)
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+            }}
+            onClick={handleExportRosterCsv}
+            title="Download standard delimited CSV data"
+          >
+            <Download size={14} /> Export CSV
           </button>
           {onBack && (
             <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer' }}>
