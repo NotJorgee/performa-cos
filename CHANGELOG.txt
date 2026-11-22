@@ -13,9 +13,8 @@ SUMMARY FOR MOBILE & APP DEVELOPERS
      * Dynamically computes character column widths (`!cols`) based on cell contents with comfortable character padding (+4 chars, minimum 12 chars).
      * Eliminates text truncation in Microsoft Excel without requiring manual column extension or header dragging.
    - In src/components/reports/ReportGenerator.jsx:
-     * Added prominent "Export Excel (.xlsx)" action alongside "Export CSV".
-     * Generates native Excel workbook with auto-fitted columns for Employee ID, Full Name, Institutional Email, Department, and Performance Ratings.
-     * Cleaned trajectory text to remove corrupted symbol glyphs.
+     * Unified export into a single clean "Export Roster" button that directly downloads the auto-fitted Excel spreadsheet.
+     * Removed redundant side-by-side export buttons to maintain a minimalist header layout.
 
 2. CSV UTF-8 Encoding Fix:
    - Added UTF-8 Byte Order Mark (`\uFEFF`) to CSV exports in ReportGenerator and ExecutiveAnalytics to prevent Excel ANSI character corruption (`â"...`).

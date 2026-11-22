@@ -231,7 +231,7 @@ export default function ReportGenerator({
             {isDeptRestricted ? 'Departmental Employee Records' : 'COS Employee Records & Evaluations'}
           </h1>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             type="button"
             className="btn btn-sm"
@@ -246,23 +246,9 @@ export default function ReportGenerator({
               fontWeight: 600,
             }}
             onClick={handleExportRosterExcel}
-            title={isDeptRestricted ? `Download Excel spreadsheet with auto-fitted columns for ${deptScope}` : 'Download Excel spreadsheet with auto-fitted columns'}
+            title={isDeptRestricted ? `Download personnel roster with auto-fitted columns for ${deptScope}` : 'Download personnel roster with auto-fitted columns'}
           >
-            <Download size={14} /> Export Excel (.xlsx)
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-            }}
-            onClick={handleExportRosterCsv}
-            title="Download standard delimited CSV data"
-          >
-            <Download size={14} /> Export CSV
+            <Download size={14} /> Export Roster
           </button>
           {onBack && (
             <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer' }}>
