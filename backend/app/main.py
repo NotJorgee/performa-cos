@@ -96,6 +96,32 @@ async def startup_event():
     except Exception as e:
         print(f"[startup] Storage bucket check failed: {e}")
     try:
+        # Defense-in-depth: Enforce PostgreSQL Row Level Security (RLS) across all tables
+        # Automatically denies direct unauthenticated PostgREST anon access while preserving trusted backend access
+        table_names = [
+            "department",
+            "user_account",
+            "daily_accomplishment_report",
+            "evaluation_record",
+            "renewal_application",
+            "otp_codes",
+            "invitation_tokens",
+            "user_sessions",
+            "notification_preferences",
+            "audit_logs",
+            "notifications",
+            "campus_geofence",
+            "evaluation_templates",
+            "attendance_log",
+            "leave_request",
+        ]
+        with engine.connect() as conn:
+            for tbl in table_names:
+                conn.execute(text(f"ALTER TABLE IF EXISTS {tbl} ENABLE ROW LEVEL SECURITY;"))
+            conn.commit()
+    except Exception as e:
+        print(f"[startup] RLS initialization check notice: {e}")
+    try:
         asyncio.create_task(start_deadline_scheduler())
     except Exception as e:
         print(f"[startup] Failed to launch deadline scheduler: {e}")
