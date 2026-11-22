@@ -114,6 +114,7 @@ async def startup_event():
             "evaluation_templates",
             "attendance_log",
             "leave_request",
+            "alembic_version",
         ]
         with engine.connect() as conn:
             for tbl in table_names:
