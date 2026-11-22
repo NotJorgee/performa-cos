@@ -218,7 +218,7 @@ class MonthlyReportRecordOut(BaseModel):
 class EvaluationScoreSubmit(BaseModel):
     evaluator_role: str  # 'Immediate Supervisor' | 'Peer' | 'HRMO'
     raw_score: float
-    dimension_scores: Optional[dict] = None
+    dimension_scores: Optional[Any] = None
     strengths: Optional[str] = None
     recommendations: Optional[str] = None
 
@@ -242,7 +242,7 @@ class EvaluationRecordOut(BaseModel):
     is_fast_track_rejected: bool = False
     qualitative_strengths: Optional[str] = None
     qualitative_recommendations: Optional[str] = None
-    dimension_scores: Optional[dict] = None
+    dimension_scores: Optional[Any] = None
     created_at: Optional[datetime.datetime] = None
 
     class Config:

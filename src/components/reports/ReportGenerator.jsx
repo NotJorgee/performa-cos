@@ -13,6 +13,8 @@ import {
   getDepartmentDomain,
 } from '../../utils/departments';
 
+const EMPTY_PROPS_EMPLOYEES = [];
+
 const getScoreLabel = (score) => {
   if (score === null || score === undefined || Number.isNaN(Number(score))) return 'Unrated';
   const num = Number(score);
@@ -36,14 +38,15 @@ const enrichEmployeesWithEvaluations = (rawUsers, evalsList = []) => {
 
     // 1. Check live completed evaluations from database (models.EvaluationRecord)
     const userEvals = (evalsList || []).filter((e) => {
+      if (!e) return false;
       const matchId = e.employee_id && (Number(e.employee_id) === Number(uId));
-      const matchEmpNum = uEmpNum && e.employee_id_number && (e.employee_id_number.trim() === uEmpNum);
+      const matchEmpNum = uEmpNum && e.employee_id_number && (String(e.employee_id_number).trim() === uEmpNum);
       const isCandidate = matchId || matchEmpNum;
       const hasScore = e.status === 'Completed' || (e.final_score !== null && e.final_score !== undefined) || (e.supervisor_score !== null && e.supervisor_score !== undefined);
       return isCandidate && hasScore;
     });
 
-    userEvals.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0) || b.id - a.id);
+    userEvals.sort((a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0) || (b?.id || 0) - (a?.id || 0));
 
     let latestScore = u.latestScore ?? null;
     let latestRating = u.latestRating ?? null;
@@ -75,7 +78,15 @@ const enrichEmployeesWithEvaluations = (rawUsers, evalsList = []) => {
     } else {
       // 2. Check fallback historical evaluations for demo/seed personnel
       const pseudoEmp = { idNumber: uEmpNum, fullName: uName, email: uEmail, department: uDept };
-      const historical = getEmployeeHistoricalEvaluations(pseudoEmp);
+      let historical = [];
+      try {
+        if (typeof getEmployeeHistoricalEvaluations === 'function') {
+          historical = getEmployeeHistoricalEvaluations(pseudoEmp) || [];
+        }
+      } catch (err) {
+        console.warn('Historical evaluations fallback notice:', err);
+      }
+
       if (historical && historical.length > 0) {
         const latestHist = historical[0];
         const rawLatest = latestHist.finalGrade ?? latestHist.supervisorScore ?? null;
@@ -128,7 +139,7 @@ const enrichEmployeesWithEvaluations = (rawUsers, evalsList = []) => {
 };
 
 export default function ReportGenerator({
-  employees: propEmployees = [],
+  employees: propEmployees = EMPTY_PROPS_EMPLOYEES,
   departments = EVSU_DEPARTMENTS,
   departmentName = null,
   restrictDepartment = null,
@@ -141,7 +152,7 @@ export default function ReportGenerator({
   const [employees, setEmployees] = useState(propEmployees);
   const [isLoading, setIsLoading] = useState(propEmployees.length === 0);
 
-  const loadData = async () => {
+  const loadData = async (isMounted = true) => {
     setIsLoading(true);
     try {
       if (propEmployees && propEmployees.length > 0) {
@@ -150,10 +161,12 @@ export default function ReportGenerator({
           const evalsRes = await api.evaluations.list();
           if (Array.isArray(evalsRes)) evals = evalsRes;
         } catch (e) {
-          console.warn('Evaluations fetch warning:', e);
+          console.warn('Evaluations fetch notice:', e.message);
         }
-        const filtered = propEmployees.filter((u) => !u.role || u.role === 'COS Employee');
-        setEmployees(enrichEmployeesWithEvaluations(filtered, evals));
+        if (isMounted) {
+          const filtered = propEmployees.filter((u) => !u.role || u.role === 'COS Employee');
+          setEmployees(enrichEmployeesWithEvaluations(filtered, evals));
+        }
       } else {
         const [usersRes, evalsRes] = await Promise.allSettled([
           api.users.list({ role: 'COS Employee' }),
@@ -161,19 +174,27 @@ export default function ReportGenerator({
         ]);
         const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
         const evals = evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value) ? evalsRes.value : [];
-        const cosUsers = users.filter((u) => u.role === 'COS Employee');
-        setEmployees(enrichEmployeesWithEvaluations(cosUsers, evals));
+        if (isMounted) {
+          const cosUsers = users.filter((u) => !u.role || u.role === 'COS Employee');
+          setEmployees(enrichEmployeesWithEvaluations(cosUsers, evals));
+        }
       }
     } catch (err) {
       console.warn('API users/evaluations fetch notice in ReportGenerator:', err);
     } finally {
-      setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadData();
-  }, [propEmployees]);
+    let isMounted = true;
+    loadData(isMounted);
+    return () => {
+      isMounted = false;
+    };
+  }, [propEmployees.length]);
 
   const [selectedEmp, setSelectedEmp] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
