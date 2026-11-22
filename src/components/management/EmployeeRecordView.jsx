@@ -29,13 +29,8 @@ import {
   Mail,
 
   ShieldAlert,
-
-  Printer,
   Award,
   Calendar,
-
-  X,
-
 } from 'lucide-react';
 
 import MonthlyReport from '../employee/MonthlyReport';
@@ -1267,23 +1262,8 @@ export default function EmployeeRecordView({
 
   const [viewingEvalCycle, setViewingEvalCycle] = useState(null);
 
-  const [activeEvaluatorTab, setActiveEvaluatorTab] = useState('depthead'); // 'depthead' | 'cos' | 'hr'
-
+  const [activeEvaluatorTab, setActiveEvaluatorTab] = useState('depthead');
   const [officialSheetData, setOfficialSheetData] = useState(null);
-
-  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-
-  const [printSelectionMode, setPrintSelectionMode] = useState('all'); // 'all' | 'custom'
-
-  const [selectedPrintPages, setSelectedPrintPages] = useState({
-
-    supervisor: true,
-
-    peer: true,
-
-    hrmo: true,
-
-  });
 
 
 
@@ -1529,130 +1509,45 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-  const handleProceedToPrint = () => {
-
+  const handleOpenOfficialRatingSheet = () => {
     if (!viewingEvalCycle) return;
+    const currentEval = getActiveEvalDetails();
+    const scoreVal = Number(viewingEvalCycle.supervisorScore ?? viewingEvalCycle.finalGrade ?? 0);
+    const supervisorName =
+      viewingEvalCycle.supervisorName ||
+      (employee?.department && typeof employee.department === 'object' && employee.department.supervisor
+        ? employee.department.supervisor.full_name
+        : null) ||
+      getDepartmentSupervisor(employee?.department);
 
-    const chosenSheets = [];
-
-
-
-    if (printSelectionMode === 'all' || selectedPrintPages.supervisor) {
-
-      chosenSheets.push({
-
-        pageNumber: 1,
-
-        weightLabel: 'Immediate Supervisor Evaluation (100%)',
-
-        evaluatorRole: 'Immediate Supervisor',
-
-        evaluatorName: viewingEvalCycle.supervisorName || currentEval.evaluator,
-
-        evaluatorPosition: 'Department Head',
-
-        evaluationDate: 'Dec 18, 2026',
-
-        scores: viewingEvalCycle.dimensionScores || generateCriteriaScores(viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade),
-
-        strengths: viewingEvalCycle.strengths,
-
-        recommendation: viewingEvalCycle.recommendation,
-
-        rawScore: Math.round(((viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade) / 100) * 60),
-
-        scaledScore: viewingEvalCycle.supervisorScore || viewingEvalCycle.finalGrade,
-
-      });
-
-    }
-
-
-
-    if (printSelectionMode === 'all' || selectedPrintPages.peer) {
-
-      chosenSheets.push({
-
-        pageNumber: 2,
-
-        weightLabel: '20% Performance Weight',
-
-        evaluatorRole: 'Peer',
-
-        evaluatorName: 'COS Colleague',
-
-        evaluatorPosition: 'Peer Evaluator',
-
-        evaluationDate: 'Dec 18, 2026',
-
-        scores: generateCriteriaScores(viewingEvalCycle.peerScore),
-
-        strengths:
-
-          'Excellent team collaboration. Actively assists colleagues during peak enrollment periods and maintains positive, respectful communication across all tasks.',
-
-        recommendation: 'Recommended for Renewal',
-
-        rawScore: Math.round((viewingEvalCycle.peerScore / 100) * 60),
-
-        scaledScore: viewingEvalCycle.peerScore,
-
-      });
-
-    }
-
-
-
-    if (printSelectionMode === 'all' || selectedPrintPages.hrmo) {
-
-      chosenSheets.push({
-
-        pageNumber: 3,
-
-        weightLabel: '30% Performance Weight',
-
-        evaluatorRole: 'HRMO',
-
-        evaluatorName: 'Dr. Maria Clara Ramos',
-
-        evaluatorPosition: 'HRMO Officer',
-
-        evaluationDate: 'Dec 18, 2026',
-
-        scores: generateCriteriaScores(viewingEvalCycle.hrmoScore),
-
-        strengths:
-
-          'Consistently fulfilled contracted task deliverables and verified monthly accomplishment reports with high documentation accuracy.',
-
-        recommendation: 'Recommended for Renewal',
-
-        rawScore: Math.round((viewingEvalCycle.hrmoScore / 100) * 60),
-
-        scaledScore: viewingEvalCycle.hrmoScore,
-
-      });
-
-    }
-
-
+    const singleSheet = {
+      pageNumber: 1,
+      weightLabel: 'Immediate Supervisor Evaluation (100%)',
+      evaluatorRole: 'Immediate Supervisor',
+      evaluatorName: supervisorName,
+      evaluatorPosition: 'Department Head',
+      evaluationDate: viewingEvalCycle.evaluationDate || 'Dec 18, 2026',
+      scores: viewingEvalCycle.dimensionScores || generateCriteriaScores(scoreVal || 85),
+      strengths: viewingEvalCycle.strengths || currentEval.strengths,
+      recommendation: viewingEvalCycle.recommendation || currentEval.recommendation,
+      rawScore: Math.round((scoreVal / 100) * 60),
+      scaledScore: scoreVal,
+    };
 
     setOfficialSheetData({
-
       employee,
-
-      supervisorName: getDepartmentSupervisor(employee.department),
-
+      supervisorName,
       contractPeriod: viewingEvalCycle.periodDates,
-
-      sheets: chosenSheets,
-
+      sheets: [singleSheet],
+      evaluatorRole: 'Immediate Supervisor',
+      evaluatorName: supervisorName,
+      evaluatorPosition: 'Department Head',
+      scores: singleSheet.scores,
+      strengths: singleSheet.strengths,
+      recommendation: singleSheet.recommendation,
+      rawScore: singleSheet.rawScore,
+      scaledScore: singleSheet.scaledScore,
     });
-
-
-
-    setIsDownloadModalOpen(false);
-
   };
 
 
@@ -1719,29 +1614,13 @@ Generated Timestamp: ${new Date().toLocaleString()}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
 
             <button
-
               type="button"
-
               className="btn btn-primary btn-sm"
-
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-
-              onClick={() => {
-
-                setPrintSelectionMode('all');
-
-                setSelectedPrintPages({ supervisor: true, peer: true, hrmo: true });
-
-                setIsDownloadModalOpen(true);
-
-              }}
-
-              title="Download or Print Performance Evaluation Sheets (PDF)"
-
+              onClick={handleOpenOfficialRatingSheet}
+              title="Download or Print Performance Evaluation Sheet (PDF)"
             >
-
               <FileDown size={14} /> Download Evaluation (PDF)
-
             </button>
 
             <button
@@ -1966,602 +1845,6 @@ Generated Timestamp: ${new Date().toLocaleString()}
             </div>
           </div>
         </div>
-
-        {/* Download & Print Selection Modal */}
-
-        {isDownloadModalOpen && viewingEvalCycle && (
-
-          <div
-
-            className="modal-overlay open"
-
-            style={{
-
-              position: 'fixed',
-
-              inset: 0,
-
-              backgroundColor: 'rgba(15, 23, 42, 0.75)',
-
-              zIndex: 9990,
-
-              display: 'flex',
-
-              alignItems: 'center',
-
-              justifyContent: 'center',
-
-              padding: '20px',
-
-            }}
-
-            onClick={(e) => {
-
-              if (e.target === e.currentTarget) setIsDownloadModalOpen(false);
-
-            }}
-
-          >
-
-            <div
-
-              className="modal-card"
-
-              style={{
-
-                maxWidth: '600px',
-
-                width: '100%',
-
-                borderRadius: '12px',
-
-                background: '#fff',
-
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-
-                overflow: 'hidden',
-
-              }}
-
-            >
-
-              {/* Modal Header */}
-
-              <div
-
-                className="modal-header"
-
-                style={{
-
-                  padding: '16px 20px',
-
-                  borderBottom: '1px solid var(--line)',
-
-                  display: 'flex',
-
-                  justifyContent: 'space-between',
-
-                  alignItems: 'center',
-
-                  background: '#f8fafc',
-
-                }}
-
-              >
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-
-                  <FileDown size={20} style={{ color: 'var(--primary)' }} />
-
-                  <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--ink-900)' }}>
-
-                    Download / Print Evaluation Sheets
-
-                  </span>
-
-                </div>
-
-                <button
-
-                  type="button"
-
-                  className="modal-close"
-
-                  onClick={() => setIsDownloadModalOpen(false)}
-
-                  style={{
-
-                    background: 'none',
-
-                    border: 'none',
-
-                    cursor: 'pointer',
-
-                    color: 'var(--ink-600)',
-
-                    padding: '4px',
-
-                    display: 'flex',
-
-                    alignItems: 'center',
-
-                  }}
-
-                >
-
-                  <X size={18} />
-
-                </button>
-
-              </div>
-
-
-
-              {/* Modal Body */}
-
-              <div style={{ padding: '20px' }}>
-
-                {/* Employee / Cycle Context Card */}
-
-                <div
-
-                  style={{
-
-                    padding: '12px 16px',
-
-                    background: '#f8fafc',
-
-                    border: '1px solid var(--line)',
-
-                    borderRadius: '8px',
-
-                    marginBottom: '18px',
-
-                  }}
-
-                >
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-
-                    <div>
-
-                      <b style={{ fontSize: '14.5px', color: 'var(--ink-900)' }}>{employee.fullName}</b>
-
-                      <span className="muted" style={{ fontSize: '13px', marginLeft: '8px' }}>
-
-                        ({employee.jobTitle || 'Admin Aide'})
-
-                      </span>
-
-                      <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-
-                        Department: <b>{empDepartment}</b> · Cycle: <b>{viewingEvalCycle.periodDates}</b>
-
-                      </div>
-
-                    </div>
-
-                    <span className="badge badge-dept" style={{ fontWeight: 700, fontSize: '12.5px' }}>
-
-                      Performance Rating: {viewingEvalCycle.finalGrade}% ({viewingEvalCycle.interpretation})
-
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-
-                <div style={{ marginBottom: '14px', fontSize: '13.5px', fontWeight: 600, color: 'var(--ink-800)' }}>
-
-                  Select rating sheets to include:
-
-                </div>
-
-
-
-                {/* Selection Cards */}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-
-                  {/* Card 1: All 3 Pages */}
-
-                  <label
-
-                    style={{
-
-                      display: 'flex',
-
-                      alignItems: 'flex-start',
-
-                      gap: '12px',
-
-                      padding: '14px',
-
-                      border: printSelectionMode === 'all' ? '2px solid var(--primary)' : '1px solid var(--line)',
-
-                      borderRadius: '8px',
-
-                      background: printSelectionMode === 'all' ? '#eff6ff' : '#fff',
-
-                      cursor: 'pointer',
-
-                      transition: 'all 0.15s ease',
-
-                    }}
-
-                  >
-
-                    <input
-
-                      type="radio"
-
-                      name="print_selection_mode"
-
-                      checked={printSelectionMode === 'all'}
-
-                      onChange={() => setPrintSelectionMode('all')}
-
-                      style={{ marginTop: '3px', cursor: 'pointer' }}
-
-                    />
-
-                    <div style={{ flex: 1 }}>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-
-                        <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
-
-                          All 3 Rating Sheets (Supervisor, Peer, HRMO)
-
-                        </b>
-
-                        <span className="badge badge-dept" style={{ fontSize: '11px', padding: '2px 8px' }}>
-
-                          3 Pages
-
-                        </span>
-
-                      </div>
-
-                      <p className="muted" style={{ margin: '4px 0 0', fontSize: '12.5px', lineHeight: 1.4 }}>
-
-                        Exports the entire official 3-page evaluation package: Immediate Supervisor (50%), COS Peer (20%), and HRMO Officer (30%) official rating sheets.
-
-                      </p>
-
-                    </div>
-
-                  </label>
-
-
-
-                  {/* Card 2: Custom / Specific Pages */}
-
-                  <label
-
-                    style={{
-
-                      display: 'flex',
-
-                      alignItems: 'flex-start',
-
-                      gap: '12px',
-
-                      padding: '14px',
-
-                      border: printSelectionMode === 'custom' ? '2px solid var(--primary)' : '1px solid var(--line)',
-
-                      borderRadius: '8px',
-
-                      background: printSelectionMode === 'custom' ? '#f8fafc' : '#fff',
-
-                      cursor: 'pointer',
-
-                      transition: 'all 0.15s ease',
-
-                    }}
-
-                  >
-
-                    <input
-
-                      type="radio"
-
-                      name="print_selection_mode"
-
-                      checked={printSelectionMode === 'custom'}
-
-                      onChange={() => setPrintSelectionMode('custom')}
-
-                      style={{ marginTop: '3px', cursor: 'pointer' }}
-
-                    />
-
-                    <div style={{ flex: 1 }}>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-
-                        <b style={{ fontSize: '14px', color: 'var(--ink-900)' }}>
-
-                          Select Specific Page(s)
-
-                        </b>
-
-                        <span
-
-                          className="badge"
-
-                          style={{ fontSize: '11px', padding: '2px 8px', background: '#e2e8f0', color: '#334155' }}
-
-                        >
-
-                          Custom
-
-                        </span>
-
-                      </div>
-
-                      <p className="muted" style={{ margin: '4px 0 8px', fontSize: '12.5px' }}>
-
-                        Choose specific rating sheet(s) to view and print:
-
-                      </p>
-
-
-
-                      {/* Checkboxes */}
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-
-                        <label
-
-                          style={{
-
-                            display: 'flex',
-
-                            alignItems: 'center',
-
-                            gap: '8px',
-
-                            fontSize: '13px',
-
-                            cursor: 'pointer',
-
-                          }}
-
-                        >
-
-                          <input
-
-                            type="checkbox"
-
-                            checked={printSelectionMode === 'all' || selectedPrintPages.supervisor}
-
-                            disabled={printSelectionMode === 'all'}
-
-                            onChange={(e) =>
-
-                              setSelectedPrintPages((prev) => ({ ...prev, supervisor: e.target.checked }))
-
-                            }
-
-                          />
-
-                          <span>
-
-                            <b>Page 1: Immediate Supervisor (50%)</b> — {getDepartmentSupervisor(employee.department)} ({viewingEvalCycle.supervisorScore}%)
-
-                          </span>
-
-                        </label>
-
-
-
-                        <label
-
-                          style={{
-
-                            display: 'flex',
-
-                            alignItems: 'center',
-
-                            gap: '8px',
-
-                            fontSize: '13px',
-
-                            cursor: 'pointer',
-
-                          }}
-
-                        >
-
-                          <input
-
-                            type="checkbox"
-
-                            checked={printSelectionMode === 'all' || selectedPrintPages.peer}
-
-                            disabled={printSelectionMode === 'all'}
-
-                            onChange={(e) =>
-
-                              setSelectedPrintPages((prev) => ({ ...prev, peer: e.target.checked }))
-
-                            }
-
-                          />
-
-                          <span>
-
-                            <b>Page 2: COS Peer Evaluation (20%)</b> — Anonymized Peer ({viewingEvalCycle.peerScore}%)
-
-                          </span>
-
-                        </label>
-
-
-
-                        <label
-
-                          style={{
-
-                            display: 'flex',
-
-                            alignItems: 'center',
-
-                            gap: '8px',
-
-                            fontSize: '13px',
-
-                            cursor: 'pointer',
-
-                          }}
-
-                        >
-
-                          <input
-
-                            type="checkbox"
-
-                            checked={printSelectionMode === 'all' || selectedPrintPages.hrmo}
-
-                            disabled={printSelectionMode === 'all'}
-
-                            onChange={(e) =>
-
-                              setSelectedPrintPages((prev) => ({ ...prev, hrmo: e.target.checked }))
-
-                            }
-
-                          />
-
-                          <span>
-
-                            <b>Page 3: HRMO Institutional (30%)</b> — Dr. Maria Clara Ramos ({viewingEvalCycle.hrmoScore}%)
-
-                          </span>
-
-                        </label>
-
-                      </div>
-
-                    </div>
-
-                  </label>
-
-                </div>
-
-
-
-                {/* Footer Controls */}
-
-                <div
-
-                  style={{
-
-                    display: 'flex',
-
-                    justifyContent: 'space-between',
-
-                    alignItems: 'center',
-
-                    borderTop: '1px solid var(--line)',
-
-                    paddingTop: '16px',
-
-                    flexWrap: 'wrap',
-
-                    gap: '10px',
-
-                  }}
-
-                >
-
-                  <button
-
-                    type="button"
-
-                    className="btn btn-outline btn-sm"
-
-                    onClick={() => {
-
-                      handleDownloadPdf('eval', viewingEvalCycle);
-
-                      setIsDownloadModalOpen(false);
-
-                    }}
-
-                    title="Download plain-text performance summary record"
-
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-
-                  >
-
-                    <FileText size={14} /> Download Summary (.txt)
-
-                  </button>
-
-
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-
-                    <button
-
-                      type="button"
-
-                      className="btn btn-outline btn-sm"
-
-                      onClick={() => setIsDownloadModalOpen(false)}
-
-                    >
-
-                      Cancel
-
-                    </button>
-
-                    <button
-
-                      type="button"
-
-                      className="btn btn-primary btn-sm"
-
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-
-                      onClick={handleProceedToPrint}
-
-                      disabled={
-
-                        printSelectionMode === 'custom' &&
-
-                        !selectedPrintPages.supervisor &&
-
-                        !selectedPrintPages.peer &&
-
-                        !selectedPrintPages.hrmo
-
-                      }
-
-                    >
-
-                      <Printer size={15} /> Proceed to Print / PDF
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        )}
-
-
 
         {/* Official Rating Sheet Modal (1:1 EVSU Ormoc Campus Printable Format) */}
 
