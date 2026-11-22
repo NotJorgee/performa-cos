@@ -20,6 +20,7 @@ import Toast from '../common/Toast';
 import HistoricalAttendanceRoster from '../common/HistoricalAttendanceRoster';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
 import { getDepartmentDomain } from '../../utils/departments';
+import { exportToExcel } from '../../utils/excelExport';
 
 export default function CampusAttendance({ currentUser, onBack = null, initialTab = 'overview' }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'overview'); // 'overview' | 'payroll' | 'leaves'
@@ -125,8 +126,8 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
-// Export DTR & Accomplishment CSV
-  const handleExportCsv = () => {
+  // Export DTR & Accomplishment Data (Excel .xlsx)
+  const handleExportData = () => {
     if (!payrollPacket || !payrollPacket.records) return;
 
     const headers = [
@@ -154,37 +155,30 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       r.minutes_late,
       r.undertime_minutes,
       r.overtime_hours,
-      `"${r.geofence_site}"`,
+      r.geofence_site || '—',
       r.dar_tasks ? r.dar_tasks.length : 0,
-      `"${r.discrepancy_flag || 'None'}"`,
+      r.discrepancy_flag || 'None',
     ]);
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [
-        `"EVSU ORMOC — SEMI-MONTHLY DTR & PAYROLL REPORT"`,
-        `"Period: ${payrollPacket.cutoff_label}"`,
-        `"Employee: ${payrollPacket.employee.name} (${payrollPacket.employee.employee_id}) - ${payrollPacket.employee.department}"`,
-        `"Shift: ${payrollPacket.employee.shift_type} (${payrollPacket.employee.official_time})"`,
-        `"Days Present: ${payrollPacket.summary.days_present}/${payrollPacket.summary.total_working_days} (${payrollPacket.summary.attendance_rate_pct}%)"`,
-        `"Total Late: ${payrollPacket.summary.total_late_minutes} mins | Undertime: ${payrollPacket.summary.total_undertime_minutes} mins | OT: ${payrollPacket.summary.total_overtime_hours} hrs"`,
-        '',
-        headers.join(','),
-        ...rows.map((e) => e.join(',')),
-      ].join('\n');
+    const titleRows = [
+      ['EVSU ORMOC — SEMI-MONTHLY DTR & PAYROLL REPORT'],
+      [`Period: ${payrollPacket.cutoff_label}`],
+      [`Employee: ${payrollPacket.employee.name} (${payrollPacket.employee.employee_id}) - ${payrollPacket.employee.department}`],
+      [`Shift: ${payrollPacket.employee.shift_type} (${payrollPacket.employee.official_time})`],
+      [`Days Present: ${payrollPacket.summary.days_present}/${payrollPacket.summary.total_working_days} (${payrollPacket.summary.attendance_rate_pct}%)`],
+      [`Total Late: ${payrollPacket.summary.total_late_minutes} mins | Undertime: ${payrollPacket.summary.total_undertime_minutes} mins | OT: ${payrollPacket.summary.total_overtime_hours} hrs`],
+      [],
+    ];
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute(
-      'download',
-      `evsu_dtr_payroll_${payrollPacket.employee.employee_id}_${payrollPacket.cutoff_code}_${payrollPacket.year}${String(payrollPacket.month).padStart(2, '0')}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToExcel({
+      filename: `evsu_dtr_payroll_${payrollPacket.employee.employee_id}_${payrollPacket.cutoff_code}_${payrollPacket.year}${String(payrollPacket.month).padStart(2, '0')}.xlsx`,
+      sheetName: 'DTR & Payroll',
+      headers,
+      rows,
+      titleRows,
+    });
 
-    setToast({ type: 'success', message: 'DTR & Payroll CSV archive exported successfully.' });
+    setToast({ type: 'success', message: 'DTR & Payroll Excel archive exported successfully.' });
   };
 
   const filteredDepts = (overviewData?.department_summaries || []).filter((d) => {
@@ -456,7 +450,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                 <button
                   type="button"
                   className="btn btn-sm"
-                  onClick={handleExportCsv}
+                  onClick={handleExportData}
                   disabled={!payrollPacket}
                   style={{
                     display: 'inline-flex',
@@ -468,8 +462,9 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                     borderColor: payrollPacket ? '#15803d' : undefined,
                     cursor: payrollPacket ? 'pointer' : 'not-allowed',
                   }}
+                  title="Export DTR and payroll records as Excel workbook"
                 >
-                  <Download size={14} /> Export Payroll CSV
+                  <Download size={14} /> Export Data
                 </button>
               </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check, RefreshCw } from 'lucide-react';
 import Toast from '../common/Toast';
+import { exportToExcel } from '../../utils/excelExport';
 
 export const formatAuditAction = (action) => {
   switch (action) {
@@ -182,7 +183,7 @@ export default function AuditTrail({
     });
   };
 
-  // Execute export from modal
+  // Execute export from modal (Excel .xlsx)
   const handleExecuteExport = () => {
     const candidateLogs = getExportFilteredLogs();
     if (candidateLogs.length === 0) {
@@ -198,25 +199,19 @@ export default function AuditTrail({
 
     const rows = candidateLogs.map((log) => {
       return exportColumns.map((colKey) => {
-        const val = colKey === 'action' ? formatAuditAction(log.action) : (log[colKey] || '');
-        return `"${String(val).replace(/"/g, '""')}"`;
+        return colKey === 'action' ? formatAuditAction(log.action) : (log[colKey] || '');
       });
     });
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headerLabels.join(','), ...rows.map((r) => r.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `EVSU_Security_Logs_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToExcel({
+      filename: `EVSU_Security_Audit_Trail_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: 'Security Logs',
+      headers: headerLabels,
+      rows,
+    });
 
     setShowExportModal(false);
-    setToastMsg(`Successfully exported ${candidateLogs.length} security log records to CSV!`);
+    setToastMsg(`Successfully exported ${candidateLogs.length} security log records to Excel!`);
     setTimeout(() => setToastMsg(null), 4500);
   };
 
@@ -249,8 +244,9 @@ export default function AuditTrail({
               color: '#ffffff',
               borderColor: '#15803d',
             }}
+            title="Export security audit trail data as Excel workbook"
           >
-            <Download size={16} /> Export Logs
+            <Download size={16} /> Export Data
           </button>
         </div>
       </div>
@@ -460,7 +456,7 @@ export default function AuditTrail({
 
             <div style={{ padding: '8px 0 16px' }}>
               <p className="muted" style={{ fontSize: '13px', margin: '0 0 16px', lineHeight: 1.5 }}>
-                Configure the specific time period, action categories, and columns to include in your exported CSV file.
+                Configure the specific time period, action categories, and columns to include in your exported file.
               </p>
 
               {/* 1. Time / Date Filter */}
@@ -664,8 +660,9 @@ export default function AuditTrail({
                   borderColor: getExportFilteredLogs().length === 0 ? undefined : '#15803d',
                   cursor: getExportFilteredLogs().length === 0 ? 'not-allowed' : 'pointer',
                 }}
+                title="Export selected audit logs as Excel workbook"
               >
-                <Download size={15} /> Export CSV
+                <Download size={15} /> Export Data
               </button>
             </div>
           </div>

@@ -6,37 +6,56 @@ import * as XLSX from 'xlsx';
  * @param {Object} options
  * @param {string} options.filename - The output filename (e.g., 'EVSU_Executive_Personnel_Records.xlsx')
  * @param {string} [options.sheetName='Sheet1'] - Name of the worksheet tab
- * @param {Array<string>} options.headers - Array of header strings
- * @param {Array<Array<any>>} options.rows - 2D array of row cell values
+ * @param {Array<string>} [options.headers=[]] - Array of header strings (optional if rows already contain headers)
+ * @param {Array<Array<any>>} [options.rows=[]] - 2D array of row cell values
  * @param {Array<number>} [options.customColWidths] - Optional manual character widths per column
  */
 export function exportToExcel({
   filename,
-  sheetName = 'Personnel Records',
+  sheetName = 'Data Export',
   headers = [],
   rows = [],
+  titleRows = [],
   customColWidths = null,
 }) {
-  const data = [headers, ...rows];
+  const data = [];
+  if (titleRows && Array.isArray(titleRows) && titleRows.length > 0) {
+    data.push(...titleRows);
+  }
+  if (headers && Array.isArray(headers) && headers.length > 0) {
+    data.push(headers);
+  }
+  if (rows && Array.isArray(rows) && rows.length > 0) {
+    data.push(...rows);
+  }
+
   const ws = XLSX.utils.aoa_to_sheet(data);
 
   // Compute column widths so Excel automatically fits the text
   if (customColWidths && Array.isArray(customColWidths)) {
     ws['!cols'] = customColWidths.map((w) => ({ wch: w }));
   } else {
-    const colCount = headers.length;
-    const computedWidths = [];
+    let colCount = (headers && headers.length) || 0;
+    for (let r = 0; r < data.length; r++) {
+      if (data[r] && data[r].length > colCount) {
+        colCount = data[r].length;
+      }
+    }
 
+    const computedWidths = [];
     for (let c = 0; c < colCount; c++) {
-      let maxLen = headers[c] ? String(headers[c]).length : 10;
-      for (let r = 0; r < rows.length; r++) {
-        const cell = rows[r] ? rows[r][c] : '';
+      let maxLen = 10;
+      for (let r = 0; r < data.length; r++) {
+        // Skip banner title rows (single-cell rows in multi-column tables) so they do not inflate column width
+        if (colCount > 1 && data[r] && data[r].length <= 1) {
+          continue;
+        }
+        const cell = data[r] ? data[r][c] : '';
         const len = cell !== undefined && cell !== null ? String(cell).length : 0;
-        if (len > maxLen) {
+        if (len > maxLen && len < 80) {
           maxLen = len;
         }
       }
-      // Add comfortable padding (at least 3-4 chars) so nothing is clipped
       computedWidths.push({ wch: Math.max(maxLen + 4, 12) });
     }
     ws['!cols'] = computedWidths;

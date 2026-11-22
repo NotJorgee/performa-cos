@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { getDepartmentDomain } from '../../utils/departments';
+import { exportToExcel } from '../../utils/excelExport';
 
 export default function ExecutiveAnalytics({
   onBack = () => {},
@@ -308,9 +309,9 @@ export default function ExecutiveAnalytics({
     return () => window.removeEventListener('resize', handleResize);
   }, [selectedPeriodIndex, evaluationPeriods.length]);
 
-  // Export Executive Analytics Summary to CSV
-  const handleExportCsv = () => {
-    const csvRows = [
+  // Export Executive Analytics Summary to Excel (.xlsx)
+  const handleExportData = () => {
+    const excelRows = [
       ['EASTERN VISAYAS STATE UNIVERSITY - HRMO EXECUTIVE PERFORMANCE ANALYTICS'],
       ['Reporting Context', `Contract of Service (COS) Monthly Performance (${currentMonthName} ${selectedYear})`],
       ['Institutional Average Score', institutionalAverage !== null && institutionalAverage !== undefined ? `${institutionalAverage} / 100 (${institutionalRating})` : `Awaiting Cycle Evaluations (${institutionalRating})`],
@@ -320,7 +321,7 @@ export default function ExecutiveAnalytics({
       ['Series Code', 'Entity Name', 'Classification', ...evaluationPeriods.map((p) => p.label)],
       ...domainTrajectories.map((s) => [
         s.code,
-        `"${s.name}"`,
+        s.name,
         'Governance Domain',
         ...s.points.map((pt) => (pt !== null && pt !== undefined ? pt : 'N/A')),
       ]),
@@ -331,7 +332,7 @@ export default function ExecutiveAnalytics({
         depts.map((d) => [
           domKey,
           d.code,
-          `"${d.name}"`,
+          d.name,
           ...d.points.map((pt) => (pt !== null && pt !== undefined ? pt : 'N/A')),
         ])
       ),
@@ -340,7 +341,7 @@ export default function ExecutiveAnalytics({
       ['Rank', 'Department', 'COS Headcount', 'Avg Score', 'Rating', 'Eval Completion %'],
       ...departmentLeaderboard.map((d) => [
         d.rank,
-        `"${d.name}"`,
+        d.name,
         d.headcount,
         d.avgScore !== null && d.avgScore !== undefined ? d.avgScore : 'N/A',
         d.statusLabel,
@@ -351,22 +352,19 @@ export default function ExecutiveAnalytics({
       ['Employee ID', 'Full Name', 'Department', 'Role', 'Aggregated Score', 'Rating Category'],
       ...outstandingEmployees.map((e) => [
         e.empId,
-        `"${e.name}"`,
-        `"${e.department}"`,
-        `"${e.role}"`,
+        e.name,
+        e.department,
+        e.role,
         e.score !== null && e.score !== undefined ? e.score : 'N/A',
         e.ratingLabel,
       ]),
     ];
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + csvRows.map((e) => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `EVSU_Executive_Analytics_Report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToExcel({
+      filename: `EVSU_Executive_Analytics_Report_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Executive Analytics',
+      rows: excelRows,
+    });
   };
 
 
@@ -434,7 +432,7 @@ export default function ExecutiveAnalytics({
           <button
             type="button"
             className="btn btn-sm"
-            onClick={handleExportCsv}
+            onClick={handleExportData}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -445,10 +443,10 @@ export default function ExecutiveAnalytics({
               borderColor: '#15803d',
               fontWeight: 600,
             }}
-            title="Download institutional executive metrics (CSV)"
+            title="Download institutional executive metrics (Excel .xlsx)"
           >
             <Download size={15} />
-            <span>Export CSV</span>
+            <span>Export Data</span>
           </button>
           <button
             type="button"

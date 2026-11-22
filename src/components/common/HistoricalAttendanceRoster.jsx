@@ -7,6 +7,7 @@ import {
 import api from '../../services/api';
 import Toast from './Toast';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import { exportToExcel } from '../../utils/excelExport';
 
 export default function HistoricalAttendanceRoster({
   currentUser,
@@ -53,8 +54,8 @@ export default function HistoricalAttendanceRoster({
     fetchRoster(selectedDate, selectedDept);
   }, [selectedDate, selectedDept]);
 
-  // Download CSV
-  const handleDownloadCSV = () => {
+  // Export Data (Excel .xlsx)
+  const handleExportData = () => {
     const list = rosterData?.roster || [];
     if (list.length === 0) {
       setToast({ type: 'info', message: 'No records available to export for this date.' });
@@ -75,35 +76,29 @@ export default function HistoricalAttendanceRoster({
     ];
 
     const rows = list.map((item) => [
-      `"${item.employee_id_number || ''}"`,
-      `"${(item.name || '').replace(/"/g, '""')}"`,
-      `"${(item.department || '').replace(/"/g, '""')}"`,
-      `"${(item.official_time || '8:00 AM - 5:00 PM').replace(/"/g, '""')}"`,
-      `"${item.time_in || '—'}"`,
-      `"${item.time_out || '—'}"`,
-      `"${(item.status || 'Not Timed In').replace(/"/g, '""')}"`,
-      `"${(item.geofence_site || '—').replace(/"/g, '""')}"`,
-      `"${item.dar_submitted ? 'Submitted' : 'Not submitted'}"`,
-      `"${item.dar_tasks_count || 0}"`,
+      item.employee_id_number || '',
+      item.name || '',
+      item.department || '',
+      item.official_time || '8:00 AM - 5:00 PM',
+      item.time_in || '—',
+      item.time_out || '—',
+      item.status || 'Not Timed In',
+      item.geofence_site || '—',
+      item.dar_submitted ? 'Submitted' : 'Not submitted',
+      item.dar_tasks_count || 0,
     ]);
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-
     const safeDept = (selectedDept === 'ALL' ? (departmentName || 'All_Departments') : selectedDept).replace(/[^a-zA-Z0-9_-]/g, '_');
-    link.setAttribute('download', `EVSU_Department_Attendance_Roster_${safeDept}_${selectedDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToExcel({
+      filename: `EVSU_Department_Attendance_Roster_${safeDept}_${selectedDate}.xlsx`,
+      sheetName: 'Attendance Roster',
+      headers,
+      rows,
+    });
 
     setToast({
       type: 'success',
-      message: `Roster for ${rosterData?.date || selectedDate} downloaded successfully.`,
+      message: `Roster for ${rosterData?.date || selectedDate} exported successfully as Excel (.xlsx).`,
     });
   };
 
@@ -213,7 +208,7 @@ export default function HistoricalAttendanceRoster({
             <button
               type="button"
               className="btn btn-sm"
-              onClick={handleDownloadCSV}
+              onClick={handleExportData}
               disabled={isLoading || !rosterData?.roster?.length}
               style={{
                 display: 'inline-flex',
@@ -229,9 +224,9 @@ export default function HistoricalAttendanceRoster({
                 cursor: isLoading || !rosterData?.roster?.length ? 'not-allowed' : 'pointer',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
               }}
-              title="Download historical attendance roster as CSV spreadsheet"
+              title="Download historical attendance roster as Excel workbook"
             >
-              <Download size={15} /> Download Roster (CSV)
+              <Download size={15} /> Export Data
             </button>
           </div>
         </div>

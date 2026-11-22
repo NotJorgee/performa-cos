@@ -125,7 +125,7 @@ export default function ReportGenerator({
       .trim();
   };
 
-  const handleExportRosterExcel = () => {
+  const handleExportData = () => {
     const headers = [
       'Employee ID',
       'Full Name',
@@ -171,57 +171,6 @@ export default function ReportGenerator({
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const handleExportRosterCsv = () => {
-    const headers = [
-      'Employee ID',
-      'Full Name',
-      'Institutional Email',
-      'Department',
-      'Total Contracts',
-      'Avg Score',
-      'Latest Score',
-      'Performance Rating',
-      'Comparative Trajectory',
-      'Status',
-    ];
-
-    const rows = filteredEmployees.map((emp) => [
-      `"${emp.idNumber}"`,
-      `"${emp.fullName}"`,
-      `"${emp.email}"`,
-      `"${emp.department}"`,
-      emp.totalContracts || 1,
-      emp.avgScore !== undefined && emp.avgScore !== null ? Number(emp.avgScore).toFixed(1) : 'N/A',
-      emp.latestScore || 'N/A',
-      `"${emp.latestRating || 'Unrated'}"`,
-      `"${getCleanTrajectoryText(emp)}"`,
-      `"${emp.status}"`,
-    ]);
-
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-
-    const fileName = isDeptRestricted
-      ? `EVSU_Departmental_Records_${deptScope.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`
-      : `EVSU_Executive_Personnel_Records_${new Date().toISOString().slice(0, 10)}.csv`;
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setToastMsg(
-      isDeptRestricted
-        ? `Departmental personnel summary report for ${deptScope} successfully exported as CSV!`
-        : 'Executive personnel summary report successfully generated and exported as CSV!'
-    );
-    setTimeout(() => setToastMsg(null), 4000);
-  };
-
   return (
     <div>
       {/* Top Header */}
@@ -245,10 +194,10 @@ export default function ReportGenerator({
               borderColor: '#15803d',
               fontWeight: 600,
             }}
-            onClick={handleExportRosterExcel}
+            onClick={handleExportData}
             title={isDeptRestricted ? `Download personnel roster with auto-fitted columns for ${deptScope}` : 'Download personnel roster with auto-fitted columns'}
           >
-            <Download size={14} /> Export Roster
+            <Download size={14} /> Export Data
           </button>
           {onBack && (
             <button className="btn btn-sm" type="button" onClick={onBack} style={{ cursor: 'pointer' }}>

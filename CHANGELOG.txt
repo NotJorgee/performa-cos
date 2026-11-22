@@ -2,22 +2,30 @@ PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
 UPDATE NOTES: 2026-11-22
-Feature: Auto-Fitted Excel (.xlsx) Export & Unicode BOM Formatting
+Feature: System-Wide Transition to Auto-Fitted Excel (.xlsx) & "Export Data" Button Standardization
 ================================================================================
 
 SUMMARY FOR MOBILE & APP DEVELOPERS
 -----------------------------------
-1. Auto-Fitted Microsoft Excel (.xlsx) Export:
+1. System-Wide Native Microsoft Excel (.xlsx) Export Engine:
    - In src/utils/excelExport.js:
-     * Implemented `exportToExcel` utility powered by `xlsx`.
-     * Dynamically computes character column widths (`!cols`) based on cell contents with comfortable character padding (+4 chars, minimum 12 chars).
-     * Eliminates text truncation in Microsoft Excel without requiring manual column extension or header dragging.
-   - In src/components/reports/ReportGenerator.jsx:
-     * Unified export into a single clean "Export Roster" button that directly downloads the auto-fitted Excel spreadsheet.
-     * Removed redundant side-by-side export buttons to maintain a minimalist header layout.
+     * Built centralized `exportToExcel` utility powered by `xlsx`.
+     * Dynamically calculates character column widths (`!cols`) based on cell contents with comfortable character padding (+4 characters, minimum 12 characters).
+     * Added banner title row filtering so multi-column banner titles do not inflate individual data column widths.
+     * Completely eliminates text truncation in Microsoft Excel without requiring users to manually resize columns.
+     * Eliminates character encoding corruption (e.g. `â"...`) inherent to CSV files opened in default Excel configurations.
 
-2. CSV UTF-8 Encoding Fix:
-   - Added UTF-8 Byte Order Mark (`\uFEFF`) to CSV exports in ReportGenerator and ExecutiveAnalytics to prevent Excel ANSI character corruption (`â"...`).
+2. Universal Standardization of "Export Data" Across All Modules:
+   - Systematically replaced all disparate CSV export handlers and updated button labels to `Export Data` with the `<Download />` icon:
+     * src/components/reports/ReportGenerator.jsx (COS Employee Records & Evaluations): Single unified "Export Data" button exporting auto-fitted `.xlsx`.
+     * src/components/analytics/ExecutiveAnalytics.jsx (Executive Performance Analytics): Standardized to "Export Data" button exporting institutional analytics `.xlsx`.
+     * src/components/employee/AttendanceLogs.jsx (Employee Attendance Logs): Standardized to "Export Data" button exporting semi-monthly DTR `.xlsx`.
+     * src/components/common/HistoricalAttendanceRoster.jsx (Departmental Attendance Roster): Standardized to "Export Data" button exporting departmental attendance `.xlsx`.
+     * src/components/hr/CampusAttendance.jsx (Semi-Monthly DTR & Payroll Archive): Updated to "Export Data" button exporting payroll packet `.xlsx`.
+     * src/components/reports/AuditTrail.jsx (Security Logs & Audit Trail): Standardized toolbar and modal export buttons to "Export Data" generating `.xlsx`.
+
+3. Minimalist UI Layout Preservation:
+   - Eliminated redundant side-by-side export buttons (removed duplicate CSV/Excel pairings) across all screens in favor of a single, clean "Export Data" action.
 
 ================================================================================
 

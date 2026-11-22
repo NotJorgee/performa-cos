@@ -7,6 +7,7 @@ import {
 import api from '../../services/api';
 import Toast from '../common/Toast';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
+import { exportToExcel } from '../../utils/excelExport';
 
 export default function AttendanceLogs({ currentUser, employeeId = null, employeeName = null, onBack = null, onNavigate = null, backLabel = 'Back to Attendance Clock-In' }) {
   const targetId = employeeId || currentUser?.id;
@@ -67,33 +68,30 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const handleExportCsv = () => {
+  const handleExportData = () => {
     if (!dtrPacket?.records?.length) {
       setToast({ type: 'warning', message: 'No attendance records available for export.' });
       return;
     }
     const headers = ['Date', 'Day', 'Time In', 'Credited Time In', 'Time Out', 'Status', 'Shift', 'Campus Site', 'DAR Tasks'];
     const rows = dtrPacket.records.map((r) => [
-      r.date,
-      r.day_of_week,
-      r.time_in,
-      r.credited_time_in || r.time_in,
-      r.time_out,
-      r.status,
-      r.shift_type,
-      r.geofence_site,
-      r.dar_tasks_count,
+      r.date || '',
+      r.day_of_week || '',
+      r.time_in || '—',
+      r.credited_time_in || r.time_in || '—',
+      r.time_out || '—',
+      r.status || '',
+      r.shift_type || '',
+      r.geofence_site || '',
+      r.dar_tasks_count || 0,
     ]);
-    const csvContent = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `attendance_logs_${dtrYear}_${dtrMonth}_${cutoffPeriod}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setToast({ type: 'success', message: 'Attendance logs CSV exported successfully.' });
+    exportToExcel({
+      filename: `attendance_logs_${dtrYear}_${dtrMonth}_${cutoffPeriod}.xlsx`,
+      sheetName: 'Attendance Logs',
+      headers,
+      rows,
+    });
+    setToast({ type: 'success', message: 'Attendance logs exported successfully as Excel (.xlsx).' });
   };
 
   const getStatusBadgeStyle = (status, badgeType) => {
@@ -145,7 +143,7 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
           <button
             type="button"
             className="btn btn-sm"
-            onClick={handleExportCsv}
+            onClick={handleExportData}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -155,8 +153,9 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
               borderColor: '#15803d',
               fontWeight: 600,
             }}
+            title="Download attendance records (Excel .xlsx)"
           >
-            <Download size={14} /> Export CSV
+            <Download size={14} /> Export Data
           </button>
           <button
             type="button"
