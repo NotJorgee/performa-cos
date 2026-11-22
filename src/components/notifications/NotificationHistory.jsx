@@ -48,7 +48,7 @@ export default function NotificationHistory({
     switch (category) {
       case 'evaluation':
         return {
-          label: 'Triad Evaluation',
+          label: 'Performance Evaluation',
           badgeClass: 'badge-dept',
           icon: <ClipboardCheck size={18} color="var(--blue-600, #2563eb)" />,
           bg: '#eff6ff',
@@ -260,7 +260,7 @@ export default function NotificationHistory({
                 style={{ fontSize: '13.5px' }}
               >
                 <option value="all">All Categories</option>
-                <option value="evaluation">Triad Evaluations</option>
+                <option value="evaluation">Performance Evaluations</option>
                 <option value="contract">Contract Lifecycles</option>
                 <option value="dar">Campus DAR</option>
                 <option value="mar">Monthly MAR</option>

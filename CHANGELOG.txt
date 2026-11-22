@@ -1,6 +1,31 @@
 PerformaCOS - Release Notes & Technical Changelog
 ===============================================================================
 
+UPDATE NOTES: 2026-11-22
+Terminology Standardization: Universal Adoption of "Performance Evaluation"
+================================================================================
+
+SUMMARY FOR MOBILE & APP DEVELOPERS
+-----------------------------------
+1. Standardized Evaluation Terminology Across All Modules:
+   - Systematically replaced the developer design term "Triad Evaluation" with the standard institutional name "Performance Evaluation":
+     * In src/components/management/EmployeeRecordView.jsx:
+       - Updated print/download button tooltip to "Download or Print Performance Evaluation Sheets (PDF)".
+       - Updated sheet headers to "20% Performance Weight" and "30% Performance Weight".
+       - Updated badge to "Performance Rating: {finalGrade}% ({interpretation})".
+       - Updated metrics grid and evaluation cycle section descriptions.
+     * In src/components/hr/HREvaluationsProxy.jsx:
+       - Updated queue header to "HR Evaluation Queue & Performance Evaluation Progress".
+       - Updated empty state description to "The 50/20/30 performance evaluation scoring queue...".
+     * In src/components/notifications/NotificationHistory.jsx:
+       - Updated category metadata label and dropdown filter from "Triad Evaluations" to "Performance Evaluations".
+     * In src/components/employee/PeerEvaluations.jsx:
+       - Updated empty state description to "...when an active performance evaluation cycle is initiated...".
+     * In src/components/auth/ProfileSettings.jsx:
+       - Updated notification preferences subtext to "...releases performance evaluation results."
+
+================================================================================
+
 UPDATE NOTES: 2026-11-21
 UI/UX Streamline: Evaluation Settings & Rubric Form Editor Layout Cleanup
 ================================================================================

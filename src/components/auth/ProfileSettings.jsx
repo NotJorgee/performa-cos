@@ -1109,7 +1109,7 @@ export default function ProfileSettings({
                     )}
                   </div>
                   <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                    Immediate alerts when a supervisor signs a monthly report or releases triad evaluation results.
+                    Immediate alerts when a supervisor signs a monthly report or releases performance evaluation results.
                   </div>
                 </div>
               </label>

@@ -1575,7 +1575,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         pageNumber: 2,
 
-        weightLabel: '20% Triad Weight',
+        weightLabel: '20% Performance Weight',
 
         evaluatorRole: 'Peer',
 
@@ -1609,7 +1609,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
         pageNumber: 3,
 
-        weightLabel: '30% Triad Weight',
+        weightLabel: '30% Performance Weight',
 
         evaluatorRole: 'HRMO',
 
@@ -1690,7 +1690,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
     );
   }
 
-  // 2. VIEW EVALUATION PAGE (Triad Evaluation with Evaluator Switcher)
+  // 2. VIEW EVALUATION PAGE (Performance Evaluation with Evaluator Switcher)
   if (viewingEvalCycle) {
     const currentEval = getActiveEvalDetails();
 
@@ -1736,7 +1736,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
               }}
 
-              title="Download or Print Triad Evaluation Sheets (PDF)"
+              title="Download or Print Performance Evaluation Sheets (PDF)"
 
             >
 
@@ -1776,7 +1776,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-        {/* Subordinate Information & Triad Summary Banner */}
+        {/* Subordinate Information & Performance Summary Banner */}
 
         <div className="card" style={{ marginBottom: '20px', padding: '18px 22px' }}>
 
@@ -2143,7 +2143,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
                     <span className="badge badge-dept" style={{ fontWeight: 700, fontSize: '12.5px' }}>
 
-                      Triad Grade: {viewingEvalCycle.finalGrade}% ({viewingEvalCycle.interpretation})
+                      Performance Rating: {viewingEvalCycle.finalGrade}% ({viewingEvalCycle.interpretation})
 
                     </span>
 
@@ -3144,7 +3144,7 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-          {/* Triad & MAR Metrics Grid */}
+          {/* Performance Evaluation & MAR Metrics Grid */}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
 

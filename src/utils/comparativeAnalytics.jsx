@@ -86,7 +86,7 @@ export function getComparativeTrajectory(currentScore, previousScore) {
 }
 
 /**
- * Computes cycle-over-cycle triad breakdown and deliverable task volume deltas
+ * Computes cycle-over-cycle performance evaluation breakdown and deliverable task volume deltas
  */
 export function getTriadComparativeDeltas(currentCycle, previousCycle) {
   if (!currentCycle || !previousCycle) return null;

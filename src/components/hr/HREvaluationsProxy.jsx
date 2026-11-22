@@ -69,7 +69,7 @@ export default function HREvaluationsProxy({
               No Active Evaluation Cycles
             </h3>
             <p className="muted" style={{ margin: '0 auto 20px', maxWidth: '480px', fontSize: '13px', lineHeight: 1.5 }}>
-              The 50/20/30 triad scoring queue (Supervisor 50%, Peer 20%, HRMO 30%) will activate when the upcoming evaluation window is officially opened.
+              The 50/20/30 performance evaluation scoring queue (Supervisor 50%, Peer 20%, HRMO 30%) will activate when the upcoming evaluation window is officially opened.
             </p>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#f8fafc', padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--line)', fontSize: '12px', color: 'var(--ink-600)' }}>
               <span>Status: <strong>Evaluation Window Standby</strong></span>
@@ -79,7 +79,7 @@ export default function HREvaluationsProxy({
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', background: '#fff' }}>
               <div className="card-title" style={{ margin: 0 }}>
-                HR Evaluation Queue &amp; Triad Scoring Progress
+                HR Evaluation Queue &amp; Performance Evaluation Progress
               </div>
               <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
                 Input the 30% HR administrative compliance ratings and monitor supervisor (50%) and peer (20%) evaluation progress for COS personnel.

@@ -68,7 +68,7 @@ export default function PeerEvaluations({
               </div>
               <h3 style={{ margin: '0 0 6px', color: 'var(--ink-800)' }}>No Assigned Peer Evaluations</h3>
               <p className="muted" style={{ margin: 0, fontSize: '13.5px', maxWidth: '420px', marginInline: 'auto' }}>
-                Peer evaluations will be assigned automatically by the system when an active triad evaluation cycle is initiated for your department.
+                Peer evaluations will be assigned automatically by the system when an active performance evaluation cycle is initiated for your department.
               </p>
             </div>
           ) : (
