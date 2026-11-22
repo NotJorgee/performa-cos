@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Printer, X, Download, FileText } from 'lucide-react';
 import evsuLogo from '../../assets/images/evsu-seal.png';
 import {
@@ -6,6 +6,7 @@ import {
   EVSU_RATING_SCALE,
   getPerformanceInterpretation,
 } from './DynamicRubric';
+import { exportElementToPdf } from '../../utils/evaluationPdf';
 
 /**
  * Single authentic 1:1 EVSU Ormoc Campus rating sheet component
@@ -517,48 +518,25 @@ export default function OfficialRatingSheetModal({
           },
         ];
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const handlePrint = () => {
     window.print();
   };
 
-  const handleDownloadDoc = () => {
-    if (!printAreaRef.current) return;
+  const handleDownloadDoc = async () => {
+    if (!printAreaRef.current || isExportingPdf) return;
     const cleanPeriod = (contractPeriod || 'Cycle').replace(/[^a-zA-Z0-9]/g, '_');
     const safeEmpId = employee.idNumber || employee.fullName || 'Personnel';
-    const filename = `EVSU_COS_RatingSheet_${safeEmpId}_${cleanPeriod}.html`;
-    const printableHtml = printAreaRef.current.innerHTML;
-
-    const fullDocument = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>EVSU Employee Performance Rating - ${employee.fullName || 'Official Form'}</title>
-  <style>
-    @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: "Times New Roman", Times, serif; font-size: 12.5px; line-height: 1.35; color: #000; margin: 0; padding: 24px; background: #fff; }
-    .no-print-bar { background: #1e293b; color: #fff; padding: 12px 18px; margin: -24px -24px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; font-family: sans-serif; }
-    .no-print-bar button { background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    @media print { .no-print-bar, .no-print { display: none !important; } body { padding: 0; } }
-  </style>
-</head>
-<body>
-  <div class="no-print-bar">
-    <span><b>Official Rating Sheet Document:</b> ${employee.fullName || 'Personnel'} (${contractPeriod})</span>
-    <button onclick="window.print()">Print / Save as PDF</button>
-  </div>
-  ${printableHtml}
-</body>
-</html>`;
-
-    const blob = new Blob([fullDocument], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const filename = `EVSU_COS_RatingSheet_${safeEmpId}_${cleanPeriod}.pdf`;
+    try {
+      setIsExportingPdf(true);
+      await exportElementToPdf(printAreaRef.current, filename);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   return (
@@ -615,10 +593,11 @@ export default function OfficialRatingSheetModal({
               className="btn btn-outline btn-sm"
               onClick={handleDownloadDoc}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-              title="Download official rating sheet document (.html / PDF)"
+              title="Download official rating sheet document as PDF"
+              disabled={isExportingPdf}
             >
               <Download size={15} />
-              <span>Download Form</span>
+              <span>{isExportingPdf ? 'Exporting PDF...' : 'Download PDF'}</span>
             </button>
             <button
               type="button"

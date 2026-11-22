@@ -42,6 +42,7 @@ import AiPerformanceAnalysis from '../common/AiPerformanceAnalysis';
 import { getActiveEvaluationTemplate, fetchActiveTemplateFromApi } from '../../utils/evaluationTemplate';
 
 import OfficialRatingSheetModal from '../common/OfficialRatingSheetModal';
+import { generateEvaluationPdf } from '../../utils/evaluationPdf';
 
 import Toast from '../common/Toast';
 
@@ -1599,11 +1600,12 @@ Generated Timestamp: ${new Date().toLocaleString()}
 
 
 
-  const handleDownloadEvaluationDoc = (evalCycle = viewingEvalCycle) => {
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDownloadEvaluationDoc = async (evalCycle = viewingEvalCycle) => {
     const targetCycle = evalCycle || viewingEvalCycle;
-    if (!targetCycle) return;
+    if (!targetCycle || isExportingPdf) return;
     const currentEval = getActiveEvalDetails();
-    const scoreVal = Number(targetCycle.supervisorScore ?? targetCycle.finalGrade ?? employee?.latestScore ?? 85);
     const supervisorName =
       targetCycle.supervisorName ||
       (employee?.department && typeof employee.department === 'object' && employee.department.supervisor
@@ -1611,143 +1613,24 @@ Generated Timestamp: ${new Date().toLocaleString()}
         : null) ||
       getDepartmentSupervisor(employee?.department);
 
-    const interpretation = targetCycle.interpretation || getPerformanceInterpretation(scoreVal)?.interpretation || 'Satisfactory';
-    const periodLabel = targetCycle.periodDates || employee?.contractPeriod || 'Contract Evaluation Cycle';
-    const cleanPeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
-    const safeEmpId = employee.idNumber || employee.fullName || 'Personnel';
-    const filename = `EVSU_COS_Evaluation_${safeEmpId}_${cleanPeriod}.html`;
-
-    const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>EVSU Employee Performance Rating - ${employee.fullName}</title>
-  <style>
-    @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: "Times New Roman", Times, serif; font-size: 12.5px; line-height: 1.35; color: #000; margin: 0; padding: 24px; background: #fff; }
-    .header { text-align: center; margin-bottom: 16px; }
-    .header h2 { font-size: 15.5px; margin: 2px 0; text-transform: uppercase; font-weight: bold; }
-    .header h3 { font-size: 13.5px; margin: 2px 0; font-weight: bold; }
-    .header p { font-size: 12px; margin: 2px 0; font-style: italic; }
-    .header .doc-title { font-size: 15px; font-weight: bold; margin-top: 10px; letter-spacing: 1px; }
-    .info-table, .criteria-table { width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 14px; font-size: 12.5px; }
-    .info-table td, .criteria-table td, .criteria-table th { border: 1px solid #000; padding: 5px 8px; }
-    .criteria-table th { background: #f1f5f9; text-align: center; font-weight: bold; }
-    .box-title { font-weight: bold; text-transform: uppercase; background: #f8fafc; border-bottom: 1px solid #000; padding: 4px 8px; font-size: 12px; }
-    .comments-box { border: 2px solid #000; padding: 10px 12px; margin-bottom: 16px; font-size: 12px; }
-    .sig-block { margin-top: 24px; display: flex; justify-content: space-between; font-size: 12.5px; }
-    .sig-line { border-bottom: 1px solid #000; display: inline-block; min-width: 200px; }
-    .check-box { width: 16px; height: 16px; border: 1.5px solid #000; display: inline-block; text-align: center; line-height: 16px; font-weight: bold; font-size: 11px; margin-right: 6px; }
-    .no-print-bar { background: #1e293b; color: #fff; padding: 12px 18px; margin: -24px -24px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; font-family: sans-serif; }
-    .no-print-bar button { background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    @media print { .no-print-bar, .no-print { display: none !important; } body { padding: 0; } }
-  </style>
-</head>
-<body>
-  <div class="no-print-bar">
-    <span><b>Official Rating Sheet Document:</b> ${employee.fullName} (${periodLabel})</span>
-    <button onclick="window.print()">Print / Save as PDF</button>
-  </div>
-  <div class="header">
-    <p>Republic of the Philippines</p>
-    <h2>EASTERN VISAYAS STATE UNIVERSITY</h2>
-    <h3>Ormoc Campus</h3>
-    <p>Ormoc City</p>
-    <div class="doc-title">EMPLOYEE PERFORMANCE RATING</div>
-  </div>
-  <div style="border: 2px solid #000; margin-bottom: 14px;">
-    <div class="box-title">EMPLOYEE INFORMATION</div>
-    <table class="info-table" style="border: none; margin: 0;">
-      <tr>
-        <td style="width: 50%;"><b>Name:</b> ${employee.fullName || '—'}</td>
-        <td style="width: 50%;"><b>Employee Job Title:</b> ${employee.jobTitle || 'Admin Aide'}</td>
-      </tr>
-      <tr>
-        <td colspan="2"><b>Department:</b> ${typeof employee.department === 'object' && employee.department !== null ? (employee.department.name || '—') : (employee.department || '—')}</td>
-      </tr>
-      <tr>
-        <td style="width: 50%;"><b>Supervisor:</b> ${supervisorName}</td>
-        <td style="width: 50%;"><b>Period:</b> ${periodLabel}</td>
-      </tr>
-    </table>
-  </div>
-  <table class="criteria-table">
-    <thead>
-      <tr>
-        <th style="width: 60%; text-align: left;">Rating</th>
-        <th style="width: 8%;">2</th>
-        <th style="width: 8%;">4</th>
-        <th style="width: 8%;">6</th>
-        <th style="width: 8%;">8</th>
-        <th style="width: 8%;">10</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${EVSU_PERFORMANCE_CRITERIA.map((crit) => {
-        const cScore = Number((targetCycle.dimensionScores || {})[crit.id] || Math.min(10, Math.floor(scoreVal / 10)));
-        return `<tr>
-          <td><b>${crit.title}</b> – ${crit.description}<br><span style="font-size: 10.5px; font-style: italic; color: #555;">Comments: Consistent fulfillment of institutional targets.</span></td>
-          ${[2, 4, 6, 8, 10].map((v) => `<td style="text-align: center; font-weight: bold; font-size: 13px;">${cScore === v ? '✓' : ''}</td>`).join('')}
-        </tr>`;
-      }).join('')}
-      <tr style="background: #f8fafc; font-weight: bold;">
-        <td style="text-align: center;">Overall rating</td>
-        <td colspan="5" style="text-align: center;">
-          <div style="border: 1.5px solid #000; padding: 4px 10px; display: inline-block; min-width: 120px;">
-            ${scoreVal.toFixed(1)}% (${interpretation})
-          </div>
-          <div style="font-size: 11px; font-weight: normal; margin-top: 2px;">
-            Raw Score: ${Math.round((scoreVal / 100) * 60)} / 60
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  <div class="comments-box">
-    <div style="font-weight: bold; margin-bottom: 8px;">COMMENTS AND RECOMMENDATIONS</div>
-    <div style="margin-bottom: 10px;">
-      <b>Strengths of the Employee/Areas for Improvement:</b><br>
-      <div style="margin-top: 4px; padding-bottom: 4px; border-bottom: 1px solid #555;">
-        ${targetCycle.strengths || currentEval.strengths || 'Fulfills duties with consistent diligence and reliable university service.'}
-      </div>
-    </div>
-    <div>
-      <b>Recommendation:</b><br>
-      <div style="margin-top: 4px;">
-        <span class="check-box">${(targetCycle.recommendation || currentEval.recommendation) === 'Recommended for Renewal' ? '✓' : ''}</span> Recommended for Renewal<br>
-        <span class="check-box">${(targetCycle.recommendation || currentEval.recommendation) === 'Recommended with Conditions' ? '✓' : ''}</span> Recommended with Conditions<br>
-        <span class="check-box">${(targetCycle.recommendation || currentEval.recommendation) === 'Not Recommended for Renewal' ? '✓' : ''}</span> Not Recommended for Renewal
-      </div>
-    </div>
-  </div>
-  <div class="sig-block">
-    <div style="width: 55%; line-height: 1.8;">
-      <div><b>Rated by:</b> <span class="sig-line">${supervisorName}</span></div>
-      <div><b>Position:</b> <span class="sig-line">Immediate Supervisor (Dept Head)</span></div>
-      <div><b>Date:</b> <span class="sig-line">${targetCycle.evaluationDate || 'Dec 18, 2026'}</span></div>
-      <div><b>Signature:</b> <span class="sig-line">&nbsp;</span></div>
-    </div>
-    <div style="width: 40%; text-align: center; display: flex; align-items: flex-end; justify-content: center;">
-      <div style="border: 1px dashed #777; padding: 6px 10px; font-size: 11px; font-style: italic;">
-        Official EVSU-Ormoc Performance Evaluation Instrument · Verified Digital Record
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    setToastMsg(`Successfully generated and downloaded Evaluation Document: ${filename}`);
-    setTimeout(() => setToastMsg(null), 4000);
+    try {
+      setIsExportingPdf(true);
+      setToastMsg('Generating official PDF rating sheet...');
+      const savedFilename = await generateEvaluationPdf({
+        employee,
+        cycle: targetCycle,
+        supervisorName,
+        qualitativeStrengths: targetCycle.strengths || currentEval.strengths,
+        qualitativeRecommendations: targetCycle.recommendation || currentEval.recommendation,
+      });
+      setToastMsg(`Successfully generated and downloaded PDF: ${savedFilename}`);
+    } catch (err) {
+      console.error('Failed to generate evaluation PDF:', err);
+      setToastMsg('PDF generation failed. Please try the Print / Preview Sheet option.');
+    } finally {
+      setIsExportingPdf(false);
+      setTimeout(() => setToastMsg(null), 4500);
+    }
   };
 
   const handleOpenOfficialRatingSheet = (evalCycle = viewingEvalCycle) => {
@@ -1845,9 +1728,10 @@ Generated Timestamp: ${new Date().toLocaleString()}
               className="btn btn-primary btn-sm"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
               onClick={() => handleDownloadEvaluationDoc(viewingEvalCycle)}
-              title="Download official performance evaluation rating sheet (.html / PDF)"
+              disabled={isExportingPdf}
+              title="Automatically generate and download official rating sheet PDF"
             >
-              <FileDown size={14} /> Download Evaluation (PDF)
+              <FileDown size={14} /> {isExportingPdf ? 'Generating PDF...' : 'Download Evaluation (PDF)'}
             </button>
             <button
               type="button"
