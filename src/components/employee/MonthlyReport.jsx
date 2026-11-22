@@ -207,13 +207,11 @@ export default function MonthlyReport({
       </div>
 
       {/* Screen Page Header (Hidden when printing) */}
-      <div className="flex-between no-print" style={{ marginBottom: '20px', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="flex-between no-print" style={{ marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: '24px' }}>Accumulated DAR Logs</h1>
-          <p className="muted" style={{ margin: 0, fontSize: '13.5px' }}>
-            {safeDeptName} &mdash; Official quincena compilation of verified daily accomplishment reports for <b>{employeeName}</b>
-            {cyclePeriod ? ` (${cyclePeriod})` : ''}.
-          </p>
+          <h1 style={{ margin: 0, fontSize: '24px' }}>
+            Accumulated DAR Logs{employeeName ? `: ${employeeName}` : ''}
+          </h1>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button

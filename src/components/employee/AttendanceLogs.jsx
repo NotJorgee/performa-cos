@@ -11,6 +11,7 @@ import { exportToExcel } from '../../utils/excelExport';
 
 export default function AttendanceLogs({ currentUser, employeeId = null, employeeName = null, onBack = null, onNavigate = null, backLabel = 'Back to Attendance Clock-In' }) {
   const targetId = employeeId || currentUser?.id;
+  const displayName = employeeName || currentUser?.full_name || currentUser?.name || '';
   const [toast, setToast] = useState(null);
   const [cutoffPeriod, setCutoffPeriod] = useState('1st_half'); // '1st_half' | '2nd_half'
   const now = new Date();
@@ -136,7 +137,7 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
       <div className="flex-between" style={{ marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Calendar size={28} color="var(--brand-700)" /> Attendance Logs
+            <Calendar size={28} color="var(--brand-700)" /> Attendance Logs{displayName ? `: ${displayName}` : ''}
           </h1>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
