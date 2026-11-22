@@ -198,6 +198,7 @@ class OTPCode(Base):
     code = Column(String(10), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False)
+    failed_attempts = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 

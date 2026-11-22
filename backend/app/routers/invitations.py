@@ -1,10 +1,11 @@
 """
 routers/invitations.py — Invitation token management & onboarding for PerformaCOS.
 """
-import random
+import secrets
+import time
 import datetime
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
+from typing import List, Dict
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -39,13 +40,13 @@ def create_invitation(
             detail="Only HR Personnel can issue invitation tokens.",
         )
 
-    # Prefix based on role
+    # Prefix based on role with cryptographically secure random token (SEC-01: 64-bit entropy)
     role_prefix = "COS" if payload.role == "COS Employee" else "ADM"
-    token_str = f"EVSU-INV-{role_prefix}-{random.randint(10000, 99999)}"
+    token_str = f"EVSU-INV-{role_prefix}-{secrets.token_hex(8).upper()}"
 
     # Ensure uniqueness
     while db.query(models.InvitationToken).filter(models.InvitationToken.token == token_str).first():
-        token_str = f"EVSU-INV-{role_prefix}-{random.randint(10000, 99999)}"
+        token_str = f"EVSU-INV-{role_prefix}-{secrets.token_hex(8).upper()}"
 
     expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=30)
 
@@ -157,9 +158,29 @@ def revoke_invitation(
     return {"message": "Invitation token revoked successfully."}
 
 
+_VALIDATE_RATE_LIMIT: Dict[str, List[float]] = {}
+_MAX_VALIDATE_PER_MINUTE = 30
+
+
+def _check_validate_rate_limit(client_ip: str) -> None:
+    now = time.time()
+    cutoff = now - 60.0
+    attempts = [t for t in _VALIDATE_RATE_LIMIT.get(client_ip, []) if t > cutoff]
+    if len(attempts) >= _MAX_VALIDATE_PER_MINUTE:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many invitation validation requests. Please wait a minute before retrying.",
+        )
+    attempts.append(now)
+    _VALIDATE_RATE_LIMIT[client_ip] = attempts
+
+
 @router.get("/validate")
-def validate_invitation(token: str, db: Session = Depends(get_db)):
-    """Public endpoint — validates an invitation token without requiring authentication."""
+def validate_invitation(token: str, request: Request, db: Session = Depends(get_db)):
+    """Public endpoint — validates an invitation token without requiring authentication (SEC-01: Rate Limited)."""
+    client_ip = request.client.host if request.client else "unknown"
+    _check_validate_rate_limit(client_ip)
+
     clean_token = (token or "").strip()
     invite = (
         db.query(models.InvitationToken)

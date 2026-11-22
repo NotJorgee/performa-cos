@@ -244,8 +244,12 @@ def update_campus_geofences_batch(
     """
     Updates or synchronizes full list of campus geofences. Admin/HR/DeptHead only.
     """
-    if current_user.role not in ["HR Personnel", "Department Head"]:
-        raise HTTPException(status_code=403, detail="Only HR Personnel or Department Heads can configure geofences.")
+    # SEC-09: Restrict geofence synchronization strictly to HR Personnel
+    if current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Human Resource Personnel can configure campus geofences.",
+        )
 
     incoming_ids = set()
     for item in payload:
@@ -307,8 +311,12 @@ def update_single_geofence(
     """
     Updates parameters (coordinates, radius, enforcement) for a specific campus.
     """
-    if current_user.role not in ["HR Personnel", "Department Head"]:
-        raise HTTPException(status_code=403, detail="Not authorized to edit geofence perimeters.")
+    # SEC-09: Restrict geofence parameter updates strictly to HR Personnel
+    if current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Human Resource Personnel can alter campus geofence perimeters.",
+        )
 
     campus = db.query(models.CampusGeofence).filter(models.CampusGeofence.id == campus_id).first()
     if not campus:

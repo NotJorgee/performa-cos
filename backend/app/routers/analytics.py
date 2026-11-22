@@ -19,7 +19,13 @@ def get_hr_dashboard_metrics(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    """Real-time institutional metrics for HRMD Officers and Administrators."""
+    """Real-time institutional metrics for HRMD Officers and Administrators (SEC-08: Role Protected)."""
+    if current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to Human Resource Personnel.",
+        )
+
     today = datetime.date.today()
     thirty_days_later = today + datetime.timedelta(days=30)
 
@@ -492,7 +498,7 @@ def get_executive_analytics(
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """
-    High-level institutional executive analytics:
+    High-level institutional executive analytics (SEC-08: Role Protected):
     - 100% Pure Live Data from Database (No Dummy/Synthetic Data)
     - Real-time evaluations from models.EvaluationRecord
     - Real-time department headcounts from models.UserAccount
@@ -500,6 +506,12 @@ def get_executive_analytics(
     - Official System Go-Live: November 2026 (Launch Year & Month)
     - Multi-month reactive breakdown across all 12 calendar months
     """
+    if current_user.role not in ["HR Personnel", "Department Head"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to Executive Administrators and Department Heads.",
+        )
+
     today = datetime.date.today()
     current_calendar_year = today.year
     current_calendar_month = today.month  # 11 for November

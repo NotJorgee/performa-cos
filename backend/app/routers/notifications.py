@@ -228,10 +228,22 @@ def mark_notification_as_read(
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    """Mark a specific notification as read."""
+    """Mark a specific notification as read (SEC-10: Ownership verified)."""
     notif = db.query(models.Notification).filter(models.Notification.id == notification_id).first()
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found.")
+
+    # SEC-10: Ownership / Target role authorization check
+    if notif.user_id and notif.user_id != current_user.id and current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to mark this notification as read.",
+        )
+    if not notif.user_id and notif.target_role and notif.target_role != current_user.role and current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to mark this notification as read.",
+        )
 
     notif.is_read = True
     db.commit()
@@ -276,7 +288,10 @@ def delete_notification(
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found.")
 
+    # SEC-10: Ownership / Target role authorization check
     if notif.user_id and notif.user_id != current_user.id and current_user.role != "HR Personnel":
+        raise HTTPException(status_code=403, detail="Not authorized to dismiss this notification.")
+    if not notif.user_id and notif.target_role and notif.target_role != current_user.role and current_user.role != "HR Personnel":
         raise HTTPException(status_code=403, detail="Not authorized to dismiss this notification.")
 
     db.delete(notif)

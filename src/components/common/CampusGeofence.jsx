@@ -45,9 +45,11 @@ import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 
 export default function CampusGeofence({
+  currentUser = null,
   onSave = () => {},
   onBack = null,
 }) {
+  const isHR = !currentUser || currentUser?.role === 'HR Personnel';
   const [campuses, setCampuses] = useState(() => getCampusGeofences());
   const [campusToDelete, setCampusToDelete] = useState(null);
   const [isDeletingCampus, setIsDeletingCampus] = useState(false);
@@ -792,6 +794,10 @@ export default function CampusGeofence({
   // Save changes to database and local state
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!isHR) {
+      showToast('Perimeter configuration is restricted to Human Resource Personnel.');
+      return;
+    }
     setIsSaving(true);
 
     const updatedCampus = {
@@ -2008,7 +2014,8 @@ export default function CampusGeofence({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={isSaving}
+                disabled={isSaving || !isHR}
+                title={!isHR ? 'Campus perimeter configuration is restricted to Human Resource Personnel.' : undefined}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

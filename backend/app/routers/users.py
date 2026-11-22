@@ -441,8 +441,8 @@ def change_own_password(
     if not verify_password(payload.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password does not match.")
 
-    if len(payload.new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
+    # SEC-06: Enforce full password complexity policy
+    validate_password_complexity(payload.new_password)
 
     current_user.password_hash = hash_password(payload.new_password)
     db.commit()
@@ -477,8 +477,8 @@ def change_password(
         if not verify_password(payload.current_password, user.password_hash):
             raise HTTPException(status_code=400, detail="Current password does not match.")
 
-    if len(payload.new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
+    # SEC-06: Enforce full password complexity policy
+    validate_password_complexity(payload.new_password)
 
     user.password_hash = hash_password(payload.new_password)
     db.commit()

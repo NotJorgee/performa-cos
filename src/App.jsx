@@ -616,6 +616,7 @@ export default function App() {
       {/* Institutional Campus Geofence Page (Universal for HR & Dept Heads) */}
       {currentView === 'campus_geofence' && (
         <CampusGeofence
+          currentUser={currentUser}
           onBack={() => navigateTo('dashboard')}
         />
       )}

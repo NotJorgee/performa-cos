@@ -289,6 +289,21 @@ def forgot_password(
     if not user:
         return generic_response
 
+    # SEC-05: Cooldown check — prevent OTP flooding (60-second limit)
+    recent_otp = (
+        db.query(models.OTPCode)
+        .filter(
+            models.OTPCode.email == payload.email,
+            models.OTPCode.created_at >= datetime.datetime.utcnow() - datetime.timedelta(seconds=60),
+        )
+        .first()
+    )
+    if recent_otp:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Please wait 60 seconds before requesting another verification code.",
+        )
+
     # Generate 6-digit OTP
     otp_code = "".join(random.choices(string.digits, k=6))
     expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=settings.OTP_EXPIRE_MINUTES)
@@ -299,21 +314,24 @@ def forgot_password(
         models.OTPCode.used == False,
     ).update({"used": True})
 
-    db.add(models.OTPCode(email=payload.email, code=otp_code, expires_at=expires_at))
+    db.add(models.OTPCode(email=payload.email, code=otp_code, expires_at=expires_at, failed_attempts=0))
     db.commit()
 
-    print(f"[AUTH OTP] Generated OTP {otp_code} for {payload.email} (expires in {settings.OTP_EXPIRE_MINUTES}m)")
+    # SEC-04: Mask email and omit plaintext OTP code from console logs
+    at_pos = payload.email.find("@")
+    masked_email = payload.email[:2] + "***" + (payload.email[at_pos:] if at_pos != -1 else "")
+    print(f"[AUTH OTP] Verification code dispatched for {masked_email} (expires in {settings.OTP_EXPIRE_MINUTES}m)")
     background_tasks.add_task(send_otp_email, payload.email, otp_code, user.full_name)
     return generic_response
 
 
 @router.post("/verify-otp")
 def verify_otp(payload: schemas.VerifyOtpRequest, db: Session = Depends(get_db)):
+    """Verifies 6-digit OTP code with strict 5-attempt brute-force protection (SEC-05)."""
     otp = (
         db.query(models.OTPCode)
         .filter(
             models.OTPCode.email == payload.email,
-            models.OTPCode.code == payload.otp_code,
             models.OTPCode.used == False,
         )
         .order_by(models.OTPCode.created_at.desc())
@@ -321,9 +339,46 @@ def verify_otp(payload: schemas.VerifyOtpRequest, db: Session = Depends(get_db))
     )
 
     if not otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP code.")
+        raise HTTPException(status_code=400, detail="Invalid or expired verification session. Please request a new code.")
+
     if otp.expires_at < datetime.datetime.utcnow():
-        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+        otp.used = True
+        db.commit()
+        raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
+
+    # SEC-05: Brute-force threshold enforcement
+    if (otp.failed_attempts or 0) >= 5:
+        otp.used = True
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed attempts (5/5). This code has been invalidated for security reasons. Please request a new code.",
+        )
+
+    submitted_code = (payload.otp_code or "").strip()
+    if otp.code != submitted_code:
+        otp.failed_attempts = (otp.failed_attempts or 0) + 1
+        if otp.failed_attempts >= 5:
+            otp.used = True
+            db.commit()
+            log_audit(
+                db=db,
+                action="OTP_BRUTE_FORCE_BLOCKED",
+                target_scope=f"OTP {payload.email}",
+                operation_details="5 failed OTP verification attempts recorded. Token burned and invalidated.",
+                user=None,
+                request=None,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed attempts (5/5). This code has been invalidated for security reasons. Please request a new code.",
+            )
+        db.commit()
+        remaining = 5 - otp.failed_attempts
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Incorrect verification code. {remaining} attempt{'s' if remaining > 1 else ''} remaining.",
+        )
 
     otp.used = True
     db.commit()
@@ -343,6 +398,7 @@ def verify_otp(payload: schemas.VerifyOtpRequest, db: Session = Depends(get_db))
 
 @router.post("/reset-password")
 def reset_password(payload: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Resets user password via verified reset token, enforcing institutional password policy (SEC-06)."""
     try:
         decoded = jose_jwt.decode(
             payload.reset_token,
@@ -359,7 +415,13 @@ def reset_password(payload: schemas.ResetPasswordRequest, db: Session = Depends(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # SEC-06: Enforce password complexity policy
+    validate_password_complexity(payload.new_password)
+
     user.password_hash = hash_password(payload.new_password)
+
+    # Invalidate all existing sessions for this user on password reset
+    db.query(models.UserSession).filter(models.UserSession.user_id == user.id).delete()
     db.commit()
 
     log_audit(

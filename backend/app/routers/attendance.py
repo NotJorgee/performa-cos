@@ -811,6 +811,12 @@ def get_payroll_dtr_packet(
         target_user = db.query(models.UserAccount).filter(models.UserAccount.id == employee_id).first()
         if not target_user:
             raise HTTPException(status_code=404, detail="Employee record not found.")
+        # SEC-07: Department Head boundary scoping check
+        if current_user.role == "Department Head" and target_user.department_id != current_user.department_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Department Heads can only access payroll packets and DTR records for employees within their assigned department.",
+            )
     else:
         target_user = current_user
 
@@ -1318,6 +1324,15 @@ def review_leave_request(
     leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == leave_id).first()
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found.")
+
+    # SEC-07: Department Head scoping check on leave review
+    if current_user.role == "Department Head":
+        leave_emp = db.query(models.UserAccount).filter(models.UserAccount.id == leave.user_id).first()
+        if not leave_emp or leave_emp.department_id != current_user.department_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Department Heads can only review leave requests for employees within their assigned department.",
+            )
 
     if payload.action not in ["APPROVE", "REJECT"]:
         raise HTTPException(status_code=400, detail="Action must be APPROVE or REJECT.")
