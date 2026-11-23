@@ -10,6 +10,7 @@ import '../utils/format.dart';
 import '../utils/location.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/predictive_text_field.dart';
 
 const leaveTypes = [
@@ -39,10 +40,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>> _leaves = [];
   bool _loadingToday = false;
   bool _punching = false;
-
-  LocationFix? _gps;
-  String? _gpsError;
-  bool _locating = false;
+  String? _punchAction;
 
   String _leaveType = leaveTypes.first.$1;
   DateTime? _start;
@@ -69,7 +67,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _today = _state.cache[_todayKey] as Map<String, dynamic>?;
     _leaves = (_state.cache[_leavesKey] as List<Map<String, dynamic>>?) ?? [];
     _loadToday(silent: _today != null);
-    _locate();
     if (_tab == 'leaves') _loadLeaves();
   }
 
@@ -112,44 +109,46 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (_) {}
   }
 
-  Future<void> _locate() async {
+  Future<void> _punch(bool timeIn) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: timeIn ? 'Confirm Attendance Clock-In' : 'Confirm Attendance Clock-Out',
+      message: timeIn
+          ? 'Record your attendance time-in for today? Your live GPS coordinates will be verified against the EVSU campus perimeter.'
+          : 'Record your attendance time-out for today? Please ensure your Daily Accomplishment Report for today has been submitted.',
+      confirmText: timeIn ? 'Clock In' : 'Clock Out',
+      cancelText: 'Cancel',
+      variant: 'brand',
+      icon: timeIn ? Icons.check_circle_outline : Icons.schedule,
+    );
+    if (!confirmed) return;
+
     setState(() {
-      _locating = true;
-      _gpsError = null;
+      _punching = true;
+      _punchAction = timeIn ? 'locating_in' : 'locating_out';
     });
     try {
-      final fix = await getCurrentLocation();
-      if (mounted) setState(() => _gps = fix);
-    } catch (e) {
-      if (mounted) setState(() => _gpsError = e.toString());
-    } finally {
-      if (mounted) setState(() => _locating = false);
-    }
-  }
-
-  Future<void> _punch(bool timeIn) async {
-    setState(() => _punching = true);
-    try {
-      // Always punch with a fresh GPS fix
+      // Automatically acquire fresh satellite GPS coordinates on-demand
       LocationFix fix;
       try {
         fix = await getCurrentLocation();
-        setState(() {
-          _gps = fix;
-          _gpsError = null;
-        });
       } catch (e) {
-        if (_gps == null) {
-          if (mounted) {
-            showToast(context, 'Unable to detect your GPS location. Please allow location access. ($e)', error: true);
-          }
-          return;
+        if (mounted) {
+          showToast(
+            context,
+            'Unable to acquire accurate GPS position. Please check your device location settings and try again.',
+            error: true,
+          );
         }
-        fix = _gps!;
+        return;
       }
+
+      setState(() => _punchAction = timeIn ? 'saving_in' : 'saving_out');
+
       final res = timeIn
           ? await Api.instance.timeIn(fix.latitude, fix.longitude, accuracy: fix.accuracy)
           : await Api.instance.timeOut(fix.latitude, fix.longitude, accuracy: fix.accuracy);
+
       if (!mounted) return;
       showToast(context, (res is Map ? res['message'] : null)?.toString() ?? 'Punch recorded successfully!');
       for (final p in ['emp_att_today_', 'emp_dtr_', 'dtr_logs_', 'emp_dashboard_metrics_']) {
@@ -157,9 +156,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
       await _loadToday();
     } catch (e) {
-      if (mounted) showToast(context, e.toString().isEmpty ? 'Failed to record attendance punch.' : e.toString(), error: true);
+      if (mounted) {
+        showToast(context, e.toString().isEmpty ? 'Failed to record attendance punch.' : e.toString(), error: true);
+      }
     } finally {
-      if (mounted) setState(() => _punching = false);
+      if (mounted) {
+        setState(() {
+          _punching = false;
+          _punchAction = null;
+        });
+      }
     }
   }
 
@@ -183,6 +189,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       showToast(context, 'End date cannot be earlier than the start date.', error: true);
       return;
     }
+
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Submit Time & Shift Request?',
+      message: 'Submit your $_leaveType request for department review and endorsement?',
+      confirmText: 'Submit Request',
+      cancelText: 'Cancel',
+      variant: 'brand',
+      icon: Icons.description_outlined,
+    );
+    if (!confirmed) return;
+
     setState(() => _submittingLeave = true);
     try {
       final res = await Api.instance.applyLeave({
@@ -314,18 +332,50 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ]),
             ]),
           ),
-          const SizedBox(height: 12),
-          _gpsStatus(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(children: [
             Expanded(
               child: SizedBox(
                 height: 50,
-                child: ElevatedButton.icon(
+                child: ElevatedButton(
                   onPressed: _punching || timedIn ? null : () => _punch(true),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.green600),
-                  icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: Text(timedIn ? 'Timed In' : 'Clock In'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: timedIn ? const Color(0xFFE2E8F0) : AppColors.brand700,
+                    foregroundColor: timedIn ? const Color(0xFF94A3B8) : Colors.white,
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                    disabledForegroundColor: const Color(0xFF94A3B8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_punchAction == 'locating_in' || _punchAction == 'saving_in') ...[
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        ),
+                        const SizedBox(width: 8),
+                      ] else ...[
+                        const Icon(Icons.check_circle_outline, size: 18),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          timedIn
+                              ? 'Timed In'
+                              : _punchAction == 'locating_in'
+                                  ? 'Acquiring GPS...'
+                                  : _punchAction == 'saving_in'
+                                      ? 'Recording Punch...'
+                                      : 'Clock In',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -333,21 +383,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             Expanded(
               child: SizedBox(
                 height: 50,
-                child: ElevatedButton.icon(
+                child: ElevatedButton(
                   onPressed: _punching || !timedIn || timedOut ? null : () => _punch(false),
-                  icon: const Icon(Icons.schedule, size: 18),
-                  label: Text(timedOut ? 'Timed Out' : 'Clock Out'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (!timedIn || timedOut) ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    foregroundColor: (!timedIn || timedOut) ? const Color(0xFF94A3B8) : Colors.white,
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                    disabledForegroundColor: const Color(0xFF94A3B8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_punchAction == 'locating_out' || _punchAction == 'saving_out') ...[
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        ),
+                        const SizedBox(width: 8),
+                      ] else ...[
+                        const Icon(Icons.schedule, size: 18),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          timedOut
+                              ? 'Timed Out'
+                              : _punchAction == 'locating_out'
+                                  ? 'Acquiring GPS...'
+                                  : _punchAction == 'saving_out'
+                                      ? 'Recording Punch...'
+                                      : 'Clock Out',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ]),
-          if (_punching) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator()),
         ]),
       ),
       _ActionCard(
         icon: Icons.description_outlined,
-        title: 'Apply for Leave',
-        link: 'Apply Now',
+        title: 'Time & Shift Requests',
+        link: 'Manage',
         onTap: () => _switchTab('leaves'),
       ),
       _ActionCard(
@@ -357,38 +441,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         onTap: () => state.navigate('attendance_logs'),
       ),
     ];
-  }
-
-  Widget _gpsStatus() {
-    if (_locating) {
-      return const Row(children: [
-        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-        SizedBox(width: 8),
-        MutedText('Acquiring live GPS location…'),
-      ]);
-    }
-    if (_gpsError != null) {
-      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Icon(Icons.location_off_outlined, size: 16, color: AppColors.red600),
-        const SizedBox(width: 6),
-        Expanded(child: Text(_gpsError!, style: const TextStyle(fontSize: 12, color: AppColors.red600))),
-        TextButton(onPressed: _locate, child: const Text('Retry')),
-      ]);
-    }
-    if (_gps != null) {
-      return Row(children: [
-        const Icon(Icons.my_location, size: 15, color: AppColors.green700),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-              'GPS ready • ${_gps!.latitude.toStringAsFixed(4)}, ${_gps!.longitude.toStringAsFixed(4)}'
-              '${_gps!.accuracy != null ? ' (±${_gps!.accuracy!.round()}m)' : ''}',
-              style: const TextStyle(fontSize: 12, color: AppColors.green700, fontWeight: FontWeight.w600)),
-        ),
-        IconButton(onPressed: _locate, icon: const Icon(Icons.refresh, size: 18), tooltip: 'Refresh location'),
-      ]);
-    }
-    return const SizedBox.shrink();
   }
 
   List<Widget> _buildLeaves(AppState state) {

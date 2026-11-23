@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'confirm_dialog.dart';
 
 /// Authenticated COS Employee shell (port of layout/AppLayout.jsx): off-canvas drawer,
 /// top bar with role pill, notification bell + dropdown and user chip.
@@ -95,9 +96,10 @@ class _BellButton extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _showNotificationsPanel(BuildContext context) {
-    final state = AppScope.read(context);
+void _showNotificationsPanel(BuildContext context) {
+  final state = AppScope.read(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -200,7 +202,6 @@ class _BellButton extends StatelessWidget {
       ),
     );
   }
-}
 
 class _NavDrawer extends StatelessWidget {
   const _NavDrawer();
@@ -247,7 +248,7 @@ class _NavDrawer extends StatelessWidget {
                 const Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('PerformaCOS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                    Text('COS EMPLOYEE PORTAL',
+                    Text('EVSU PERFORMANCE MANAGEMENT',
                         style: TextStyle(
                             fontSize: 10.5,
                             letterSpacing: 0.6,
@@ -268,12 +269,39 @@ class _NavDrawer extends StatelessWidget {
               child: ListView(
                 children: [
                   item(Icons.dashboard_outlined, 'Dashboard', 'dashboard', ['dashboard']),
-                  item(Icons.access_time_outlined, 'Attendance & Leave', 'employee_attendance',
-                      ['employee_attendance', 'my_attendance', 'leave_filing', 'my_leaves']),
-                  item(Icons.calendar_month_outlined, 'Attendance Logs (DTR)', 'attendance_logs', ['attendance_logs']),
-                  item(Icons.edit_note_outlined, 'Daily Report (DAR)', 'daily_report', ['daily_report']),
-                  item(Icons.description_outlined, 'Monthly Report (MAR)', 'monthly_report', ['monthly_report']),
-                  item(Icons.badge_outlined, 'Contract Status', 'contract_status', ['contract_status']),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    child: ListTile(
+                      dense: true,
+                      iconColor: AppColors.ink700,
+                      textColor: AppColors.ink800,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      leading: const Icon(Icons.notifications_none_outlined, size: 20),
+                      title: const Text('Notifications', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      trailing: state.unreadCount > 0
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFECACA)),
+                              ),
+                              child: Text(
+                                '${state.unreadCount}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showNotificationsPanel(context);
+                      },
+                    ),
+                  ),
                   item(Icons.settings_outlined, 'Account Settings', 'account_settings',
                       ['account_settings', 'profile_settings', 'view_profile', 'change_password']),
                 ],
@@ -284,14 +312,26 @@ class _NavDrawer extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               child: ListTile(
                 dense: true,
-                iconColor: AppColors.red600,
-                textColor: AppColors.red600,
+                iconColor: AppColors.brand700,
+                textColor: AppColors.brand700,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 leading: const Icon(Icons.logout, size: 20),
                 title: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w700)),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  state.logout();
+                  final confirmed = await showConfirmDialog(
+                    context,
+                    title: 'Log Out of PerformaCOS?',
+                    message:
+                        'Are you sure you want to end your current session? Any unsaved edits or in-progress drafts will be lost.',
+                    confirmText: 'Log Out',
+                    cancelText: 'Stay Logged In',
+                    variant: 'brand',
+                    icon: Icons.logout,
+                  );
+                  if (confirmed) {
+                    state.logout();
+                  }
                 },
               ),
             ),

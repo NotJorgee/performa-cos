@@ -11,6 +11,7 @@ import '../utils/location.dart';
 import '../utils/watermark.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/predictive_text_field.dart';
 
 class _GeotagMeta {
@@ -174,6 +175,19 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       setState(() => _geoError = 'Geotag verification metadata is missing. Please capture or retake a photo.');
       return;
     }
+
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Submit Daily Accomplishment Report?',
+      message:
+          'Are you sure you want to submit your Daily Accomplishment Report for today with verified geotagged photo evidence? Once submitted, it will be routed for department review.',
+      confirmText: 'Submit Report',
+      cancelText: 'Cancel',
+      variant: 'brand',
+      icon: Icons.assignment_turned_in_outlined,
+    );
+    if (!confirmed) return;
+
     setState(() => _submitting = true);
     final meta = _meta!;
     try {
@@ -254,6 +268,20 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final user = state.user!;
+
+    if (!_hasClockedInToday && !_loadingAttendance) {
+      return PageBody(
+        maxWidth: 820,
+        children: [
+          PageHeader(
+            title: 'Daily Accomplishment Reporting',
+            onBack: () => state.navigate('dashboard'),
+          ),
+          _buildClockInGate(state),
+        ],
+      );
+    }
+
     return PageBody(
       maxWidth: 820,
       children: [
@@ -263,45 +291,6 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
               'Submit your end-of-shift task log with geotagged photo evidence and verified EVSU-Ormoc campus coordinates.',
           onBack: () => state.navigate('dashboard'),
         ),
-        if (!_hasClockedInToday && !_loadingAttendance)
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFCA5A5)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 24),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Clock-In Required for Daily Report',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF991B1B), fontSize: 13.5)),
-                      SizedBox(height: 2),
-                      Text('Please record your attendance time-in before submitting today\'s DAR task log.',
-                          style: TextStyle(color: Color(0xFFB91C1C), fontSize: 12)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => state.navigate('employee_attendance'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
-                  child: const Text('Clock In'),
-                ),
-              ],
-            ),
-          ),
         if (_geoError != null) FlashBanner(_geoError!),
         if (kIsWeb)
           const FlashBanner(
@@ -524,6 +513,110 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 ]),
         ),
       ]),
+    );
+  }
+
+  Widget _buildClockInGate(AppState state) {
+    final now = DateTime.now();
+    final dateStr = DateFormat('EEEE, MMM d, yyyy').format(now);
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFEF3C7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.schedule, size: 30, color: Color(0xFFD97706)),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Clock-In Required',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'You need to clock in first before submitting your Daily Accomplishment Report for today.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF475569),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_month_outlined, size: 16, color: Color(0xFF64748B)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Today: $dateStr',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('|', style: TextStyle(color: Color(0xFFCBD5E1))),
+                      ),
+                      const Text(
+                        'Not Clocked In',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFFDC2626),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton.icon(
+                      onPressed: () => state.navigate('employee_attendance'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.brand700,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.schedule, size: 16),
+                      label: const Text('Go to Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
