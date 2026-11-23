@@ -18,6 +18,25 @@ dist/
 build/
 .next/
 out/
+*.apk
+*.aab
+!public/downloads/*.apk
+
+# Flutter / Dart Mobile
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.iml
+.idea/
+mobile/build/
+mobile/.dart_tool/
+mobile/.idea/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/.symlinks/
 
 # System files
 .DS_Store

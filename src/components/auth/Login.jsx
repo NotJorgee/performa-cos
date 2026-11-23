@@ -4,6 +4,22 @@ import evsuSeal from '../../assets/images/evsu-seal.png';
 import loginBg from '../../assets/images/login-bg.png';
 import { api } from '../../services/api';
 
+function AndroidIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0003s.4482-1.0003.9993-1.0003c.5511 0 .9993.4486.9993 1.0003s-.4482 1.0003-.9993 1.0003m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0003s.4482-1.0003.9993-1.0003c.5511 0 .9993.4486.9993 1.0003s-.4482 1.0003-.9993 1.0003m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4116 13.8533 8.125 12 8.125s-3.5902.2866-5.1368.8247L4.8409 5.4467a.4161.4161 0 00-.5676-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3438 14.6589 0 18.75h24c-.3438-4.0911-2.6889-7.5633-6.1185-9.4286" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-1.99.6-2.63 1.35-.56.64-1.05 1.7-0.92 2.73 1.01.08 2.01-.48 2.63-1.23z" />
+    </svg>
+  );
+}
+
 export default function Login({
   onLogin = () => {},
   onForgotPassword = () => {},
@@ -16,6 +32,7 @@ export default function Login({
   const [isLoading, setIsLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeUser, setWelcomeUser] = useState(null);
+  const [activeLegalModal, setActiveLegalModal] = useState(null);
 
   // Live input validity indicators
   const emailTrimmed = email.trim();
@@ -211,14 +228,204 @@ export default function Login({
                 {isLoading && <span className="btn-spinner" aria-hidden="true" />}
               </button>
 
-              {/* Institutional Footer */}
-              <div className="lv2-footer" style={{ marginTop: '28px' }}>
-                <span>Official Institutional Portal &bull; Eastern Visayas State University</span>
+              {/* Get The App Section */}
+              <div className="lv2-app-divider">
+                <span>Get the app</span>
+              </div>
+
+              <div className="lv2-app-buttons">
+                <a
+                  href="/downloads/PerformaCOS.apk"
+                  download="PerformaCOS.apk"
+                  className="lv2-app-btn"
+                  title="Download PerformaCOS for Android"
+                >
+                  <span className="lv2-app-btn-icon"><AndroidIcon /></span>
+                  <div className="lv2-app-btn-text">
+                    <span className="lv2-app-btn-sub">Get the app for</span>
+                    <span className="lv2-app-btn-title">Android</span>
+                  </div>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveLegalModal('ios')}
+                  className="lv2-app-btn"
+                  title="Install PerformaCOS on iOS"
+                >
+                  <span className="lv2-app-btn-icon"><AppleIcon /></span>
+                  <div className="lv2-app-btn-text">
+                    <span className="lv2-app-btn-sub">Get the app for</span>
+                    <span className="lv2-app-btn-title">iOS</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Legal & About Footer */}
+              <div className="lv2-footer">
+                <div className="lv2-legal-links">
+                  <button
+                    type="button"
+                    className="lv2-legal-link-btn"
+                    onClick={() => setActiveLegalModal('terms')}
+                  >
+                    Terms and Conditions
+                  </button>
+                  <span className="lv2-legal-dot">&bull;</span>
+                  <button
+                    type="button"
+                    className="lv2-legal-link-btn"
+                    onClick={() => setActiveLegalModal('privacy')}
+                  >
+                    Privacy Notice
+                  </button>
+                  <span className="lv2-legal-dot">&bull;</span>
+                  <button
+                    type="button"
+                    className="lv2-legal-link-btn"
+                    onClick={() => setActiveLegalModal('about')}
+                  >
+                    About
+                  </button>
+                </div>
+                <div className="lv2-legal-copy">
+                  &copy; 2026 PerformaCOS. All rights reserved.
+                </div>
               </div>
             </form>
           </div>
         </div>
       </div>
+
+      {/* Legal & App Modals */}
+      {activeLegalModal && (
+        <div
+          className="lv2-modal-backdrop"
+          onClick={() => setActiveLegalModal(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="lv2-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="lv2-modal-head">
+              <h3 className="lv2-modal-title">
+                {activeLegalModal === 'ios' && 'PerformaCOS for iOS (iPhone & iPad)'}
+                {activeLegalModal === 'terms' && 'Terms and Conditions'}
+                {activeLegalModal === 'privacy' && 'Privacy Notice'}
+                {activeLegalModal === 'about' && 'About PerformaCOS'}
+              </h3>
+              <button
+                type="button"
+                className="lv2-modal-close"
+                onClick={() => setActiveLegalModal(null)}
+                aria-label="Close dialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="lv2-modal-body">
+              {activeLegalModal === 'ios' && (
+                <div>
+                  <p>
+                    PerformaCOS is engineered as an installable mobile Progressive Web App (PWA) with native hardware support on iOS:
+                  </p>
+                  <ol>
+                    <li>
+                      Open <strong>Safari</strong> on your iPhone or iPad and navigate to this website.
+                    </li>
+                    <li>
+                      Tap the <strong>Share</strong> button (the box icon with an arrow pointing upward) in the Safari toolbar.
+                    </li>
+                    <li>
+                      Scroll down in the share sheet and tap <strong>"Add to Home Screen"</strong>.
+                    </li>
+                    <li>
+                      Tap <strong>"Add"</strong> in the top-right corner.
+                    </li>
+                  </ol>
+                  <p style={{ marginTop: '14px', fontSize: '0.92em', color: '#64748b' }}>
+                    Once added, PerformaCOS runs in standalone full-screen mode with high-accuracy GPS campus geofencing, camera access for DAR evidence, and biometric login support.
+                  </p>
+                </div>
+              )}
+
+              {activeLegalModal === 'terms' && (
+                <div>
+                  <h4>1. Acceptance of Terms</h4>
+                  <p>
+                    By accessing or using the PerformaCOS Performance Management System, you agree to comply with all institutional policies, guidelines, and terms established by Eastern Visayas State University (EVSU) and the Human Resource Management and Development Office (HRMDO).
+                  </p>
+
+                  <h4>2. Authorized Account Access</h4>
+                  <p>
+                    Access is restricted strictly to authorized university employees, department heads, and human resource personnel. Sharing institutional account credentials or impersonating personnel is strictly prohibited.
+                  </p>
+
+                  <h4>3. Attendance & Daily Accomplishment Reporting (DAR)</h4>
+                  <p>
+                    All attendance time-in, time-out, and daily accomplishment reports submitted through PerformaCOS must reflect true and verifiable official duty. Photo evidence and GPS coordinates are authenticated using cryptographic tamper-detection algorithms. Submission of falsified records constitutes gross misconduct under Civil Service Commission regulations.
+                  </p>
+
+                  <h4>4. Evaluation and Contract Renewal</h4>
+                  <p>
+                    Faculty and employee performance evaluations, peer triad reviews, and contract renewal applications submitted via this portal are binding official academic records.
+                  </p>
+                </div>
+              )}
+
+              {activeLegalModal === 'privacy' && (
+                <div>
+                  <h4>Republic Act No. 10173 (Data Privacy Act of 2012)</h4>
+                  <p>
+                    Eastern Visayas State University is committed to protecting your personal data in accordance with the Data Privacy Act of 2012 (RA 10173) and National Privacy Commission regulations.
+                  </p>
+
+                  <h4>Data Collected</h4>
+                  <ul>
+                    <li><strong>Account Credentials:</strong> Full name, institutional email address, department, and employee ID number.</li>
+                    <li><strong>Attendance & Geolocation:</strong> Device GPS coordinates and timestamps collected strictly during clock-in, clock-out, and DAR submission to verify physical presence within campus perimeters.</li>
+                    <li><strong>Task Proof & Media:</strong> Task photos with cryptographic SHA-256 integrity fingerprints.</li>
+                  </ul>
+
+                  <h4>Purpose of Processing</h4>
+                  <p>
+                    Collected data is processed solely for official payroll processing, semi-monthly DTR generation, supervisory DAR verification, and annual performance evaluation. Data is never shared with unauthorized external third parties.
+                  </p>
+                </div>
+              )}
+
+              {activeLegalModal === 'about' && (
+                <div>
+                  <p>
+                    <strong>PerformaCOS</strong> is an integrated Performance Management and Contract of Service Management System designed specifically for the Eastern Visayas State University (EVSU) Ormoc Campus.
+                  </p>
+                  <h4>Core Capabilities</h4>
+                  <ul>
+                    <li>Automated 15-day payroll aggregation and DTR generation.</li>
+                    <li>Multi-campus GPS geofencing and anti-spoofing verification.</li>
+                    <li>AI-assisted daily accomplishment reporting (DAR) and monthly summarization (MAR).</li>
+                    <li>360-degree triad evaluation scoring and dynamic contract renewal workflows.</li>
+                  </ul>
+                  <p style={{ marginTop: '14px', fontSize: '0.85em', color: '#64748b' }}>
+                    Version 2.0 &bull; Capstone Project Pilot Testing &bull; &copy; 2026 Eastern Visayas State University.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="lv2-modal-foot">
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ padding: '8px 18px', fontSize: '0.88em', borderRadius: '8px' }}
+                onClick={() => setActiveLegalModal(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Post-Login Welcome Transition — Extended duration for readable presentation */}
       {showWelcome && (

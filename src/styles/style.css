@@ -1550,8 +1550,212 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 .lv2-status-row.done .lv2-status-state { color: #fff; }
 
 .lv2-footer {
-  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; margin-top: 18px;
   color: rgba(255,255,255,.7); font-size: .8em;
+}
+
+/* App Download Section on Login */
+.lv2-app-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0 12px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.76em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.lv2-app-divider::before,
+.lv2-app-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.lv2-app-divider span {
+  padding: 0 12px;
+}
+
+.lv2-app-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.lv2-app-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #111418;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  width: 100%;
+  text-align: left;
+}
+.lv2-app-btn:hover {
+  background: #1d2228;
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.lv2-app-btn:active {
+  transform: translateY(0);
+}
+.lv2-app-btn-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+}
+.lv2-app-btn-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  overflow: hidden;
+}
+.lv2-app-btn-sub {
+  font-size: 0.68em;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.lv2-app-btn-title {
+  font-size: 0.92em;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Legal Links Footer */
+.lv2-legal-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.lv2-legal-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.18s ease;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lv2-legal-link-btn:hover {
+  color: #ffffff;
+}
+.lv2-legal-dot {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.78em;
+}
+.lv2-legal-copy {
+  text-align: center;
+  font-size: 0.74em;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 6px;
+}
+
+/* Legal Modal Dialog */
+.lv2-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease both;
+}
+.lv2-modal-box {
+  background: #ffffff;
+  color: #1e293b;
+  width: 100%;
+  max-width: 520px;
+  max-height: 85vh;
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lv2-modal-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+.lv2-modal-title {
+  margin: 0;
+  font-size: 1.15em;
+  font-weight: 800;
+  color: #0f172a;
+}
+.lv2-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+.lv2-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.lv2-modal-body {
+  padding: 22px;
+  overflow-y: auto;
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: #334155;
+}
+.lv2-modal-body h4 {
+  margin: 14px 0 6px;
+  color: #0f172a;
+  font-size: 0.98em;
+  font-weight: 700;
+}
+.lv2-modal-body p {
+  margin: 0 0 10px;
+}
+.lv2-modal-body ul, .lv2-modal-body ol {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.lv2-modal-body li {
+  margin-bottom: 6px;
+}
+.lv2-modal-foot {
+  padding: 14px 22px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* Demo quick-select banner */
