@@ -10,9 +10,8 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   /// The deployed Performa-COS backend, e.g. 'https://api.performacos.example/api'.
   /// Fill this in before building a release, or pass it per build with
-  /// `--dart-define=API_BASE_URL=...`. Leave empty while developing to use the
-  /// platform defaults below.
-  static const String productionApiBaseUrl = '';
+  /// `--dart-define=API_BASE_URL=...`.
+  static const String productionApiBaseUrl = 'https://performacos-api.onrender.com/api';
 
   static const _defineUrl = String.fromEnvironment('API_BASE_URL');
 
@@ -20,8 +19,7 @@ class AppConfig {
     if (_defineUrl.isNotEmpty) return normalize(_defineUrl);
     if (productionApiBaseUrl.isNotEmpty) return normalize(productionApiBaseUrl);
     if (kIsWeb) return normalize('${Uri.base.origin}/api');
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8000/api';
-    return 'http://127.0.0.1:8000/api';
+    return 'https://performacos-api.onrender.com/api';
   }
 
   /// Accepts "192.168.1.10:8000", "https://host" or "https://host/api".
