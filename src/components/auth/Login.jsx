@@ -353,22 +353,22 @@ export default function Login({
                 <div>
                   <h4>1. Acceptance of Terms</h4>
                   <p>
-                    By accessing or using the PerformaCOS Performance Management System, you agree to comply with all institutional policies, guidelines, and terms established by Eastern Visayas State University (EVSU) and the Human Resource Management and Development Office (HRMDO).
+                    By accessing or using the PerformaCOS Performance Management System, you agree to comply with all operational guidelines, attendance policies, and institutional standards established by Eastern Visayas State University (EVSU) - Ormoc Campus and the Human Resource Management and Development Office (HRMDO).
                   </p>
 
                   <h4>2. Authorized Account Access</h4>
                   <p>
-                    Access is restricted strictly to authorized university employees, department heads, and human resource personnel. Sharing institutional account credentials or impersonating personnel is strictly prohibited.
+                    Access is restricted strictly to active Contract of Service (COS) personnel, Department Heads / Immediate Supervisors, and authorized Human Resource personnel. Sharing account credentials, accessing accounts without authorization, or misrepresenting personnel identity is strictly prohibited and audited via system security logs.
                   </p>
 
-                  <h4>3. Attendance & Daily Accomplishment Reporting (DAR)</h4>
+                  <h4>3. Attendance Verification & Daily Accomplishment Reporting (DAR)</h4>
                   <p>
-                    All attendance time-in, time-out, and daily accomplishment reports submitted through PerformaCOS must reflect true and verifiable official duty. Photo evidence and GPS coordinates are authenticated using cryptographic tamper-detection algorithms. Submission of falsified records constitutes gross misconduct under Civil Service Commission regulations.
+                    All attendance clock-in/clock-out logs and Daily Accomplishment Reports (DAR) submitted through PerformaCOS must reflect authentic, verifiable official duty. Attendance logging is validated against the authorized campus geofence perimeter, and task accomplishments require camera-captured photographic verification. Falsification of attendance or accomplishment records constitutes serious misconduct under Civil Service Commission (CSC) guidelines and university disciplinary policies.
                   </p>
 
-                  <h4>4. Evaluation and Contract Renewal</h4>
+                  <h4>4. Performance Evaluation and Contract Renewal</h4>
                   <p>
-                    Faculty and employee performance evaluations, peer triad reviews, and contract renewal applications submitted via this portal are binding official academic records.
+                    Performance evaluations, supervisory rubric scores, accomplishment dossiers, and contract renewal recommendations processed via this portal constitute official university administrative records. Evaluation ratings directly inform contract renewal qualification and institutional endorsement.
                   </p>
                 </div>
               )}
@@ -377,19 +377,19 @@ export default function Login({
                 <div>
                   <h4>Republic Act No. 10173 (Data Privacy Act of 2012)</h4>
                   <p>
-                    Eastern Visayas State University is committed to protecting your personal data in accordance with the Data Privacy Act of 2012 (RA 10173) and National Privacy Commission regulations.
+                    Eastern Visayas State University - Ormoc Campus is committed to safeguarding personal data in accordance with Republic Act No. 10173 (Data Privacy Act of 2012) and National Privacy Commission (NPC) regulations.
                   </p>
 
                   <h4>Data Collected</h4>
                   <ul>
-                    <li><strong>Account Credentials:</strong> Full name, institutional email address, department, and employee ID number.</li>
-                    <li><strong>Attendance & Geolocation:</strong> Device GPS coordinates and timestamps collected strictly during clock-in, clock-out, and DAR submission to verify physical presence within campus perimeters.</li>
-                    <li><strong>Task Proof & Media:</strong> Task photos with cryptographic SHA-256 integrity fingerprints.</li>
+                    <li><strong>Personnel Identity:</strong> Full name, institutional email address, assigned department, employee identification number, and system role.</li>
+                    <li><strong>Attendance & Geolocation:</strong> High-precision device GPS coordinates and server timestamps captured strictly at the moment of clock-in and clock-out to verify physical presence within the campus geofence perimeter. Background location tracking is never conducted.</li>
+                    <li><strong>Accomplishment & Task Proof:</strong> Daily accomplishment descriptions, task categories, completion timestamps, and live camera-captured verification photos submitted with daily accomplishment reports.</li>
                   </ul>
 
-                  <h4>Purpose of Processing</h4>
+                  <h4>Purpose of Processing & Security</h4>
                   <p>
-                    Collected data is processed solely for official payroll processing, semi-monthly DTR generation, supervisory DAR verification, and annual performance evaluation. Data is never shared with unauthorized external third parties.
+                    Collected information is processed exclusively for official Civil Service Form 48 Daily Time Record (DTR) compilation, semi-monthly payroll packet aggregation, supervisory DAR verification, and Contract of Service performance evaluation and contract renewal workflows. Records are secured using PostgreSQL Row Level Security (RLS) policies, encrypted HTTPS communication, and role-based access restrictions. Personal data is never shared with unauthorized external entities.
                   </p>
                 </div>
               )}
@@ -397,17 +397,17 @@ export default function Login({
               {activeLegalModal === 'about' && (
                 <div>
                   <p>
-                    <strong>PerformaCOS</strong> is an integrated Performance Management and Contract of Service Management System designed specifically for the Eastern Visayas State University (EVSU) Ormoc Campus.
+                    <strong>PerformaCOS</strong> is the official Performance Management and Contract Renewal Evaluation System engineered specifically for Contract of Service (COS) personnel at Eastern Visayas State University (EVSU) - Ormoc Campus.
                   </p>
                   <h4>Core Capabilities</h4>
                   <ul>
-                    <li>Automated 15-day payroll aggregation and DTR generation.</li>
-                    <li>Multi-campus GPS geofencing and anti-spoofing verification.</li>
-                    <li>AI-assisted daily accomplishment reporting (DAR) and monthly summarization (MAR).</li>
-                    <li>360-degree triad evaluation scoring and dynamic contract renewal workflows.</li>
+                    <li><strong>Geofenced Campus Attendance:</strong> Tamper-resistant attendance clock-in and clock-out validated against the EVSU Ormoc Campus geofence perimeter, automatically compiling Civil Service Form 48 Daily Time Records (DTR).</li>
+                    <li><strong>Daily Accomplishment Reports (DAR):</strong> Photo-verified daily task tracking with streamlined Department Head review, verification statuses, and monthly accomplishment archiving.</li>
+                    <li><strong>Objective Performance Evaluation:</strong> Standardized quantitative evaluation scoring by immediate supervisors, performance category analytics, and objective contract renewal recommendations.</li>
+                    <li><strong>HRMDO Payroll & Compliance Packets:</strong> Automated semi-monthly DTR aggregation, departmental attendance rosters, audit-ready compliance reporting, and native Excel data exports.</li>
                   </ul>
                   <p style={{ marginTop: '14px', fontSize: '0.85em', color: '#64748b' }}>
-                    Version 2.0 &bull; Capstone Project Pilot Testing &bull; &copy; 2026 Eastern Visayas State University.
+                    PerformaCOS Production System &bull; Eastern Visayas State University - Ormoc Campus &bull; &copy; 2026.
                   </p>
                 </div>
               )}
