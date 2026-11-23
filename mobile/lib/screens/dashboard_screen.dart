@@ -7,6 +7,7 @@ import '../utils/format.dart';
 import '../widgets/animated_seal.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
+import '../widgets/loading_buffer.dart';
 
 /// COS Employee dashboard (port of dashboard/EmployeeDashboard.jsx).
 class DashboardScreen extends StatefulWidget {
@@ -57,6 +58,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_metrics == null && _today == null) {
+      return const PageBody(
+        children: [
+          LoadingBuffer(message: 'Loading dashboard data...'),
+        ],
+      );
+    }
+
     final state = AppScope.of(context);
     final user = state.user!;
     final days = (_metrics?['daysUntilExpiration'] as num?)?.toInt() ?? 0;
@@ -64,7 +73,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final darsToday = (_metrics?['darTasksToday'] as num?)?.toInt() ?? 0;
 
     String attendanceText() {
-      final t = _today!;
+      final t = _today;
+      if (t == null) return 'Checking status...';
       if (t['has_timed_out'] == true) return 'Timed Out (${t['time_out']})';
       if (t['has_timed_in'] == true) return 'Timed In (${t['time_in']})';
       if (t['on_approved_leave'] == true) return 'On Leave (${t['leave_type']})';

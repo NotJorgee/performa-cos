@@ -239,37 +239,144 @@ class _WelcomeOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
-        color: AppColors.loginBg,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF5F0C20),
+              Color(0xFF3A0512),
+            ],
+          ),
+        ),
         alignment: Alignment.center,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
-            width: 200,
-            height: 200,
-            child: Stack(alignment: Alignment.center, children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 1400),
-                curve: Curves.easeOutCubic,
-                builder: (_, v, _) => SizedBox(
-                  width: 190,
-                  height: 190,
-                  child: CircularProgressIndicator(value: v, strokeWidth: 2.5, color: const Color(0xE6FFFFFF)),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOutCubic,
+          builder: (context, veilOpacity, child) => Opacity(
+            opacity: veilOpacity,
+            child: child,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 220,
+                height: 220,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Outer drawing ring animation matching lv2DrawRing
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 1100),
+                      curve: const Cubic(0.3, 0.75, 0.3, 1.0),
+                      builder: (_, progress, _) => CustomPaint(
+                        size: const Size(220, 220),
+                        painter: _SuccessRingPainter(progress: progress),
+                      ),
+                    ),
+                    // Inner EVSU Seal rising with elevation and drop shadow matching lv2SealRise
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.75, end: 1.0),
+                      duration: const Duration(milliseconds: 750),
+                      curve: const Cubic(0.2, 0.85, 0.3, 1.05),
+                      builder: (_, scale, seal) => Transform.scale(
+                        scale: scale,
+                        child: seal,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              blurRadius: 30,
+                              offset: const Offset(0, 14),
+                            ),
+                          ],
+                        ),
+                        child: Image.asset('assets/images/evsu-seal.png', width: 140, height: 140),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Image.asset('assets/images/evsu-seal.png', width: 130),
-            ]),
+              const SizedBox(height: 26),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+                builder: (_, titleOpacity, titleChild) => Opacity(
+                  opacity: titleOpacity,
+                  child: titleChild,
+                ),
+                child: const Text(
+                  'Welcome to PerformaCOS',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOut,
+                builder: (_, subOpacity, subChild) => Opacity(
+                  opacity: subOpacity,
+                  child: subChild,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Signing in as ${user['roleLabel'] ?? user['role'] ?? 'User'} • ${user['fullName'] ?? ''}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-          const Text('Welcome to PerformaCOS',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text('Signing in as ${user['role'] ?? 'User'} • ${user['fullName'] ?? ''}',
-                textAlign: TextAlign.center, style: const TextStyle(color: Color(0xD9FFFFFF), fontSize: 14)),
-          ),
-        ]),
+        ),
       ),
     );
   }
+}
+
+class _SuccessRingPainter extends CustomPainter {
+  const _SuccessRingPainter({required this.progress});
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - 12) / 2;
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.9)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -1.5707963267948966, // -pi/2, top of circle
+      6.283185307179586 * progress, // 2*pi * progress
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SuccessRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

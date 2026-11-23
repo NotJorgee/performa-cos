@@ -21,6 +21,7 @@ import 'state/app_state.dart';
 import 'theme.dart';
 import 'utils/invite_link.dart';
 import 'widgets/app_shell.dart';
+import 'widgets/loading_buffer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -188,12 +189,45 @@ class _AuthFlowState extends State<_AuthFlow> {
 }
 
 /// Authenticated COS Employee shell and screen routing (SRS Section 8.1).
-class _EmployeeShell extends StatelessWidget {
+/// Incorporates the universal module transition buffer screen matching the web platform.
+class _EmployeeShell extends StatefulWidget {
   const _EmployeeShell();
+
+  @override
+  State<_EmployeeShell> createState() => _EmployeeShellState();
+}
+
+class _EmployeeShellState extends State<_EmployeeShell> {
+  String? _activeView;
+  bool _isTransitioning = false;
+  Timer? _transitionTimer;
+
+  @override
+  void dispose() {
+    _transitionTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final view = AppScope.of(context).currentView;
+
+    // Detect view change and trigger the 220ms loading buffer transition
+    if (_activeView != null && _activeView != view) {
+      _activeView = view;
+      _isTransitioning = true;
+      _transitionTimer?.cancel();
+      _transitionTimer = Timer(const Duration(milliseconds: 220), () {
+        if (mounted) {
+          setState(() {
+            _isTransitioning = false;
+          });
+        }
+      });
+    } else {
+      _activeView ??= view;
+    }
+
     final Widget screen = switch (view) {
       'daily_report' => const DailyReportScreen(),
       'monthly_report' => const MonthlyReportScreen(),
@@ -208,6 +242,14 @@ class _EmployeeShell extends StatelessWidget {
       'change_password' => const ProfileSettingsScreen(key: ValueKey('profile'), initialTab: 'change_password'),
       _ => const DashboardScreen(),
     };
-    return AppShell(child: KeyedSubtree(key: ValueKey(view), child: screen));
+
+    return AppShell(
+      child: _isTransitioning
+          ? const LoadingBuffer(message: 'Loading...')
+          : ModuleTransitionEnter(
+              key: ValueKey(view),
+              child: screen,
+            ),
+    );
   }
 }

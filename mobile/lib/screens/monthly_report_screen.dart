@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
+import '../widgets/loading_buffer.dart';
 
 /// Accumulated DAR logs per quincena with an official printable report
 /// (port of employee/MonthlyReport.jsx).
@@ -394,8 +395,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               ]),
             ),
             const Divider(height: 1),
-            if (_loading)
-              const LoadingRow('Loading accumulated accomplishment reports...')
+            if (_loading && rows.isEmpty)
+              const LoadingBuffer(message: 'Loading accumulated accomplishment reports...')
             else if (rows.isEmpty)
               _isFuture
                   ? EmptyState(

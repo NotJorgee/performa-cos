@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
+import '../widgets/loading_buffer.dart';
 
 /// Semi-monthly attendance log (port of employee/AttendanceLogs.jsx).
 class AttendanceLogsScreen extends StatefulWidget {
@@ -109,7 +110,7 @@ class _AttendanceLogsScreenState extends State<AttendanceLogsScreen> {
             OutlinedButton.icon(
               onPressed: _exportCsv,
               icon: const Icon(Icons.download, size: 16),
-              label: const Text('Export CSV'),
+              label: const Text('Export Data'),
             ),
           ],
         ),
@@ -171,8 +172,8 @@ class _AttendanceLogsScreenState extends State<AttendanceLogsScreen> {
                   'Daily Attendance Records (${_packet?['cutoff_label'] ?? '${monthNames[_month - 1]} $_year'})'),
             ),
             const Divider(height: 1),
-            if (_loading)
-              const LoadingRow('Loading attendance records...')
+            if (_loading && _packet == null)
+              const LoadingBuffer(message: 'Loading attendance records...')
             else if (_records.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(28),

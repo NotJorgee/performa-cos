@@ -516,7 +516,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           pref('Contract Renewal & Expiration Warnings',
               'Advance notices when your contract nears expiration and the renewal intent window opens.'),
           pref('Review Confirmations & Feedback Updates',
-              'Immediate alerts when a supervisor signs a monthly report or releases triad evaluation results.'),
+              'Immediate alerts when a supervisor signs a monthly report or releases performance evaluation results.'),
           const SizedBox(height: 4),
           const Row(children: [
             Icon(Icons.verified_user_outlined, size: 16, color: AppColors.green700),

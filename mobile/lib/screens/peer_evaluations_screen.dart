@@ -6,7 +6,7 @@ import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
 
 /// System-assigned peer review board (port of employee/PeerEvaluations.jsx).
-/// Peers are only assigned when a triad evaluation cycle is opened for the department;
+/// Peers are only assigned when a performance evaluation cycle is opened for the department;
 /// the backend exposes no peer assignments to COS Employees, so the board shows its empty state.
 class PeerEvaluationsScreen extends StatelessWidget {
   const PeerEvaluationsScreen({super.key});
@@ -44,7 +44,7 @@ class PeerEvaluationsScreen extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.ink800)),
                 const SizedBox(height: 6),
                 const MutedText(
-                    'Peer evaluations will be assigned automatically by the system when an active triad evaluation cycle is initiated for your department.',
+                    'Peer evaluations will be assigned automatically by the system when an active performance evaluation cycle is initiated for your department.',
                     size: 13.5,
                     align: TextAlign.center),
               ]),
