@@ -91,11 +91,19 @@ class Api {
     final hadToken = _token != null;
     http.Response res;
     try {
-      res = await call().timeout(const Duration(seconds: 30));
+      res = await call().timeout(const Duration(seconds: 75));
     } on TimeoutException {
-      throw ApiException('The PerformaCOS server took too long to respond. Please try again.');
+      throw ApiException('The PerformaCOS server took too long to respond. The free cloud instance may be spinning up; please try again in a few moments.');
     } catch (_) {
-      throw ApiException('Unable to reach the PerformaCOS server. Check your connection and server address.');
+      // Retry once after 2 seconds if connection dropped during server spin-up
+      try {
+        await Future.delayed(const Duration(seconds: 2));
+        res = await call().timeout(const Duration(seconds: 75));
+      } on TimeoutException {
+        throw ApiException('The PerformaCOS server took too long to respond. Please try again.');
+      } catch (_) {
+        throw ApiException('Unable to reach the PerformaCOS server. Check your connection and try again.');
+      }
     }
     return _handle(res, hadToken);
   }

@@ -35,7 +35,7 @@ class RegisterRequest(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class VerifyOtpRequest(BaseModel):

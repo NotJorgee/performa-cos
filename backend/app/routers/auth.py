@@ -7,6 +7,7 @@ import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from jose import jwt as jose_jwt, JWTError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -66,15 +67,19 @@ def _build_user_response(user: models.UserAccount) -> dict:
 
 @router.post("/login")
 def login(creds: schemas.LoginRequest, request: Request, db: Session = Depends(get_db)):
+    login_ident = (creds.email or "").strip()
     user = db.query(models.UserAccount).filter(
-        models.UserAccount.email == creds.email,
+        or_(
+            models.UserAccount.email.ilike(login_ident),
+            models.UserAccount.employee_id_number.ilike(login_ident),
+        ),
         models.UserAccount.is_archived == False,
     ).first()
 
     if not user or not verify_password(creds.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password.",
+            detail="Invalid email/ID number or password.",
         )
 
     if not user.is_active:
@@ -204,16 +209,12 @@ def register(
                 detail=f"Registration blocked: This department already has an active Department Head ({existing_dh.full_name}). A new Department Head cannot be assigned until the incumbent is reassigned or archived by HR.",
             )
 
-    # 4. Starting date & contract expiration logic
+    # 4. Starting date & contract initialization
+    # Date appointed seeds the institutional employee ID. Contract term is left unassigned until HR sets it.
     starting_date = payload.starting_date or datetime.date.today()
-    contract_start_date = (payload.contract_start_date or starting_date) if role == "COS Employee" else None
-    contract_end_date = payload.contract_end_date
-
-    if role == "COS Employee":
-        if not contract_end_date:
-            contract_end_date = _add_six_months(contract_start_date)
-    else:
-        contract_end_date = None
+    contract_start_date = None
+    contract_end_date = None
+    total_contracts = 0
 
     # 5. Generate employee ID using campus starting date
     emp_id = generate_evsu_employee_id(
@@ -236,11 +237,11 @@ def register(
         job_title=payload.job_title,
         contact_number=payload.contact_number,
         date_appointed=starting_date,
-        contract_start_date=contract_start_date if role == "COS Employee" else None,
+        contract_start_date=contract_start_date,
         contract_end_date=contract_end_date,
         is_active=True,
         is_archived=False,
-        total_contracts=1 if role == "COS Employee" else 0,
+        total_contracts=total_contracts,
     )
     db.add(new_user)
     db.flush()  # get new_user.id before commit
@@ -278,22 +279,26 @@ def forgot_password(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    ident = (payload.email or "").strip()
     user = db.query(models.UserAccount).filter(
-        models.UserAccount.email == payload.email,
+        or_(
+            models.UserAccount.email.ilike(ident),
+            models.UserAccount.employee_id_number.ilike(ident),
+        ),
         models.UserAccount.is_archived == False,
     ).first()
 
-    # Always return same message — don't reveal whether email exists
-    generic_response = {"message": "If that email is registered, an OTP has been sent."}
-
     if not user:
-        return generic_response
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active account registered with that email address. Please check your spelling or contact HR.",
+        )
 
     # SEC-05: Cooldown check — prevent OTP flooding (60-second limit)
     recent_otp = (
         db.query(models.OTPCode)
         .filter(
-            models.OTPCode.email == payload.email,
+            models.OTPCode.email == user.email,
             models.OTPCode.created_at >= datetime.datetime.utcnow() - datetime.timedelta(seconds=60),
         )
         .first()
@@ -310,19 +315,19 @@ def forgot_password(
 
     # Invalidate previous unused OTPs for this email
     db.query(models.OTPCode).filter(
-        models.OTPCode.email == payload.email,
+        models.OTPCode.email == user.email,
         models.OTPCode.used == False,
     ).update({"used": True})
 
-    db.add(models.OTPCode(email=payload.email, code=otp_code, expires_at=expires_at, failed_attempts=0))
+    db.add(models.OTPCode(email=user.email, code=otp_code, expires_at=expires_at, failed_attempts=0))
     db.commit()
 
     # SEC-04: Mask email and omit plaintext OTP code from console logs
-    at_pos = payload.email.find("@")
-    masked_email = payload.email[:2] + "***" + (payload.email[at_pos:] if at_pos != -1 else "")
+    at_pos = user.email.find("@")
+    masked_email = user.email[:2] + "***" + (user.email[at_pos:] if at_pos != -1 else "")
     print(f"[AUTH OTP] Verification code dispatched for {masked_email} (expires in {settings.OTP_EXPIRE_MINUTES}m)")
-    background_tasks.add_task(send_otp_email, payload.email, otp_code, user.full_name)
-    return generic_response
+    background_tasks.add_task(send_otp_email, user.email, otp_code, user.full_name)
+    return {"message": f"Verification code sent to {masked_email}."}
 
 
 @router.post("/verify-otp")

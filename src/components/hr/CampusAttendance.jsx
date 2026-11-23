@@ -37,6 +37,14 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
   const [isLoading, setIsLoading] = useState(!overviewData);
   const [deptSearchQuery, setDeptSearchQuery] = useState('');
 
+  // Campus Daily Attendance Roster State
+  const [rosterData, setRosterData] = useState(null);
+  const [isLoadingRoster, setIsLoadingRoster] = useState(true);
+  const [rosterSearch, setRosterSearch] = useState('');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
+  const [viewMode, setViewMode] = useState('roster'); // 'roster' | 'departments'
+
   // University Leaves State
   const [campusLeaves, setCampusLeaves] = useState([]);
   const [isLoadingLeaves, setIsLoadingLeaves] = useState(true);
@@ -53,6 +61,19 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       console.warn('Overview load warning:', err.message);
     } finally {
       if (!silent) setIsLoading(false);
+    }
+  };
+
+  // Load Campus Daily Attendance Roster
+  const loadCampusRoster = async (silent = Boolean(rosterData)) => {
+    try {
+      if (!silent) setIsLoadingRoster(true);
+      const res = await api.attendance.getDepartmentRoster();
+      setRosterData(res);
+    } catch (err) {
+      console.warn('Campus roster load warning:', err.message);
+    } finally {
+      if (!silent) setIsLoadingRoster(false);
     }
   };
 
@@ -103,6 +124,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
 
   useEffect(() => {
     loadOverview();
+    loadCampusRoster();
     loadCampusLeaves();
   }, []);
 
@@ -110,6 +132,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
   useEffect(() => {
     const handleWindowFocus = () => {
       loadOverview(true);
+      loadCampusRoster(true);
       loadCampusLeaves();
     };
 
@@ -188,6 +211,41 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       }
     }, 250);
   };
+
+  const uniqueDepartments = Array.from(
+    new Set([
+      ...(overviewData?.department_summaries?.map((d) => d.department_name) || []),
+      ...(rosterData?.roster?.map((r) => r.department) || []),
+    ])
+  ).filter(Boolean).sort();
+
+  const filteredCampusRoster = (rosterData?.roster || []).filter((r) => {
+    const q = rosterSearch.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      r.name.toLowerCase().includes(q) ||
+      (r.employee_id_number && r.employee_id_number.toLowerCase().includes(q)) ||
+      (r.job_title && r.job_title.toLowerCase().includes(q)) ||
+      (r.department && r.department.toLowerCase().includes(q));
+    const matchesDept = selectedDeptFilter === 'ALL' || r.department === selectedDeptFilter;
+    const matchesStatus =
+      selectedStatusFilter === 'ALL' ||
+      (() => {
+        if (selectedStatusFilter === 'present') {
+          return (
+            r.badge_type === 'on_time' ||
+            r.badge_type === 'late' ||
+            r.badge_type === 'undertime' ||
+            r.badge_type === 'overtime'
+          );
+        }
+        if (selectedStatusFilter === 'late') return r.badge_type === 'late';
+        if (selectedStatusFilter === 'leave') return r.badge_type === 'leave';
+        if (selectedStatusFilter === 'pending') return r.badge_type === 'pending';
+        return true;
+      })();
+    return matchesSearch && matchesDept && matchesStatus;
+  });
 
   const filteredDepts = (overviewData?.department_summaries || []).filter((d) => {
     const dom = getDepartmentDomain(d.department_name);
@@ -290,117 +348,385 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
         </button>
       </div>
 
-      {/* TAB 1: CAMPUS ROLL CALL & DEPARTMENTS */}
+      {/* TAB 1: CAMPUS ATTENDANCE ROSTER & DEPARTMENT BREAKDOWN */}
       {activeTab === 'overview' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--line)',
-              background: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px',
-            }}
-          >
-            <div>
-              <div className="card-title" style={{ margin: 0 }}>
-                Department Attendance Roll Call ({overviewData?.date})
+        <div>
+          {/* Top Stat Cards */}
+          <div className="stat-grid stat-grid-4" style={{ marginBottom: '18px' }}>
+            <div className="card stat-card">
+              <div className="stat-top">
+                <span className="stat-label">Total COS Personnel</span>
+                <span className="stat-icon"><Users size={18} color="var(--brand-700)" /></span>
               </div>
+              <div className="stat-value">{rosterData?.total_subordinates ?? overviewData?.total_active_cos ?? 0}</div>
+              <div className="stat-sub">Across All Campus Units</div>
             </div>
 
-            <div style={{ position: 'relative', width: '260px' }}>
-              <Search
-                size={15}
-                color="#94a3b8"
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
-              />
-              <input
-                type="text"
-                placeholder="Search department..."
-                value={deptSearchQuery}
-                onChange={(e) => setDeptSearchQuery(e.target.value)}
-                className="form-control"
-                style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
-              />
+            <div className="card stat-card">
+              <div className="stat-top">
+                <span className="stat-label">Present On Campus</span>
+                <span className="stat-icon"><CheckCircle2 size={18} color="var(--green-700)" /></span>
+              </div>
+              <div className="stat-value" style={{ color: 'var(--green-700)' }}>
+                {rosterData?.present_count ?? overviewData?.total_present_today ?? 0}
+              </div>
+              <div className="stat-sub">Verified Geofence Timed-In</div>
+            </div>
+
+            <div className="card stat-card">
+              <div className="stat-top">
+                <span className="stat-label">Late Arrivals</span>
+                <span className="stat-icon"><Clock size={18} color="var(--amber-700)" /></span>
+              </div>
+              <div className="stat-value" style={{ color: 'var(--amber-700)' }}>
+                {rosterData?.late_count ?? overviewData?.total_late_today ?? 0}
+              </div>
+              <div className="stat-sub">Past Shift Tolerance</div>
+            </div>
+
+            <div className="card stat-card">
+              <div className="stat-top">
+                <span className="stat-label">On Approved Leave</span>
+                <span className="stat-icon"><Calendar size={18} color="var(--brand-700)" /></span>
+              </div>
+              <div className="stat-value" style={{ color: 'var(--brand-700)' }}>
+                {rosterData?.on_leave_count ?? overviewData?.total_on_leave ?? 0}
+              </div>
+              <div className="stat-sub">Official Filed Passes/Leaves</div>
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th style={{ minWidth: '320px', width: '38%' }}>Department Unit</th>
-                  <th>Active COS</th>
-                  <th>On Campus Today</th>
-                  <th>Late Arrivals</th>
-                  <th>On Approved Leave</th>
-                  <th>Not Timed In</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                      Loading campus overview...
-                    </td>
-                  </tr>
-                ) : filteredDepts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                      No active COS departments found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredDepts.map((d) => (
-                    <tr key={d.department_id}>
-                      <td style={{ minWidth: '320px', paddingRight: '24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-900)' }}>
-                            {d.department_name}
-                          </span>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              background: getDepartmentDomain(d.department_name).style.bg,
-                              color: getDepartmentDomain(d.department_name).style.text,
-                              border: `1px solid ${getDepartmentDomain(d.department_name).style.border}`,
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {getDepartmentDomain(d.department_name).shortName}
-                          </span>
-                          {d.is_meso && (
-                            <span className="badge badge-active" style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
-                              MESO Unit
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ fontWeight: 600, fontSize: '13px' }}>{d.total_cos}</td>
-                      <td style={{ color: d.present > 0 ? 'var(--green-700)' : 'var(--ink-600)', fontWeight: 600 }}>
-                        {d.present}
-                      </td>
-                      <td style={{ color: d.late > 0 ? 'var(--amber-700)' : 'var(--ink-600)' }}>
-                        {d.late}
-                      </td>
-                      <td style={{ color: d.on_leave > 0 ? 'var(--brand-700)' : 'var(--ink-600)' }}>
-                        {d.on_leave}
-                      </td>
-                      <td style={{ color: d.pending > 0 ? 'var(--amber-700)' : 'var(--ink-500)' }}>
-                        {d.pending}
-                      </td>
+          {/* Roster Container */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--line)',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <div className="card-title" style={{ margin: 0 }}>
+                  Today's Campus Attendance Roster ({rosterData?.date || overviewData?.date})
+                </div>
+                <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
+                  {viewMode === 'roster'
+                    ? `Showing ${filteredCampusRoster.length} of ${rosterData?.total_subordinates ?? 0} campus personnel`
+                    : `Department attendance roll call across ${filteredDepts.length} departments`}
+                </div>
+              </div>
+
+              {/* View Mode Toggle: Personnel Roster vs Department Summary */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${viewMode === 'roster' ? 'btn-primary' : ''}`}
+                  onClick={() => setViewMode('roster')}
+                  style={{ fontSize: '12px', padding: '6px 14px' }}
+                >
+                  Campus Roster
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${viewMode === 'departments' ? 'btn-primary' : ''}`}
+                  onClick={() => setViewMode('departments')}
+                  style={{ fontSize: '12px', padding: '6px 14px' }}
+                >
+                  Department Summary
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Bar for Campus Roster */}
+            {viewMode === 'roster' && (
+              <div
+                style={{
+                  padding: '12px 20px',
+                  background: '#f8fafc',
+                  borderBottom: '1px solid var(--line)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                {/* Search */}
+                <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px' }}>
+                  <Search
+                    size={14}
+                    color="#94a3b8"
+                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search personnel, ID, or job title..."
+                    value={rosterSearch}
+                    onChange={(e) => setRosterSearch(e.target.value)}
+                    className="form-control"
+                    style={{ width: '100%', paddingLeft: '32px', fontSize: '12.5px', height: '36px' }}
+                  />
+                </div>
+
+                {/* Department Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-700)' }}>Dept:</span>
+                  <select
+                    className="form-control"
+                    value={selectedDeptFilter}
+                    onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                    style={{ fontSize: '12.5px', height: '36px', padding: '4px 10px', minWidth: '160px' }}
+                  >
+                    <option value="ALL">All Departments ({uniqueDepartments.length})</option>
+                    {uniqueDepartments.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-700)' }}>Status:</span>
+                  <select
+                    className="form-control"
+                    value={selectedStatusFilter}
+                    onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                    style={{ fontSize: '12.5px', height: '36px', padding: '4px 10px', minWidth: '140px' }}
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="present">Present (On-Time / Early / OT)</option>
+                    <option value="late">Late Arrivals</option>
+                    <option value="leave">On Leave</option>
+                    <option value="pending">Not Timed In</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Bar for Department Summary */}
+            {viewMode === 'departments' && (
+              <div
+                style={{
+                  padding: '12px 20px',
+                  background: '#f8fafc',
+                  borderBottom: '1px solid var(--line)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search
+                    size={14}
+                    color="#94a3b8"
+                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search department..."
+                    value={deptSearchQuery}
+                    onChange={(e) => setDeptSearchQuery(e.target.value)}
+                    className="form-control"
+                    style={{ width: '100%', paddingLeft: '32px', fontSize: '12.5px', height: '36px' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Table: View Mode = Roster (Same layout as Department Roster) */}
+            {viewMode === 'roster' && (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Personnel</th>
+                      <th>Department</th>
+                      <th>Time In</th>
+                      <th>Time Out</th>
+                      <th>Presence Status</th>
+                      <th>Campus Site</th>
+                      <th>Today's DAR</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {isLoadingRoster ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
+                          Loading campus attendance roster...
+                        </td>
+                      </tr>
+                    ) : filteredCampusRoster.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                          No personnel records match the selected filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCampusRoster.map((sub) => {
+                        const dom = getDepartmentDomain(sub.department);
+                        return (
+                          <tr key={sub.id}>
+                            <td>
+                              <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--ink-900)' }}>
+                                {sub.name}
+                              </div>
+                              <div className="muted" style={{ fontSize: '11.5px' }}>
+                                {sub.employee_id_number} &bull; {sub.job_title}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink-900)' }}>
+                                {sub.department}
+                              </div>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '8px',
+                                  background: dom.style.bg,
+                                  color: dom.style.text,
+                                  border: `1px solid ${dom.style.border}`,
+                                  marginTop: '2px',
+                                }}
+                              >
+                                {dom.shortName}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '13px', fontWeight: sub.time_in !== '—' ? 600 : 400 }}>
+                              {sub.time_in}
+                              {sub.is_early && (
+                                <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
+                                  Credited: {sub.credited_time_in}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ fontSize: '13px', fontWeight: sub.time_out !== '—' ? 600 : 400 }}>
+                              {sub.time_out}
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${
+                                  sub.badge_type === 'on_time'
+                                    ? 'badge-completed'
+                                    : sub.badge_type === 'late'
+                                    ? 'badge-archived'
+                                    : sub.badge_type === 'undertime'
+                                    ? 'badge-pending'
+                                    : sub.badge_type === 'leave'
+                                    ? 'badge-active'
+                                    : 'badge-inactive'
+                                }`}
+                                style={{ fontSize: '11.5px' }}
+                              >
+                                {sub.status}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '12.5px', color: 'var(--ink-700)' }}>{sub.geofence_site}</td>
+                            <td>
+                              {sub.dar_submitted ? (
+                                <span style={{ fontSize: '12px', color: 'var(--green-700, #15803d)', fontWeight: 600 }}>
+                                  {sub.dar_tasks_count} task(s) logged
+                                </span>
+                              ) : (
+                                <span className="muted" style={{ fontSize: '12px' }}>
+                                  Not submitted
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Table: View Mode = Departments (Department Roll Call) */}
+            {viewMode === 'departments' && (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th style={{ minWidth: '320px', width: '38%' }}>Department Unit</th>
+                      <th>Active COS</th>
+                      <th>On Campus Today</th>
+                      <th>Late Arrivals</th>
+                      <th>On Approved Leave</th>
+                      <th>Not Timed In</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
+                          Loading campus overview...
+                        </td>
+                      </tr>
+                    ) : filteredDepts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                          No active COS departments found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredDepts.map((d) => (
+                        <tr key={d.department_id}>
+                          <td style={{ minWidth: '320px', paddingRight: '24px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-900)' }}>
+                                {d.department_name}
+                              </span>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: '10px',
+                                  background: getDepartmentDomain(d.department_name).style.bg,
+                                  color: getDepartmentDomain(d.department_name).style.text,
+                                  border: `1px solid ${getDepartmentDomain(d.department_name).style.border}`,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {getDepartmentDomain(d.department_name).shortName}
+                              </span>
+                              {d.is_meso && (
+                                <span className="badge badge-active" style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
+                                  MESO Unit
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ fontWeight: 600, fontSize: '13px' }}>{d.total_cos}</td>
+                          <td style={{ color: d.present > 0 ? 'var(--green-700)' : 'var(--ink-600)', fontWeight: 600 }}>
+                            {d.present}
+                          </td>
+                          <td style={{ color: d.late > 0 ? 'var(--amber-700)' : 'var(--ink-600)' }}>
+                            {d.late}
+                          </td>
+                          <td style={{ color: d.on_leave > 0 ? 'var(--brand-700)' : 'var(--ink-600)' }}>
+                            {d.on_leave}
+                          </td>
+                          <td style={{ color: d.pending > 0 ? 'var(--amber-700)' : 'var(--ink-500)' }}>
+                            {d.pending}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

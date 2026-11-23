@@ -194,6 +194,19 @@ export default function ContractStatus({
 
       <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
 
+      {/* Pending Contract HR Notice */}
+      {status === 'Pending Contract' && (
+        <div className="card" style={{ border: '1px solid #fde68a', background: '#fffbeb', marginBottom: '20px' }}>
+          <div className="card-title" style={{ color: '#b45309', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={20} />
+            Pending Contract Terms Assignment
+          </div>
+          <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.5, color: '#92400e' }}>
+            Your institutional account is registered and active. Your official contract duration and evaluation dates are currently awaiting assignment by the Human Resources Management Office (HRMO). Once HR records your contract terms, your active cycle and renewal workflow will become active here.
+          </p>
+        </div>
+      )}
+
       {/* Contract Lifecycle Overview Card */}
       <div className="card" style={{ marginBottom: '20px' }}>
         <div className="card-title">Contract of Service Lifecycle Details</div>
@@ -201,7 +214,7 @@ export default function ContractStatus({
           <div>
             <span className="muted" style={{ fontSize: '12px' }}>CONTRACT PERIOD</span>
             <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>
-              {contract.startDate} – {contract.endDate}
+              {status === 'Pending Contract' ? 'Pending HR Assignment' : `${contract.startDate} – ${contract.endDate}`}
             </div>
           </div>
           <div>
@@ -210,11 +223,11 @@ export default function ContractStatus({
               style={{
                 fontSize: '15px',
                 fontWeight: 700,
-                color: (contract.daysRemaining ?? 74) <= 30 ? 'var(--amber-600)' : 'var(--ink-900)',
+                color: (status === 'Pending Contract' || (contract.daysRemaining ?? 74) <= 30) ? 'var(--amber-600)' : 'var(--ink-900)',
                 marginTop: '2px',
               }}
             >
-              {contract.daysRemaining} Days
+              {status === 'Pending Contract' ? 'Awaiting HR Terms' : `${contract.daysRemaining} Days`}
             </div>
           </div>
           <div>

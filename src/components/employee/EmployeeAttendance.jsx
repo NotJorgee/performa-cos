@@ -113,7 +113,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const watchIdRef = useRef(null);
   const timeoutIdRef = useRef(null);
 
-  // Acquire Fresh High-Accuracy Satellite GPS Position on Demand
+  // Acquire Fresh High-Accuracy Satellite GPS Position with Cross-Browser Fallback
   const acquireFreshLocation = () => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -154,14 +154,39 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
           setGpsLocation(loc);
           resolve(loc);
         } else {
-          reject(new Error('Unable to acquire accurate GPS position. Please check your device location settings and try again.'));
+          reject(new Error('Unable to acquire GPS position. Please ensure location services are enabled on your device and try again.'));
         }
       };
 
-      // Failsafe timer (6 seconds maximum to lock satellites)
+      // Stage 2: Standard-Accuracy Wi-Fi / Cell Triangulation Fallback (for Safari, Firefox, Samsung Internet)
+      const attemptStandardFallback = () => {
+        if (completed) return;
+        try {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => finish(pos),
+            (secondErr) => {
+              console.warn('Standard GPS fallback error:', secondErr.message);
+              if (secondErr.code === 1) {
+                completed = true;
+                return reject(new Error('Location access permission was denied. Please allow location access in your browser settings.'));
+              }
+              finish();
+            },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+          );
+        } catch (e) {
+          finish();
+        }
+      };
+
+      // Stage 1: High-Accuracy Satellite GPS (5 seconds maximum)
       timeoutIdRef.current = setTimeout(() => {
-        finish();
-      }, 6000);
+        if (!bestPos) {
+          attemptStandardFallback();
+        } else {
+          finish();
+        }
+      }, 5000);
 
       try {
         watchIdRef.current = navigator.geolocation.watchPosition(
@@ -174,13 +199,18 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
             }
           },
           (err) => {
-            console.warn('GPS acquisition warning:', err.message);
-            if (!bestPos) finish();
+            console.warn('High-accuracy GPS lock warning:', err.message);
+            if (err.code === 1) {
+              if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+              completed = true;
+              return reject(new Error('Location access permission was denied. Please allow location access in your browser settings.'));
+            }
+            attemptStandardFallback();
           },
-          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       } catch (err) {
-        finish();
+        attemptStandardFallback();
       }
     });
   };
@@ -621,11 +651,11 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                   <Calendar size={22} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-900)' }}>
-                  View Full Attendance Logs
+                  View Full Attendance Records
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brand-700)', fontWeight: 700, fontSize: '13.5px' }}>
-                <span>Open Logs</span>
+                <span>Open Records</span>
                 <ArrowRight size={16} />
               </div>
             </div>

@@ -269,7 +269,8 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final expiringSoon = _daysRemaining <= 30;
+    final isPendingContract = _status == 'Pending Contract';
+    final expiringSoon = !isPendingContract && _daysRemaining <= 30;
     final domain = getDepartmentDomain(_department);
 
     return PageBody(
@@ -280,14 +281,33 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
           subtitle: 'Monitor your Contract of Service lifecycle and submit your formal digital renewal confirmation.',
           onBack: () => state.navigate('dashboard'),
         ),
+        if (isPendingContract) ...[
+          AppCard(
+            color: const Color(0xFFFFFBEB),
+            child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.info_outline, size: 20, color: Color(0xFFB45309)),
+                SizedBox(width: 8),
+                Text('Pending Contract Terms Assignment',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFB45309))),
+              ]),
+              SizedBox(height: 6),
+              Text(
+                'Your institutional account is registered and active. Your official contract duration and evaluation dates are currently awaiting assignment by the Human Resources Management Office (HRMO). Once HR records your contract terms, your active cycle and renewal workflow will become active here.',
+                style: TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF92400E)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 14),
+        ],
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const CardTitle('Contract of Service Lifecycle Details', bottom: 16),
-            InfoTile(label: 'Contract Period', value: _period),
+            InfoTile(label: 'Contract Period', value: isPendingContract ? 'Pending HR Assignment' : _period),
             InfoTile(
               label: 'Days Until Expiration',
-              value: '$_daysRemaining Days',
-              valueColor: expiringSoon ? AppColors.amber600 : AppColors.green700,
+              value: isPendingContract ? 'Awaiting HR Terms' : '$_daysRemaining Days',
+              valueColor: (isPendingContract || expiringSoon) ? AppColors.amber600 : AppColors.green700,
             ),
             InfoTile(label: 'Accumulated DAR Logs', value: '$_totalDars Entries', valueColor: AppColors.brand700),
             InfoTile(
@@ -310,7 +330,7 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
               ElevatedButton(onPressed: _openActions, child: const Text('View Options')),
             ]),
           ),
-        if (!expiringSoon)
+        if (!expiringSoon && !isPendingContract)
           AppCard(
             color: AppColors.surfaceMuted,
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

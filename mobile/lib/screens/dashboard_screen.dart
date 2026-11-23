@@ -69,7 +69,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final state = AppScope.of(context);
     final user = state.user!;
     final days = (_metrics?['daysUntilExpiration'] as num?)?.toInt() ?? 0;
-    final expiringSoon = days <= 30 && days > 0;
+    final isPendingContract = _metrics?['isPendingContract'] == true;
+    final expiringSoon = !isPendingContract && days <= 30 && days > 0;
     final darsToday = (_metrics?['darTasksToday'] as num?)?.toInt() ?? 0;
 
     String attendanceText() {
@@ -119,10 +120,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _StatCard(
               label: 'Contract Expiration',
               icon: Icons.schedule,
-              value: _metrics == null ? null : '$days Days',
-              valueColor: expiringSoon ? AppColors.amber600 : AppColors.ink900,
-              valueSize: 24,
-              linkText: 'Check Contract Status',
+              value: _metrics == null
+                  ? null
+                  : (isPendingContract ? 'Pending Contract' : '$days Days'),
+              valueColor: (isPendingContract || expiringSoon) ? AppColors.amber600 : AppColors.ink900,
+              valueSize: isPendingContract ? 18 : 24,
+              linkText: isPendingContract ? 'Awaiting HR Terms' : 'Check Contract Status',
               onTap: () => state.navigate('contract_status'),
             ),
             _StatCard(
@@ -138,18 +141,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _StatCard(
               label: "Today's DAR Status",
               icon: Icons.place_outlined,
-              value: _metrics == null ? null : '$darsToday Task(s) Logged',
+              value: _metrics == null ? null : '$darsToday Task(s) Accomplished',
               valueColor: darsToday == 0 ? AppColors.amber600 : AppColors.ink900,
               valueSize: 19,
-              linkText: 'Log Campus DAR',
+              linkText: 'Record Daily Accomplishment',
               onTap: () => state.navigate('daily_report'),
             ),
             _StatCard(
-              label: 'Accumulated DAR Logs',
+              label: 'Accumulated DAR Records',
               icon: Icons.description_outlined,
-              value: _metrics == null ? null : '${_metrics!['totalDarsLogged'] ?? 0} Logs',
+              value: _metrics == null ? null : '${_metrics!['totalDarsLogged'] ?? 0} Records',
               valueSize: 24,
-              linkText: 'View Accumulated DARs',
+              linkText: 'View Accumulated Records',
               onTap: () => state.navigate('monthly_report'),
             ),
           ];

@@ -254,7 +254,7 @@ export default function MonthlyReport({
       <div className="flex-between no-print" style={{ marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '24px' }}>
-            Accumulated DAR Logs{employeeName ? `: ${employeeName}` : ''}
+            Accumulated DAR Records{employeeName ? `: ${employeeName}` : ''}
           </h1>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../services/api.dart';
@@ -30,31 +31,57 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   String? _error;
   Map<String, dynamic>? _welcomeUser;
+  Timer? _wakeUpTimer;
+  bool _showWakeNotice = false;
 
-  bool get _emailOk => RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(_email.text.trim());
+  @override
+  void dispose() {
+    _wakeUpTimer?.cancel();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  bool get _emailOk {
+    final t = _email.text.trim();
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(t) || t.length >= 4;
+  }
   bool get _passwordOk => _password.text.length >= 6;
 
   Future<void> _submit() async {
     final email = _email.text.trim();
     if (email.isEmpty || _password.text.isEmpty) {
-      setState(() => _error = 'Please enter both your institutional email and password.');
+      setState(() => _error = 'Please enter both your email / ID number and password.');
       return;
     }
     FocusScope.of(context).unfocus();
+    _wakeUpTimer?.cancel();
     setState(() {
       _error = null;
       _loading = true;
+      _showWakeNotice = false;
+    });
+    _wakeUpTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _loading) {
+        setState(() => _showWakeNotice = true);
+      }
     });
     try {
       final res = await Api.instance.login(email, _password.text);
       final user = Map<String, dynamic>.from(res['user'] as Map);
-      setState(() => _welcomeUser = user);
+      _wakeUpTimer?.cancel();
+      setState(() {
+        _welcomeUser = user;
+        _showWakeNotice = false;
+      });
       await Future.delayed(const Duration(milliseconds: 1800));
       widget.onLogin(user);
     } catch (e) {
       if (!mounted) return;
+      _wakeUpTimer?.cancel();
       setState(() {
         _loading = false;
+        _showWakeNotice = false;
         _error = e.toString().isNotEmpty
             ? e.toString()
             : 'Invalid institutional credentials. Please check your email and password, or contact HRMDO if your account is locked.';
@@ -153,17 +180,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                         style: const TextStyle(color: Colors.white, fontSize: 13.5, height: 1.4))),
                               ]),
                             ),
-                          const Text('Institutional Email', style: label),
+                          const Text('Email Address or ID Number', style: label),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _email,
-                            keyboardType: TextInputType.emailAddress,
+                            keyboardType: TextInputType.text,
                             autocorrect: false,
                             autofillHints: const [AutofillHints.username],
                             style: const TextStyle(color: Colors.white, fontSize: 16),
                             cursorColor: Colors.white,
                             onChanged: (_) => setState(() => _error = null),
-                            decoration: _decoration('name@evsu.edu.ph', ok: _emailOk),
+                            decoration: _decoration('enter user email/id', ok: _emailOk),
                           ),
                           const SizedBox(height: 16),
                           const Text('Password', style: label),
@@ -176,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             cursorColor: Colors.white,
                             onChanged: (_) => setState(() => _error = null),
                             onSubmitted: (_) => _submit(),
-                            decoration: _decoration('••••••••••',
+                            decoration: _decoration('enter password',
                                 ok: _passwordOk,
                                 toggle: IconButton(
                                   tooltip: _showPassword ? 'Hide password' : 'Show password',
@@ -213,6 +240,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                   : const Text('Sign In'),
                             ),
                           ),
+                          if (_showWakeNotice) ...[
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Connecting to cloud server... Waking up free instance, please hold on.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12, fontStyle: FontStyle.italic),
+                            ),
+                          ],
                           const SizedBox(height: 28),
                           const Text('COS Employee Portal • Eastern Visayas State University',
                               textAlign: TextAlign.center,

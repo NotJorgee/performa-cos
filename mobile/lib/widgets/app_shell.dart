@@ -33,39 +33,38 @@ class AppShell extends StatelessWidget {
               onPressed: () => Scaffold.of(ctx).openDrawer(),
             ),
           ),
-          title: Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.brand50,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.brandBorder),
-              ),
-              child: Text(user.role,
-                  style: const TextStyle(
-                      fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.brand700)),
-            ),
-          ]),
           actions: [
             _BellButton(unread: state.unreadCount),
             Padding(
               padding: const EdgeInsets.only(right: 12, left: 4),
-              child: Row(children: [
-                UserAvatar(initials: user.initials, url: user.avatarUrl, size: 34),
-                if (width > 520) ...[
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  UserAvatar(initials: user.initials, url: user.avatarUrl, size: 34),
                   const SizedBox(width: 8),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(user.fullName,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                      const Text('Eastern Visayas State University',
-                          style: TextStyle(fontSize: 11, color: AppColors.ink500)),
-                    ],
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: width < 420 ? 110 : 160),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.fullName,
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          user.employeeIdNumber.isNotEmpty ? user.employeeIdNumber : 'ID: ${user.id}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.ink500, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ]),
+              ),
             ),
           ],
           bottom: const PreferredSize(

@@ -145,7 +145,7 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
       <div className="flex-between" style={{ marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Calendar size={28} color="var(--brand-700)" /> Attendance Logs{displayName ? `: ${displayName}` : ''}
+            <Calendar size={28} color="var(--brand-700)" /> Attendance Records (DTR){displayName ? `: ${displayName}` : ''}
           </h1>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

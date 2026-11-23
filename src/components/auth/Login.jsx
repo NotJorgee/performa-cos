@@ -36,7 +36,7 @@ export default function Login({
 
   // Live input validity indicators
   const emailTrimmed = email.trim();
-  const emailOk = emailTrimmed.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
+  const emailOk = emailTrimmed.length > 0 && (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed) || emailTrimmed.length >= 4);
   const passwordOk = password.length >= 6;
 
   const handleSubmit = async (e) => {
@@ -45,7 +45,7 @@ export default function Login({
 
     const inputEmail = email.trim();
     if (!inputEmail || !password) {
-      setErrorMessage('Please enter both your institutional email and password.');
+      setErrorMessage('Please enter both your email / ID number and password.');
       return;
     }
 
@@ -133,7 +133,7 @@ export default function Login({
               <span className="lv2-brand-mobile">PerformaCOS</span>
             </h1>
             <p className="lv2-sub">
-              <span className="lv2-brand-desktop">Use the email address the university gave you.</span>
+              <span className="lv2-brand-desktop">Use your institutional email address or employee ID number.</span>
               <span className="lv2-brand-mobile">Eastern Visayas State University</span>
             </p>
 
@@ -146,16 +146,16 @@ export default function Login({
             )}
 
             <form onSubmit={handleSubmit} id="loginForm">
-              {/* Email Field */}
+              {/* Email / ID Field */}
               <div className="lv2-field">
-                <label htmlFor="loginEmail">Institutional Email</label>
+                <label htmlFor="loginEmail">Email Address or ID Number</label>
                 <div className="lv2-input-wrap">
                   <input
                     className={`lv2-input ${emailOk ? 'ok' : ''}`}
-                    type="email"
+                    type="text"
                     id="loginEmail"
                     name="email"
-                    placeholder="name@evsu.edu.ph"
+                    placeholder="enter user email/id"
                     autoComplete="username"
                     required
                     value={email}
@@ -179,7 +179,7 @@ export default function Login({
                     type={showPassword ? 'text' : 'password'}
                     id="loginPassword"
                     name="password"
-                    placeholder="••••••••••"
+                    placeholder="enter password"
                     autoComplete="current-password"
                     required
                     value={password}

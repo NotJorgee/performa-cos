@@ -108,18 +108,18 @@ export default function EmployeeDashboard({
           <div
             className="stat-value"
             style={{
-              fontSize: '24px',
-              color: isExpiringSoon ? 'var(--amber-600)' : 'var(--ink-900)',
+              fontSize: metrics?.isPendingContract ? '20px' : '24px',
+              color: (metrics?.isPendingContract || isExpiringSoon) ? 'var(--amber-600)' : 'var(--ink-900)',
             }}
           >
             {metrics ? (
-              `${metrics.daysUntilExpiration ?? 0} Days`
+              metrics.isPendingContract ? 'Pending Contract' : `${metrics.daysUntilExpiration ?? 0} Days`
             ) : (
               <span className="skeleton-shimmer" style={{ width: '85px', height: '24px' }} />
             )}
           </div>
           <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>Check Contract Status</span>
+            <span>{metrics?.isPendingContract ? 'Awaiting HR Terms' : 'Check Contract Status'}</span>
             <ArrowRight size={14} />
           </div>
         </div>
@@ -177,36 +177,36 @@ export default function EmployeeDashboard({
             }}
           >
             {metrics ? (
-              `${metrics.darTasksToday ?? 0} Task(s) Logged`
+              `${metrics.darTasksToday ?? 0} Tasks Accomplished`
             ) : (
               <span className="skeleton-shimmer" style={{ width: '110px', height: '20px' }} />
             )}
           </div>
           <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>Log Campus DAR</span>
+            <span>Record Daily Accomplishment</span>
             <ArrowRight size={14} />
           </div>
         </div>
 
-        {/* Panel 4: Accumulated DAR Logs (Compiled DAR) */}
+        {/* Panel 4: Accumulated DAR Records (Compiled DAR) */}
         <div
           className="card stat-card stat-card-clickable"
           onClick={() => onNavigate('monthly_report')}
           title="Click to view Accumulated DARs"
         >
           <div className="stat-top">
-            <span className="stat-label">Accumulated DAR Logs</span>
+            <span className="stat-label">Accumulated DAR Records</span>
             <span className="stat-icon"><FileText size={18} /></span>
           </div>
           <div className="stat-value" style={{ fontSize: '24px' }}>
             {metrics ? (
-              `${metrics.totalDarsLogged ?? 0} Logs`
+              `${metrics.totalDarsLogged ?? 0} Records`
             ) : (
               <span className="skeleton-shimmer" style={{ width: '75px', height: '24px' }} />
             )}
           </div>
           <div className="stat-sub" style={{ color: 'var(--brand-700)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span>View Accumulated DARs</span>
+            <span>View Accumulated Records</span>
             <ArrowRight size={14} />
           </div>
         </div>

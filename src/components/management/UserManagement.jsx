@@ -102,6 +102,9 @@ export default function UserManagement({
   const [editIdNumber, setEditIdNumber] = useState('');
   const [editJobTitle, setEditJobTitle] = useState('');
   const [editContact, setEditContact] = useState('');
+  const [editContractStartDate, setEditContractStartDate] = useState('');
+  const [editContractEndDate, setEditContractEndDate] = useState('');
+  const [isSavingContract, setIsSavingContract] = useState(false);
   const [transferDeptId, setTransferDeptId] = useState('');
   const [userModalSuccess, setUserModalSuccess] = useState(null);
 
@@ -408,9 +411,52 @@ export default function UserManagement({
     setEditIdNumber(user.employee_id_number || '');
     setEditJobTitle(user.job_title || (user.role === 'Department Head' ? 'Department Head' : 'Admin Aide'));
     setEditContact(user.contact_number || '');
+    setEditContractStartDate(user.contract_start_date || '');
+    setEditContractEndDate(user.contract_end_date || '');
     setTransferDeptId(user.department_id ? String(user.department_id) : '');
     setUserSettingsTab('identity');
     setUserModalSuccess(null);
+  };
+
+  const handleSetSixMonths = () => {
+    if (!editContractStartDate) return;
+    const parts = editContractStartDate.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      d.setMonth(d.getMonth() + 6);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      setEditContractEndDate(`${yyyy}-${mm}-${dd}`);
+    }
+  };
+
+  const handleSaveUserContract = async (e) => {
+    e.preventDefault();
+    if (!settingsUser) return;
+    setIsSavingContract(true);
+    try {
+      if (api.users && api.users.adminUpdate) {
+        await api.users.adminUpdate(settingsUser.id, {
+          contract_start_date: editContractStartDate || null,
+          contract_end_date: editContractEndDate || null,
+        });
+      }
+      setUserModalSuccess(`Contract terms saved for ${settingsUser.full_name}.`);
+      showToast(`Contract terms updated for ${settingsUser.full_name}.`);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === settingsUser.id
+            ? { ...u, contract_start_date: editContractStartDate || null, contract_end_date: editContractEndDate || null }
+            : u
+        )
+      );
+      loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to update contract terms.', 'error');
+    } finally {
+      setIsSavingContract(false);
+    }
   };
 
   const handleSaveUserIdentity = async (e) => {
@@ -2189,6 +2235,22 @@ export default function UserManagement({
                   padding: '8px 14px',
                   border: 'none',
                   background: 'none',
+                  borderBottom: userSettingsTab === 'contract' ? '2px solid var(--brand-700)' : '2px solid transparent',
+                  fontWeight: userSettingsTab === 'contract' ? 800 : 600,
+                  color: userSettingsTab === 'contract' ? 'var(--brand-700)' : 'var(--ink-600)',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                }}
+                onClick={() => setUserSettingsTab('contract')}
+              >
+                Contract
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: '8px 14px',
+                  border: 'none',
+                  background: 'none',
                   borderBottom: userSettingsTab === 'transfer' ? '2px solid var(--brand-700)' : '2px solid transparent',
                   fontWeight: userSettingsTab === 'transfer' ? 800 : 600,
                   color: userSettingsTab === 'transfer' ? 'var(--brand-700)' : 'var(--ink-600)',
@@ -2304,6 +2366,101 @@ export default function UserManagement({
                   </button>
                   <button type="submit" className="btn btn-sm btn-primary">
                     Save Identity Changes
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* TAB: Contract Terms Management */}
+            {userSettingsTab === 'contract' && (
+              <form onSubmit={handleSaveUserContract}>
+                <div style={{ marginBottom: '16px' }}>
+                  <p className="muted" style={{ margin: '0 0 12px', fontSize: '12.5px', lineHeight: 1.5 }}>
+                    Configure official Contract of Service (COS) terms and evaluation cycle dates for <b>{settingsUser.full_name}</b>.
+                  </p>
+                  <div
+                    style={{
+                      background: (!settingsUser.contract_end_date && !editContractEndDate) ? '#fffbeb' : '#f0fdf4',
+                      border: `1px solid ${(!settingsUser.contract_end_date && !editContractEndDate) ? '#fde68a' : '#bbf7d0'}`,
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: (!settingsUser.contract_end_date && !editContractEndDate) ? '#92400e' : '#166534',
+                      marginBottom: '14px',
+                    }}
+                  >
+                    <Clock size={16} />
+                    <span>
+                      Current Status:{' '}
+                      <b>
+                        {!settingsUser.contract_end_date && !editContractEndDate
+                          ? 'Pending Contract Terms (Awaiting HR Configuration)'
+                          : 'Active Contract Assigned'}
+                      </b>
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>
+                      Contract Start Date
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={editContractStartDate}
+                      onChange={(e) => setEditContractStartDate(e.target.value)}
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '3px', display: 'block' }}>
+                      Official start of current evaluation term.
+                    </span>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0 }}>
+                        Contract End Date
+                      </label>
+                      {editContractStartDate && (
+                        <button
+                          type="button"
+                          onClick={handleSetSixMonths}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--brand-700)',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          +6 Months Auto
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={editContractEndDate}
+                      onChange={(e) => setEditContractEndDate(e.target.value)}
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '3px', display: 'block' }}>
+                      Contract expiration &amp; renewal trigger date.
+                    </span>
+                  </div>
+                </div>
+
+                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                  <button type="button" className="btn btn-sm" onClick={() => setSettingsUser(null)}>
+                    Close
+                  </button>
+                  <button type="submit" className="btn btn-sm btn-primary" disabled={isSavingContract}>
+                    {isSavingContract ? 'Saving Terms...' : 'Save Contract Terms'}
                   </button>
                 </div>
               </form>

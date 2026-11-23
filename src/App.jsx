@@ -160,9 +160,16 @@ export default function App() {
 
   // Browser Back (←) and Forward (→) history synchronization
   useEffect(() => {
-    if (!isAuthenticated || isInviteSignup) return;
+    if (!isAuthenticated) return;
 
     const handleHashSync = () => {
+      const activeHash = window.location.hash.replace(/^#\/?/, '').trim().split('?')[0];
+      if (['login', 'signup', 'forgot', 'otp', 'reset_pw'].includes(activeHash) || window.location.search.includes('token=') || window.location.search.includes('invite=')) {
+        // Prevent reverting to unauthenticated auth views once logged in
+        window.history.replaceState(null, '', '#/dashboard');
+        setCurrentView('dashboard');
+        return;
+      }
       const targetView = parseHashView();
       setCurrentView((prev) => (prev !== targetView ? targetView : prev));
     };
@@ -182,7 +189,7 @@ export default function App() {
       window.removeEventListener('hashchange', handleHashSync);
       window.removeEventListener('popstate', handleHashSync);
     };
-  }, [isAuthenticated, isInviteSignup]);
+  }, [isAuthenticated, currentView]);
 
   // Password recovery flow states
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -337,7 +344,7 @@ export default function App() {
   };
 
   // 1. Tokenized Invitation Onboarding & Unauthenticated Flows (UC-08, UC-07)
-  if (isInviteSignup || (!isAuthenticated && authView === 'signup')) {
+  if (!isAuthenticated && (isInviteSignup || authView === 'signup')) {
     return (
       <TokenizedSignUp
         initialToken={inviteToken}
@@ -348,7 +355,7 @@ export default function App() {
           setAuthView('login');
           setInviteToken('');
           if (typeof window !== 'undefined' && window.history?.replaceState) {
-            window.history.replaceState({}, '', window.location.pathname);
+            window.history.replaceState({}, '', '#/login');
           }
         }}
         onLoginAsNewUser={(newUser) => {
@@ -356,7 +363,7 @@ export default function App() {
           setInviteToken('');
           setAuthView('login');
           if (typeof window !== 'undefined' && window.history?.replaceState) {
-            window.history.replaceState({}, '', window.location.pathname);
+            window.history.replaceState({}, '', '#/dashboard');
           }
           handleLogin(newUser);
         }}

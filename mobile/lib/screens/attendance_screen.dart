@@ -436,8 +436,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       _ActionCard(
         icon: Icons.calendar_month_outlined,
-        title: 'View Full Attendance Logs',
-        link: 'Open Logs',
+        title: 'View Full Attendance Records',
+        link: 'Open Records',
         onTap: () => state.navigate('attendance_logs'),
       ),
     ];

@@ -185,41 +185,48 @@ def get_employee_dashboard_metrics(
     )
 
     # 3. Contract expiration calculations
-    contract_start = current_user.contract_start_date or current_user.date_appointed
+    contract_start = current_user.contract_start_date
     contract_end = current_user.contract_end_date
+    is_pending_contract = bool(current_user.role == "COS Employee" and contract_end is None)
     days_until_expiration = 0
     if contract_end:
         days_until_expiration = max(0, (contract_end - today).days)
 
     # 4. Renewal intent status
-    latest_renewal = (
-        db.query(models.RenewalApplication)
-        .filter(models.RenewalApplication.employee_id == current_user.id)
-        .order_by(models.RenewalApplication.id.desc())
-        .first()
-    )
-    decline_reason = ""
-    if days_until_expiration > 30:
-        intent_status = "Contract Active"
+    if is_pending_contract:
+        intent_status = "Pending Contract"
+        decline_reason = ""
     else:
-        # Guard: if renewal was submitted before current contract start, treat as prior term (only if contract start has already occurred)
-        if latest_renewal and current_user.contract_start_date and latest_renewal.submitted_at:
-            if current_user.contract_start_date <= today and latest_renewal.submitted_at.date() < current_user.contract_start_date:
-                latest_renewal = None
-        if not latest_renewal:
-            intent_status = "Open for Intent Confirmation"
-        elif latest_renewal.hrmo_approval == "Approved":
-            intent_status = "Approved"
-        elif latest_renewal.hrmo_approval == "Declined":
-            intent_status = "Non-Renewal Finalized"
+        latest_renewal = (
+            db.query(models.RenewalApplication)
+            .filter(models.RenewalApplication.employee_id == current_user.id)
+            .order_by(models.RenewalApplication.id.desc())
+            .first()
+        )
+        decline_reason = ""
+        if days_until_expiration > 30:
+            intent_status = "Contract Active"
         else:
-            intent_status = latest_renewal.status
-            if latest_renewal.status == "Declined" and latest_renewal.mar_narrative:
-                decline_reason = latest_renewal.mar_narrative.replace("[COS DECLINED RENEWAL]:", "").strip()
+            # Guard: if renewal was submitted before current contract start, treat as prior term (only if contract start has already occurred)
+            if latest_renewal and current_user.contract_start_date and latest_renewal.submitted_at:
+                if current_user.contract_start_date <= today and latest_renewal.submitted_at.date() < current_user.contract_start_date:
+                    latest_renewal = None
+            if not latest_renewal:
+                intent_status = "Open for Intent Confirmation"
+            elif latest_renewal.hrmo_approval == "Approved":
+                intent_status = "Approved"
+            elif latest_renewal.hrmo_approval == "Declined":
+                intent_status = "Non-Renewal Finalized"
+            else:
+                intent_status = latest_renewal.status
+                if latest_renewal.status == "Declined" and latest_renewal.mar_narrative:
+                    decline_reason = latest_renewal.mar_narrative.replace("[COS DECLINED RENEWAL]:", "").strip()
 
     return {
-        "contractStartDate": contract_start.strftime("%B %d, %Y") if contract_start else "Not Specified",
-        "contractEndDate": contract_end.strftime("%B %d, %Y") if contract_end else "Not Specified",
+        "isPendingContract": is_pending_contract,
+        "contractStatus": "Pending Contract" if is_pending_contract else ("Contract Active" if days_until_expiration > 30 else "Nearing Expiration"),
+        "contractStartDate": contract_start.strftime("%B %d, %Y") if contract_start else "Awaiting HR Assignment",
+        "contractEndDate": contract_end.strftime("%B %d, %Y") if contract_end else "Awaiting HR Assignment",
         "rawStartDate": contract_start.isoformat() if contract_start else None,
         "rawEndDate": contract_end.isoformat() if contract_end else None,
         "daysUntilExpiration": days_until_expiration,

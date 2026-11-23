@@ -1171,7 +1171,10 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 
   .topbar { padding: 0 14px; }
   .content { padding: 16px; }
-  .role-pill, .user-info { display: none; }
+  .role-pill { display: none; }
+  .user-info { display: flex; flex-direction: column; text-align: left; }
+  .user-name { font-size: 12.5px; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+  .user-org { font-size: 11px; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 }
 
 @media (max-width: 640px) {
@@ -1187,6 +1190,18 @@ textarea.form-control { resize: vertical; min-height: 90px; }
 .map-legend .dot.zone { background: var(--brand-600); }
 .geo-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .geo-search-row .form-control { flex: 1; }
+
+.signup-name-grid {
+  display: grid;
+  grid-template-columns: 105px 1.5fr 70px 1.5fr;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .signup-name-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
 
 .checkin-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
 .checkin-row:last-child { border-bottom: none; }

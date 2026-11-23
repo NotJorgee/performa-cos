@@ -190,7 +190,7 @@ export default function AppLayout({
               onClick={(e) => { e.preventDefault(); handleNavClick('audit_trail'); }}
               className={`nav-item ${currentPath === 'audit_trail' ? 'active' : ''}`}
             >
-              <span className="icon"><ShieldAlert size={17} /></span> Security Logs
+              <span className="icon"><ShieldAlert size={17} /></span> Security Audit Trail
             </a>
           )}
 
@@ -254,13 +254,8 @@ export default function AppLayout({
             </button>
           </div>
 
-          {/* Topbar Right: Role Pill, Notifications Bell, User Profile Chip */}
+          {/* Topbar Right: Notifications Bell, User Profile Chip */}
           <div className="topbar-right">
-            {/* Role Pill Badge */}
-            <span className="role-pill">
-              {currentUser.role}
-            </span>
-
             {/* Notification Bell with Red Badge Count */}
             <div className="notif-wrap" ref={notifRef} style={{ position: 'relative' }}>
               {/* Dimmed mobile overlay backdrop for click-outside dismissal */}
@@ -375,7 +370,9 @@ export default function AppLayout({
               </div>
               <div className="user-info" style={{ textAlign: 'left' }}>
                 <div className="user-name">{currentUser.fullName}</div>
-                <div className="user-org">Eastern Visayas State University</div>
+                <div className="user-org">
+                  {currentUser.employeeIdNumber || currentUser.id_number || (currentUser.id ? `ID: ${currentUser.id}` : 'EVSU')}
+                </div>
               </div>
             </div>
           </div>

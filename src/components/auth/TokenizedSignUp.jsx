@@ -440,7 +440,7 @@ export default function TokenizedSignUp({
                 </div>
 
                 {/* Separated Name Inputs */}
-                <div style={{ display: 'grid', gridTemplateColumns: '105px 1.5fr 70px 1.5fr', gap: '8px' }}>
+                <div className="signup-name-grid">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '11.5px', fontWeight: 600 }}>Title</label>
                     <select
@@ -502,65 +502,29 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Starting Dates (Original Campus Start vs Current 6-Mo Contract Start) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, margin: 0 }}>
-                        Campus Starting Date <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="date"
-                        required
-                        value={cosStartingDate}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setCosStartingDate(val);
-                          if (cosContractStartDate === cosStartingDate) {
-                            setCosContractStartDate(val);
-                          }
-                        }}
-                        style={{ paddingLeft: '34px', fontSize: '12px' }}
-                      />
-                      <Calendar
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                    <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
-                      Original hiring date on campus. Formats your official ID.
-                    </span>
+                {/* Date Appointed (Used for Institutional ID Generation) */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '11.5px', fontWeight: 600, margin: '0 0 3px', display: 'block' }}>
+                    Date Appointed (Campus Starting Date) <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-control"
+                      type="date"
+                      required
+                      value={cosStartingDate}
+                      onChange={(e) => setCosStartingDate(e.target.value)}
+                      style={{ paddingLeft: '34px', fontSize: '12px' }}
+                    />
+                    <Calendar
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                    />
                   </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600, margin: 0 }}>
-                        Current Contract Start <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="date"
-                        required
-                        value={cosContractStartDate}
-                        onChange={(e) => setCosContractStartDate(e.target.value)}
-                        style={{ paddingLeft: '34px', fontSize: '12px' }}
-                      />
-                      <Calendar
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                    <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
-                      Active contract evaluation cycle.
-                    </span>
-                  </div>
+                  <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
+                    Your official appointment date on campus. Formats the date segment of your generated ID number. Official contract terms are assigned by HRMO.
+                  </span>
                 </div>
 
                 {/* Locked Department */}
@@ -825,7 +789,7 @@ export default function TokenizedSignUp({
                 </div>
 
                 {/* Separated Name Inputs */}
-                <div style={{ display: 'grid', gridTemplateColumns: '105px 1.5fr 70px 1.5fr', gap: '8px' }}>
+                <div className="signup-name-grid">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '11.5px', fontWeight: 600 }}>Title</label>
                     <select
