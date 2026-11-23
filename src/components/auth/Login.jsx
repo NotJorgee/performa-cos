@@ -326,25 +326,25 @@ export default function Login({
             <div className="lv2-modal-body">
               {activeLegalModal === 'ios' && (
                 <div>
-                  <p>
-                    PerformaCOS is engineered as an installable mobile Progressive Web App (PWA) with native hardware support on iOS:
+                  <p style={{ marginBottom: '14px', fontSize: '0.95em' }}>
+                    You can install PerformaCOS directly on your iPhone or iPad like a regular app without going to the App Store:
                   </p>
-                  <ol>
-                    <li>
-                      Open <strong>Safari</strong> on your iPhone or iPad and navigate to this website.
+                  <ol style={{ lineHeight: '1.7', paddingLeft: '22px', margin: '0 0 16px' }}>
+                    <li style={{ marginBottom: '8px' }}>
+                      Open this website in <strong>Safari</strong> on your device.
                     </li>
-                    <li>
-                      Tap the <strong>Share</strong> button (the box icon with an arrow pointing upward) in the Safari toolbar.
+                    <li style={{ marginBottom: '8px' }}>
+                      Tap the <strong>Share</strong> button (the square icon with an arrow pointing up at the bottom of your screen).
                     </li>
-                    <li>
-                      Scroll down in the share sheet and tap <strong>"Add to Home Screen"</strong>.
+                    <li style={{ marginBottom: '8px' }}>
+                      Scroll down the menu and tap <strong>"Add to Home Screen"</strong>.
                     </li>
-                    <li>
+                    <li style={{ marginBottom: '4px' }}>
                       Tap <strong>"Add"</strong> in the top-right corner.
                     </li>
                   </ol>
-                  <p style={{ marginTop: '14px', fontSize: '0.92em', color: '#64748b' }}>
-                    Once added, PerformaCOS runs in standalone full-screen mode with high-accuracy GPS campus geofencing, camera access for DAR evidence, and biometric login support.
+                  <p style={{ marginTop: '16px', padding: '12px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.88em', color: '#475569', lineHeight: '1.55' }}>
+                    The PerformaCOS icon will appear on your home screen. Tapping it opens the app in full screen with easy camera access for Daily Accomplishment Reports (DAR) and campus attendance tracking.
                   </p>
                 </div>
               )}
