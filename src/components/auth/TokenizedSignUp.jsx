@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   User,
   Check,
-  CheckCircle2,
   Eye,
   EyeOff,
   Mail,
@@ -13,7 +12,6 @@ import {
   Calendar,
 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
-import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import { api } from '../../services/api';
 import PasswordComplexityChecklist from '../common/PasswordComplexityChecklist';
 import {
@@ -142,18 +140,6 @@ export default function TokenizedSignUp({
   }, [tokenInput]);
 
   // Dynamic preview of employee ID with 'X' fallback placeholder
-  const currentFirstName = roleMode === 'cos' ? cosFirstName : adminFirstName;
-  const currentMiddleInitial = roleMode === 'cos' ? cosMiddleInitial : adminMiddleInitial;
-  const currentLastName = roleMode === 'cos' ? cosLastName : adminLastName;
-  const currentStartingDate = roleMode === 'cos' ? cosStartingDate : adminStartingDate;
-
-  const currentGeneratedId = generateEvsuEmployeeId({
-    firstName: currentFirstName,
-    middleInitial: currentMiddleInitial,
-    lastName: currentLastName,
-    startingDate: currentStartingDate,
-  });
-
   // Active password values and institutional complexity verification
   const currentPassword = roleMode === 'cos' ? cosPassword : adminPassword;
   const { isValid: isPasswordComplex } = evaluatePasswordComplexity(currentPassword);
@@ -290,7 +276,7 @@ export default function TokenizedSignUp({
         </div>
 
         {/* Card */}
-        <div className="auth-card" style={{ padding: '28px 32px' }}>
+        <div className="auth-card signup-auth-card">
           {/* 1. STATE: NO INVITATION LINK PROVIDED */}
           {!tokenInput.trim() && (
             <div style={{ textAlign: 'center', padding: '20px 8px' }}>
@@ -406,47 +392,6 @@ export default function TokenizedSignUp({
                     ? 'Complete your profile to access accomplishment reports and performance evaluations.'
                     : 'Complete your profile to access supervisory evaluations, endorsement workflows, and administrative dashboards.'}
                 </span>
-              </div>
-
-              {/* Verified Institutional Trust Pill */}
-              <div
-                style={{
-                  background: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                  borderRadius: '8px',
-                  padding: '12px 14px',
-                  marginBottom: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
-              >
-                <CheckCircle2 size={18} style={{ color: '#166534', flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                      Verified Invitation
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: roleMode === 'cos' ? '#dcfce7' : '#fee2e2',
-                        color: roleMode === 'cos' ? '#166534' : '#991b1b',
-                        border: `1px solid ${roleMode === 'cos' ? '#bbf7d0' : '#fecaca'}`,
-                      }}
-                    >
-                      {tokenData.role}
-                    </span>
-                  </div>
-                  {tokenData.department_name && (
-                    <div style={{ fontSize: '12px', color: '#15803d', marginTop: '2px' }}>
-                      Assigned Department: <strong>{tokenData.department_name}</strong>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Form Error Banner */}
@@ -589,9 +534,9 @@ export default function TokenizedSignUp({
                   </span>
                 </div>
 
-                {/* Locked Department */}
+                {/* Locked Department (Pre-assigned by HRMO) */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 600, margin: 0 }}>
                       Assigned Department / Academic Unit
                     </label>
@@ -599,48 +544,36 @@ export default function TokenizedSignUp({
                       <Lock size={11} /> Pre-assigned by HR
                     </span>
                   </div>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="text"
-                      readOnly
-                      disabled
-                      value={cosDept || 'Assigned Department'}
-                      style={{
-                        paddingLeft: '34px',
-                        background: '#f8fafc',
-                        color: 'var(--ink-800)',
-                        fontWeight: 600,
-                        cursor: 'not-allowed',
-                        border: '1px solid #e2e8f0',
-                      }}
-                    />
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 13px',
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      minHeight: '40px',
+                      boxSizing: 'border-box',
+                    }}
+                  >
                     <Building
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      size={16}
+                      color="var(--brand-700)"
+                      style={{ flexShrink: 0 }}
                     />
+                    <span
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--ink-800)',
+                        lineHeight: 1.35,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {cosDept || 'Assigned Department'}
+                    </span>
                   </div>
-                </div>
-
-                {/* Generated Employee ID Preview */}
-                <div
-                  style={{
-                    background: '#f8fafc',
-                    border: '1px dashed var(--line)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
-                    System Generated Official ID:
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.8px', fontFamily: 'monospace' }}>
-                    {currentGeneratedId}
-                  </span>
                 </div>
 
                 {/* Password Fields */}
@@ -663,7 +596,7 @@ export default function TokenizedSignUp({
                       <Lock
                         size={15}
                         color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 2 }}
                       />
                       <button
                         type="button"
@@ -898,9 +831,9 @@ export default function TokenizedSignUp({
                   </span>
                 </div>
 
-                {/* Locked Department */}
+                {/* Locked Department (Pre-assigned by HRMO) */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 600, margin: 0 }}>
                       Department / Administrative Office
                     </label>
@@ -908,27 +841,35 @@ export default function TokenizedSignUp({
                       <Lock size={11} /> Pre-assigned by HR
                     </span>
                   </div>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="text"
-                      readOnly
-                      disabled
-                      value={adminDept || 'Assigned Department'}
-                      style={{
-                        paddingLeft: '34px',
-                        background: '#f8fafc',
-                        color: 'var(--ink-800)',
-                        fontWeight: 600,
-                        cursor: 'not-allowed',
-                        border: '1px solid #e2e8f0',
-                      }}
-                    />
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 13px',
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      minHeight: '40px',
+                      boxSizing: 'border-box',
+                    }}
+                  >
                     <Building
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      size={16}
+                      color="var(--brand-700)"
+                      style={{ flexShrink: 0 }}
                     />
+                    <span
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--ink-800)',
+                        lineHeight: 1.35,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {adminDept || 'Assigned Department'}
+                    </span>
                   </div>
 
                   {adminRole === 'Department Head' && (
@@ -963,26 +904,6 @@ export default function TokenizedSignUp({
                   )}
                 </div>
 
-                {/* Generated Admin ID Preview */}
-                <div
-                  style={{
-                    background: '#f8fafc',
-                    border: '1px dashed var(--line)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
-                    System Generated Official ID:
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--brand-700)', letterSpacing: '0.8px', fontFamily: 'monospace' }}>
-                    {currentGeneratedId}
-                  </span>
-                </div>
-
                 {/* Password Fields */}
                 <div className="signup-password-grid">
                   <div className="form-group" style={{ margin: 0 }}>
@@ -1003,7 +924,7 @@ export default function TokenizedSignUp({
                       <Lock
                         size={15}
                         color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 2 }}
                       />
                       <button
                         type="button"
