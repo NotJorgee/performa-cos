@@ -2855,6 +2855,7 @@ export default function UserManagement({
         scope={inviteModalConfig.scope}
         departments={departments}
         existingEmployeeIds={users.map((u) => u.employee_id_number).filter(Boolean)}
+        existingUsers={users}
         onClose={() => setShowInviteModal(false)}
         onToast={showToast}
         onUserCreated={async () => {

@@ -6,6 +6,7 @@ import time
 import datetime
 from typing import List, Dict
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -39,6 +40,27 @@ def create_invitation(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR Personnel can issue invitation tokens.",
         )
+
+    # 1. Prevent issuing invitations to already registered personnel
+    if payload.email:
+        clean_email = payload.email.strip().lower()
+        existing_user = (
+            db.query(models.UserAccount)
+            .filter(func.lower(models.UserAccount.email) == clean_email)
+            .first()
+        )
+        if existing_user:
+            status_desc = "archived" if existing_user.is_archived else "active"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Personnel account already exists: {existing_user.full_name} ({clean_email}) is already registered as an {status_desc} {existing_user.role}.",
+            )
+
+        # Invalidate any older unused invitations for this email to avoid stale orphan links
+        db.query(models.InvitationToken).filter(
+            func.lower(models.InvitationToken.email) == clean_email,
+            models.InvitationToken.used_at == None,
+        ).update({"expires_at": datetime.datetime.utcnow()}, synchronize_session=False)
 
     # Prefix based on role with cryptographically secure random token (SEC-01: 64-bit entropy)
     role_prefix = "COS" if payload.role == "COS Employee" else "ADM"
@@ -196,6 +218,20 @@ def validate_invitation(token: str, request: Request, db: Session = Depends(get_
 
     if invite.expires_at < datetime.datetime.utcnow():
         raise HTTPException(status_code=400, detail="Invitation token has expired.")
+
+    # Prevent re-using tokens if personnel has already registered
+    if invite.email:
+        clean_email = invite.email.strip().lower()
+        existing_user = (
+            db.query(models.UserAccount)
+            .filter(func.lower(models.UserAccount.email) == clean_email)
+            .first()
+        )
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail=f"This invitation has already been completed: an account for {clean_email} already exists.",
+            )
 
     dept_name = None
     current_dept_head = None

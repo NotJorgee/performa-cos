@@ -7,7 +7,7 @@ import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from jose import jwt as jose_jwt, JWTError
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -208,8 +208,9 @@ def register(
     if invite.expires_at < datetime.datetime.utcnow():
         raise HTTPException(status_code=400, detail="Invitation token has expired.")
 
-    # 2. Check email uniqueness
-    if db.query(models.UserAccount).filter(models.UserAccount.email == payload.email).first():
+    # 2. Check email uniqueness (case-insensitive)
+    clean_signup_email = (payload.email or "").strip().lower()
+    if db.query(models.UserAccount).filter(func.lower(models.UserAccount.email) == clean_signup_email).first():
         raise HTTPException(status_code=400, detail="Email is already registered.")
 
     # 3. Institutional password complexity validation

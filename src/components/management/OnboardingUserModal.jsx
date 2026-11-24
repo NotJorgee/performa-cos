@@ -36,6 +36,7 @@ export default function OnboardingUserModal({
   scope = 'departments', // 'departments' | 'hr_admins'
   departments = [],
   existingEmployeeIds = [],
+  existingUsers = [],
   onClose = () => {},
   onToast = () => {},
   onUserCreated = async () => {},
@@ -54,6 +55,13 @@ export default function OnboardingUserModal({
   const [inviteError, setInviteError] = useState(null);
   const [createdInvite, setCreatedInvite] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Detect whether the recipient email is already registered in the system
+  const matchedExistingUser = useMemo(() => {
+    if (!email.trim() || !Array.isArray(existingUsers) || existingUsers.length === 0) return null;
+    const clean = email.trim().toLowerCase();
+    return existingUsers.find((u) => (u.email || '').toLowerCase() === clean);
+  }, [email, existingUsers]);
 
   // Manual creation state (parity with TokenizedSignUp + manual features)
   const [titlePrefix, setTitlePrefix] = useState('None');
@@ -181,6 +189,14 @@ export default function OnboardingUserModal({
     e.preventDefault();
     if (!email.trim()) return;
     setInviteError(null);
+
+    if (matchedExistingUser) {
+      setInviteError(
+        `Personnel account already exists: ${matchedExistingUser.full_name} (${matchedExistingUser.email}) is already registered as an ${matchedExistingUser.is_archived ? 'archived' : 'active'} ${matchedExistingUser.role}.`
+      );
+      return;
+    }
+
     setIsSendingInvite(true);
 
     try {
@@ -220,6 +236,14 @@ export default function OnboardingUserModal({
       setManualError('Institutional email address is required.');
       return;
     }
+
+    if (matchedExistingUser) {
+      setManualError(
+        `Personnel account already exists: ${matchedExistingUser.full_name} (${matchedExistingUser.email}) is already registered as an ${matchedExistingUser.is_archived ? 'archived' : 'active'} ${matchedExistingUser.role}.`
+      );
+      return;
+    }
+
     if (!firstName.trim() || !lastName.trim()) {
       setManualError('Please enter both First Name and Last Name.');
       return;
@@ -488,9 +512,23 @@ export default function OnboardingUserModal({
                 className="form-control"
                 placeholder="e.g. employee@evsu.edu.ph"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (inviteError) setInviteError(null);
+                }}
                 required
+                style={{
+                  borderColor: matchedExistingUser ? '#ef4444' : undefined,
+                }}
               />
+              {matchedExistingUser && (
+                <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <AlertCircle size={13} style={{ flexShrink: 0 }} />
+                  <span>
+                    Personnel already registered: <strong>{matchedExistingUser.full_name}</strong> ({matchedExistingUser.role})
+                  </span>
+                </div>
+              )}
             </div>
 
             {renderRoleAndDepartmentControls()}
@@ -535,7 +573,15 @@ export default function OnboardingUserModal({
               <button type="button" className="btn btn-sm" onClick={onClose}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-sm btn-primary" disabled={isSendingInvite}>
+              <button
+                type="submit"
+                className="btn btn-sm btn-primary"
+                disabled={isSendingInvite || Boolean(matchedExistingUser)}
+                style={{
+                  opacity: matchedExistingUser ? 0.6 : 1,
+                  cursor: matchedExistingUser ? 'not-allowed' : 'pointer',
+                }}
+              >
                 {isSendingInvite ? 'Generating...' : 'Generate Invitation Link'}
               </button>
             </div>
@@ -662,16 +708,30 @@ export default function OnboardingUserModal({
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (manualError) setManualError(null);
+                    }}
                     placeholder="firstname.lastname@evsu.edu.ph"
-                    style={{ paddingLeft: '34px' }}
+                    style={{
+                      paddingLeft: '34px',
+                      borderColor: matchedExistingUser ? '#ef4444' : undefined,
+                    }}
                   />
                   <Mail
                     size={15}
-                    color="var(--ink-400)"
+                    color={matchedExistingUser ? '#ef4444' : 'var(--ink-400)'}
                     style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
                   />
                 </div>
+                {matchedExistingUser && (
+                  <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <AlertCircle size={13} style={{ flexShrink: 0 }} />
+                    <span>
+                      Personnel already registered: <strong>{matchedExistingUser.full_name}</strong> ({matchedExistingUser.role})
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Scoped Role & Target Department */}
@@ -1036,7 +1096,11 @@ export default function OnboardingUserModal({
               <button
                 type="submit"
                 className="btn btn-sm btn-primary"
-                disabled={isSubmittingManual}
+                disabled={isSubmittingManual || Boolean(matchedExistingUser)}
+                style={{
+                  opacity: matchedExistingUser ? 0.6 : 1,
+                  cursor: matchedExistingUser ? 'not-allowed' : 'pointer',
+                }}
               >
                 {isSubmittingManual ? 'Creating Account...' : 'Save & Create Account'}
               </button>
