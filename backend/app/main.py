@@ -33,6 +33,7 @@ from .routers.backup import router as backup_router
 from .routers.templates import router as templates_router
 from .routers.attendance import router as attendance_router
 from .routers.ai import router as ai_router
+from .routers.system_settings import router as system_settings_router
 from .routers.audit import log_audit
 
 # Initialize FastAPI App
@@ -77,6 +78,7 @@ app.include_router(backup_router)
 app.include_router(templates_router)
 app.include_router(attendance_router)
 app.include_router(ai_router)
+app.include_router(system_settings_router)
 
 
 @app.on_event("startup")
@@ -114,6 +116,7 @@ async def startup_event():
             "evaluation_templates",
             "attendance_log",
             "leave_request",
+            "system_settings",
             "alembic_version",
         ]
         with engine.connect() as conn:
@@ -1322,10 +1325,15 @@ def finalize_contract_renewal(
 
     if is_renewed:
         emp.total_contracts = (emp.total_contracts or 0) + 1
-        from .routers.auth import _add_six_months
         new_start = (emp.contract_end_date + datetime.timedelta(days=1)) if emp.contract_end_date else datetime.date.today()
         emp.contract_start_date = new_start
-        emp.contract_end_date = _add_six_months(new_start)
+        from .routers.system_settings import get_system_setting, calculate_contract_end_date
+        policy_val = get_system_setting(db, "cos_contract_duration_months", default="6")
+        try:
+            policy_months = int(policy_val)
+        except ValueError:
+            policy_months = 6
+        emp.contract_end_date = calculate_contract_end_date(new_start, policy_months)
 
     now = datetime.datetime.utcnow()
     decision_label = "RENEWED (Term Extension)" if is_renewed else "DO NOT RENEW (Contract Conclusion)"

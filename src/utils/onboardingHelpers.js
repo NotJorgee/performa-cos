@@ -54,12 +54,12 @@ export function evaluatePasswordComplexity(password = '') {
   };
 }
 
-export function calculateSixMonthContractEnd(startDateStr) {
+export function calculateContractEndDate(startDateStr, durationMonths = 6) {
   if (!startDateStr || typeof startDateStr !== 'string') return '';
   const parts = startDateStr.split('-').map((n) => parseInt(n, 10));
   if (parts.length !== 3 || parts.some(Number.isNaN)) return '';
   const [y, m, d] = parts;
-  const targetZeroMonth = m - 1 + 6;
+  const targetZeroMonth = m - 1 + Number(durationMonths || 6);
   const targetYear = y + Math.floor(targetZeroMonth / 12);
   const targetMonthIndex = ((targetZeroMonth % 12) + 12) % 12;
   const maxDay = new Date(targetYear, targetMonthIndex + 1, 0).getDate();
@@ -69,6 +69,10 @@ export function calculateSixMonthContractEnd(startDateStr) {
   const mm = String(endDate.getMonth() + 1).padStart(2, '0');
   const dd = String(endDate.getDate()).padStart(2, '0');
   return `${yy}-${mm}-${dd}`;
+}
+
+export function calculateSixMonthContractEnd(startDateStr) {
+  return calculateContractEndDate(startDateStr, 6);
 }
 
 export function formatReadableDate(isoDate) {

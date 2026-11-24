@@ -504,6 +504,16 @@ export const api = {
         body: JSON.stringify(payload),
       }),
   },
+
+  // Institutional System Settings & Contract Policy
+  systemSettings: {
+    getContractPolicy: () => request('/system-settings/contract-policy'),
+    updateContractPolicy: (data) =>
+      request('/system-settings/contract-policy', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
 };
 
 export default api;

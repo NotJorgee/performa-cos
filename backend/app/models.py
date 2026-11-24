@@ -386,3 +386,21 @@ class LeaveRequest(Base):
     user = relationship("UserAccount", foreign_keys=[user_id])
     department = relationship("Department", foreign_keys=[department_id])
     reviewer = relationship("UserAccount", foreign_keys=[reviewed_by_id])
+
+
+# ---------------------------------------------------------------------------
+# SystemSetting (Institutional Global Configuration Parameters)
+# ---------------------------------------------------------------------------
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    setting_key = Column(String(100), unique=True, index=True, nullable=False)
+    setting_value = Column(String(500), nullable=False)
+    description = Column(String(255), nullable=True)
+    updated_by_id = Column(Integer, ForeignKey("user_account.id"), nullable=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Relationships
+    updated_by = relationship("UserAccount", foreign_keys=[updated_by_id])
+

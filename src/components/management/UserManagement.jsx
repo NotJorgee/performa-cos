@@ -24,11 +24,13 @@ import {
   Shield,
   Briefcase,
   Layers,
+  Lock,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
 import OnboardingUserModal from './OnboardingUserModal';
 import { clearAllPerformaCache } from '../../utils/swrCache';
+import { calculateContractEndDate } from '../../utils/onboardingHelpers';
 import {
   EVSU_DEPARTMENTS,
   EVSU_DEPARTMENT_DOMAINS,
@@ -104,6 +106,7 @@ export default function UserManagement({
   const [editContact, setEditContact] = useState('');
   const [editContractStartDate, setEditContractStartDate] = useState('');
   const [editContractEndDate, setEditContractEndDate] = useState('');
+  const [contractPolicyMonths, setContractPolicyMonths] = useState(6);
   const [isSavingContract, setIsSavingContract] = useState(false);
   const [transferDeptId, setTransferDeptId] = useState('');
   const [userModalSuccess, setUserModalSuccess] = useState(null);
@@ -143,6 +146,14 @@ export default function UserManagement({
 
       setDepartments(deptData);
       setUsers(userData);
+
+      if (api.systemSettings?.getContractPolicy) {
+        api.systemSettings.getContractPolicy().then((res) => {
+          if (res?.duration_months) {
+            setContractPolicyMonths(res.duration_months);
+          }
+        }).catch(() => {});
+      }
     } catch (err) {
       console.warn('UserManagement load data error:', err);
     } finally {
@@ -411,23 +422,26 @@ export default function UserManagement({
     setEditIdNumber(user.employee_id_number || '');
     setEditJobTitle(user.job_title || (user.role === 'Department Head' ? 'Department Head' : 'Admin Aide'));
     setEditContact(user.contact_number || '');
-    setEditContractStartDate(user.contract_start_date || '');
-    setEditContractEndDate(user.contract_end_date || '');
+    const startDate = user.contract_start_date || '';
+    setEditContractStartDate(startDate);
+    if (user.contract_end_date) {
+      setEditContractEndDate(user.contract_end_date);
+    } else if (startDate) {
+      setEditContractEndDate(calculateContractEndDate(startDate, contractPolicyMonths));
+    } else {
+      setEditContractEndDate('');
+    }
     setTransferDeptId(user.department_id ? String(user.department_id) : '');
     setUserSettingsTab('identity');
     setUserModalSuccess(null);
   };
 
-  const handleSetSixMonths = () => {
-    if (!editContractStartDate) return;
-    const parts = editContractStartDate.split('-');
-    if (parts.length === 3) {
-      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      d.setMonth(d.getMonth() + 6);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      setEditContractEndDate(`${yyyy}-${mm}-${dd}`);
+  const handleContractStartDateChange = (newStart) => {
+    setEditContractStartDate(newStart);
+    if (newStart) {
+      setEditContractEndDate(calculateContractEndDate(newStart, contractPolicyMonths));
+    } else {
+      setEditContractEndDate('');
     }
   };
 
@@ -2420,53 +2434,58 @@ export default function UserManagement({
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, marginBottom: '5px', display: 'block', color: 'var(--ink-800)' }}>
                       Contract Start Date
                     </label>
                     <input
                       type="date"
                       className="form-control"
                       value={editContractStartDate}
-                      onChange={(e) => setEditContractStartDate(e.target.value)}
+                      onChange={(e) => handleContractStartDateChange(e.target.value)}
                     />
-                    <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '3px', display: 'block' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
                       Official start of current evaluation term.
                     </span>
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Lock size={12} color="var(--ink-500)" />
                         Contract End Date
                       </label>
-                      {editContractStartDate && (
-                        <button
-                          type="button"
-                          onClick={handleSetSixMonths}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--brand-700)',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
-                        >
-                          +6 Months Auto
-                        </button>
-                      )}
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: 'var(--brand-700)',
+                          background: 'var(--brand-50, #fdf2f4)',
+                          padding: '1px 7px',
+                          borderRadius: '12px',
+                          border: '1px solid #fecdd3',
+                        }}
+                      >
+                        Auto-calculated ({contractPolicyMonths}M Policy)
+                      </span>
                     </div>
                     <input
                       type="date"
                       className="form-control"
                       value={editContractEndDate}
-                      onChange={(e) => setEditContractEndDate(e.target.value)}
+                      disabled
+                      readOnly
+                      style={{
+                        background: '#f8fafc',
+                        color: 'var(--ink-700)',
+                        cursor: 'not-allowed',
+                        borderColor: 'var(--line)',
+                        fontWeight: 600,
+                      }}
                     />
-                    <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '3px', display: 'block' }}>
-                      Contract expiration &amp; renewal trigger date.
+                    <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
+                      Contract expiration is automatically set by the University Standard COS Policy ({contractPolicyMonths} Months) and cannot be manually modified.
                     </span>
                   </div>
                 </div>

@@ -15,11 +15,16 @@ import {
   Edit3,
   Settings,
   ChevronDown,
+  Lock,
+  ShieldCheck,
+  Info,
+  Send,
 } from 'lucide-react';
 import Toast from '../common/Toast';
 import EvaluationFormEditor from './EvaluationFormEditor';
 import { api } from '../../services/api';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import { calculateContractEndDate } from '../../utils/onboardingHelpers';
 
 export default function EvaluationSettings({
   currentUser = null,
@@ -36,14 +41,17 @@ export default function EvaluationSettings({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
 
-  // Batch Tweak State
-  const [batchAction, setBatchAction] = useState('extend'); // 'extend' | 'shorten'
-  const [batchDurationType, setBatchDurationType] = useState('30'); // '15' | '30' | '60' | '90' | '180' | 'custom'
-  const [customBatchDays, setCustomBatchDays] = useState(45);
-  const [batchDept, setBatchDept] = useState('ALL');
-  const [batchMemo, setBatchMemo] = useState('');
-  const [showBatchConfirmModal, setShowBatchConfirmModal] = useState(false);
-  const [batchApplying, setBatchApplying] = useState(false);
+  // Institutional Standard Contract Policy State
+  const [policyMonths, setPolicyMonths] = useState(6);
+  const [policyName, setPolicyName] = useState('6 Months (Semestral Standard)');
+  const [policyMemo, setPolicyMemo] = useState('EVSU Institutional Standard COS Contract Policy');
+  const [policyUpdatedAt, setPolicyUpdatedAt] = useState(null);
+  const [policyUpdatedByName, setPolicyUpdatedByName] = useState('HRMDO');
+  const [selectedDirectiveMonths, setSelectedDirectiveMonths] = useState(6);
+  const [customMonthsInput, setCustomMonthsInput] = useState(4);
+  const [directiveMemoInput, setDirectiveMemoInput] = useState('');
+  const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+  const [showPolicyConfirmModal, setShowPolicyConfirmModal] = useState(false);
 
   // Single Employee Edit Modal
   const [editingEmployee, setEditingEmployee] = useState(null);
@@ -77,8 +85,28 @@ export default function EvaluationSettings({
     }
   };
 
+  // Load institutional contract policy
+  const loadContractPolicy = async () => {
+    try {
+      if (api.systemSettings?.getContractPolicy) {
+        const res = await api.systemSettings.getContractPolicy();
+        if (res) {
+          setPolicyMonths(res.duration_months || 6);
+          setPolicyName(res.policy_name || `${res.duration_months || 6} Months`);
+          setPolicyMemo(res.memo || '');
+          setPolicyUpdatedAt(res.updated_at);
+          setPolicyUpdatedByName(res.updated_by_name || 'HRMDO');
+          setSelectedDirectiveMonths(res.duration_months || 6);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load contract policy from API:', err.message);
+    }
+  };
+
   useEffect(() => {
     loadEmployees();
+    loadContractPolicy();
   }, []);
 
   // Helper date math
@@ -153,60 +181,31 @@ export default function EvaluationSettings({
     return `${parts[0]}, ${parts[1]} and ${parts[2]}`;
   };
 
-  const addDaysToDate = (dateStr, days) => {
-    const base = dateStr ? new Date(dateStr) : new Date();
-    base.setDate(base.getDate() + days);
-    return base.toISOString().split('T')[0];
-  };
-
-  // Quick single-employee extend/shorten by 30 days
-  const handleQuickAdjust = async (employee, deltaDays) => {
-    const currentEnd = employee.contract_end_date || employee.contractEndDate || new Date().toISOString().split('T')[0];
-    const newEnd = addDaysToDate(currentEnd, deltaDays);
-
-    // Safeguard: Ensure new end date does not precede start date
-    const start = employee.contract_start_date || employee.contractStartDate;
-    if (start && new Date(newEnd) < new Date(start)) {
-      showToast('Contract end date cannot be earlier than contract start date.', 'warning');
-      return;
-    }
-
-    try {
-      await api.users.adminUpdate(employee.id, { contract_end_date: newEnd });
-      setEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === employee.id ? { ...emp, contract_end_date: newEnd, contractEndDate: newEnd } : emp
-        )
-      );
-      const actionName = deltaDays > 0 ? 'extended' : 'shortened';
-      showToast(
-        `Contract for ${employee.full_name || employee.fullName} ${actionName} by ${Math.abs(deltaDays)} days to ${newEnd}.`,
-        'success'
-      );
-    } catch (err) {
-      showToast(err.message || 'Failed to update contract date on server.', 'danger');
-    }
-  };
-
-  // Open modal to edit specific custom dates
+  // Open modal to configure dates for a specific employee
   const handleOpenEditModal = (employee) => {
     setEditingEmployee(employee);
-    setEditStartDate(employee.contract_start_date || employee.contractStartDate || '');
-    setEditEndDate(employee.contract_end_date || employee.contractEndDate || '');
+    const start = employee.contract_start_date || employee.contractStartDate || '';
+    setEditStartDate(start);
+    if (employee.contract_end_date || employee.contractEndDate) {
+      setEditEndDate(employee.contract_end_date || employee.contractEndDate);
+    } else if (start) {
+      setEditEndDate(calculateContractEndDate(start, policyMonths));
+    } else {
+      setEditEndDate('');
+    }
   };
 
-  const handleAdjustModalEndDate = (deltaDays) => {
-    const base = editEndDate || editStartDate || new Date().toISOString().split('T')[0];
-    const newDate = addDaysToDate(base, deltaDays);
-    setEditEndDate(newDate);
+  const handleEditStartDateChange = (newStart) => {
+    setEditStartDate(newStart);
+    if (newStart) {
+      setEditEndDate(calculateContractEndDate(newStart, policyMonths));
+    } else {
+      setEditEndDate('');
+    }
   };
 
   const handleSaveCustomDates = async () => {
     if (!editingEmployee) return;
-    if (editStartDate && editEndDate && new Date(editEndDate) < new Date(editStartDate)) {
-      showToast('Contract end date cannot precede start date.', 'warning');
-      return;
-    }
 
     setIsSavingSingle(true);
     try {
@@ -229,12 +228,48 @@ export default function EvaluationSettings({
         )
       );
 
-      showToast(`Contract dates updated for ${editingEmployee.full_name || editingEmployee.fullName}.`, 'success');
+      showToast(`Contract terms updated for ${editingEmployee.full_name || editingEmployee.fullName}.`, 'success');
       setEditingEmployee(null);
     } catch (err) {
       showToast(err.message || 'Failed to update contract dates.', 'danger');
     } finally {
       setIsSavingSingle(false);
+    }
+  };
+
+  // Enact University Standard COS Contract Policy Directive
+  const handleApplyPolicyDirective = async () => {
+    const finalMonths =
+      selectedDirectiveMonths === 'custom' ? Number(customMonthsInput) || 1 : Number(selectedDirectiveMonths);
+    if (!finalMonths || finalMonths < 1 || finalMonths > 60) {
+      showToast('Contract duration must be between 1 and 60 months.', 'warning');
+      return;
+    }
+
+    setIsSavingPolicy(true);
+    try {
+      const res = await api.systemSettings.updateContractPolicy({
+        duration_months: finalMonths,
+        memo: directiveMemoInput.trim() || undefined,
+      });
+
+      setPolicyMonths(res.duration_months);
+      setPolicyName(res.policy_name);
+      setPolicyMemo(res.memo);
+      setPolicyUpdatedAt(res.updated_at);
+      setPolicyUpdatedByName(res.updated_by_name);
+      setSelectedDirectiveMonths(res.duration_months);
+      setDirectiveMemoInput('');
+      setShowPolicyConfirmModal(false);
+
+      showToast(
+        `University Directive Enacted: Standard COS contract duration set to ${finalMonths} months. Broadcast notification dispatched to all users.`,
+        'success'
+      );
+    } catch (err) {
+      showToast(err.message || 'Failed to update contract policy.', 'danger');
+    } finally {
+      setIsSavingPolicy(false);
     }
   };
 
@@ -253,58 +288,6 @@ export default function EvaluationSettings({
 
     return matchesSearch && matchesDept;
   });
-
-  // Calculate target employees for batch tweak
-  const batchTargetEmployees = employees.filter((emp) => {
-    if (batchDept === 'ALL') return true;
-    const empDept =
-      (emp.department && typeof emp.department === 'object' ? emp.department.name : emp.department) || '';
-    return empDept === batchDept;
-  });
-
-  const effectiveBatchDays =
-    batchDurationType === 'custom' ? Number(customBatchDays) || 1 : Number(batchDurationType);
-
-  // Execute Batch Tweak
-  const handleApplyBatchTweak = async () => {
-    if (batchTargetEmployees.length === 0) {
-      showToast('No active COS employees match the selected department scope.', 'warning');
-      return;
-    }
-
-    const deltaDays = batchAction === 'extend' ? effectiveBatchDays : -effectiveBatchDays;
-    setBatchApplying(true);
-
-    try {
-      const updatedList = [];
-      for (const emp of batchTargetEmployees) {
-        const curEnd = emp.contract_end_date || emp.contractEndDate || new Date().toISOString().split('T')[0];
-        const newEnd = addDaysToDate(curEnd, deltaDays);
-        await api.users.adminUpdate(emp.id, { contract_end_date: newEnd });
-        updatedList.push({ id: emp.id, newEnd });
-      }
-
-      setEmployees((prev) =>
-        prev.map((emp) => {
-          const match = updatedList.find((u) => u.id === emp.id);
-          return match
-            ? { ...emp, contract_end_date: match.newEnd, contractEndDate: match.newEnd }
-            : emp;
-        })
-      );
-
-      const actionText = batchAction === 'extend' ? 'Extended' : 'Shortened';
-      showToast(
-        `Batch directive applied: ${actionText} contracts for ${updatedList.length} personnel by ${Math.abs(deltaDays)} days.`,
-        'success'
-      );
-      setShowBatchConfirmModal(false);
-    } catch (err) {
-      showToast(err.message || 'Failed to complete batch update.', 'danger');
-    } finally {
-      setBatchApplying(false);
-    }
-  };
 
   const customSelectStyle = {
     height: '38px',
@@ -414,202 +397,286 @@ export default function EvaluationSettings({
          ===================================================================== */}
       {activeTab === 'contract_length' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-          {/* Directive Quick Tweak Bar (Batch Extension / Shortening) */}
+          {/* Executive University Directive Standard COS Contract Policy Card */}
           <div
             className="card"
             style={{
-              padding: '24px 28px',
+              padding: '28px 32px',
               border: '1px solid var(--line)',
               background: '#ffffff',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <Clock size={19} color="var(--brand-700)" />
-              <h2 style={{ fontSize: '16.5px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
-                University Directive Contract Tweak (Batch Adjustment)
-              </h2>
+            {/* Top Bar: Title and Current Standard Badge */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginBottom: '20px',
+                paddingBottom: '18px',
+                borderBottom: '1px solid var(--line)',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <ShieldCheck size={22} color="var(--brand-700)" />
+                  <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
+                    University Directive: Standard COS Contract Duration Policy
+                  </h2>
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--ink-600)', lineHeight: 1.5, maxWidth: '680px' }}>
+                  Establish the university-wide standard duration for upcoming Contract of Service (COS) terms and renewal cycles.
+                  In accordance with institutional guidelines, adjustments apply to <b>subsequent contracts</b> after current terms conclude.
+                </p>
+              </div>
+
+              {/* Current Policy Status Pill */}
+              <div
+                style={{
+                  background: 'var(--brand-50, #fdf2f4)',
+                  border: '1px solid #fecdd3',
+                  borderRadius: '10px',
+                  padding: '12px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  minWidth: '220px',
+                }}
+              >
+                <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--brand-800)', letterSpacing: '0.04em' }}>
+                  Current Institutional Policy
+                </div>
+                <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--brand-900)' }}>
+                  {policyMonths} Months <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand-700)' }}>({policyName})</span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '2px' }}>
+                  {policyUpdatedAt ? `Enacted ${new Date(policyUpdatedAt).toLocaleDateString()} · ${policyUpdatedByName}` : 'Institutional Standard Directive'}
+                </div>
+              </div>
             </div>
 
+            {/* Directive Selection Options */}
+            <div style={{ marginBottom: '22px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-700)', marginBottom: '10px', letterSpacing: '0.04em' }}>
+                Select Directive Contract Duration for Upcoming Terms
+              </label>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: '12px',
+                }}
+              >
+                {/* 3 Months Option */}
+                <div
+                  onClick={() => setSelectedDirectiveMonths(3)}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: selectedDirectiveMonths === 3 ? '2px solid var(--brand-700)' : '1px solid var(--line)',
+                    background: selectedDirectiveMonths === 3 ? '#fff5f7' : '#ffffff',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: selectedDirectiveMonths === 3 ? 'var(--brand-800)' : 'var(--ink-900)' }}>
+                      3 Months
+                    </span>
+                    {selectedDirectiveMonths === 3 && <Check size={16} color="var(--brand-700)" />}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-600)', lineHeight: 1.4 }}>
+                    Quarterly Term (Previous EVSU Policy)
+                  </div>
+                </div>
+
+                {/* 5 Months Option */}
+                <div
+                  onClick={() => setSelectedDirectiveMonths(5)}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: selectedDirectiveMonths === 5 ? '2px solid var(--brand-700)' : '1px solid var(--line)',
+                    background: selectedDirectiveMonths === 5 ? '#fff5f7' : '#ffffff',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: selectedDirectiveMonths === 5 ? 'var(--brand-800)' : 'var(--ink-900)' }}>
+                      5 Months
+                    </span>
+                    {selectedDirectiveMonths === 5 && <Check size={16} color="var(--brand-700)" />}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-600)', lineHeight: 1.4 }}>
+                    Academic Semester (Shortened Term)
+                  </div>
+                </div>
+
+                {/* 6 Months Option (Standard) */}
+                <div
+                  onClick={() => setSelectedDirectiveMonths(6)}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: selectedDirectiveMonths === 6 ? '2px solid var(--brand-700)' : '1px solid var(--line)',
+                    background: selectedDirectiveMonths === 6 ? '#fff5f7' : '#ffffff',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: selectedDirectiveMonths === 6 ? 'var(--brand-800)' : 'var(--ink-900)' }}>
+                      6 Months
+                    </span>
+                    {selectedDirectiveMonths === 6 && <Check size={16} color="var(--brand-700)" />}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-600)', lineHeight: 1.4 }}>
+                    Semestral Standard (Current Standard)
+                  </div>
+                </div>
+
+                {/* 12 Months Option */}
+                <div
+                  onClick={() => setSelectedDirectiveMonths(12)}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: selectedDirectiveMonths === 12 ? '2px solid var(--brand-700)' : '1px solid var(--line)',
+                    background: selectedDirectiveMonths === 12 ? '#fff5f7' : '#ffffff',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: selectedDirectiveMonths === 12 ? 'var(--brand-800)' : 'var(--ink-900)' }}>
+                      1 Year (12 Mo.)
+                    </span>
+                    {selectedDirectiveMonths === 12 && <Check size={16} color="var(--brand-700)" />}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-600)', lineHeight: 1.4 }}>
+                    Annual Fiscal Term (Long-Term COS)
+                  </div>
+                </div>
+
+                {/* Custom Option */}
+                <div
+                  onClick={() => setSelectedDirectiveMonths('custom')}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: selectedDirectiveMonths === 'custom' ? '2px solid var(--brand-700)' : '1px solid var(--line)',
+                    background: selectedDirectiveMonths === 'custom' ? '#fff5f7' : '#ffffff',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '14.5px', fontWeight: 800, color: selectedDirectiveMonths === 'custom' ? 'var(--brand-800)' : 'var(--ink-900)' }}>
+                      Custom Months...
+                    </span>
+                    {selectedDirectiveMonths === 'custom' && <Check size={16} color="var(--brand-700)" />}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-600)', lineHeight: 1.4 }}>
+                    Set custom contract duration
+                  </div>
+                </div>
+              </div>
+
+              {selectedDirectiveMonths === 'custom' && (
+                <div style={{ marginTop: '14px', maxWidth: '300px' }}>
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '5px' }}>
+                    Enter Custom Contract Duration (Months)
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      className="form-control"
+                      value={customMonthsInput}
+                      onChange={(e) => setCustomMonthsInput(Math.max(1, parseInt(e.target.value) || 1))}
+                      placeholder="e.g. 4, 8, 9"
+                      style={{ height: '38px', borderRadius: '8px', fontSize: '13px', paddingRight: '65px' }}
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--ink-400)', fontWeight: 700, pointerEvents: 'none' }}>
+                      Months
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Directive Authority Memo & Action Row */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: '14px',
+                gridTemplateColumns: 'minmax(280px, 1fr) auto',
+                gap: '16px',
                 alignItems: 'flex-end',
+                marginBottom: '18px',
               }}
             >
-              {/* Action: Extend vs Shorten */}
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-700)', marginBottom: '6px' }}>
-                  Action
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '5px' }}>
+                  Directive Authority / Board Resolution Reference (Optional)
                 </label>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setBatchAction('extend')}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: batchAction === 'extend' ? '2px solid #16a34a' : '1px solid var(--line)',
-                      background: batchAction === 'extend' ? '#f0fdf4' : '#fff',
-                      color: batchAction === 'extend' ? '#15803d' : 'var(--ink-700)',
-                      fontWeight: 800,
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Plus size={14} /> Extend (+)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBatchAction('shorten')}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: batchAction === 'shorten' ? '2px solid #dc2626' : '1px solid var(--line)',
-                      background: batchAction === 'shorten' ? '#fef2f2' : '#fff',
-                      color: batchAction === 'shorten' ? '#b91c1c' : 'var(--ink-700)',
-                      fontWeight: 800,
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Minus size={14} /> Shorten (-)
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={directiveMemoInput}
+                  onChange={(e) => setDirectiveMemoInput(e.target.value)}
+                  placeholder="e.g. BOR Resolution No. 2026-14 / HRMDO Advisory Memo"
+                  style={{ height: '38px', borderRadius: '8px', fontSize: '12.5px' }}
+                />
               </div>
 
-              {/* Adjustment Amount */}
-              <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-700)', marginBottom: '6px' }}>
-                  Duration Adjustment
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    className="form-control"
-                    value={batchDurationType}
-                    onChange={(e) => setBatchDurationType(e.target.value)}
-                    style={{ ...customSelectStyle, paddingRight: '36px' }}
-                  >
-                    <option value="15">15 Days</option>
-                    <option value="30">1 Month (30 Days)</option>
-                    <option value="60">2 Months (60 Days)</option>
-                    <option value="90">3 Months (90 Days)</option>
-                    <option value="180">6 Months (180 Days)</option>
-                    <option value="custom">Custom Days...</option>
-                  </select>
-                  <ChevronDown
-                    size={15}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      pointerEvents: 'none',
-                      color: '#64748b',
-                    }}
-                  />
-                </div>
-                {batchDurationType === 'custom' && (
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1000"
-                        className="form-control"
-                        value={customBatchDays}
-                        onChange={(e) => setCustomBatchDays(Math.max(1, parseInt(e.target.value) || 1))}
-                        placeholder="Enter days..."
-                        style={{ height: '38px', borderRadius: '8px', fontSize: '13px', paddingRight: '52px' }}
-                      />
-                      <span
-                        style={{
-                          position: 'absolute',
-                          right: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          fontSize: '12px',
-                          color: 'var(--ink-400)',
-                          fontWeight: 700,
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        Days
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Department Target Scope */}
-              <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-700)', marginBottom: '6px' }}>
-                  Target Department Scope
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    className="form-control"
-                    value={batchDept}
-                    onChange={(e) => setBatchDept(e.target.value)}
-                    style={{ ...customSelectStyle, paddingRight: '36px' }}
-                  >
-                    <option value="ALL">All University Departments ({employees.length} Staff)</option>
-                    {EVSU_DEPARTMENTS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={15}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      pointerEvents: 'none',
-                      color: '#64748b',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Apply Button */}
               <div>
                 <button
                   type="button"
                   className="btn btn-primary"
+                  onClick={() => setShowPolicyConfirmModal(true)}
                   style={{
-                    width: '100%',
-                    padding: '9px 16px',
+                    height: '38px',
+                    padding: '0 20px',
                     fontWeight: 800,
-                    fontSize: '13.5px',
-                    cursor: 'pointer',
+                    fontSize: '13px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                   }}
-                  onClick={() => setShowBatchConfirmModal(true)}
                 >
-                  <Check size={16} /> Apply Batch Tweak
+                  <Send size={15} /> Save &amp; Broadcast University Directive
                 </button>
               </div>
             </div>
 
-            <div style={{ marginTop: '14px', fontSize: '12px', color: 'var(--ink-500)' }}>
-              Targeting: <b>{batchTargetEmployees.length} active COS personnel</b> in scope. Each employee's expiration date will be shifted relative to their current end date.
+            {/* University Policy Notice Alert */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                fontSize: '12.5px',
+                color: 'var(--ink-600)',
+                lineHeight: 1.5,
+              }}
+            >
+              <Info size={16} color="var(--brand-700)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <b style={{ color: 'var(--ink-900)' }}>Policy Transition Rule:</b> Updating this directive establishes the duration for <b>upcoming renewal terms</b> and future COS appointments across the university ({employees.length} active COS personnel). <b>Currently active signed contracts remain strictly unchanged</b> and will run until their scheduled expiration date. When each employee's current term concludes, their renewal contract will automatically adopt the new standard duration. All active personnel will receive an institutional in-app notification when this directive is saved.
+              </div>
             </div>
           </div>
 
@@ -693,11 +760,12 @@ export default function EvaluationSettings({
                   <thead>
                     <tr style={{ background: '#f8fafc' }}>
                       <th style={{ width: '22%' }}>Personnel Name</th>
-                      <th style={{ width: '18%' }}>Department</th>
-                      <th style={{ width: '12%' }}>Start Date</th>
-                      <th style={{ width: '13%' }}>End Date</th>
-                      <th style={{ width: '25%' }}>Duration</th>
-                      <th style={{ width: '10%', textAlign: 'center' }}>Manage</th>
+                      <th style={{ width: '16%' }}>Department</th>
+                      <th style={{ width: '11%' }}>Start Date</th>
+                      <th style={{ width: '12%' }}>End Date</th>
+                      <th style={{ width: '18%' }}>Current Term</th>
+                      <th style={{ width: '13%' }}>Upcoming Policy</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>Manage</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -781,6 +849,24 @@ export default function EvaluationSettings({
                             {durationLabel}
                           </td>
 
+                          <td>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: 'var(--brand-800)',
+                                background: 'var(--brand-50, #fdf2f4)',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                border: '1px solid #fecdd3',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-block',
+                              }}
+                            >
+                              Next: {policyMonths}M Policy
+                            </span>
+                          </td>
+
                           <td style={{ textAlign: 'center' }}>
                             <button
                               type="button"
@@ -813,81 +899,103 @@ export default function EvaluationSettings({
         </div>
       )}
 
-      {/* Confirmation Modal for Batch Tweak */}
-      {showBatchConfirmModal && (
-        <div className="modal-backdrop" onClick={() => !batchApplying && setShowBatchConfirmModal(false)}>
+      {/* Confirmation Modal for Enacting University Directive */}
+      {showPolicyConfirmModal && (
+        <div className="modal-backdrop" onClick={() => !isSavingPolicy && setShowPolicyConfirmModal(false)}>
           <div
             className="modal-card"
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '480px', padding: '24px 28px' }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '38px',
+                  height: '38px',
                   borderRadius: '50%',
-                  background: batchAction === 'extend' ? '#f0fdf4' : '#fef2f2',
-                  color: batchAction === 'extend' ? '#16a34a' : '#dc2626',
+                  background: 'var(--brand-50, #fdf2f4)',
+                  color: 'var(--brand-700)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                {batchAction === 'extend' ? <Plus size={18} /> : <Minus size={18} />}
+                <ShieldCheck size={20} />
               </div>
               <h3 style={{ fontSize: '16.5px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
-                Confirm Batch Contract {batchAction === 'extend' ? 'Extension' : 'Reduction'}
+                Enact University Directive &amp; Broadcast
               </h3>
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--ink-600)', lineHeight: 1.5, margin: '0 0 16px' }}>
-              You are about to {batchAction === 'extend' ? 'extend' : 'shorten'} the contract expiration date for{' '}
-              <b>{batchTargetEmployees.length} personnel</b> in <b>{batchDept === 'ALL' ? 'All Departments' : batchDept}</b> by{' '}
-              <b>{effectiveBatchDays} days{batchDurationType === 'custom' ? ' (Custom)' : ''}</b>.
+              You are about to establish <b>{selectedDirectiveMonths === 'custom' ? `${customMonthsInput} Months` : `${selectedDirectiveMonths} Months`}</b> as the institutional standard duration for Contract of Service personnel.
             </p>
 
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '4px' }}>
-                Authority / Directive Reference (Optional)
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                value={batchMemo}
-                onChange={(e) => setBatchMemo(e.target.value)}
-                placeholder="e.g. Board Resolution No. 42 / Campus Directive"
-                style={{ height: '38px', borderRadius: '8px', fontSize: '12.5px' }}
-              />
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                fontSize: '12.5px',
+                color: 'var(--ink-700)',
+                marginBottom: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              <div>
+                <b style={{ color: 'var(--ink-900)' }}>1. Upcoming Renewal Cycles:</b> All subsequent COS appointment contracts and renewals will automatically adopt this new term length.
+              </div>
+              <div>
+                <b style={{ color: 'var(--ink-900)' }}>2. Active Contracts Intact:</b> Currently active signed contracts ({employees.length} personnel) remain strictly valid until their scheduled expiration.
+              </div>
+              <div>
+                <b style={{ color: 'var(--ink-900)' }}>3. Official Notification:</b> An institutional notification broadcast will be delivered immediately to all university users.
+              </div>
             </div>
+
+            {directiveMemoInput && (
+              <div style={{ marginBottom: '16px', fontSize: '12px', color: 'var(--ink-500)' }}>
+                <b>Authority Reference:</b> {directiveMemoInput}
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 type="button"
                 className="btn btn-sm"
-                disabled={batchApplying}
-                onClick={() => setShowBatchConfirmModal(false)}
+                disabled={isSavingPolicy}
+                onClick={() => setShowPolicyConfirmModal(false)}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
-                disabled={batchApplying}
+                disabled={isSavingPolicy}
+                onClick={handleApplyPolicyDirective}
                 style={{
-                  background: batchAction === 'extend' ? '#16a34a' : '#dc2626',
-                  borderColor: batchAction === 'extend' ? '#16a34a' : '#dc2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
-                onClick={handleApplyBatchTweak}
               >
-                {batchApplying ? 'Applying Updates...' : `Confirm ${batchAction === 'extend' ? 'Extension' : 'Reduction'}`}
+                {isSavingPolicy ? (
+                  'Enacting Directive...'
+                ) : (
+                  <>
+                    <Send size={14} /> Confirm &amp; Broadcast Directive
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal for Editing Specific Employee Contract Dates */}
+      {/* Modal for Configuring Individual Employee Contract Dates */}
       {editingEmployee && (
         <div className="modal-backdrop" onClick={() => !isSavingSingle && setEditingEmployee(null)}>
           <div
@@ -912,7 +1020,7 @@ export default function EvaluationSettings({
               </div>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
-                  Configure Contract Length
+                  Configure Contract Dates
                 </h3>
                 <div className="muted" style={{ fontSize: '12px' }}>
                   {editingEmployee.full_name || editingEmployee.fullName} · {editingEmployee.employee_id_number || editingEmployee.idNumber || 'COS Staff'}
@@ -920,7 +1028,7 @@ export default function EvaluationSettings({
               </div>
             </div>
 
-            {/* Quick Adjust Buttons inside Modal */}
+            {/* Current Active Status Card */}
             <div
               style={{
                 background: '#f8fafc',
@@ -928,120 +1036,22 @@ export default function EvaluationSettings({
                 borderRadius: '8px',
                 padding: '12px 14px',
                 marginBottom: '16px',
+                fontSize: '12px',
+                color: 'var(--ink-700)',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px',
-                }}
-              >
-                <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-700)', letterSpacing: '0.04em' }}>
-                  Quick Adjust End Date
-                </span>
-                <span className="muted" style={{ fontSize: '11px' }}>
-                  One-click shift
-                </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span className="muted">Current Signed Term:</span>
+                <b>
+                  {editingEmployee.contract_start_date || editingEmployee.contractStartDate || 'Not Set'} to{' '}
+                  {editingEmployee.contract_end_date || editingEmployee.contractEndDate || 'Not Set'}
+                </b>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    background: '#f0fdf4',
-                    borderColor: '#bbf7d0',
-                    color: '#15803d',
-                  }}
-                  title="Extend end date by 15 Days"
-                  onClick={() => handleAdjustModalEndDate(15)}
-                >
-                  +15 Days
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    background: '#f0fdf4',
-                    borderColor: '#bbf7d0',
-                    color: '#15803d',
-                  }}
-                  title="Extend end date by 1 Month (30 Days)"
-                  onClick={() => handleAdjustModalEndDate(30)}
-                >
-                  +1 Month
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    background: '#f0fdf4',
-                    borderColor: '#bbf7d0',
-                    color: '#15803d',
-                  }}
-                  title="Extend end date by 3 Months (90 Days)"
-                  onClick={() => handleAdjustModalEndDate(90)}
-                >
-                  +3 Months
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    background: '#f0fdf4',
-                    borderColor: '#bbf7d0',
-                    color: '#15803d',
-                  }}
-                  title="Extend end date by 6 Months (180 Days)"
-                  onClick={() => handleAdjustModalEndDate(180)}
-                >
-                  +6 Months
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    background: '#fef2f2',
-                    borderColor: '#fca5a5',
-                    color: '#b91c1c',
-                  }}
-                  title="Shorten end date by 15 Days"
-                  onClick={() => handleAdjustModalEndDate(-15)}
-                >
-                  -15 Days
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    background: '#fef2f2',
-                    borderColor: '#fca5a5',
-                    color: '#b91c1c',
-                  }}
-                  title="Shorten end date by 1 Month (30 Days)"
-                  onClick={() => handleAdjustModalEndDate(-30)}
-                >
-                  -1 Month
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="muted">Upcoming Renewal Directive:</span>
+                <span style={{ fontWeight: 700, color: 'var(--brand-700)' }}>
+                  {policyMonths} Months Standard Policy
+                </span>
               </div>
             </div>
 
@@ -1054,22 +1064,54 @@ export default function EvaluationSettings({
                   type="date"
                   className="form-control"
                   value={editStartDate}
-                  onChange={(e) => setEditStartDate(e.target.value)}
+                  onChange={(e) => handleEditStartDateChange(e.target.value)}
                   style={{ height: '38px', borderRadius: '8px', fontSize: '13px' }}
                 />
+                <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '3px', display: 'block' }}>
+                  Official start of contract appointment.
+                </span>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '4px' }}>
-                  Contract End Date
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, margin: 0, color: 'var(--ink-700)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Lock size={12} color="var(--ink-500)" />
+                    Contract End Date
+                  </label>
+                  <span
+                    style={{
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      color: 'var(--brand-700)',
+                      background: 'var(--brand-50, #fdf2f4)',
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      border: '1px solid #fecdd3',
+                    }}
+                  >
+                    Auto-calculated ({policyMonths}M Policy)
+                  </span>
+                </div>
                 <input
                   type="date"
                   className="form-control"
                   value={editEndDate}
-                  onChange={(e) => setEditEndDate(e.target.value)}
-                  style={{ height: '38px', borderRadius: '8px', fontSize: '13px' }}
+                  disabled
+                  readOnly
+                  style={{
+                    height: '38px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    background: '#f8fafc',
+                    color: 'var(--ink-700)',
+                    cursor: 'not-allowed',
+                    borderColor: 'var(--line)',
+                    fontWeight: 600,
+                  }}
                 />
+                <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '3px', display: 'block' }}>
+                  Contract expiration is automatically set by the University Standard COS Policy ({policyMonths} Months) and cannot be manually modified.
+                </span>
               </div>
 
               {editStartDate && editEndDate && (
@@ -1119,7 +1161,7 @@ export default function EvaluationSettings({
                 disabled={isSavingSingle}
                 onClick={handleSaveCustomDates}
               >
-                {isSavingSingle ? 'Saving...' : 'Save Dates'}
+                {isSavingSingle ? 'Saving Terms...' : 'Save Contract Terms'}
               </button>
             </div>
           </div>

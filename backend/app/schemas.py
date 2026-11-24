@@ -448,3 +448,18 @@ class PredictiveTextResponse(BaseModel):
     source: str = "gemini"
 
 
+# --- System Settings / Contract Policy Schemas ---
+class ContractPolicyUpdate(BaseModel):
+    duration_months: int
+    memo: Optional[str] = None
+
+
+class ContractPolicyOut(BaseModel):
+    duration_months: int
+    policy_name: str
+    memo: Optional[str] = None
+    updated_at: Optional[datetime.datetime] = None
+    updated_by_name: Optional[str] = None
+
+
+
