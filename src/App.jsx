@@ -59,11 +59,19 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     if (storedUser) {
       return {
+        ...storedUser,
         id: storedUser.id,
         fullName: storedUser.fullName || 'User',
         role: storedUser.role || storedUser.roleLabel || 'COS Employee',
         department: storedUser.department || 'Unassigned',
-        departmentId: storedUser.departmentId,
+        departmentId: storedUser.departmentId || storedUser.department_id,
+        department_id: storedUser.department_id || storedUser.departmentId,
+        secondaryDepartments: storedUser.secondaryDepartments || storedUser.secondary_departments || [],
+        overseeingDepartments: storedUser.overseeingDepartments || storedUser.overseeing_departments || [],
+        secondary_departments: storedUser.secondary_departments || storedUser.secondaryDepartments || [],
+        overseeing_departments: storedUser.overseeing_departments || storedUser.overseeingDepartments || [],
+        secondaryDepartmentIds: storedUser.secondaryDepartmentIds || storedUser.secondary_department_ids || [],
+        overseeingDepartmentIds: storedUser.overseeingDepartmentIds || storedUser.overseeing_department_ids || [],
         initials: (storedUser.fullName || 'U')
           .replace(/^(Dr\.|Engr\.|Prof\.)\s*/i, '')
           .split(' ')
@@ -157,6 +165,31 @@ export default function App() {
       clearTimeout(timer);
     };
   }, [currentView]);
+
+  // Silently sync fresh user profile and department assignments from live database on load
+  useEffect(() => {
+    if (isAuthenticated && hasToken && api?.auth?.getMe) {
+      api.auth.getMe().then((freshUser) => {
+        if (freshUser && freshUser.id) {
+          localStorage.setItem('performa_user', JSON.stringify(freshUser));
+          setCurrentUser((prev) => ({
+            ...prev,
+            ...freshUser,
+            departmentId: freshUser.departmentId || freshUser.department_id,
+            department_id: freshUser.department_id || freshUser.departmentId,
+            secondaryDepartments: freshUser.secondaryDepartments || freshUser.secondary_departments || [],
+            overseeingDepartments: freshUser.overseeingDepartments || freshUser.overseeing_departments || [],
+            secondary_departments: freshUser.secondary_departments || freshUser.secondaryDepartments || [],
+            overseeing_departments: freshUser.overseeing_departments || freshUser.overseeingDepartments || [],
+            secondaryDepartmentIds: freshUser.secondaryDepartmentIds || freshUser.secondary_department_ids || [],
+            overseeingDepartmentIds: freshUser.overseeingDepartmentIds || freshUser.overseeing_department_ids || [],
+          }));
+        }
+      }).catch((err) => {
+        console.warn('Notice syncing fresh profile in App:', err);
+      });
+    }
+  }, [isAuthenticated, hasToken]);
 
   // Browser Back (←) and Forward (→) history synchronization
   useEffect(() => {
@@ -265,11 +298,19 @@ export default function App() {
     if (userAccount) {
       const roleStr = userAccount.role || userAccount.roleLabel || 'COS Employee';
       setCurrentUser({
+        ...userAccount,
         id: userAccount.id,
         fullName: userAccount.fullName,
         role: roleStr,
         department: userAccount.department,
-        departmentId: userAccount.departmentId,
+        departmentId: userAccount.departmentId || userAccount.department_id,
+        department_id: userAccount.department_id || userAccount.departmentId,
+        secondaryDepartments: userAccount.secondaryDepartments || userAccount.secondary_departments || [],
+        overseeingDepartments: userAccount.overseeingDepartments || userAccount.overseeing_departments || [],
+        secondary_departments: userAccount.secondary_departments || userAccount.secondaryDepartments || [],
+        overseeing_departments: userAccount.overseeing_departments || userAccount.overseeingDepartments || [],
+        secondaryDepartmentIds: userAccount.secondaryDepartmentIds || userAccount.secondary_department_ids || [],
+        overseeingDepartmentIds: userAccount.overseeingDepartmentIds || userAccount.overseeing_department_ids || [],
         initials: userAccount.initials || 'U',
         employeeIdNumber: userAccount.employeeIdNumber,
         jobTitle:

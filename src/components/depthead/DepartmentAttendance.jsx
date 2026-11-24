@@ -37,13 +37,20 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
     : (currentUser?.department || 'Primary Department');
 
   // Resolve list of all departments this supervisor oversees
-  const overseeingList = currentUser?.overseeingDepartments || currentUser?.overseeing_departments || [];
-  const allSupervisedDepts = (() => {
+  const primaryDeptId =
+    currentUser?.departmentId ||
+    currentUser?.department_id ||
+    (typeof currentUser?.department === 'object' ? currentUser?.department?.id : null);
+
+  const buildDepts = (overseeing = null) => {
+    const list = overseeing || currentUser?.overseeingDepartments || currentUser?.overseeing_departments || [];
     const map = new Map();
-    if (currentUser?.department_id && userDept) {
-      map.set(Number(currentUser.department_id), { id: Number(currentUser.department_id), name: userDept });
+    if (primaryDeptId && userDept) {
+      map.set(Number(primaryDeptId), { id: Number(primaryDeptId), name: userDept });
+    } else if (userDept) {
+      map.set(1, { id: 1, name: userDept });
     }
-    overseeingList.forEach((d) => {
+    list.forEach((d) => {
       if (typeof d === 'object' && d !== null && d.id) {
         map.set(Number(d.id), { id: Number(d.id), name: d.name });
       } else if (typeof d === 'number') {
@@ -51,7 +58,23 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
       }
     });
     return Array.from(map.values());
-  })();
+  };
+
+  const [supervisedDepts, setSupervisedDepts] = useState(() => buildDepts());
+
+  useEffect(() => {
+    setSupervisedDepts(buildDepts());
+  }, [currentUser, primaryDeptId, userDept]);
+
+  useEffect(() => {
+    if (currentUser?.id && api?.users?.getDepartmentAssignments) {
+      api.users.getDepartmentAssignments(currentUser.id).then((res) => {
+        if (res && res.overseeing_departments) {
+          setSupervisedDepts(buildDepts(res.overseeing_departments));
+        }
+      }).catch(() => {});
+    }
+  }, [currentUser?.id]);
 
   const [selectedDeptId, setSelectedDeptId] = useState('all');
 
@@ -185,7 +208,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
           <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Users size={28} color="var(--brand-700)" /> Subordinate Daily Monitoring
           </h1>
-          {allSupervisedDepts.length > 1 && (
+          {supervisedDepts.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
               <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>Department:</span>
               <select
@@ -204,10 +227,10 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                 value={selectedDeptId}
                 onChange={(e) => setSelectedDeptId(e.target.value)}
               >
-                <option value="all">All Overseeing Departments ({allSupervisedDepts.length})</option>
-                {allSupervisedDepts.map((d) => (
+                <option value="all">All Overseeing Departments ({supervisedDepts.length})</option>
+                {supervisedDepts.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name} {Number(d.id) === Number(currentUser?.department_id) ? '(Primary)' : ''}
+                    {d.name} {primaryDeptId && Number(d.id) === Number(primaryDeptId) ? '(Primary)' : ''}
                   </option>
                 ))}
               </select>
@@ -677,7 +700,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
           departmentId={selectedDeptId === 'all' ? null : Number(selectedDeptId)}
           departmentName={
             selectedDeptId !== 'all'
-              ? allSupervisedDepts.find((d) => String(d.id) === String(selectedDeptId))?.name
+              ? supervisedDepts.find((d) => String(d.id) === String(selectedDeptId))?.name
               : (typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department)
           }
           isHR={false}

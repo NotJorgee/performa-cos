@@ -21,14 +21,20 @@ export default function DeptHeadDashboard({
     ? (currentUser.department.name || 'Computer Studies Department')
     : (currentUser.department || 'Computer Studies Department');
 
-  // Resolve list of all departments this supervisor oversees
-  const overseeingList = currentUser.overseeingDepartments || currentUser.overseeing_departments || [];
-  const allSupervisedDepts = (() => {
+  const primaryDeptId =
+    currentUser?.departmentId ||
+    currentUser?.department_id ||
+    (typeof currentUser?.department === 'object' ? currentUser?.department?.id : null);
+
+  const buildDepts = (overseeing = null) => {
+    const list = overseeing || currentUser.overseeingDepartments || currentUser.overseeing_departments || [];
     const map = new Map();
-    if (currentUser.department_id && userDept) {
-      map.set(Number(currentUser.department_id), { id: Number(currentUser.department_id), name: userDept });
+    if (primaryDeptId && userDept) {
+      map.set(Number(primaryDeptId), { id: Number(primaryDeptId), name: userDept });
+    } else if (userDept) {
+      map.set(1, { id: 1, name: userDept });
     }
-    overseeingList.forEach((d) => {
+    list.forEach((d) => {
       if (typeof d === 'object' && d !== null && d.id) {
         map.set(Number(d.id), { id: Number(d.id), name: d.name });
       } else if (typeof d === 'number') {
@@ -36,7 +42,24 @@ export default function DeptHeadDashboard({
       }
     });
     return Array.from(map.values());
-  })();
+  };
+
+  const [supervisedDepts, setSupervisedDepts] = useState(() => buildDepts());
+
+  useEffect(() => {
+    setSupervisedDepts(buildDepts());
+  }, [currentUser, primaryDeptId, userDept]);
+
+  // Live query department assignments to ensure immediate reactivity if admin just updated them
+  useEffect(() => {
+    if (currentUser?.id && api?.users?.getDepartmentAssignments) {
+      api.users.getDepartmentAssignments(currentUser.id).then((res) => {
+        if (res && res.overseeing_departments) {
+          setSupervisedDepts(buildDepts(res.overseeing_departments));
+        }
+      }).catch(() => {});
+    }
+  }, [currentUser?.id]);
 
   const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}_${selectedDeptId}`;
   // SWR Instant 0ms perceived load time from cache
@@ -96,7 +119,7 @@ export default function DeptHeadDashboard({
   return (
     <div className="module-transition-enter">
       {/* Hero Banner with EVSU Seal matching COS & HR */}
-      <div className="hero-banner" style={{ marginBottom: allSupervisedDepts.length > 1 ? '16px' : '24px' }}>
+      <div className="hero-banner" style={{ marginBottom: supervisedDepts.length > 1 ? '16px' : '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
         <div>
           <h1>Welcome, {fullFirstName}</h1>
@@ -107,7 +130,7 @@ export default function DeptHeadDashboard({
       </div>
 
       {/* Concurrent Headship Scope Switcher (if supervisor oversees > 1 department) */}
-      {allSupervisedDepts.length > 1 && (
+      {supervisedDepts.length > 1 && (
         <div
           style={{
             display: 'flex',
@@ -129,7 +152,7 @@ export default function DeptHeadDashboard({
               Supervisory Scope:
             </span>
             <span className="badge" style={{ fontSize: '11px', background: 'var(--brand-50, #fdf2f4)', color: 'var(--brand-700)', border: '1px solid #fecdd3' }}>
-              Concurrent Headship ({allSupervisedDepts.length} Units)
+              Concurrent Headship ({supervisedDepts.length} Units)
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -150,10 +173,10 @@ export default function DeptHeadDashboard({
               value={selectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
             >
-              <option value="all">All Supervised Units ({allSupervisedDepts.length})</option>
-              {allSupervisedDepts.map((d) => (
+              <option value="all">All Supervised Units ({supervisedDepts.length})</option>
+              {supervisedDepts.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name} {Number(d.id) === Number(currentUser.department_id) ? '(Primary)' : ''}
+                  {d.name} {primaryDeptId && Number(d.id) === Number(primaryDeptId) ? '(Primary)' : ''}
                 </option>
               ))}
             </select>
