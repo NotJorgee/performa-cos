@@ -20,6 +20,11 @@ from .auth import _add_six_months
 from ..email_service import send_welcome_email
 from ..id_generator import generate_evsu_employee_id
 from .audit import log_audit
+from ..department_helpers import (
+    get_overseeing_department_ids,
+    get_secondary_department_ids,
+    get_user_department_details,
+)
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -41,14 +46,21 @@ def list_users(
     query = db.query(models.UserAccount)
 
     if current_user.role == "Department Head":
-        query = query.filter(models.UserAccount.department_id == current_user.department_id)
+        overseeing_ids = get_overseeing_department_ids(current_user, db)
+        if department_id:
+            if department_id not in overseeing_ids:
+                raise HTTPException(status_code=403, detail="Cannot access department outside your supervisory scope.")
+            query = query.filter(models.UserAccount.department_id == department_id)
+        else:
+            query = query.filter(models.UserAccount.department_id.in_(overseeing_ids))
     elif current_user.role == "COS Employee":
         query = query.filter(models.UserAccount.id == current_user.id)
+    else:
+        if department_id:
+            query = query.filter(models.UserAccount.department_id == department_id)
 
     if role:
         query = query.filter(models.UserAccount.role == role)
-    if department_id:
-        query = query.filter(models.UserAccount.department_id == department_id)
     if is_archived is not None:
         query = query.filter(models.UserAccount.is_archived == is_archived)
     if is_active is not None:
@@ -82,8 +94,10 @@ def get_user_detail(
     if not user:
         raise HTTPException(status_code=404, detail="User account not found.")
 
-    if current_user.role == "Department Head" and user.department_id != current_user.department_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view users outside your department.")
+    if current_user.role == "Department Head":
+        overseeing_ids = get_overseeing_department_ids(current_user, db)
+        if user.department_id not in overseeing_ids and user.id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to view users outside your department.")
 
     return user
 
@@ -374,6 +388,95 @@ def transfer_department(
     )
 
     return user
+
+
+@router.get("/{user_id}/department-assignments")
+def get_user_department_assignments(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """Get assigned secondary and overseeing departments for a user."""
+    if current_user.role != "HR Personnel" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view department assignments.")
+
+    user = db.query(models.UserAccount).filter(models.UserAccount.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return get_user_department_details(user, db)
+
+
+@router.put("/{user_id}/department-assignments")
+def update_user_department_assignments(
+    user_id: int,
+    payload: schemas.UserDepartmentAssignmentsUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Updates secondary operational department assignments (for COS employees)
+    or additional overseeing departments (for Department Heads).
+    HR Personnel only.
+    """
+    if current_user.role != "HR Personnel":
+        raise HTTPException(status_code=403, detail="Only HR Personnel can update department assignments.")
+
+    target_user = db.query(models.UserAccount).filter(models.UserAccount.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if payload.secondary_department_ids is not None:
+        db.query(models.UserDepartmentAssignment).filter(
+            models.UserDepartmentAssignment.user_id == user_id,
+            models.UserDepartmentAssignment.assignment_type == "secondary",
+        ).delete(synchronize_session=False)
+
+        for dept_id in payload.secondary_department_ids:
+            if dept_id != target_user.department_id:
+                dept_exists = db.query(models.Department).filter(models.Department.id == dept_id).first()
+                if dept_exists:
+                    db.add(models.UserDepartmentAssignment(
+                        user_id=user_id,
+                        department_id=dept_id,
+                        assignment_type="secondary",
+                    ))
+
+    if payload.overseeing_department_ids is not None:
+        db.query(models.UserDepartmentAssignment).filter(
+            models.UserDepartmentAssignment.user_id == user_id,
+            models.UserDepartmentAssignment.assignment_type == "overseeing",
+        ).delete(synchronize_session=False)
+
+        for dept_id in payload.overseeing_department_ids:
+            if dept_id != target_user.department_id:
+                dept_exists = db.query(models.Department).filter(models.Department.id == dept_id).first()
+                if dept_exists:
+                    db.add(models.UserDepartmentAssignment(
+                        user_id=user_id,
+                        department_id=dept_id,
+                        assignment_type="overseeing",
+                    ))
+
+    db.commit()
+    db.refresh(target_user)
+
+    log_audit(
+        db=db,
+        action="DEPARTMENT_ASSIGNMENTS_UPDATED",
+        target_scope=f"User #{target_user.id} ({target_user.full_name})",
+        operation_details=f"Updated secondary/overseeing department assignments for {target_user.full_name}.",
+        user=current_user,
+    )
+
+    return {
+        "success": True,
+        "message": f"Department assignments updated for {target_user.full_name}.",
+        "user_id": target_user.id,
+        "primary_department_id": target_user.department_id,
+        "secondary_departments": [{"id": d.id, "name": d.name} for d in target_user.secondary_departments],
+        "overseeing_departments": [{"id": d.id, "name": d.name} for d in target_user.overseeing_departments],
+    }
 
 
 @router.patch("/{user_id}/archive")

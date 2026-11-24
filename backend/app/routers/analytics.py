@@ -10,6 +10,7 @@ from sqlalchemy import func, desc, extract
 from ..database import get_db
 from ..auth import get_current_user
 from .. import models
+from ..department_helpers import get_overseeing_department_ids
 
 router = APIRouter(prefix="/api/analytics", tags=["Dashboard Analytics"])
 
@@ -114,19 +115,26 @@ def get_hr_dashboard_metrics(
 
 @router.get("/depthead-dashboard")
 def get_depthead_dashboard_metrics(
+    department_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    """Department Head overview metrics scoped to their assigned department."""
-    dept_id = current_user.department_id
+    """Department Head overview metrics scoped to their assigned/overseeing departments."""
+    overseeing_ids = get_overseeing_department_ids(current_user, db)
+    if department_id:
+        if current_user.role == "Department Head" and department_id not in overseeing_ids:
+            raise HTTPException(status_code=403, detail="Cannot access department outside your supervisory scope.")
+        target_ids = [department_id]
+    else:
+        target_ids = overseeing_ids
 
     # Total subordinates
     subordinates_query = db.query(models.UserAccount).filter(
         models.UserAccount.role == "COS Employee",
         models.UserAccount.is_archived == False,
     )
-    if dept_id:
-        subordinates_query = subordinates_query.filter(models.UserAccount.department_id == dept_id)
+    if target_ids:
+        subordinates_query = subordinates_query.filter(models.UserAccount.department_id.in_(target_ids))
     total_subordinates = subordinates_query.count()
 
     # Pending supervisor evaluations
@@ -136,8 +144,8 @@ def get_depthead_dashboard_metrics(
         models.EvaluationRecord.supervisor_score == None,
         models.EvaluationRecord.status.notin_(["Completed", "Rejected"]),
     )
-    if dept_id:
-        pending_evals_query = pending_evals_query.filter(models.UserAccount.department_id == dept_id)
+    if target_ids:
+        pending_evals_query = pending_evals_query.filter(models.UserAccount.department_id.in_(target_ids))
     pending_reviews = pending_evals_query.count()
 
     # Pending renewal intent reviews
@@ -146,8 +154,8 @@ def get_depthead_dashboard_metrics(
     ).filter(
         models.RenewalApplication.department_head_endorsement == None,
     )
-    if dept_id:
-        pending_intents_query = pending_intents_query.filter(models.UserAccount.department_id == dept_id)
+    if target_ids:
+        pending_intents_query = pending_intents_query.filter(models.UserAccount.department_id.in_(target_ids))
     pending_intents = pending_intents_query.count()
 
     return {

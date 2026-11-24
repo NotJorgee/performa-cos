@@ -109,6 +109,9 @@ export default function UserManagement({
   const [contractPolicyMonths, setContractPolicyMonths] = useState(6);
   const [isSavingContract, setIsSavingContract] = useState(false);
   const [transferDeptId, setTransferDeptId] = useState('');
+  const [editSecondaryDeptIds, setEditSecondaryDeptIds] = useState([]);
+  const [editOverseeingDeptIds, setEditOverseeingDeptIds] = useState([]);
+  const [isSavingAssignments, setIsSavingAssignments] = useState(false);
   const [userModalSuccess, setUserModalSuccess] = useState(null);
 
   // Invite / Manual Onboarding Modal Config
@@ -166,24 +169,30 @@ export default function UserManagement({
   }, []);
 
   // Helper to match user to department
-  const isUserInDepartment = (u, dept) => {
+  const isUserInDepartment = (u, dept, includeOverseeing = false) => {
     if (!u || !dept) return false;
     if (u.department_id && Number(u.department_id) === Number(dept.id)) return true;
     if (u.department && typeof u.department === 'object' && Number(u.department.id) === Number(dept.id)) return true;
     if (u.department && typeof u.department === 'object' && u.department.name === dept.name) return true;
     if (typeof u.department === 'string' && u.department.toLowerCase().trim() === dept.name.toLowerCase().trim()) return true;
     if (u.department_name && u.department_name.toLowerCase().trim() === dept.name.toLowerCase().trim()) return true;
+    if (includeOverseeing) {
+      const ov = u.overseeing_departments || u.overseeingDepartments || [];
+      if (ov.some((d) => Number(d.id || d) === Number(dept.id) || d.name === dept.name)) return true;
+    }
     return false;
   };
 
   // Build structured department records with assigned supervisor and personnel
   const structuredDepartments = departments.map((dept) => {
-    // Immediate Supervisor (Department Head)
+    // Immediate Supervisor (Department Head): check primary first, then concurrent overseeing
     const supervisor = users.find(
       (u) => (u.role === 'Department Head' || u.role === 'Immediate Supervisor') && isUserInDepartment(u, dept)
+    ) || users.find(
+      (u) => (u.role === 'Department Head' || u.role === 'Immediate Supervisor') && isUserInDepartment(u, dept, true)
     ) || null;
 
-    // Personnel in this department: strictly Contract of Service employees
+    // Personnel in this department: strictly Contract of Service employees whose primary anchor is this department
     const personnel = users.filter((u) => {
       if (!isUserInDepartment(u, dept)) return false;
       return u.role === 'COS Employee';
@@ -432,6 +441,22 @@ export default function UserManagement({
       setEditContractEndDate('');
     }
     setTransferDeptId(user.department_id ? String(user.department_id) : '');
+    const secIds = (user.secondary_departments || user.secondaryDepartments || []).map((d) => d.id || d);
+    const ovIds = (user.overseeing_departments || user.overseeingDepartments || []).map((d) => d.id || d);
+    setEditSecondaryDeptIds(secIds);
+    setEditOverseeingDeptIds(ovIds);
+    if (api.users && api.users.getDepartmentAssignments) {
+      api.users.getDepartmentAssignments(user.id).then((res) => {
+        if (res) {
+          if (res.secondary_departments) {
+            setEditSecondaryDeptIds(res.secondary_departments.map((d) => d.id));
+          }
+          if (res.overseeing_departments) {
+            setEditOverseeingDeptIds(res.overseeing_departments.map((d) => d.id));
+          }
+        }
+      }).catch(() => {});
+    }
     setUserSettingsTab('identity');
     setUserModalSuccess(null);
   };
@@ -497,25 +522,43 @@ export default function UserManagement({
     }
   };
 
-  const handleTransferUserDepartment = async (e) => {
+  const handleSaveDepartmentAssignments = async (e) => {
     e.preventDefault();
-    if (!settingsUser || !transferDeptId) return;
+    if (!settingsUser) return;
+    setIsSavingAssignments(true);
+    setUserModalSuccess(null);
 
     const targetDept = departments.find((d) => String(d.id) === String(transferDeptId));
     const targetDeptName = targetDept?.name || 'Selected Department';
 
     try {
-      if (api.users && api.users.transferDepartment) {
-        await api.users.transferDepartment(settingsUser.id, Number(transferDeptId));
+      // 1. If primary department changed, execute transfer
+      if (transferDeptId && String(transferDeptId) !== String(settingsUser.department_id)) {
+        if (api.users && api.users.transferDepartment) {
+          await api.users.transferDepartment(settingsUser.id, Number(transferDeptId));
+        }
       }
-      setUserModalSuccess(`Reassigned ${settingsUser.full_name} to ${targetDeptName}.`);
-      showToast(`${settingsUser.full_name} transferred to ${targetDeptName}.`);
+
+      // 2. Update secondary or overseeing assignments
+      const payload = {};
+      if (settingsUser.role === 'COS Employee') {
+        payload.secondary_department_ids = editSecondaryDeptIds;
+      } else if (settingsUser.role === 'Department Head') {
+        payload.overseeing_department_ids = editOverseeingDeptIds;
+      }
+
+      if (api.users && api.users.updateDepartmentAssignments) {
+        await api.users.updateDepartmentAssignments(settingsUser.id, payload);
+      }
+
+      setUserModalSuccess(`Department assignments successfully updated for ${settingsUser.full_name}.`);
+      showToast(`Department assignments saved for ${settingsUser.full_name}.`);
       loadData();
     } catch (err) {
-      console.warn('Transfer user error:', err);
-      setUserModalSuccess(`Reassigned ${settingsUser.full_name} to ${targetDeptName}.`);
-      showToast(`${settingsUser.full_name} transferred to ${targetDeptName}.`);
-      loadData();
+      console.warn('Update department assignments error:', err);
+      showToast(err.message || 'Failed to update department assignments.');
+    } finally {
+      setIsSavingAssignments(false);
     }
   };
 
@@ -2289,7 +2332,7 @@ export default function UserManagement({
                 }}
                 onClick={() => setUserSettingsTab('transfer')}
               >
-                Department Transfer
+                Department & Assignments
               </button>
               <button
                 type="button"
@@ -2501,22 +2544,29 @@ export default function UserManagement({
               </form>
             )}
 
-            {/* TAB 2: Department Transfer */}
+            {/* TAB 2: Department & Assignments */}
             {userSettingsTab === 'transfer' && (
-              <form onSubmit={handleTransferUserDepartment}>
-                <p className="muted" style={{ margin: '0 0 14px', fontSize: '12.5px', lineHeight: 1.5 }}>
-                  Transfer <b>{settingsUser.full_name}</b> to a different university department. This will update their administrative reporting line and supervisor evaluation scope.
-                </p>
-
-                <div className="form-group" style={{ marginBottom: '18px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 700 }}>Destination Department</label>
+              <form onSubmit={handleSaveDepartmentAssignments}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <Building2 size={15} color="var(--brand-700)" />
+                    <span>Primary Department (Evaluated Workload)</span>
+                    <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
                   <select
                     className="form-control"
                     value={transferDeptId}
-                    onChange={(e) => setTransferDeptId(e.target.value)}
+                    onChange={(e) => {
+                      const newId = Number(e.target.value);
+                      setTransferDeptId(e.target.value);
+                      if (newId) {
+                        setEditSecondaryDeptIds((prev) => prev.filter((id) => id !== newId));
+                        setEditOverseeingDeptIds((prev) => prev.filter((id) => id !== newId));
+                      }
+                    }}
                     required
                   >
-                    <option value="">Select Destination Department...</option>
+                    <option value="">Select Primary Department...</option>
                     {EVSU_DEPARTMENT_GROUPS.map((grp) => {
                       const groupDepts = departments.filter((d) =>
                         grp.departments.includes(d.name)
@@ -2533,14 +2583,166 @@ export default function UserManagement({
                       );
                     })}
                   </select>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
+                    {settingsUser.role === 'COS Employee'
+                      ? 'The primary department handles performance evaluations (IPCR/SPMS), contract renewals, and administrative ratings where the employee carries their primary workload.'
+                      : 'The primary organizational unit for this account.'}
+                  </span>
                 </div>
 
-                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                {/* Role-Specific Secondary / Overseeing Section */}
+                {settingsUser.role === 'COS Employee' && (
+                  <div style={{ marginBottom: '18px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <Users size={15} color="var(--brand-700)" />
+                      <span>Secondary Assigned Departments (Operational Assistance)</span>
+                    </label>
+                    <p className="muted" style={{ fontSize: '11.5px', margin: '0 0 8px', lineHeight: 1.4 }}>
+                      Assign this COS employee to additional departments for cross-unit duties or schedule assistance. Per institutional policy, evaluations and contract renewals remain anchored to their Primary Department.
+                    </p>
+                    <div
+                      style={{
+                        maxHeight: '160px',
+                        overflowY: 'auto',
+                        border: '1px solid var(--line)',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        background: '#f8fafc',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      {departments.map((dept) => {
+                        const isPrimary = String(dept.id) === String(transferDeptId);
+                        const isChecked = editSecondaryDeptIds.includes(dept.id);
+                        return (
+                          <label
+                            key={dept.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontSize: '12px',
+                              color: isPrimary ? 'var(--ink-400)' : 'var(--ink-800)',
+                              cursor: isPrimary ? 'not-allowed' : 'pointer',
+                              margin: 0,
+                              padding: '2px 0',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isPrimary || isChecked}
+                              disabled={isPrimary}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setEditSecondaryDeptIds((prev) => [...prev, dept.id]);
+                                } else {
+                                  setEditSecondaryDeptIds((prev) => prev.filter((id) => id !== dept.id));
+                                }
+                              }}
+                            />
+                            <span>{dept.name}</span>
+                            {isPrimary && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  background: '#e0f2fe',
+                                  color: '#0369a1',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Primary
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {settingsUser.role === 'Department Head' && (
+                  <div style={{ marginBottom: '18px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <ShieldCheck size={15} color="var(--brand-700)" />
+                      <span>Additional Overseeing Departments (Concurrent Headship / OIC)</span>
+                    </label>
+                    <p className="muted" style={{ fontSize: '11.5px', margin: '0 0 8px', lineHeight: 1.4 }}>
+                      Grant supervisory authority over additional departments. The Department Head will be able to switch between departments, monitor attendance, score evaluations, and endorse renewals for all designated units.
+                    </p>
+                    <div
+                      style={{
+                        maxHeight: '160px',
+                        overflowY: 'auto',
+                        border: '1px solid var(--line)',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        background: '#f8fafc',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      {departments.map((dept) => {
+                        const isPrimary = String(dept.id) === String(transferDeptId);
+                        const isChecked = editOverseeingDeptIds.includes(dept.id);
+                        return (
+                          <label
+                            key={dept.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontSize: '12px',
+                              color: isPrimary ? 'var(--ink-400)' : 'var(--ink-800)',
+                              cursor: isPrimary ? 'not-allowed' : 'pointer',
+                              margin: 0,
+                              padding: '2px 0',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isPrimary || isChecked}
+                              disabled={isPrimary}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setEditOverseeingDeptIds((prev) => [...prev, dept.id]);
+                                } else {
+                                  setEditOverseeingDeptIds((prev) => prev.filter((id) => id !== dept.id));
+                                }
+                              }}
+                            />
+                            <span>{dept.name}</span>
+                            {isPrimary && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  background: '#e0f2fe',
+                                  color: '#0369a1',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Primary Head
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
                   <button type="button" className="btn btn-sm" onClick={() => setSettingsUser(null)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-sm btn-primary">
-                    Execute Department Transfer
+                  <button type="submit" className="btn btn-sm btn-primary" disabled={isSavingAssignments}>
+                    {isSavingAssignments ? 'Saving Assignments...' : 'Save Department Assignments'}
                   </button>
                 </div>
               </form>

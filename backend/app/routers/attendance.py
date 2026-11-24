@@ -16,6 +16,7 @@ from ..auth import get_current_user
 from .. import models
 from .audit import log_audit
 from .geofence import calculate_haversine_distance_meters, is_point_in_polygon, distance_to_polygon_meters
+from ..department_helpers import get_overseeing_department_ids
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance & Leave Engine"])
 
@@ -562,10 +563,16 @@ def get_department_attendance_roster(
     target_date = datetime.date.fromisoformat(date) if date else get_pht_now().date()
     dept_id = current_user.department_id
 
-    # For HR, allow querying department or all
+    # For HR or Department Head with multiple departments
     query = db.query(models.UserAccount).filter(models.UserAccount.role == "COS Employee", models.UserAccount.is_active == True)
     if current_user.role == "Department Head":
-        query = query.filter(models.UserAccount.department_id == dept_id)
+        overseeing_ids = get_overseeing_department_ids(current_user, db)
+        if department_id:
+            if department_id not in overseeing_ids:
+                raise HTTPException(status_code=403, detail="Cannot access department outside your supervisory scope.")
+            query = query.filter(models.UserAccount.department_id == department_id)
+        else:
+            query = query.filter(models.UserAccount.department_id.in_(overseeing_ids))
     elif current_user.role == "HR Personnel":
         if department_id:
             query = query.filter(models.UserAccount.department_id == department_id)
@@ -1284,16 +1291,25 @@ def get_my_leave_requests(
 
 @router.get("/leaves/department-queue")
 def get_department_leave_queue(
+    department_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: models.UserAccount = Depends(get_current_user),
 ):
-    """Returns pending and reviewed leave requests for Department Heads."""
+    """Returns pending and reviewed leave requests for Department Heads across overseen departments."""
     if current_user.role not in ["Department Head", "HR Personnel"]:
         raise HTTPException(status_code=403, detail="Access denied.")
 
+    overseeing_ids = get_overseeing_department_ids(current_user, db)
     query = db.query(models.LeaveRequest)
     if current_user.role == "Department Head":
-        query = query.filter(models.LeaveRequest.department_id == current_user.department_id)
+        if department_id:
+            if department_id not in overseeing_ids:
+                raise HTTPException(status_code=403, detail="Cannot access department outside supervisory scope.")
+            query = query.filter(models.LeaveRequest.department_id == department_id)
+        else:
+            query = query.filter(models.LeaveRequest.department_id.in_(overseeing_ids))
+    elif department_id:
+        query = query.filter(models.LeaveRequest.department_id == department_id)
 
     leaves = query.order_by(desc(models.LeaveRequest.created_at)).all()
 
@@ -1335,13 +1351,14 @@ def review_leave_request(
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found.")
 
-    # SEC-07: Department Head scoping check on leave review
+    # SEC-07: Department Head scoping check on leave review across overseen departments
     if current_user.role == "Department Head":
+        overseeing_ids = get_overseeing_department_ids(current_user, db)
         leave_emp = db.query(models.UserAccount).filter(models.UserAccount.id == leave.user_id).first()
-        if not leave_emp or leave_emp.department_id != current_user.department_id:
+        if not leave_emp or leave_emp.department_id not in overseeing_ids:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Department Heads can only review leave requests for employees within their assigned department.",
+                detail="Department Heads can only review leave requests for employees within their assigned departments.",
             )
 
     if payload.action not in ["APPROVE", "REJECT"]:

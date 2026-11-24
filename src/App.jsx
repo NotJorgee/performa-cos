@@ -538,6 +538,7 @@ export default function App() {
             currentView === 'department_records') && (
             <ReportGenerator
               restrictDepartment={currentUser.department}
+              overseeingDepartments={currentUser.overseeingDepartments || currentUser.overseeing_departments}
               departmentName={currentUser.department}
               onNavigate={navigateTo}
               onBack={() => navigateTo('dashboard')}

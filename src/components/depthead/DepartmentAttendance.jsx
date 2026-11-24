@@ -31,9 +31,33 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
   const [toast, setToast] = useState(null);
   const [selectedPunchMap, setSelectedPunchMap] = useState(null);
 
+  // Safely extract department name string
+  const userDept = typeof currentUser?.department === 'object' && currentUser?.department !== null
+    ? (currentUser.department.name || 'Primary Department')
+    : (currentUser?.department || 'Primary Department');
+
+  // Resolve list of all departments this supervisor oversees
+  const overseeingList = currentUser?.overseeingDepartments || currentUser?.overseeing_departments || [];
+  const allSupervisedDepts = (() => {
+    const map = new Map();
+    if (currentUser?.department_id && userDept) {
+      map.set(Number(currentUser.department_id), { id: Number(currentUser.department_id), name: userDept });
+    }
+    overseeingList.forEach((d) => {
+      if (typeof d === 'object' && d !== null && d.id) {
+        map.set(Number(d.id), { id: Number(d.id), name: d.name });
+      } else if (typeof d === 'number') {
+        map.set(d, { id: d, name: `Department #${d}` });
+      }
+    });
+    return Array.from(map.values());
+  })();
+
+  const [selectedDeptId, setSelectedDeptId] = useState('all');
+
   // SWR Instant Cache Keys
-  const cacheKeyRoster = `dept_roster_${currentUser?.departmentId || 'all'}`;
-  const cacheKeyLeaves = `dept_leaves_${currentUser?.departmentId || 'all'}`;
+  const cacheKeyRoster = `dept_roster_${currentUser?.id || 'me'}_${selectedDeptId}`;
+  const cacheKeyLeaves = `dept_leaves_${currentUser?.id || 'me'}_${selectedDeptId}`;
 
   // Radar State — Instant 0ms perceived load time from cache
   const [rosterData, setRosterData] = useState(() => getCachedData(cacheKeyRoster));
@@ -51,7 +75,8 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
   const loadRoster = async (silent = Boolean(rosterData)) => {
     try {
       if (!silent) setIsLoading(true);
-      const res = await api.attendance.getDepartmentRoster();
+      const params = selectedDeptId === 'all' ? {} : { department_id: Number(selectedDeptId) };
+      const res = await api.attendance.getDepartmentRoster(null, params);
       setRosterData(res);
       setCachedData(cacheKeyRoster, res);
     } catch (err) {
@@ -65,7 +90,8 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
   const loadLeaveQueue = async (silent = Boolean(leaveQueue.length)) => {
     try {
       if (!silent) setIsLoadingLeaves(true);
-      const res = await api.leaves.getDepartmentQueue();
+      const deptParam = selectedDeptId === 'all' ? null : Number(selectedDeptId);
+      const res = await api.leaves.getDepartmentQueue(deptParam);
       setLeaveQueue(res || []);
       setCachedData(cacheKeyLeaves, res || []);
     } catch (err) {
@@ -83,7 +109,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
     }
     loadRoster();
     loadLeaveQueue();
-  }, []);
+  }, [selectedDeptId]);
 
   // Smart Window Focus Re-fetch: Silently syncs whenever supervisor returns to this browser tab
   useEffect(() => {
@@ -159,6 +185,34 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
           <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Users size={28} color="var(--brand-700)" /> Subordinate Daily Monitoring
           </h1>
+          {allSupervisedDepts.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>Department:</span>
+              <select
+                className="form-control"
+                style={{
+                  width: 'auto',
+                  minWidth: '220px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  borderColor: 'var(--brand-300)',
+                  background: '#ffffff',
+                }}
+                value={selectedDeptId}
+                onChange={(e) => setSelectedDeptId(e.target.value)}
+              >
+                <option value="all">All Overseeing Departments ({allSupervisedDepts.length})</option>
+                {allSupervisedDepts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} {Number(d.id) === Number(currentUser?.department_id) ? '(Primary)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         {onBack && (
           <button type="button" className="btn btn-sm" onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -620,8 +674,12 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
       {activeTab === 'history' && (
         <HistoricalAttendanceRoster
           currentUser={currentUser}
-          departmentId={currentUser?.department_id}
-          departmentName={typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department}
+          departmentId={selectedDeptId === 'all' ? null : Number(selectedDeptId)}
+          departmentName={
+            selectedDeptId !== 'all'
+              ? allSupervisedDepts.find((d) => String(d.id) === String(selectedDeptId))?.name
+              : (typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department)
+          }
           isHR={false}
         />
       )}

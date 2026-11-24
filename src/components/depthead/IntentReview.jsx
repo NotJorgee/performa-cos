@@ -50,6 +50,7 @@ export default function IntentReview({
   );
   const [expandedEmpId, setExpandedEmpId] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
+  const [filterDept, setFilterDept] = useState('ALL');
 
   // Active view states
   const [evaluatingEmp, setEvaluatingEmp] = useState(null); // when set, opens Split-Panel Evaluation
@@ -396,8 +397,11 @@ export default function IntentReview({
     }
   };
 
-  // Filter candidates: Action panel only retains pending renewals awaiting immediate supervisor evaluation
-  const pendingCandidates = candidates.filter((c) => c.endorsementStatus === 'Pending Review');
+  // Filter candidates: Action panel retains pending renewals awaiting immediate supervisor evaluation
+  const uniqueDepts = Array.from(new Set(candidates.map((c) => c.department).filter(Boolean)));
+  const pendingCandidates = candidates.filter(
+    (c) => c.endorsementStatus === 'Pending Review' && (filterDept === 'ALL' || c.department === filterDept)
+  );
 
   // VIEW 1: Full-Page Compiled Monthly Accomplishment Report
   if (viewingMarEmp) {
@@ -526,6 +530,35 @@ export default function IntentReview({
       </div>
 
       <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+
+      {uniqueDepts.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>Filter Department:</span>
+          <select
+            className="form-control"
+            style={{
+              width: 'auto',
+              minWidth: '220px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              padding: '4px 10px',
+              height: '32px',
+              borderRadius: '6px',
+              borderColor: 'var(--brand-300)',
+              background: '#ffffff',
+            }}
+            value={filterDept}
+            onChange={(e) => setFilterDept(e.target.value)}
+          >
+            <option value="ALL">All Overseeing Departments ({uniqueDepts.length})</option>
+            {uniqueDepts.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Pending Renewals Queue */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -85,6 +85,58 @@ class UserAccount(Base):
     )
     sessions = relationship("UserSession", back_populates="user")
 
+    @property
+    def secondary_department_ids(self):
+        return [
+            a.department_id
+            for a in getattr(self, "department_assignments", [])
+            if a.assignment_type == "secondary"
+        ]
+
+    @property
+    def secondary_departments(self):
+        return [
+            a.department
+            for a in getattr(self, "department_assignments", [])
+            if a.assignment_type == "secondary" and a.department is not None
+        ]
+
+    @property
+    def overseeing_department_ids(self):
+        dept_ids = []
+        if self.department_id:
+            dept_ids.append(self.department_id)
+        for a in getattr(self, "department_assignments", []):
+            if a.assignment_type == "overseeing" and a.department_id not in dept_ids:
+                dept_ids.append(a.department_id)
+        return dept_ids
+
+    @property
+    def overseeing_departments(self):
+        depts = []
+        for a in getattr(self, "department_assignments", []):
+            if a.assignment_type == "overseeing" and a.department is not None:
+                if a.department.id != self.department_id and a.department not in depts:
+                    depts.append(a.department)
+        return depts
+
+
+# ---------------------------------------------------------------------------
+# UserDepartmentAssignment (Secondary assignments for COS & Overseeing for Dept Head)
+# ---------------------------------------------------------------------------
+class UserDepartmentAssignment(Base):
+    __tablename__ = "user_department_assignment"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    department_id = Column(Integer, ForeignKey("department.id", ondelete="CASCADE"), nullable=False, index=True)
+    assignment_type = Column(String(50), default="secondary", nullable=False)  # 'secondary' (COS) | 'overseeing' (Dept Head)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    user = relationship("UserAccount", backref="department_assignments")
+    department = relationship("Department")
+
 
 # ---------------------------------------------------------------------------
 # DailyAccomplishmentReport

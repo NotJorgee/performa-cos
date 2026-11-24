@@ -143,11 +143,13 @@ export default function ReportGenerator({
   departments = EVSU_DEPARTMENTS,
   departmentName = null,
   restrictDepartment = null,
+  overseeingDepartments = null,
   onNavigate = () => {},
   onBack = null,
 }) {
   const deptScope = restrictDepartment || departmentName;
-  const isDeptRestricted = Boolean(deptScope);
+  const isMultiOverseeing = Array.isArray(overseeingDepartments) && overseeingDepartments.length > 1;
+  const isDeptRestricted = Boolean(deptScope) && !isMultiOverseeing;
 
   const [employees, setEmployees] = useState(propEmployees);
   const [isLoading, setIsLoading] = useState(propEmployees.length === 0);
@@ -260,8 +262,13 @@ export default function ReportGenerator({
 
   // Filtered employees
   const filteredEmployees = employees.filter((emp) => {
-    // If restricted to a department, strictly confine to this department
-    if (isDeptRestricted && emp.department !== deptScope) {
+    if (isMultiOverseeing) {
+      const allowedNames = overseeingDepartments.map((d) => (typeof d === 'object' && d !== null ? d.name : d));
+      if (!allowedNames.includes(emp.department)) return false;
+      if (selectedDept !== 'All' && emp.department !== selectedDept) return false;
+    } else if (isDeptRestricted && emp.department !== deptScope) {
+      return false;
+    } else if (!isDeptRestricted && selectedDept !== 'All' && emp.department !== selectedDept) {
       return false;
     }
 
@@ -272,12 +279,7 @@ export default function ReportGenerator({
       emp.idNumber.toLowerCase().includes(q) ||
       emp.email.toLowerCase().includes(q);
 
-    const matchesDept =
-      isDeptRestricted ||
-      selectedDept === 'All' ||
-      emp.department === selectedDept;
-
-    return matchesSearch && matchesDept;
+    return matchesSearch;
   });
 
   // Separate active employees (for primary table) and archived employees (for revealed table below)
@@ -440,6 +442,25 @@ export default function ReportGenerator({
               >
                 <span className="muted" style={{ color: 'var(--ink-600)', fontWeight: 500 }}>Department:</span>
                 <b style={{ color: 'var(--ink-900)' }}>{deptScope}</b>
+              </div>
+            ) : isMultiOverseeing ? (
+              <div style={{ minWidth: '220px' }}>
+                <select
+                  className="form-control"
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  style={{ fontSize: '13px' }}
+                >
+                  <option value="All">All Overseeing Departments ({overseeingDepartments.length})</option>
+                  {overseeingDepartments.map((d) => {
+                    const dName = typeof d === 'object' && d !== null ? d.name : d;
+                    return (
+                      <option key={dName} value={dName}>
+                        {dName}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
             ) : (
               <div style={{ minWidth: '220px' }}>

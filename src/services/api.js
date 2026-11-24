@@ -175,6 +175,12 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ department_id: departmentId }),
       }),
+    getDepartmentAssignments: (userId) => request(`/users/${userId}/department-assignments`),
+    updateDepartmentAssignments: (userId, data) =>
+      request(`/users/${userId}/department-assignments`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
     archive: (userId) =>
       request(`/users/${userId}/archive`, {
         method: 'PATCH',
@@ -359,7 +365,8 @@ export const api = {
   // Dashboard Analytics (Phase 4)
   analytics: {
     getHRDashboard: () => request('/analytics/hr-dashboard'),
-    getDeptHeadDashboard: () => request('/analytics/depthead-dashboard'),
+    getDeptHeadDashboard: (departmentId = null) =>
+      request(`/analytics/depthead-dashboard${departmentId ? `?department_id=${departmentId}` : ''}`),
     getEmployeeDashboard: () => request('/analytics/employee-dashboard'),
     getExecutiveAnalytics: (year = '2026') => request(`/analytics/executive?year=${year}`),
     getEmployeeAiSummary: (empId) => request(`/analytics/employee/${empId}/ai-summary`),
@@ -492,7 +499,8 @@ export const api = {
   leaves: {
     apply: (data) => request('/attendance/leaves/apply', { method: 'POST', body: JSON.stringify(data) }),
     getMyRequests: () => request('/attendance/leaves/my-requests'),
-    getDepartmentQueue: () => request('/attendance/leaves/department-queue'),
+    getDepartmentQueue: (departmentId = null) =>
+      request(`/attendance/leaves/department-queue${departmentId ? `?department_id=${departmentId}` : ''}`),
     review: (leaveId, data) => request(`/attendance/leaves/${leaveId}/review`, { method: 'PUT', body: JSON.stringify(data) }),
   },
 

@@ -43,6 +43,21 @@ def _add_six_months(d: datetime.date) -> datetime.date:
 
 def _build_user_response(user: models.UserAccount) -> dict:
     start_date = user.contract_start_date or user.date_appointed
+    secondary_depts = []
+    overseeing_depts = []
+    for a in getattr(user, "department_assignments", []):
+        if a.department:
+            dept_obj = {"id": a.department.id, "name": a.department.name, "college": a.department.college}
+            if a.assignment_type == "secondary":
+                secondary_depts.append(dept_obj)
+            elif a.assignment_type == "overseeing":
+                overseeing_depts.append(dept_obj)
+
+    overseeing_ids = [user.department_id] if user.department_id else []
+    for d in overseeing_depts:
+        if d["id"] not in overseeing_ids:
+            overseeing_ids.append(d["id"])
+
     return {
         "id": user.id,
         "fullName": user.full_name,
@@ -50,6 +65,10 @@ def _build_user_response(user: models.UserAccount) -> dict:
         "role": user.role,
         "department": user.department.name if user.department else "Unassigned",
         "departmentId": user.department_id,
+        "secondaryDepartments": secondary_depts,
+        "overseeingDepartments": overseeing_depts,
+        "secondaryDepartmentIds": [d["id"] for d in secondary_depts],
+        "overseeingDepartmentIds": overseeing_ids,
         "employeeIdNumber": user.employee_id_number,
         "jobTitle": user.job_title,
         "avatarUrl": user.avatar_url,

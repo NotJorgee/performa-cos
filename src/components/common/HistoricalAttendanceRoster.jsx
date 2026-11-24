@@ -41,7 +41,9 @@ export default function HistoricalAttendanceRoster({
     setIsLoading(true);
     try {
       const params = {};
-      if (isHR && dept && dept !== 'ALL') {
+      if (departmentId) {
+        params.department_id = departmentId;
+      } else if (isHR && dept && dept !== 'ALL') {
         params.department_name = dept;
       }
       const res = await api.attendance.getDepartmentRoster(dateStr, params);
@@ -56,7 +58,7 @@ export default function HistoricalAttendanceRoster({
 
   useEffect(() => {
     fetchRoster(selectedDate, selectedDept);
-  }, [selectedDate, selectedDept]);
+  }, [selectedDate, selectedDept, departmentId]);
 
   // Export Data (Excel .xlsx)
   const handleExportData = () => {

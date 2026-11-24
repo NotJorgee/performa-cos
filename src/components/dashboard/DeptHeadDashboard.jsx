@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, FileText, ArrowRight, Clock } from 'lucide-react';
+import { UserCheck, FileText, ArrowRight, Clock, Building2 } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
@@ -14,26 +14,60 @@ export default function DeptHeadDashboard({
   metrics: propMetrics = null,
   onNavigate = () => {},
 }) {
-  const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}`;
+  const [selectedDeptId, setSelectedDeptId] = useState('all');
+
+  // Safely extract department name string
+  const userDept = typeof currentUser.department === 'object' && currentUser.department !== null
+    ? (currentUser.department.name || 'Computer Studies Department')
+    : (currentUser.department || 'Computer Studies Department');
+
+  // Resolve list of all departments this supervisor oversees
+  const overseeingList = currentUser.overseeingDepartments || currentUser.overseeing_departments || [];
+  const allSupervisedDepts = (() => {
+    const map = new Map();
+    if (currentUser.department_id && userDept) {
+      map.set(Number(currentUser.department_id), { id: Number(currentUser.department_id), name: userDept });
+    }
+    overseeingList.forEach((d) => {
+      if (typeof d === 'object' && d !== null && d.id) {
+        map.set(Number(d.id), { id: Number(d.id), name: d.name });
+      } else if (typeof d === 'number') {
+        map.set(d, { id: d, name: `Department #${d}` });
+      }
+    });
+    return Array.from(map.values());
+  })();
+
+  const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}_${selectedDeptId}`;
   // SWR Instant 0ms perceived load time from cache
-  const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKey));
-  const [isLoading, setIsLoading] = useState(() => !propMetrics && !getCachedData(cacheKey));
+  const [metrics, setMetrics] = useState(() => (selectedDeptId === 'all' && propMetrics) || getCachedData(cacheKey));
+  const [isLoading, setIsLoading] = useState(() => !(selectedDeptId === 'all' && propMetrics) && !getCachedData(cacheKey));
 
   useEffect(() => {
     let isMounted = true;
-    if (propMetrics) {
+    if (selectedDeptId === 'all' && propMetrics) {
       setMetrics(propMetrics);
       setCachedData(cacheKey, propMetrics);
       setIsLoading(false);
       return;
     }
+
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      setMetrics(cached);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     const safetyTimeout = setTimeout(() => {
       if (isMounted) setIsLoading(false);
     }, 4000);
 
     const fetchMetrics = async () => {
       try {
-        const data = await api.analytics.getDeptHeadDashboard();
+        const deptParam = selectedDeptId === 'all' ? null : Number(selectedDeptId);
+        const data = await api.analytics.getDeptHeadDashboard(deptParam);
         if (isMounted && data) {
           setMetrics(data);
           setCachedData(cacheKey, data);
@@ -50,15 +84,10 @@ export default function DeptHeadDashboard({
       isMounted = false;
       clearTimeout(safetyTimeout);
     };
-  }, [propMetrics, cacheKey]);
+  }, [selectedDeptId, propMetrics, cacheKey]);
 
   const pendingIntentsCount = metrics?.pendingIntents ?? 0;
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Department Head');
-  
-  // Safely extract department name string (in case backend returns a Department object)
-  const userDept = typeof currentUser.department === 'object' && currentUser.department !== null
-    ? (currentUser.department.name || 'Computer Studies Department')
-    : (currentUser.department || 'Computer Studies Department');
 
   if (isLoading && !metrics) {
     return <LoadingBuffer message="Loading..." />;
@@ -67,7 +96,7 @@ export default function DeptHeadDashboard({
   return (
     <div className="module-transition-enter">
       {/* Hero Banner with EVSU Seal matching COS & HR */}
-      <div className="hero-banner" style={{ marginBottom: '24px' }}>
+      <div className="hero-banner" style={{ marginBottom: allSupervisedDepts.length > 1 ? '16px' : '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
         <div>
           <h1>Welcome, {fullFirstName}</h1>
@@ -76,6 +105,61 @@ export default function DeptHeadDashboard({
           </p>
         </div>
       </div>
+
+      {/* Concurrent Headship Scope Switcher (if supervisor oversees > 1 department) */}
+      {allSupervisedDepts.length > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#ffffff',
+            border: '1px solid var(--line)',
+            borderRadius: '10px',
+            padding: '10px 16px',
+            marginBottom: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Building2 size={16} color="var(--brand-700)" />
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-800)' }}>
+              Supervisory Scope:
+            </span>
+            <span className="badge" style={{ fontSize: '11px', background: 'var(--brand-50, #fdf2f4)', color: 'var(--brand-700)', border: '1px solid #fecdd3' }}>
+              Concurrent Headship ({allSupervisedDepts.length} Units)
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>Filter Department:</span>
+            <select
+              className="form-control"
+              style={{
+                width: 'auto',
+                minWidth: '220px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                padding: '4px 10px',
+                height: '34px',
+                borderRadius: '6px',
+                borderColor: 'var(--brand-300)',
+                background: '#ffffff',
+              }}
+              value={selectedDeptId}
+              onChange={(e) => setSelectedDeptId(e.target.value)}
+            >
+              <option value="all">All Supervised Units ({allSupervisedDepts.length})</option>
+              {allSupervisedDepts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} {Number(d.id) === Number(currentUser.department_id) ? '(Primary)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Category Panels (matching COS Employee & rest of system) */}
       <div className="stat-grid stat-grid-3">

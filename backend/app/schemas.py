@@ -121,10 +121,17 @@ class UserAccountCreate(UserAccountBase):
 class UserAccountOut(UserAccountBase):
     id: int
     department: Optional[DepartmentOut] = None
+    secondary_departments: Optional[List[DepartmentOut]] = []
+    overseeing_departments: Optional[List[DepartmentOut]] = []
     created_at: Optional[datetime.datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class UserDepartmentAssignmentsUpdate(BaseModel):
+    secondary_department_ids: Optional[List[int]] = None
+    overseeing_department_ids: Optional[List[int]] = None
 
 
 class UserUpdateContact(BaseModel):
