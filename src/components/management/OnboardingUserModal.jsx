@@ -558,11 +558,13 @@ export default function OnboardingUserModal({
                 <span>Invitation Successfully Generated!</span>
               </div>
               <div style={{ fontSize: '12.5px', color: '#166534' }}>
-                Token: <b>{createdInvite.token}</b> · Role: <b>{createdInvite.role}</b>
+                Role: <b>{createdInvite.role}</b> · Department: <b>{createdInvite.department}</b>
               </div>
-              <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
-                Department: <b>{createdInvite.department}</b> · Sent to: <b>{createdInvite.email}</b>
-              </div>
+              {createdInvite.email && (
+                <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
+                  Sent to: <b>{createdInvite.email}</b>
+                </div>
+              )}
             </div>
 
             <div className="form-group" style={{ marginBottom: '18px' }}>

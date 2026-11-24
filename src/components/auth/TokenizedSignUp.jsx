@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  User,
   Check,
   Eye,
   EyeOff,
-  Mail,
   AlertCircle,
   ShieldAlert,
   Building,
@@ -210,9 +208,15 @@ export default function TokenizedSignUp({
         lastName,
       });
 
+      const emailToUse = (tokenData?.email || (isCos ? cosEmail : adminEmail) || '').trim();
+      if (!emailToUse) {
+        setFormError('No institutional email address was found in this invitation link. Please contact HRMO.');
+        return;
+      }
+
       const payload = {
         invitation_token: tokenToUse,
-        email: (isCos ? cosEmail : adminEmail).trim(),
+        email: emailToUse,
         full_name: fullLegalName,
         first_name: firstName,
         middle_initial: middleInitial,
@@ -422,30 +426,6 @@ export default function TokenizedSignUp({
                  1. REGULAR COS EMPLOYEE SIGN-UP FIELDS
                  ==================================================== */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {/* Institutional Email */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
-                    Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      value={cosEmail}
-                      onChange={(e) => setCosEmail(e.target.value)}
-                      placeholder="firstname.lastname@evsu.edu.ph"
-                      style={{ paddingLeft: '34px' }}
-                    />
-                    <Mail
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                    />
-                  </div>
-                </div>
-
                 {/* Separated Name Inputs */}
                 <div className="signup-name-grid">
                   <div className="form-group" style={{ margin: 0 }}>
@@ -717,30 +697,6 @@ export default function TokenizedSignUp({
                  2. ADMINISTRATOR / DEPARTMENT HEAD SIGN-UP FIELDS
                  ==================================================== */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {/* Institutional Email */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
-                    Institutional Email Address <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="admin.name@evsu.edu.ph"
-                      style={{ paddingLeft: '34px' }}
-                    />
-                    <Mail
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                    />
-                  </div>
-                </div>
-
                 {/* Separated Name Inputs */}
                 <div className="signup-name-grid">
                   <div className="form-group" style={{ margin: 0 }}>
@@ -871,37 +827,6 @@ export default function TokenizedSignUp({
                       {adminDept || 'Assigned Department'}
                     </span>
                   </div>
-
-                  {adminRole === 'Department Head' && (
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        padding: '10px 14px',
-                        background: tokenData?.current_department_head ? '#fffbeb' : '#f0fdf4',
-                        border: `1.5px solid ${tokenData?.current_department_head ? '#fde68a' : '#bbf7d0'}`,
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                        <span style={{ color: 'var(--ink-700)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                          <User size={14} color="var(--brand-700)" />
-                          Current Department Head on Record:
-                        </span>
-                        <b style={{ color: tokenData?.current_department_head ? '#b45309' : '#15803d' }}>
-                          {tokenData?.current_department_head
-                            ? `${tokenData.current_department_head.full_name} (${tokenData.current_department_head.email})`
-                            : 'Vacant (No Active Department Head)'}
-                        </b>
-                      </div>
-                      {tokenData?.current_department_head && (
-                        <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#92400e', borderTop: '1px solid #fef3c7', paddingTop: '6px' }}>
-                          <strong>Assignment Notice:</strong> A department cannot have more than one Department Head. A new Department Head cannot register for this department until the current incumbent is reassigned or archived by HR.
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Password Fields */}
