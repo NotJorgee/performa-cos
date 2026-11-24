@@ -50,12 +50,43 @@ const parseHashView = () => {
   return clean;
 };
 
-export default function App() {
-  // Initialize auth state from existing localStorage token/user if present
-  const storedUser = api.auth.getCurrentUser();
-  const hasToken = Boolean(localStorage.getItem('performa_token'));
+// Helper to extract invitation token from URL search query or hash query (?token=... or ?invite=...)
+const getInviteTokenFromUrl = () => {
+  if (typeof window === 'undefined') return '';
+  const searchParams = new URLSearchParams(window.location.search);
+  const tokenFromSearch = searchParams.get('token') || searchParams.get('invite');
+  if (tokenFromSearch) return tokenFromSearch.trim();
 
-  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(hasToken && storedUser));
+  const hashQuery = window.location.hash.split('?')[1] || '';
+  if (hashQuery) {
+    const hashParams = new URLSearchParams(hashQuery);
+    const tokenFromHash = hashParams.get('token') || hashParams.get('invite');
+    if (tokenFromHash) return tokenFromHash.trim();
+  }
+  return '';
+};
+
+export default function App() {
+  const initialInviteToken = getInviteTokenFromUrl();
+  const hasInviteLink = Boolean(initialInviteToken);
+
+  // If opening an institutional invitation link (?token=... or ?invite=...),
+  // clear any previous account session from localStorage/sessionStorage
+  // so the employee lands directly on the onboarding sign-up page without session collision.
+  if (hasInviteLink && typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('performa_token');
+      localStorage.removeItem('performa_user');
+      localStorage.removeItem('currentUser');
+      clearAllPerformaCache();
+    } catch (_) {}
+  }
+
+  // Initialize auth state from existing localStorage token/user if present AND not an invitation link
+  const storedUser = hasInviteLink ? null : api.auth.getCurrentUser();
+  const hasToken = hasInviteLink ? false : Boolean(localStorage.getItem('performa_token'));
+
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(!hasInviteLink && hasToken && storedUser));
   const [currentUser, setCurrentUser] = useState(() => {
     if (storedUser) {
       return {
@@ -103,26 +134,17 @@ export default function App() {
   });
 
   // Check for invitation token in URL query parameter (?token=... or ?invite=...)
-  const [inviteToken, setInviteToken] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('token') || params.get('invite') || '';
-    }
-    return '';
-  });
+  const [inviteToken, setInviteToken] = useState(initialInviteToken);
 
   const [authView, setAuthView] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('token') || params.get('invite')) {
-        return 'signup';
-      }
+    if (hasInviteLink) {
+      return 'signup';
     }
     return 'login';
   }); // 'login' | 'signup' | 'forgot' | 'otp' | 'reset_pw'
 
   // Explicit ?token= / ?invite= onboarding links must open signup even if a previous session exists in localStorage
-  const isInviteSignup = Boolean(inviteToken) && authView === 'signup';
+  const isInviteSignup = Boolean(inviteToken);
 
   const [currentView, setCurrentView] = useState(() => parseHashView());
   const [isModuleTransitioning, setIsModuleTransitioning] = useState(false);
@@ -197,7 +219,12 @@ export default function App() {
 
     const handleHashSync = () => {
       const activeHash = window.location.hash.replace(/^#\/?/, '').trim().split('?')[0];
-      if (['login', 'signup', 'forgot', 'otp', 'reset_pw'].includes(activeHash) || window.location.search.includes('token=') || window.location.search.includes('invite=')) {
+      const hasTokenInUrl = Boolean(getInviteTokenFromUrl());
+      if (hasTokenInUrl) {
+        // Do not force dashboard if an invitation token is present
+        return;
+      }
+      if (['login', 'signup', 'forgot', 'otp', 'reset_pw'].includes(activeHash)) {
         // Prevent reverting to unauthenticated auth views once logged in
         window.history.replaceState(null, '', '#/dashboard');
         setCurrentView('dashboard');
@@ -223,6 +250,31 @@ export default function App() {
       window.removeEventListener('popstate', handleHashSync);
     };
   }, [isAuthenticated, currentView]);
+
+  // Dynamic URL token detector: catches invitation links opened while the app session is running
+  useEffect(() => {
+    const handleUrlTokenCheck = () => {
+      const token = getInviteTokenFromUrl();
+      if (token && token !== inviteToken) {
+        try {
+          localStorage.removeItem('performa_token');
+          localStorage.removeItem('performa_user');
+          localStorage.removeItem('currentUser');
+          clearAllPerformaCache();
+        } catch (_) {}
+        setIsAuthenticated(false);
+        setInviteToken(token);
+        setAuthView('signup');
+      }
+    };
+
+    window.addEventListener('popstate', handleUrlTokenCheck);
+    window.addEventListener('hashchange', handleUrlTokenCheck);
+    return () => {
+      window.removeEventListener('popstate', handleUrlTokenCheck);
+      window.removeEventListener('hashchange', handleUrlTokenCheck);
+    };
+  }, [inviteToken]);
 
   // Password recovery flow states
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -385,7 +437,7 @@ export default function App() {
   };
 
   // 1. Tokenized Invitation Onboarding & Unauthenticated Flows (UC-08, UC-07)
-  if (!isAuthenticated && (isInviteSignup || authView === 'signup')) {
+  if (isInviteSignup || (!isAuthenticated && authView === 'signup')) {
     return (
       <TokenizedSignUp
         initialToken={inviteToken}
