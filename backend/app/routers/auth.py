@@ -333,10 +333,20 @@ def forgot_password(
 @router.post("/verify-otp")
 def verify_otp(payload: schemas.VerifyOtpRequest, db: Session = Depends(get_db)):
     """Verifies 6-digit OTP code with strict 5-attempt brute-force protection (SEC-05)."""
+    ident = (payload.email or "").strip()
+    user = db.query(models.UserAccount).filter(
+        or_(
+            models.UserAccount.email.ilike(ident),
+            models.UserAccount.employee_id_number.ilike(ident),
+        ),
+        models.UserAccount.is_archived == False,
+    ).first()
+    email_to_check = user.email if user else ident
+
     otp = (
         db.query(models.OTPCode)
         .filter(
-            models.OTPCode.email == payload.email,
+            models.OTPCode.email == email_to_check,
             models.OTPCode.used == False,
         )
         .order_by(models.OTPCode.created_at.desc())

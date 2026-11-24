@@ -85,10 +85,11 @@ export default function Login({
       }, 1800);
     } catch (err) {
       setIsLoading(false);
-      setErrorMessage(
-        err.message ||
-          'Invalid institutional credentials. Please check your email and password, or contact HRMDO if your account is locked.'
-      );
+      const msg =
+        typeof err?.message === 'string' && err.message !== '[object Object]' && err.message.trim().length > 0
+          ? err.message
+          : 'Invalid institutional credentials. Please check your email or employee ID number and password, or contact HRMDO if your account is locked.';
+      setErrorMessage(msg);
     }
   };
 

@@ -36,9 +36,19 @@ async function request(endpoint, options = {}) {
     let errorDetail = 'An unexpected server error occurred.';
     try {
       const errJson = await response.json();
-      errorDetail = errJson.detail || errorDetail;
+      if (typeof errJson.detail === 'string') {
+        errorDetail = errJson.detail;
+      } else if (Array.isArray(errJson.detail)) {
+        errorDetail = errJson.detail
+          .map((d) => (typeof d === 'string' ? d : d.msg || JSON.stringify(d)))
+          .join(', ');
+      } else if (errJson.detail && typeof errJson.detail === 'object') {
+        errorDetail = errJson.detail.message || errJson.detail.msg || JSON.stringify(errJson.detail);
+      } else if (errJson.message) {
+        errorDetail = errJson.message;
+      }
     } catch (e) {
-      errorDetail = response.statusText;
+      errorDetail = response.statusText || errorDetail;
     }
     throw new Error(errorDetail);
   }

@@ -11,7 +11,7 @@ class Token(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -39,7 +39,7 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class VerifyOtpRequest(BaseModel):
-    email: EmailStr
+    email: str
     otp_code: str
 
 
