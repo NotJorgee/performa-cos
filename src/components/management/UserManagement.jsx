@@ -2467,7 +2467,7 @@ export default function UserManagement({
                           border: '1px solid #fecdd3',
                         }}
                       >
-                        Auto-calculated ({contractPolicyMonths}M Policy)
+                        Auto-calculated ({contractPolicyMonths} Months)
                       </span>
                     </div>
                     <input
@@ -2485,7 +2485,7 @@ export default function UserManagement({
                       }}
                     />
                     <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
-                      Contract expiration is automatically set by the University Standard COS Policy ({contractPolicyMonths} Months) and cannot be manually modified.
+                      Contract end date is automatically set to {contractPolicyMonths} months from the start date and cannot be manually modified.
                     </span>
                   </div>
                 </div>

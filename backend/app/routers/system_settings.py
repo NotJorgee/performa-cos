@@ -62,16 +62,7 @@ def set_system_setting(
 
 
 def _format_policy_name(months: int) -> str:
-    if months == 3:
-        return "3 Months (Quarterly Term)"
-    elif months == 5:
-        return "5 Months (Academic Semester)"
-    elif months == 6:
-        return "6 Months (Semestral Standard)"
-    elif months == 12:
-        return "1 Year / 12 Months (Annual Fiscal Term)"
-    else:
-        return f"{months} Months"
+    return f"{months} Months"
 
 
 @router.get("/contract-policy", response_model=schemas.ContractPolicyOut)
@@ -163,7 +154,7 @@ def update_contract_policy(
         action="CONTRACT_POLICY_UPDATED",
         target_scope="COS Contract Policy",
         operation_details=(
-            f"HR Personnel {current_user.full_name} updated standard COS contract length policy to {payload.duration_months} months ({policy_name}). "
+            f"HR Personnel {current_user.full_name} updated standard COS contract length policy to {payload.duration_months} months. "
             f"Directive Reference: {memo_text}. Effect: Upcoming contract renewals and subsequent appointments will adopt {payload.duration_months} months."
         ),
         user=current_user,
@@ -172,7 +163,7 @@ def update_contract_policy(
     # Broadcast institutional directive notification to all users
     broadcast_title = "University Directive: Standard COS Contract Duration Updated"
     broadcast_msg = (
-        f"The HRMDO has updated the standard Contract of Service (COS) contract duration to {payload.duration_months} months ({policy_name}). "
+        f"The HRMDO has updated the standard Contract of Service (COS) contract duration to {payload.duration_months} months. "
         f"In accordance with university policy, currently active contracts remain intact until their scheduled expiration date. "
         f"Upcoming renewal contracts will adopt this new {payload.duration_months}-month term."
     )
