@@ -48,7 +48,7 @@ def create_invitation(
     while db.query(models.InvitationToken).filter(models.InvitationToken.token == token_str).first():
         token_str = f"EVSU-INV-{role_prefix}-{secrets.token_hex(8).upper()}"
 
-    expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
 
     dept_id = resolve_onboarding_department_id(db, payload.role, payload.department_id, payload.department_name)
 

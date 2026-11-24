@@ -116,7 +116,7 @@ def seed():
 
         # 3. Seed invitation tokens
         print("\nSeeding invitation tokens...")
-        expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         for inv in INVITE_TOKENS:
             existing_inv = db.query(models.InvitationToken).filter(
                 models.InvitationToken.token == inv["token"]

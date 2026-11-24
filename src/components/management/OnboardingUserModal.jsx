@@ -575,6 +575,9 @@ export default function OnboardingUserModal({
                   <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
                 </button>
               </div>
+              <p className="muted" style={{ fontSize: '11.5px', marginTop: '6px', marginBottom: 0 }}>
+                Valid for 24 hours from creation · Single-use institutional onboarding link
+              </p>
             </div>
 
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

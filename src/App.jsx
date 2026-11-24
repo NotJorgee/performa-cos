@@ -355,7 +355,7 @@ export default function App() {
           setAuthView('login');
           setInviteToken('');
           if (typeof window !== 'undefined' && window.history?.replaceState) {
-            window.history.replaceState({}, '', '#/login');
+            window.history.replaceState({}, '', window.location.pathname + '#/login');
           }
         }}
         onLoginAsNewUser={(newUser) => {
@@ -363,7 +363,7 @@ export default function App() {
           setInviteToken('');
           setAuthView('login');
           if (typeof window !== 'undefined' && window.history?.replaceState) {
-            window.history.replaceState({}, '', '#/dashboard');
+            window.history.replaceState({}, '', window.location.pathname + '#/dashboard');
           }
           handleLogin(newUser);
         }}

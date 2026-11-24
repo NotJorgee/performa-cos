@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   User,
   Check,
+  CheckCircle2,
   Eye,
   EyeOff,
   Mail,
   AlertCircle,
+  ShieldAlert,
   Building,
   Briefcase,
   Phone,
@@ -295,121 +297,187 @@ export default function TokenizedSignUp({
 
         {/* Card */}
         <div className="auth-card" style={{ padding: '28px 32px' }}>
-          {/* Title */}
-          <div className="auth-card-brand" style={{ marginBottom: '16px' }}>
-            <span className="auth-card-brand-title">
-              {roleMode === 'cos' ? 'COS Employee Registration' : 'Administrator / Department Head Registration'}
-            </span>
-            <span className="auth-card-brand-sub">
-              {roleMode === 'cos'
-                ? 'Complete your profile to access accomplishment reports and performance evaluations.'
-                : 'Complete your profile to access supervisory evaluations, endorsement workflows, and administrative dashboards.'}
-            </span>
-          </div>
-
-          {/* Invitation Status Banner */}
-          {isValidatingToken && (
-            <div
-              style={{
-                background: '#f8fafc',
-                border: '1px solid var(--line)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                marginBottom: '16px',
-                fontSize: '12.5px',
-                color: 'var(--ink-600)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <span className="btn-spinner" style={{ display: 'inline-block', width: '14px', height: '14px', borderWidth: '2px' }} />
-              <span>Verifying your institutional invitation link...</span>
-            </div>
-          )}
-
-          {tokenError && (
-            <div
-              style={{
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#991b1b',
-                padding: '12px 14px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                marginBottom: '16px',
-              }}
-            >
-              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
-              <div>
-                <strong style={{ display: 'block', marginBottom: '2px' }}>Invalid or Expired Invitation</strong>
-                <span>{tokenError} Please ensure you are opening the exact link sent to your email, or contact HRMDO.</span>
-              </div>
-            </div>
-          )}
-
-          {/* Invitation Code Field (Shown if manual verification needed) */}
-          {(!tokenData || tokenError) && (
-            <div
-              style={{
-                background: '#f8fafc',
-                border: '1px solid var(--line)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                marginBottom: '18px',
-              }}
-            >
-              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-700)', marginBottom: '6px' }}>
-                Invitation Code
-              </label>
-              <input
-                type="text"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="EVSU-INV-COS-..."
-                autoComplete="off"
+          {/* 1. STATE: NO INVITATION LINK PROVIDED */}
+          {!tokenInput.trim() && (
+            <div style={{ textAlign: 'center', padding: '20px 8px' }}>
+              <div
                 style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--line)',
-                  background: '#ffffff',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  letterSpacing: '0.8px',
-                  fontFamily: 'monospace',
-                  color: 'var(--brand-800)',
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  background: '#fef2f2',
+                  color: '#991b1b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  border: '1.5px solid #fecaca',
                 }}
-              />
+              >
+                <ShieldAlert size={28} />
+              </div>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
+                Institutional Invitation Required
+              </h2>
+              <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6, maxWidth: '420px', margin: '0 auto 20px' }}>
+                Registration in the PerformaCOS portal is strictly restricted to authorized university personnel. An active, one-time invitation link issued by the Eastern Visayas State University Human Resource Management &amp; Development Office (HRMDO) is required to register.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ padding: '10px 24px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
+                onClick={onBackToLogin}
+              >
+                Return to Sign In
+              </button>
             </div>
           )}
 
-          {/* Form Error Banner */}
-          {formError && (
-            <div
-              style={{
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#991b1b',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '14px',
-              }}
-            >
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span>{formError}</span>
+          {/* 2. STATE: BACKGROUND VALIDATION IN PROGRESS */}
+          {tokenInput.trim() && isValidatingToken && (
+            <div style={{ textAlign: 'center', padding: '36px 16px' }}>
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '50%',
+                  background: '#f8fafc',
+                  border: '1.5px solid var(--line)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}
+              >
+                <span className="btn-spinner" style={{ display: 'inline-block', width: '22px', height: '22px', borderWidth: '2.5px', borderColor: 'var(--brand-700) transparent transparent transparent' }} />
+              </div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink-800)', margin: '0 0 6px' }}>
+                Verifying Institutional Invitation
+              </h3>
+              <p style={{ fontSize: '12.5px', color: 'var(--ink-500)', margin: 0 }}>
+                Authenticating your registration credentials in the background...
+              </p>
             </div>
           )}
 
-          {/* REGISTRATION FORM */}
-          <form onSubmit={handleSubmit} autoComplete="off">
+          {/* 3. STATE: INVALID OR EXPIRED INVITATION LINK */}
+          {tokenInput.trim() && !isValidatingToken && (tokenError || !tokenData) && (
+            <div style={{ textAlign: 'center', padding: '20px 8px' }}>
+              <div
+                style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  background: '#fef2f2',
+                  color: '#991b1b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  border: '1.5px solid #fecaca',
+                }}
+              >
+                <AlertCircle size={28} />
+              </div>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
+                Invalid or Expired Invitation Link
+              </h2>
+              <p style={{ fontSize: '13px', color: '#991b1b', lineHeight: 1.6, maxWidth: '440px', margin: '0 auto 10px', fontWeight: 600 }}>
+                {tokenError || 'This invitation link could not be verified.'}
+              </p>
+              <p style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.5, maxWidth: '420px', margin: '0 auto 20px' }}>
+                For institutional security, PerformaCOS invitation links expire strictly 24 hours after issuance. If your link has expired, please request a new invitation link from the HRMDO.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ padding: '10px 24px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
+                onClick={onBackToLogin}
+              >
+                Return to Sign In
+              </button>
+            </div>
+          )}
+
+          {/* 4. STATE: VALID TOKEN - REGISTRATION FORM */}
+          {tokenInput.trim() && !isValidatingToken && tokenData && !tokenError && (
+            <>
+              {/* Title */}
+              <div className="auth-card-brand" style={{ marginBottom: '16px' }}>
+                <span className="auth-card-brand-title">
+                  {roleMode === 'cos' ? 'COS Employee Registration' : 'Administrator / Department Head Registration'}
+                </span>
+                <span className="auth-card-brand-sub">
+                  {roleMode === 'cos'
+                    ? 'Complete your profile to access accomplishment reports and performance evaluations.'
+                    : 'Complete your profile to access supervisory evaluations, endorsement workflows, and administrative dashboards.'}
+                </span>
+              </div>
+
+              {/* Verified Institutional Trust Pill */}
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  marginBottom: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <CheckCircle2 size={18} style={{ color: '#166534', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Verified Invitation
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: roleMode === 'cos' ? '#dcfce7' : '#fee2e2',
+                        color: roleMode === 'cos' ? '#166534' : '#991b1b',
+                        border: `1px solid ${roleMode === 'cos' ? '#bbf7d0' : '#fecaca'}`,
+                      }}
+                    >
+                      {tokenData.role}
+                    </span>
+                  </div>
+                  {tokenData.department_name && (
+                    <div style={{ fontSize: '12px', color: '#15803d', marginTop: '2px' }}>
+                      Assigned Department: <strong>{tokenData.department_name}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Form Error Banner */}
+              {formError && (
+                <div
+                  style={{
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {/* REGISTRATION FORM */}
+              <form onSubmit={handleSubmit} autoComplete="off">
             {roleMode === 'cos' ? (
               /* ====================================================
                  1. REGULAR COS EMPLOYEE SIGN-UP FIELDS
@@ -1152,22 +1220,44 @@ export default function TokenizedSignUp({
             )}
           </form>
 
-          {/* Department Correction Notice at the Very Bottom */}
-          <div
-            style={{
-              marginTop: '20px',
-              padding: '10px 14px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '11.5px',
-              color: 'var(--ink-600)',
-              textAlign: 'center',
-              lineHeight: 1.5,
-            }}
-          >
-            If the assigned department above is incorrect, please contact the <strong>Human Resource Management &amp; Development Office (HRMDO)</strong> to issue an updated registration invitation.
-          </div>
+              {/* Cancel / Return to Login Link */}
+              <div style={{ textAlign: 'center', marginTop: '14px' }}>
+                <button
+                  type="button"
+                  onClick={onBackToLogin}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: '4px 8px',
+                  }}
+                >
+                  Cancel and Return to Sign In
+                </button>
+              </div>
+
+              {/* Department Correction Notice at the Very Bottom */}
+              <div
+                style={{
+                  marginTop: '20px',
+                  padding: '10px 14px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '11.5px',
+                  color: 'var(--ink-600)',
+                  textAlign: 'center',
+                  lineHeight: 1.5,
+                }}
+              >
+                If the assigned department above is incorrect, please contact the <strong>Human Resource Management &amp; Development Office (HRMDO)</strong> to issue an updated registration invitation.
+              </div>
+            </>
+          )}
         </div>
       </div>
 
