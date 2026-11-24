@@ -24,7 +24,8 @@ export const EVSU_DEPARTMENTS = [
   'IGP Office',
   'IPDO Office',
   'Library Office',
-  'Maintenance/Janitorial (MESO) Office',
+  'Maintenance and Janitorial',
+  'Management Information Systems Office',
   'Procurement Office',
   'Quality Assurance & Accreditation Office',
   'Registrar Office',
@@ -69,6 +70,7 @@ export const EVSU_DEPARTMENT_DOMAINS = {
       'Campus Director Office',
       'Disbursing / Cashier Office',
       'HRMDO Office',
+      'Management Information Systems Office',
       'Procurement Office',
     ],
   },
@@ -104,7 +106,7 @@ export const EVSU_DEPARTMENT_DOMAINS = {
       'Extension Service Office',
       'IGP Office',
       'IPDO Office',
-      'Maintenance/Janitorial (MESO) Office',
+      'Maintenance and Janitorial',
       'Quality Assurance & Accreditation Office',
       'Research Office',
       'Sports And Development Office',
@@ -177,7 +179,9 @@ export function getDepartmentDomain(deptName, explicitDomain = null) {
     lower.includes('director') ||
     lower.includes('cashier') ||
     lower.includes('hrmdo') ||
-    lower.includes('procurement')
+    lower.includes('procurement') ||
+    lower.includes('miso') ||
+    lower.includes('information systems')
   ) {
     return EVSU_DEPARTMENT_DOMAINS.administrative;
   }
@@ -194,8 +198,8 @@ export function getDepartmentDomain(deptName, explicitDomain = null) {
     lower.includes('research') ||
     lower.includes('extension') ||
     lower.includes('ipdo') ||
-    lower.includes('meso') ||
     lower.includes('maintenance') ||
+    lower.includes('janitorial') ||
     lower.includes('quality') ||
     lower.includes('igp') ||
     lower.includes('sports')
@@ -259,7 +263,8 @@ export function getDepartmentSupervisor(department) {
   if (norm.includes('technology')) return 'Engr. Juan Perez';
   if (norm.includes('mechanical') || norm.includes('civil') || norm.includes('engineering')) return 'Engr. David Lim';
   if (norm.includes('library')) return 'Mrs. Rosalina Gomez';
-  if (norm.includes('maintenance') || norm.includes('janitorial') || norm.includes('meso')) return 'Engr. Mario Delgado';
+  if (norm.includes('maintenance') || norm.includes('janitorial')) return 'Engr. Mario Delgado';
+  if (norm.includes('information systems') || norm.includes('miso')) return 'Engr. Allan Silor';
   if (norm.includes('education')) return 'Dr. Alicia Tan';
   if (norm.includes('hospitality') || norm.includes('tourism')) return 'Prof. Maria Santos';
   if (norm.includes('guidance')) return 'Mrs. Elena Cruz';

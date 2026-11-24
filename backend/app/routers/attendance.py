@@ -55,14 +55,14 @@ def get_pht_now() -> datetime.datetime:
 def get_user_shift_schedule(user: models.UserAccount, db: Session) -> dict:
     """
     Determines shift schedule based strictly on the user's Department:
-    - Department 22 (Maintenance/Janitorial MESO Office) -> MAINTENANCE (7:00 AM - 5:00 PM, 15m grace = 7:15 AM)
-    - All other 21 departments -> ADMINISTRATIVE (8:00 AM - 5:00 PM, 15m grace = 8:15 AM)
+    - Department (Maintenance and Janitorial) -> MAINTENANCE (7:00 AM - 5:00 PM, 15m grace = 7:15 AM)
+    - All other departments -> ADMINISTRATIVE (8:00 AM - 5:00 PM, 15m grace = 8:15 AM)
     Campus check-in gate opens at 6:00 AM PHT.
     """
     is_maintenance = False
     if user.department_id == 22:
         is_maintenance = True
-    elif user.department and ("meso" in user.department.name.lower() or "maintenance" in user.department.name.lower()):
+    elif user.department and ("maintenance" in user.department.name.lower() or "janitorial" in user.department.name.lower()):
         is_maintenance = True
 
     if is_maintenance:
@@ -79,7 +79,7 @@ def get_user_shift_schedule(user: models.UserAccount, db: Session) -> dict:
             "official_time": "7:00 AM - 5:00 PM",
             "official_start_str": "07:00 AM",
             "grace_cutoff": "7:15 AM",
-            "label": "Maintenance / Janitorial (MESO) Shift",
+            "label": "Maintenance and Janitorial Shift",
         }
     else:
         return {
@@ -769,7 +769,8 @@ def get_campus_attendance_overview(
         dept_summaries.append({
             "department_id": dept.id,
             "department_name": dept.name,
-            "is_meso": (dept.id == 22 or "meso" in dept.name.lower() or "maintenance" in dept.name.lower()),
+            "is_maintenance": (dept.id == 22 or "maintenance" in dept.name.lower() or "janitorial" in dept.name.lower()),
+            "is_meso": (dept.id == 22 or "maintenance" in dept.name.lower() or "janitorial" in dept.name.lower()),
             "total_cos": dept_cos_count,
             "present": dept_present,
             "late": dept_late,
