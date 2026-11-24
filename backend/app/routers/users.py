@@ -248,6 +248,8 @@ def update_user_contact(
 
     if payload.contact_number is not None:
         user.contact_number = payload.contact_number
+    if payload.job_title is not None:
+        user.job_title = payload.job_title
     if payload.alternate_email is not None:
         user.alternate_email = payload.alternate_email
     if payload.emergency_contact is not None:

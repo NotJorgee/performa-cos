@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, MapPin, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Clock, MapPin, FileText, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
 import LoadingBuffer from '../common/LoadingBuffer';
+import CompleteProfileModal from '../common/CompleteProfileModal';
 
 export default function EmployeeDashboard({
   currentUser = {
@@ -14,6 +15,7 @@ export default function EmployeeDashboard({
   },
   metrics: propMetrics = null,
   onNavigate = () => {},
+  onUpdateCurrentUser = () => {},
 }) {
   const cacheKeyMetrics = `emp_dashboard_metrics_${currentUser?.id || 'me'}`;
   const cacheKeyToday = `emp_att_today_${currentUser?.id || 'me'}`;
@@ -76,12 +78,90 @@ export default function EmployeeDashboard({
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Personnel');
   const isExpiringSoon = ((metrics?.daysUntilExpiration ?? 0) <= 30) && ((metrics?.daysUntilExpiration ?? 0) > 0);
 
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+
+  // Check if personnel profile is missing contact number or role designation
+  const hasContact = Boolean(
+    currentUser?.contactNumber ||
+    currentUser?.contact_number ||
+    currentUser?.phone
+  );
+  const currentJob = currentUser?.jobTitle || currentUser?.job_title || currentUser?.position || '';
+  const hasJobTitle = Boolean(currentJob && currentJob !== 'COS Staff');
+  const isProfileIncomplete = !hasContact || !hasJobTitle;
+
   if (isLoading && !metrics) {
     return <LoadingBuffer message="Loading..." />;
   }
 
   return (
     <div className="module-transition-enter">
+      {/* Action Required: Incomplete Profile Banner (Non-Dismissible) */}
+      {isProfileIncomplete && (
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '16px 20px',
+            background: '#fffbeb',
+            border: '1.5px solid #fde68a',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '14px',
+            boxShadow: '0 2px 4px rgba(217, 119, 6, 0.06)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1 1 300px' }}>
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: '#fef3c7',
+                color: '#b45309',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <AlertCircle size={22} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '14.5px', color: '#92400e' }}>
+                Action Required: Complete Your Personnel Profile
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#b45309', marginTop: '3px', lineHeight: 1.45 }}>
+                Please provide your official contact phone number and job position designation to finalize your university personnel record.
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowCompleteModal(true)}
+            style={{
+              padding: '10px 20px',
+              fontWeight: 700,
+              fontSize: '13px',
+              borderRadius: '8px',
+              background: 'var(--brand-700, #7a1128)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              minHeight: '44px',
+            }}
+          >
+            Complete Profile Now <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Hero Banner */}
       <div className="hero-banner" style={{ marginBottom: '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
@@ -211,6 +291,16 @@ export default function EmployeeDashboard({
           </div>
         </div>
       </div>
+
+      {/* Complete Profile Modal */}
+      <CompleteProfileModal
+        isOpen={showCompleteModal}
+        currentUser={currentUser}
+        onClose={() => setShowCompleteModal(false)}
+        onProfileCompleted={(updated) => {
+          onUpdateCurrentUser(updated);
+        }}
+      />
     </div>
   );
 }

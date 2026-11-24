@@ -136,6 +136,7 @@ class UserDepartmentAssignmentsUpdate(BaseModel):
 
 class UserUpdateContact(BaseModel):
     contact_number: Optional[str] = None
+    job_title: Optional[str] = None
     alternate_email: Optional[str] = None
     emergency_contact: Optional[str] = None
     office_location: Optional[str] = None

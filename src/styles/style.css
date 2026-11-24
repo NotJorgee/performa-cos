@@ -1203,6 +1203,18 @@ textarea.form-control { resize: vertical; min-height: 90px; }
   }
 }
 
+.signup-password-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .signup-password-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
 .checkin-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
 .checkin-row:last-child { border-bottom: none; }
 

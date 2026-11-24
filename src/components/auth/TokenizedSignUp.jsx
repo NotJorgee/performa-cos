@@ -9,8 +9,6 @@ import {
   AlertCircle,
   ShieldAlert,
   Building,
-  Briefcase,
-  Phone,
   Lock,
   Calendar,
 } from 'lucide-react';
@@ -62,8 +60,6 @@ export default function TokenizedSignUp({
   const [cosStartingDate, setCosStartingDate] = useState(getTodayStr());
   const [cosContractStartDate, setCosContractStartDate] = useState(getTodayStr());
   const [cosDept, setCosDept] = useState('Computer Studies Department');
-  const [cosJobPosition, setCosJobPosition] = useState('');
-  const [cosPhone, setCosPhone] = useState('');
   const [cosPassword, setCosPassword] = useState('');
   const [cosConfirm, setCosConfirm] = useState('');
   const [cosAgreed, setCosAgreed] = useState(false);
@@ -77,8 +73,6 @@ export default function TokenizedSignUp({
   const [adminStartingDate, setAdminStartingDate] = useState(getTodayStr());
   const [adminRole, setAdminRole] = useState('Department Head'); // 'Department Head' | 'HR Personnel'
   const [adminDept, setAdminDept] = useState('Computer Studies Department');
-  const [adminJobPosition, setAdminJobPosition] = useState('');
-  const [adminPhone, setAdminPhone] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminConfirm, setAdminConfirm] = useState('');
   const [adminAgreed, setAdminAgreed] = useState(false);
@@ -242,8 +236,8 @@ export default function TokenizedSignUp({
         contract_start_date: contractStartDate,
         password: pwd,
         role: isCos ? 'COS Employee' : adminRole,
-        job_title: (isCos ? cosJobPosition : adminJobPosition).trim(),
-        contact_number: (isCos ? cosPhone : adminPhone).trim(),
+        job_title: isCos ? 'COS Staff' : adminRole,
+        contact_number: '',
       };
 
       const response = await api.auth.register(payload);
@@ -629,48 +623,6 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Job Position & Contact Phone */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Position / Designation</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="text"
-                        value={cosJobPosition}
-                        onChange={(e) => setCosJobPosition(e.target.value)}
-                        placeholder="e.g. Administrative Aide VI"
-                        style={{ paddingLeft: '34px' }}
-                      />
-                      <Briefcase
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Official Contact Number</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="tel"
-                        autoComplete="tel"
-                        value={cosPhone}
-                        onChange={(e) => setCosPhone(e.target.value)}
-                        placeholder="+63 9XX XXX XXXX"
-                        style={{ paddingLeft: '34px' }}
-                      />
-                      <Phone
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 {/* Generated Employee ID Preview */}
                 <div
                   style={{
@@ -692,7 +644,7 @@ export default function TokenizedSignUp({
                 </div>
 
                 {/* Password Fields */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="signup-password-grid">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       Password <span style={{ color: 'var(--red-600)' }}>*</span>
@@ -1011,48 +963,6 @@ export default function TokenizedSignUp({
                   )}
                 </div>
 
-                {/* Job Position & Contact Phone */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Position / Designation</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="text"
-                        value={adminJobPosition}
-                        onChange={(e) => setAdminJobPosition(e.target.value)}
-                        placeholder="e.g. Department Head"
-                        style={{ paddingLeft: '34px' }}
-                      />
-                      <Briefcase
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Official Contact Number</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-control"
-                        type="tel"
-                        autoComplete="tel"
-                        value={adminPhone}
-                        onChange={(e) => setAdminPhone(e.target.value)}
-                        placeholder="+63 9XX XXX XXXX"
-                        style={{ paddingLeft: '34px' }}
-                      />
-                      <Phone
-                        size={15}
-                        color="var(--ink-400)"
-                        style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 {/* Generated Admin ID Preview */}
                 <div
                   style={{
@@ -1074,7 +984,7 @@ export default function TokenizedSignUp({
                 </div>
 
                 {/* Password Fields */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="signup-password-grid">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       Password <span style={{ color: 'var(--red-600)' }}>*</span>

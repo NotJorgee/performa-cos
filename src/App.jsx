@@ -477,12 +477,49 @@ export default function App() {
 
       {/* Universal Dashboard */}
       {currentView === 'dashboard' && currentUser.role === 'COS Employee' && (
-        <EmployeeDashboard currentUser={currentUser} onNavigate={navigateTo} />
+        <EmployeeDashboard
+          currentUser={currentUser}
+          onNavigate={navigateTo}
+          onUpdateCurrentUser={(updated) => {
+            setCurrentUser((prev) => ({
+              ...prev,
+              ...updated,
+              contactNumber: updated.contact_number || updated.contactNumber || prev.contactNumber,
+              jobTitle: updated.job_title || updated.jobTitle || prev.jobTitle,
+              emergencyContact: updated.emergency_contact || updated.emergencyContact || prev.emergencyContact,
+              officeLocation: updated.office_location || updated.officeLocation || prev.officeLocation,
+            }));
+            if (api?.auth?.me) {
+              api.auth.me().then((fresh) => {
+                if (fresh) {
+                  setCurrentUser((prev) => ({ ...prev, ...fresh }));
+                }
+              }).catch(() => {});
+            }
+          }}
+        />
       )}
       {currentView === 'dashboard' && currentUser.role === 'Department Head' && (
         <DeptHeadDashboard
           currentUser={currentUser}
           onNavigate={navigateTo}
+          onUpdateCurrentUser={(updated) => {
+            setCurrentUser((prev) => ({
+              ...prev,
+              ...updated,
+              contactNumber: updated.contact_number || updated.contactNumber || prev.contactNumber,
+              jobTitle: updated.job_title || updated.jobTitle || prev.jobTitle,
+              emergencyContact: updated.emergency_contact || updated.emergencyContact || prev.emergencyContact,
+              officeLocation: updated.office_location || updated.officeLocation || prev.officeLocation,
+            }));
+            if (api?.auth?.me) {
+              api.auth.me().then((fresh) => {
+                if (fresh) {
+                  setCurrentUser((prev) => ({ ...prev, ...fresh }));
+                }
+              }).catch(() => {});
+            }
+          }}
         />
       )}
       {currentView === 'dashboard' && currentUser.role === 'HR Personnel' && (
