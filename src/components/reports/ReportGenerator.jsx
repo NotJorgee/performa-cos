@@ -451,7 +451,7 @@ export default function ReportGenerator({
                   onChange={(e) => setSelectedDept(e.target.value)}
                   style={{ fontSize: '13px' }}
                 >
-                  <option value="All">All Overseeing Departments ({overseeingDepartments.length})</option>
+                  <option value="All">All Supervised Departments ({overseeingDepartments.length})</option>
                   {overseeingDepartments.map((d) => {
                     const dName = typeof d === 'object' && d !== null ? d.name : d;
                     return (

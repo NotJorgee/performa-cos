@@ -556,7 +556,9 @@ export default function App() {
         <>
           {(currentView === 'pending_evaluations' || currentView === 'intent_review') && (
             <IntentReview
+              currentUser={currentUser}
               departmentName={currentUser.department}
+              overseeingDepartments={currentUser.overseeingDepartments || currentUser.overseeing_departments}
               onBack={() => navigateTo('dashboard')}
               onNavigate={navigateTo}
             />

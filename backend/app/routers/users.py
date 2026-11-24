@@ -443,12 +443,17 @@ def update_user_department_assignments(
                     ))
 
     if payload.overseeing_department_ids is not None:
+        valid_overseeing_ids = [did for did in payload.overseeing_department_ids if did]
+        if valid_overseeing_ids:
+            if target_user.department_id not in valid_overseeing_ids:
+                target_user.department_id = valid_overseeing_ids[0]
+
         db.query(models.UserDepartmentAssignment).filter(
             models.UserDepartmentAssignment.user_id == user_id,
             models.UserDepartmentAssignment.assignment_type == "overseeing",
         ).delete(synchronize_session=False)
 
-        for dept_id in payload.overseeing_department_ids:
+        for dept_id in valid_overseeing_ids:
             if dept_id != target_user.department_id:
                 dept_exists = db.query(models.Department).filter(models.Department.id == dept_id).first()
                 if dept_exists:

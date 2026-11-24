@@ -45,13 +45,17 @@ def _build_user_response(user: models.UserAccount) -> dict:
     start_date = user.contract_start_date or user.date_appointed
     secondary_depts = []
     overseeing_depts = []
+    if user.department and user.role == "Department Head":
+        overseeing_depts.append({"id": user.department.id, "name": user.department.name, "college": user.department.college})
+
     for a in getattr(user, "department_assignments", []):
         if a.department:
             dept_obj = {"id": a.department.id, "name": a.department.name, "college": a.department.college}
             if a.assignment_type == "secondary":
                 secondary_depts.append(dept_obj)
             elif a.assignment_type == "overseeing":
-                overseeing_depts.append(dept_obj)
+                if not any(d["id"] == a.department.id for d in overseeing_depts):
+                    overseeing_depts.append(dept_obj)
 
     overseeing_ids = [user.department_id] if user.department_id else []
     for d in overseeing_depts:

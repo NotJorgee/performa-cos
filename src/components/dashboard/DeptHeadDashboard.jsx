@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, FileText, ArrowRight, Clock, Building2 } from 'lucide-react';
+import { UserCheck, FileText, ArrowRight, Clock } from 'lucide-react';
 import evsuSeal from '../../assets/images/evsu-seal.png';
 import { getFullFirstName } from '../../utils/nameHelper';
 import api from '../../services/api';
@@ -14,8 +14,6 @@ export default function DeptHeadDashboard({
   metrics: propMetrics = null,
   onNavigate = () => {},
 }) {
-  const [selectedDeptId, setSelectedDeptId] = useState('all');
-
   // Safely extract department name string
   const userDept = typeof currentUser.department === 'object' && currentUser.department !== null
     ? (currentUser.department.name || 'Computer Studies Department')
@@ -50,7 +48,7 @@ export default function DeptHeadDashboard({
     setSupervisedDepts(buildDepts());
   }, [currentUser, primaryDeptId, userDept]);
 
-  // Live query department assignments to ensure immediate reactivity if admin just updated them
+  // Live query department assignments to ensure immediate reactivity
   useEffect(() => {
     if (currentUser?.id && api?.users?.getDepartmentAssignments) {
       api.users.getDepartmentAssignments(currentUser.id).then((res) => {
@@ -61,14 +59,14 @@ export default function DeptHeadDashboard({
     }
   }, [currentUser?.id]);
 
-  const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}_${selectedDeptId}`;
+  const cacheKey = `depthead_dashboard_metrics_${currentUser?.id || 'me'}_consolidated`;
   // SWR Instant 0ms perceived load time from cache
-  const [metrics, setMetrics] = useState(() => (selectedDeptId === 'all' && propMetrics) || getCachedData(cacheKey));
-  const [isLoading, setIsLoading] = useState(() => !(selectedDeptId === 'all' && propMetrics) && !getCachedData(cacheKey));
+  const [metrics, setMetrics] = useState(() => propMetrics || getCachedData(cacheKey));
+  const [isLoading, setIsLoading] = useState(() => !propMetrics && !getCachedData(cacheKey));
 
   useEffect(() => {
     let isMounted = true;
-    if (selectedDeptId === 'all' && propMetrics) {
+    if (propMetrics) {
       setMetrics(propMetrics);
       setCachedData(cacheKey, propMetrics);
       setIsLoading(false);
@@ -89,8 +87,8 @@ export default function DeptHeadDashboard({
 
     const fetchMetrics = async () => {
       try {
-        const deptParam = selectedDeptId === 'all' ? null : Number(selectedDeptId);
-        const data = await api.analytics.getDeptHeadDashboard(deptParam);
+        // Fetch consolidated overview across all supervised departments
+        const data = await api.analytics.getDeptHeadDashboard(null);
         if (isMounted && data) {
           setMetrics(data);
           setCachedData(cacheKey, data);
@@ -107,7 +105,7 @@ export default function DeptHeadDashboard({
       isMounted = false;
       clearTimeout(safetyTimeout);
     };
-  }, [selectedDeptId, propMetrics, cacheKey]);
+  }, [propMetrics, cacheKey]);
 
   const pendingIntentsCount = metrics?.pendingIntents ?? 0;
   const fullFirstName = getFullFirstName(currentUser.fullName || currentUser.full_name || 'Department Head');
@@ -119,72 +117,20 @@ export default function DeptHeadDashboard({
   return (
     <div className="module-transition-enter">
       {/* Hero Banner with EVSU Seal matching COS & HR */}
-      <div className="hero-banner" style={{ marginBottom: supervisedDepts.length > 1 ? '16px' : '24px' }}>
+      <div className="hero-banner" style={{ marginBottom: '24px' }}>
         <img src={evsuSeal} alt="EVSU Seal" className="hero-seal" />
         <div>
           <h1>Welcome, {fullFirstName}</h1>
           <p>
-            {userDept} | Eastern Visayas State University Ormoc Campus
+            {supervisedDepts.length > 1
+              ? supervisedDepts.map((d) => d.name).join(' · ')
+              : userDept}{' '}
+            | Eastern Visayas State University Ormoc Campus
           </p>
         </div>
       </div>
 
-      {/* Concurrent Headship Scope Switcher (if supervisor oversees > 1 department) */}
-      {supervisedDepts.length > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#ffffff',
-            border: '1px solid var(--line)',
-            borderRadius: '10px',
-            padding: '10px 16px',
-            marginBottom: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            flexWrap: 'wrap',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Building2 size={16} color="var(--brand-700)" />
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-800)' }}>
-              Supervisory Scope:
-            </span>
-            <span className="badge" style={{ fontSize: '11px', background: 'var(--brand-50, #fdf2f4)', color: 'var(--brand-700)', border: '1px solid #fecdd3' }}>
-              Concurrent Headship ({supervisedDepts.length} Units)
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--ink-500)', fontWeight: 600 }}>Filter Department:</span>
-            <select
-              className="form-control"
-              style={{
-                width: 'auto',
-                minWidth: '220px',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                padding: '4px 10px',
-                height: '34px',
-                borderRadius: '6px',
-                borderColor: 'var(--brand-300)',
-                background: '#ffffff',
-              }}
-              value={selectedDeptId}
-              onChange={(e) => setSelectedDeptId(e.target.value)}
-            >
-              <option value="all">All Supervised Units ({supervisedDepts.length})</option>
-              {supervisedDepts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} {primaryDeptId && Number(d.id) === Number(primaryDeptId) ? '(Primary)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Category Panels (matching COS Employee & rest of system) */}
+      {/* Category Panels (Consolidated across all supervised departments) */}
       <div className="stat-grid stat-grid-3">
         {/* Panel 1: Renewals & Evaluations (Consolidated) */}
         <div

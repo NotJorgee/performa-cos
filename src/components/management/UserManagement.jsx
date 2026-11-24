@@ -440,11 +440,13 @@ export default function UserManagement({
     } else {
       setEditContractEndDate('');
     }
+    const primaryId = user.department_id ? Number(user.department_id) : null;
     setTransferDeptId(user.department_id ? String(user.department_id) : '');
     const secIds = (user.secondary_departments || user.secondaryDepartments || []).map((d) => d.id || d);
     const ovIds = (user.overseeing_departments || user.overseeingDepartments || []).map((d) => d.id || d);
+    const initialDeptHeadIds = primaryId ? Array.from(new Set([primaryId, ...ovIds])) : ovIds;
     setEditSecondaryDeptIds(secIds);
-    setEditOverseeingDeptIds(ovIds);
+    setEditOverseeingDeptIds(user.role === 'Department Head' ? initialDeptHeadIds : ovIds);
     if (api.users && api.users.getDepartmentAssignments) {
       api.users.getDepartmentAssignments(user.id).then((res) => {
         if (res) {
@@ -452,7 +454,9 @@ export default function UserManagement({
             setEditSecondaryDeptIds(res.secondary_departments.map((d) => d.id));
           }
           if (res.overseeing_departments) {
-            setEditOverseeingDeptIds(res.overseeing_departments.map((d) => d.id));
+            const fetchedIds = res.overseeing_departments.map((d) => d.id);
+            const combined = primaryId ? Array.from(new Set([primaryId, ...fetchedIds])) : fetchedIds;
+            setEditOverseeingDeptIds(user.role === 'Department Head' ? combined : fetchedIds);
           }
         }
       }).catch(() => {});
@@ -528,23 +532,32 @@ export default function UserManagement({
     setIsSavingAssignments(true);
     setUserModalSuccess(null);
 
-    const targetDept = departments.find((d) => String(d.id) === String(transferDeptId));
-    const targetDeptName = targetDept?.name || 'Selected Department';
-
     try {
-      // 1. If primary department changed, execute transfer
-      if (transferDeptId && String(transferDeptId) !== String(settingsUser.department_id)) {
-        if (api.users && api.users.transferDepartment) {
-          await api.users.transferDepartment(settingsUser.id, Number(transferDeptId));
-        }
-      }
-
-      // 2. Update secondary or overseeing assignments
       const payload = {};
-      if (settingsUser.role === 'COS Employee') {
-        payload.secondary_department_ids = editSecondaryDeptIds;
-      } else if (settingsUser.role === 'Department Head') {
+
+      if (settingsUser.role === 'Department Head') {
+        if (editOverseeingDeptIds.length === 0) {
+          showToast('A Department Head must oversee at least one department.');
+          setIsSavingAssignments(false);
+          return;
+        }
+        const baseDeptId = editOverseeingDeptIds[0];
+        if (baseDeptId && String(baseDeptId) !== String(settingsUser.department_id)) {
+          if (api.users && api.users.transferDepartment) {
+            await api.users.transferDepartment(settingsUser.id, Number(baseDeptId));
+          }
+        }
         payload.overseeing_department_ids = editOverseeingDeptIds;
+      } else {
+        // COS Employee or administrative role
+        if (transferDeptId && String(transferDeptId) !== String(settingsUser.department_id)) {
+          if (api.users && api.users.transferDepartment) {
+            await api.users.transferDepartment(settingsUser.id, Number(transferDeptId));
+          }
+        }
+        if (settingsUser.role === 'COS Employee') {
+          payload.secondary_department_ids = editSecondaryDeptIds;
+        }
       }
 
       if (api.users && api.users.updateDepartmentAssignments) {
@@ -2547,135 +2560,19 @@ export default function UserManagement({
             {/* TAB 2: Department & Assignments */}
             {userSettingsTab === 'transfer' && (
               <form onSubmit={handleSaveDepartmentAssignments}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                    <Building2 size={15} color="var(--brand-700)" />
-                    <span>Primary Department (Evaluated Workload)</span>
-                    <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <select
-                    className="form-control"
-                    value={transferDeptId}
-                    onChange={(e) => {
-                      const newId = Number(e.target.value);
-                      setTransferDeptId(e.target.value);
-                      if (newId) {
-                        setEditSecondaryDeptIds((prev) => prev.filter((id) => id !== newId));
-                        setEditOverseeingDeptIds((prev) => prev.filter((id) => id !== newId));
-                      }
-                    }}
-                    required
-                  >
-                    <option value="">Select Primary Department...</option>
-                    {EVSU_DEPARTMENT_GROUPS.map((grp) => {
-                      const groupDepts = departments.filter((d) =>
-                        grp.departments.includes(d.name)
-                      );
-                      if (groupDepts.length === 0) return null;
-                      return (
-                        <optgroup key={grp.key} label={grp.name}>
-                          {groupDepts.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
-                  <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
-                    {settingsUser.role === 'COS Employee'
-                      ? 'The primary department handles performance evaluations (IPCR/SPMS), contract renewals, and administrative ratings where the employee carries their primary workload.'
-                      : 'The primary organizational unit for this account.'}
-                  </span>
-                </div>
-
-                {/* Role-Specific Secondary / Overseeing Section */}
-                {settingsUser.role === 'COS Employee' && (
-                  <div style={{ marginBottom: '18px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                      <Users size={15} color="var(--brand-700)" />
-                      <span>Secondary Assigned Departments (Operational Assistance)</span>
-                    </label>
-                    <p className="muted" style={{ fontSize: '11.5px', margin: '0 0 8px', lineHeight: 1.4 }}>
-                      Assign this COS employee to additional departments for cross-unit duties or schedule assistance. Per institutional policy, evaluations and contract renewals remain anchored to their Primary Department.
-                    </p>
-                    <div
-                      style={{
-                        maxHeight: '160px',
-                        overflowY: 'auto',
-                        border: '1px solid var(--line)',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        background: '#f8fafc',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                      }}
-                    >
-                      {departments.map((dept) => {
-                        const isPrimary = String(dept.id) === String(transferDeptId);
-                        const isChecked = editSecondaryDeptIds.includes(dept.id);
-                        return (
-                          <label
-                            key={dept.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              fontSize: '12px',
-                              color: isPrimary ? 'var(--ink-400)' : 'var(--ink-800)',
-                              cursor: isPrimary ? 'not-allowed' : 'pointer',
-                              margin: 0,
-                              padding: '2px 0',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isPrimary || isChecked}
-                              disabled={isPrimary}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setEditSecondaryDeptIds((prev) => [...prev, dept.id]);
-                                } else {
-                                  setEditSecondaryDeptIds((prev) => prev.filter((id) => id !== dept.id));
-                                }
-                              }}
-                            />
-                            <span>{dept.name}</span>
-                            {isPrimary && (
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  padding: '1px 6px',
-                                  borderRadius: '10px',
-                                  background: '#e0f2fe',
-                                  color: '#0369a1',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Primary
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {settingsUser.role === 'Department Head' && (
+                {settingsUser.role === 'Department Head' ? (
                   <div style={{ marginBottom: '18px' }}>
                     <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                       <ShieldCheck size={15} color="var(--brand-700)" />
-                      <span>Additional Overseeing Departments (Concurrent Headship / OIC)</span>
+                      <span>Supervised Departments</span>
+                      <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
                     <p className="muted" style={{ fontSize: '11.5px', margin: '0 0 8px', lineHeight: 1.4 }}>
-                      Grant supervisory authority over additional departments. The Department Head will be able to switch between departments, monitor attendance, score evaluations, and endorse renewals for all designated units.
+                      Select all university departments overseen by this Department Head. The supervisor has full and equal supervisory authority across all selected units (monitoring staff attendance, approving requests, scoring evaluations, and endorsing renewals).
                     </p>
                     <div
                       style={{
-                        maxHeight: '160px',
+                        maxHeight: '220px',
                         overflowY: 'auto',
                         border: '1px solid var(--line)',
                         borderRadius: '6px',
@@ -2687,7 +2584,6 @@ export default function UserManagement({
                       }}
                     >
                       {departments.map((dept) => {
-                        const isPrimary = String(dept.id) === String(transferDeptId);
                         const isChecked = editOverseeingDeptIds.includes(dept.id);
                         return (
                           <label
@@ -2697,44 +2593,148 @@ export default function UserManagement({
                               alignItems: 'center',
                               gap: '8px',
                               fontSize: '12px',
-                              color: isPrimary ? 'var(--ink-400)' : 'var(--ink-800)',
-                              cursor: isPrimary ? 'not-allowed' : 'pointer',
+                              color: 'var(--ink-800)',
+                              cursor: 'pointer',
                               margin: 0,
-                              padding: '2px 0',
+                              padding: '3px 0',
                             }}
                           >
                             <input
                               type="checkbox"
-                              checked={isPrimary || isChecked}
-                              disabled={isPrimary}
+                              checked={isChecked}
                               onChange={(e) => {
                                 if (e.target.checked) {
                                   setEditOverseeingDeptIds((prev) => [...prev, dept.id]);
                                 } else {
-                                  setEditOverseeingDeptIds((prev) => prev.filter((id) => id !== dept.id));
+                                  if (editOverseeingDeptIds.length > 1) {
+                                    setEditOverseeingDeptIds((prev) => prev.filter((id) => id !== dept.id));
+                                  } else {
+                                    showToast('A Department Head must oversee at least one department.');
+                                  }
                                 }
                               }}
                             />
-                            <span>{dept.name}</span>
-                            {isPrimary && (
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  padding: '1px 6px',
-                                  borderRadius: '10px',
-                                  background: '#e0f2fe',
-                                  color: '#0369a1',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Primary Head
-                              </span>
-                            )}
+                            <span style={{ fontWeight: isChecked ? 600 : 400 }}>{dept.name}</span>
                           </label>
                         );
                       })}
                     </div>
                   </div>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                        <Building2 size={15} color="var(--brand-700)" />
+                        <span>Primary Department (Evaluated Workload)</span>
+                        <span style={{ color: 'var(--red-600)' }}>*</span>
+                      </label>
+                      <select
+                        className="form-control"
+                        value={transferDeptId}
+                        onChange={(e) => {
+                          const newId = Number(e.target.value);
+                          setTransferDeptId(e.target.value);
+                          if (newId) {
+                            setEditSecondaryDeptIds((prev) => prev.filter((id) => id !== newId));
+                          }
+                        }}
+                        required
+                      >
+                        <option value="">Select Primary Department...</option>
+                        {EVSU_DEPARTMENT_GROUPS.map((grp) => {
+                          const groupDepts = departments.filter((d) =>
+                            grp.departments.includes(d.name)
+                          );
+                          if (groupDepts.length === 0) return null;
+                          return (
+                            <optgroup key={grp.key} label={grp.name}>
+                              {groupDepts.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
+                      </select>
+                      <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
+                        The primary department handles performance evaluations (IPCR/SPMS), contract renewals, and administrative ratings where the employee carries their primary workload.
+                      </span>
+                    </div>
+
+                    {settingsUser.role === 'COS Employee' && (
+                      <div style={{ marginBottom: '18px' }}>
+                        <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          <Users size={15} color="var(--brand-700)" />
+                          <span>Secondary Assigned Departments (Operational Assistance)</span>
+                        </label>
+                        <p className="muted" style={{ fontSize: '11.5px', margin: '0 0 8px', lineHeight: 1.4 }}>
+                          Assign this COS employee to additional departments for cross-unit duties or schedule assistance. Per institutional policy, evaluations and contract renewals remain anchored to their Primary Department.
+                        </p>
+                        <div
+                          style={{
+                            maxHeight: '160px',
+                            overflowY: 'auto',
+                            border: '1px solid var(--line)',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            background: '#f8fafc',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                          }}
+                        >
+                          {departments.map((dept) => {
+                            const isPrimary = String(dept.id) === String(transferDeptId);
+                            const isChecked = editSecondaryDeptIds.includes(dept.id);
+                            return (
+                              <label
+                                key={dept.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  fontSize: '12px',
+                                  color: isPrimary ? 'var(--ink-400)' : 'var(--ink-800)',
+                                  cursor: isPrimary ? 'not-allowed' : 'pointer',
+                                  margin: 0,
+                                  padding: '2px 0',
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isPrimary || isChecked}
+                                  disabled={isPrimary}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditSecondaryDeptIds((prev) => [...prev, dept.id]);
+                                    } else {
+                                      setEditSecondaryDeptIds((prev) => prev.filter((id) => id !== dept.id));
+                                    }
+                                  }}
+                                />
+                                <span>{dept.name}</span>
+                                {isPrimary && (
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      padding: '1px 6px',
+                                      borderRadius: '10px',
+                                      background: '#e0f2fe',
+                                      color: '#0369a1',
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    Primary
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>

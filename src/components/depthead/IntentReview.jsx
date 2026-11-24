@@ -36,7 +36,9 @@ const getSafeDeptName = (dept, fallback = 'Computer Studies Department') => {
 };
 
 export default function IntentReview({
+  currentUser = null,
   departmentName = 'Computer Studies Department',
+  overseeingDepartments = null,
   onBack = null,
   onNavigate = null,
   onEndorseEmployee = () => {},
@@ -398,7 +400,10 @@ export default function IntentReview({
   };
 
   // Filter candidates: Action panel retains pending renewals awaiting immediate supervisor evaluation
-  const uniqueDepts = Array.from(new Set(candidates.map((c) => c.department).filter(Boolean)));
+  const uniqueDepts = Array.from(new Set([
+    ...((overseeingDepartments || []).map((d) => (typeof d === 'object' && d !== null ? d.name : d)).filter(Boolean)),
+    ...(candidates.map((c) => c.department).filter(Boolean)),
+  ]));
   const pendingCandidates = candidates.filter(
     (c) => c.endorsementStatus === 'Pending Review' && (filterDept === 'ALL' || c.department === filterDept)
   );
@@ -550,7 +555,7 @@ export default function IntentReview({
             value={filterDept}
             onChange={(e) => setFilterDept(e.target.value)}
           >
-            <option value="ALL">All Overseeing Departments ({uniqueDepts.length})</option>
+            <option value="ALL">All Supervised Departments ({uniqueDepts.length})</option>
             {uniqueDepts.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -573,7 +578,7 @@ export default function IntentReview({
             </div>
             <h3 style={{ margin: '0 0 6px', color: 'var(--ink-800)' }}>All Caught Up!</h3>
             <p className="muted" style={{ margin: '0 0 16px', fontSize: '13.5px', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
-              There are no pending renewal reviews for {displayDepartmentName}. Completed evaluation records and verified monthly accomplishment reports are permanently stored in Employee Records.
+              There are no pending renewal reviews for {filterDept !== 'ALL' ? filterDept : (uniqueDepts.length > 1 ? 'your supervised departments' : displayDepartmentName)}. Completed evaluation records and verified monthly accomplishment reports are permanently stored in Employee Records.
             </p>
             {onNavigate && (
               <button

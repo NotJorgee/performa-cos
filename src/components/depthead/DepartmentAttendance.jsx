@@ -227,10 +227,10 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                 value={selectedDeptId}
                 onChange={(e) => setSelectedDeptId(e.target.value)}
               >
-                <option value="all">All Overseeing Departments ({supervisedDepts.length})</option>
+                <option value="all">All Supervised Departments ({supervisedDepts.length})</option>
                 {supervisedDepts.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name} {primaryDeptId && Number(d.id) === Number(primaryDeptId) ? '(Primary)' : ''}
+                    {d.name}
                   </option>
                 ))}
               </select>
