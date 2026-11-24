@@ -132,6 +132,8 @@ export default function HistoricalAttendanceRoster({
     if (statusFilter === 'late') return item.badge_type === 'late';
     if (statusFilter === 'undertime') return item.badge_type === 'undertime';
     if (statusFilter === 'leave') return item.badge_type === 'leave';
+    if (statusFilter === 'holiday') return item.badge_type === 'holiday';
+    if (statusFilter === 'holiday_duty') return item.badge_type === 'holiday_duty';
     if (statusFilter === 'pending') return item.badge_type === 'pending';
     return true;
   });
@@ -262,11 +264,25 @@ export default function HistoricalAttendanceRoster({
           }}
         >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <Calendar size={18} color="var(--brand-700)" />
               <h2 style={{ fontSize: '16.5px', fontWeight: 800, margin: 0, color: 'var(--ink-900)' }}>
                 Department Attendance Roster — {rosterData?.date || selectedDate}
               </h2>
+              {rosterData?.is_holiday && (
+                <span
+                  className="badge"
+                  style={{
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    border: '1px solid #fde68a',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {rosterData.holiday_name}
+                </span>
+              )}
             </div>
           </div>
 
@@ -283,6 +299,8 @@ export default function HistoricalAttendanceRoster({
               <option value="late">Late Arrivals</option>
               <option value="undertime">Undertime</option>
               <option value="leave">On Leave</option>
+              <option value="holiday">Official Holiday</option>
+              <option value="holiday_duty">Holiday Duty / Overtime</option>
               <option value="pending">Not Timed In</option>
             </select>
 
@@ -303,6 +321,31 @@ export default function HistoricalAttendanceRoster({
             </div>
           </div>
         </div>
+
+        {/* Institutional Holiday Notice */}
+        {rosterData?.is_holiday && (
+          <div
+            style={{
+              padding: '12px 20px',
+              background: '#fffbeb',
+              borderBottom: '1px solid #fef3c7',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '13px',
+              color: '#92400e',
+            }}
+          >
+            <div style={{ fontWeight: 700, color: '#d97706' }}>Notice:</div>
+            <div>
+              <span style={{ fontWeight: 700 }}>Official Holiday / Work Suspension: {rosterData.holiday_name}</span>{' '}
+              &bull; {rosterData.holiday_type?.replace(/_/g, ' ')}
+              <span style={{ color: '#b45309', marginLeft: '6px' }}>
+                — {rosterData.holiday_description || 'Regular university office operations are suspended under CSC/SUC policy.'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Table Content */}
         <div style={{ overflowX: 'auto' }}>
@@ -445,9 +488,20 @@ export default function HistoricalAttendanceRoster({
                             ? 'badge-pending'
                             : sub.badge_type === 'leave'
                             ? 'badge-active'
+                            : sub.badge_type === 'holiday'
+                            ? 'badge-pending'
+                            : sub.badge_type === 'holiday_duty'
+                            ? 'badge-active'
                             : 'badge-inactive'
                         }`}
-                        style={{ fontSize: '11.5px' }}
+                        style={{
+                          fontSize: '11.5px',
+                          ...(sub.badge_type === 'holiday'
+                            ? { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600 }
+                            : sub.badge_type === 'holiday_duty'
+                            ? { background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe', fontWeight: 700 }
+                            : {}),
+                        }}
                       >
                         {sub.status}
                       </span>

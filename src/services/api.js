@@ -494,6 +494,16 @@ export const api = {
       const qs = new URLSearchParams(params).toString();
       return request(`/attendance/payroll-packet${qs ? `?${qs}` : ''}`);
     },
+    getHolidays: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.year) q.append('year', params.year);
+      if (params.month) q.append('month', params.month);
+      if (params.date) q.append('date', params.date);
+      const qs = q.toString();
+      return request(`/attendance/holidays${qs ? `?${qs}` : ''}`);
+    },
+    createHoliday: (data) => request('/attendance/holidays', { method: 'POST', body: JSON.stringify(data) }),
+    deleteHoliday: (holidayId) => request(`/attendance/holidays/${holidayId}`, { method: 'DELETE' }),
   },
 
   leaves: {

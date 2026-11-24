@@ -422,7 +422,11 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               </div>
               <span
                 className={`badge ${
-                  todayData?.status === 'ON_TIME'
+                  todayData?.status?.toLowerCase().includes('holiday duty')
+                    ? 'badge-active'
+                    : todayData?.status?.toLowerCase().includes('holiday')
+                    ? 'badge-pending'
+                    : todayData?.status === 'ON_TIME'
                     ? 'badge-completed'
                     : todayData?.status === 'LATE'
                     ? 'badge-archived'
@@ -434,13 +438,51 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                     ? 'badge-active'
                     : 'badge-inactive'
                 }`}
-                style={{ fontSize: '12.5px', padding: '5px 12px', fontWeight: 700 }}
+                style={{
+                  fontSize: '12.5px',
+                  padding: '5px 12px',
+                  fontWeight: 700,
+                  ...(todayData?.status?.toLowerCase().includes('holiday duty')
+                    ? { background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe' }
+                    : todayData?.status?.toLowerCase().includes('holiday')
+                    ? { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }
+                    : {}),
+                }}
               >
                 {todayData?.on_approved_leave
                   ? `ON LEAVE (${todayData.leave_type})`
                   : todayData?.status || 'PENDING PUNCH'}
               </span>
             </div>
+
+            {/* Institutional Holiday Notice */}
+            {todayData?.is_holiday && (
+              <div
+                style={{
+                  marginBottom: '18px',
+                  padding: '14px 18px',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                }}
+              >
+                <AlertCircle size={20} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#92400e' }}>
+                    Official Holiday / Work Suspension: {todayData.holiday_name}
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#b45309', marginTop: '2px' }}>
+                    {todayData.holiday_type?.replace(/_/g, ' ')} &bull; {todayData.holiday_description || 'Regular university office operations are suspended under CSC and SUC policies.'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#78350f', marginTop: '4px' }}>
+                    Contract of Service personnel who do not report today are officially designated as <strong>Official Holiday</strong> (no absent penalty on Form 48). Personnel rendering scheduled emergency or institutional duty may clock in below for <strong>Holiday Duty / Overtime</strong>.
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Time In / Time Out Display */}
             <div
@@ -534,6 +576,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                   ? 'Acquiring GPS...'
                   : punchAction === 'saving_in'
                   ? 'Recording Punch...'
+                  : todayData?.is_holiday
+                  ? 'Holiday Duty Clock-In'
                   : 'Clock In'}
               </button>
 

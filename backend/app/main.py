@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 
 from .config import settings
-from .database import get_db, engine, Base
+from .database import get_db, engine, Base, SessionLocal
 from . import models, schemas
 from .auth import get_current_user
 from .storage_service import ensure_buckets_exist
@@ -17,7 +17,7 @@ from .email_service import (
     send_dept_head_contract_resolution_email,
 )
 from .scheduler import evaluate_contract_deadlines, start_deadline_scheduler
-from .department_helpers import get_overseeing_department_ids
+from .department_helpers import get_overseeing_department_ids, seed_institutional_holidays
 
 # Routers
 from .routers.auth import router as auth_router
@@ -89,6 +89,11 @@ async def startup_event():
     except Exception as e:
         print(f"[startup] Table creation check: {e}")
     try:
+        with SessionLocal() as db:
+            seed_institutional_holidays(db)
+    except Exception as e:
+        print(f"[startup] Holiday seeding check: {e}")
+    try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE leave_request ADD COLUMN IF NOT EXISTS hours FLOAT;"))
             conn.commit()
@@ -119,6 +124,7 @@ async def startup_event():
             "leave_request",
             "system_settings",
             "user_department_assignment",
+            "institutional_holiday",
             "alembic_version",
         ]
         with engine.connect() as conn:

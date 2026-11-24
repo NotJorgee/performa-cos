@@ -336,10 +336,24 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
               gap: '12px',
             }}
           >
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div className="card-title" style={{ margin: 0 }}>
                 Today's Department Attendance Roster ({rosterData?.date})
               </div>
+              {rosterData?.is_holiday && (
+                <span
+                  className="badge"
+                  style={{
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    border: '1px solid #fde68a',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {rosterData.holiday_name}
+                </span>
+              )}
             </div>
 
             <div style={{ position: 'relative', width: '260px' }}>
@@ -358,6 +372,32 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
               />
             </div>
           </div>
+
+          {rosterData?.is_holiday && (
+            <div
+              style={{
+                padding: '12px 20px',
+                background: '#fffbeb',
+                borderBottom: '1px solid #fef3c7',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '13px',
+                color: '#92400e',
+              }}
+            >
+              <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0 }} />
+              <div>
+                <span style={{ fontWeight: 700 }}>
+                  Official Holiday / Work Suspension: {rosterData.holiday_name}
+                </span>{' '}
+                &bull; {rosterData.holiday_type?.replace(/_/g, ' ')}
+                <span style={{ color: '#b45309', marginLeft: '6px' }}>
+                  — {rosterData.holiday_description || 'Regular university office operations are suspended under CSC/SUC policy.'}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table">
@@ -489,9 +529,20 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                               ? 'badge-pending'
                               : sub.badge_type === 'leave'
                               ? 'badge-active'
+                              : sub.badge_type === 'holiday'
+                              ? 'badge-pending'
+                              : sub.badge_type === 'holiday_duty'
+                              ? 'badge-active'
                               : 'badge-inactive'
                           }`}
-                          style={{ fontSize: '11.5px' }}
+                          style={{
+                            fontSize: '11.5px',
+                            ...(sub.badge_type === 'holiday'
+                              ? { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600 }
+                              : sub.badge_type === 'holiday_duty'
+                              ? { background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe', fontWeight: 700 }
+                              : {}),
+                          }}
                         >
                           {sub.status}
                         </span>

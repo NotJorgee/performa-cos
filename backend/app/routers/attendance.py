@@ -45,6 +45,14 @@ class LeaveReviewRequest(BaseModel):
     review_notes: Optional[str] = None
 
 
+class HolidayCreateRequest(BaseModel):
+    name: str
+    holiday_date: str  # 'YYYY-MM-DD'
+    holiday_type: Optional[str] = "REGULAR"  # 'REGULAR' | 'SPECIAL_NON_WORKING' | 'LOCAL' | 'SUSPENSION'
+    description: Optional[str] = None
+    is_work_suspended: Optional[bool] = True
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -216,8 +224,16 @@ def attendance_time_in(
     is_weekend = (weekday in (5, 6))
     is_after_hours = (not is_weekend and arrival_mins >= end_mins)
 
-    # 1.1 Overtime Authorization Gate Check (Weekends & Weekdays after 5:00 PM)
-    # Requires an approved Overtime Request under Time & Shift Requests
+    # Check if today is an official institutional holiday or declared suspension
+    today_holiday = (
+        db.query(models.InstitutionalHoliday)
+        .filter(models.InstitutionalHoliday.holiday_date == today_date)
+        .first()
+    )
+    is_holiday_duty = bool(today_holiday and today_holiday.is_work_suspended)
+
+    # 1.1 Overtime / Holiday Duty Gate Check
+    # Weekends, after 5:00 PM, or Institutional Holidays
     approved_ot = None
     if is_weekend or is_after_hours:
         approved_ot = (
@@ -231,7 +247,7 @@ def attendance_time_in(
             )
             .first()
         )
-        if not approved_ot:
+        if not approved_ot and not is_holiday_duty:
             if is_weekend:
                 day_name = pht_now.strftime("%A")
                 raise HTTPException(
@@ -244,8 +260,8 @@ def attendance_time_in(
                     detail="Regular check-in closed at 5:00 PM. An approved Overtime Request under Time & Shift Requests is required to clock in after hours.",
                 )
 
-    # 1.2 Morning Gate Opening Check (Regular weekday shifts)
-    if not is_weekend and not is_after_hours and arrival_mins < earliest_mins:
+    # 1.2 Morning Gate Opening Check (Regular weekday shifts, bypassed on holidays/weekends)
+    if not is_weekend and not is_after_hours and not is_holiday_duty and arrival_mins < earliest_mins:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Campus check-in is not yet open. Official morning gate check-in opens at {shift['earliest_punch_str']} (official shift starts at {shift['official_start_str']}).",
@@ -291,7 +307,7 @@ def attendance_time_in(
         )
 
     # 4. Shift and Tardiness Resolution
-    if is_weekend or is_after_hours:
+    if is_holiday_duty or is_weekend or is_after_hours:
         punch_status = "OVERTIME"
         is_ot = True
         minutes_late = 0
@@ -507,9 +523,27 @@ def get_today_status(
         .first()
     )
 
+    today_holiday = (
+        db.query(models.InstitutionalHoliday)
+        .filter(models.InstitutionalHoliday.holiday_date == today_date)
+        .first()
+    )
+
     credited_time_in_str, is_early, early_minutes = resolve_normalized_time_in(
         log.time_in if log else None, shift, is_overtime=bool(log and log.is_overtime)
     )
+
+    if active_leave:
+        today_display_status = active_leave.leave_type
+    elif log and log.time_in:
+        if today_holiday and today_holiday.is_work_suspended:
+            today_display_status = f"Holiday Duty: {today_holiday.name}"
+        else:
+            today_display_status = log.status
+    elif today_holiday and today_holiday.is_work_suspended:
+        today_display_status = f"Official Holiday: {today_holiday.name}"
+    else:
+        today_display_status = "PENDING_PUNCH"
 
     return {
         "date": today_date.strftime("%B %d, %Y"),
@@ -518,6 +552,11 @@ def get_today_status(
         "shift": shift,
         "is_weekend": pht_now.weekday() in (5, 6),
         "is_saturday": pht_now.weekday() == 5,
+        "is_holiday": bool(today_holiday),
+        "holiday_name": today_holiday.name if today_holiday else None,
+        "holiday_type": today_holiday.holiday_type if today_holiday else None,
+        "is_work_suspended": today_holiday.is_work_suspended if today_holiday else False,
+        "holiday_description": today_holiday.description if today_holiday else None,
         "is_overtime": log.is_overtime if log else False,
         "has_timed_in": bool(log and log.time_in),
         "has_timed_out": bool(log and log.time_out),
@@ -526,7 +565,7 @@ def get_today_status(
         "is_early": is_early,
         "early_minutes": early_minutes,
         "time_out": log.time_out.strftime("%I:%M %p") if (log and log.time_out) else None,
-        "status": active_leave.leave_type if active_leave else (log.status if log else "PENDING_PUNCH"),
+        "status": today_display_status,
         "minutes_late": log.minutes_late if log else 0,
         "undertime_minutes": log.undertime_minutes if log else 0,
         "overtime_hours": log.overtime_hours if log else 0.0,
@@ -581,6 +620,13 @@ def get_department_attendance_roster(
 
     subordinates = query.order_by(models.UserAccount.full_name.asc()).all()
 
+    target_holiday = (
+        db.query(models.InstitutionalHoliday)
+        .filter(models.InstitutionalHoliday.holiday_date == target_date)
+        .first()
+    )
+    is_work_suspended_holiday = bool(target_holiday and target_holiday.is_work_suspended)
+
     roster = []
     total_present = 0
     total_late = 0
@@ -634,7 +680,11 @@ def get_department_attendance_roster(
             badge_type = "leave"
             total_on_leave += 1
         elif att and att.time_in:
-            if att.status == "UNDERTIME" or att.undertime_minutes > 0:
+            if is_work_suspended_holiday:
+                sub_status = f"Holiday Duty ({target_holiday.name})"
+                badge_type = "holiday_duty"
+                total_present += 1
+            elif att.status == "UNDERTIME" or att.undertime_minutes > 0:
                 sub_status = f"Undertime ({att.undertime_minutes} mins)"
                 badge_type = "undertime"
                 total_present += 1
@@ -643,7 +693,7 @@ def get_department_attendance_roster(
                 badge_type = "late"
                 total_late += 1
                 total_present += 1
-            elif att.status == "OVERTIME":
+            elif att.status == "OVERTIME" or att.is_overtime:
                 sub_status = f"Overtime ({att.overtime_hours} hrs)"
                 badge_type = "overtime"
                 total_present += 1
@@ -654,6 +704,9 @@ def get_department_attendance_roster(
         elif is_pre_onboarding:
             sub_status = "N/A"
             badge_type = "na"
+        elif is_work_suspended_holiday:
+            sub_status = f"Official Holiday ({target_holiday.name})"
+            badge_type = "holiday"
         else:
             sub_status = "Not Timed In"
             badge_type = "pending"
@@ -691,6 +744,11 @@ def get_department_attendance_roster(
     return {
         "date": target_date.strftime("%B %d, %Y"),
         "raw_date": target_date.isoformat(),
+        "is_holiday": bool(target_holiday),
+        "holiday_name": target_holiday.name if target_holiday else None,
+        "holiday_type": target_holiday.holiday_type if target_holiday else None,
+        "is_work_suspended": is_work_suspended_holiday,
+        "holiday_description": target_holiday.description if target_holiday else None,
         "total_subordinates": len(subordinates),
         "present_count": total_present,
         "late_count": total_late,
@@ -720,6 +778,11 @@ def get_campus_attendance_overview(
         )
 
     target_date = datetime.date.fromisoformat(date) if date else get_pht_now().date()
+    target_holiday = (
+        db.query(models.InstitutionalHoliday)
+        .filter(models.InstitutionalHoliday.holiday_date == target_date)
+        .first()
+    )
     departments = db.query(models.Department).order_by(models.Department.name.asc()).all()
 
     dept_summaries = []
@@ -787,6 +850,12 @@ def get_campus_attendance_overview(
 
     return {
         "date": target_date.strftime("%B %d, %Y"),
+        "raw_date": target_date.isoformat(),
+        "is_holiday": bool(target_holiday),
+        "holiday_name": target_holiday.name if target_holiday else None,
+        "holiday_type": target_holiday.holiday_type if target_holiday else None,
+        "is_work_suspended": bool(target_holiday and target_holiday.is_work_suspended),
+        "holiday_description": target_holiday.description if target_holiday else None,
         "total_active_cos": campus_total_cos,
         "total_present_today": campus_present,
         "total_late_today": campus_late,
@@ -887,6 +956,17 @@ def get_payroll_dtr_packet(
         .all()
     )
 
+    # Pre-fetch institutional holidays and executive work suspensions
+    holidays = (
+        db.query(models.InstitutionalHoliday)
+        .filter(
+            models.InstitutionalHoliday.holiday_date >= start_date,
+            models.InstitutionalHoliday.holiday_date <= end_date,
+        )
+        .all()
+    )
+    holiday_map = {h.holiday_date: h for h in holidays}
+
     daily_records = []
     total_working_days = 0
     days_present = 0
@@ -929,13 +1009,17 @@ def get_payroll_dtr_packet(
             if contract_start and curr_date < contract_start:
                 is_before_onboarding = True
 
-        if not is_weekend and not is_before_onboarding:
+        day_holiday = holiday_map.get(curr_date)
+        is_holiday_suspended = bool(day_holiday and day_holiday.is_work_suspended)
+
+        # CSC/SUC Rule: Official holidays and executive suspensions do not count as required working days for absent deductions
+        if not is_weekend and not is_before_onboarding and not is_holiday_suspended:
             total_working_days += 1
 
         time_in_str = att.time_in.strftime("%I:%M %p") if (att and att.time_in) else "—"
         time_out_str = att.time_out.strftime("%I:%M %p") if (att and att.time_out) else "—"
         dtr_cred_str, dtr_early_flag, dtr_early_mins = resolve_normalized_time_in(
-            att.time_in if att else None, shift, is_overtime=bool(att and (att.is_overtime or is_weekend))
+            att.time_in if att else None, shift, is_overtime=bool(att and (att.is_overtime or is_weekend or is_holiday_suspended))
         )
 
         discrepancy = None
@@ -945,9 +1029,13 @@ def get_payroll_dtr_packet(
             badge_type = "leave"
         elif att and att.time_in:
             days_present += 1
-            if att.is_overtime or is_weekend:
+            if is_holiday_suspended:
+                day_status = f"Holiday Duty: {day_holiday.name}"
+                total_overtime_hours += (att.overtime_hours or 0.0)
+                badge_type = "holiday_duty"
+            elif att.is_overtime or is_weekend:
                 day_status = "Authorized Overtime"
-                total_overtime_hours += att.overtime_hours
+                total_overtime_hours += (att.overtime_hours or 0.0)
                 badge_type = "overtime"
             elif att.status == "UNDERTIME" or att.undertime_minutes > 0:
                 day_status = f"Undertime ({att.undertime_minutes}m)"
@@ -965,7 +1053,7 @@ def get_payroll_dtr_packet(
             if att.undertime_minutes > 0:
                 total_undertime_minutes += att.undertime_minutes
 
-            if not has_dar and not is_weekend and not is_future:
+            if not has_dar and not is_weekend and not is_future and not is_holiday_suspended:
                 discrepancy = "Time-In logged but no Daily Accomplishment Report submitted."
         else:
             if is_future:
@@ -974,6 +1062,9 @@ def get_payroll_dtr_packet(
             elif is_before_onboarding:
                 day_status = "Weekend Rest Day" if is_weekend else "N/A"
                 badge_type = "weekend" if is_weekend else "na"
+            elif is_holiday_suspended:
+                day_status = f"Official Holiday: {day_holiday.name}"
+                badge_type = "holiday"
             elif is_weekend:
                 day_status = "Weekend Rest Day"
                 badge_type = "weekend"
@@ -995,6 +1086,10 @@ def get_payroll_dtr_packet(
             "day_of_week": curr_date.strftime("%A"),
             "is_weekend": is_weekend,
             "is_future": is_future,
+            "is_holiday": bool(day_holiday),
+            "holiday_name": day_holiday.name if day_holiday else None,
+            "holiday_type": day_holiday.holiday_type if day_holiday else None,
+            "is_work_suspended": is_holiday_suspended,
             "shift_type": shift["shift_type"],
             "time_in": time_in_str,
             "credited_time_in": dtr_cred_str or "—",
@@ -1400,4 +1495,172 @@ def review_leave_request(
         "status": "success",
         "message": f"Leave request #{leave_id} has been {new_status.lower()}.",
         "new_status": new_status,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Institutional Holidays & Executive Work Suspensions Management
+# ---------------------------------------------------------------------------
+@router.get("/holidays")
+def get_institutional_holidays(
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Returns the calendar of official Philippine national, regional,
+    and EVSU institutional holidays and executive work suspensions.
+    """
+    query = db.query(models.InstitutionalHoliday)
+    if date:
+        target_d = datetime.date.fromisoformat(date)
+        holiday = query.filter(models.InstitutionalHoliday.holiday_date == target_d).first()
+        return {
+            "date": date,
+            "is_holiday": bool(holiday),
+            "holiday": {
+                "id": holiday.id,
+                "name": holiday.name,
+                "holiday_date": str(holiday.holiday_date),
+                "holiday_type": holiday.holiday_type,
+                "description": holiday.description,
+                "is_work_suspended": holiday.is_work_suspended,
+            } if holiday else None,
+        }
+
+    if year:
+        if month:
+            num_days = calendar.monthrange(year, month)[1]
+            s_date = datetime.date(year, month, 1)
+            e_date = datetime.date(year, month, num_days)
+            query = query.filter(models.InstitutionalHoliday.holiday_date >= s_date, models.InstitutionalHoliday.holiday_date <= e_date)
+        else:
+            s_date = datetime.date(year, 1, 1)
+            e_date = datetime.date(year, 12, 31)
+            query = query.filter(models.InstitutionalHoliday.holiday_date >= s_date, models.InstitutionalHoliday.holiday_date <= e_date)
+
+    holidays = query.order_by(models.InstitutionalHoliday.holiday_date.asc()).all()
+    return [
+        {
+            "id": h.id,
+            "name": h.name,
+            "holiday_date": str(h.holiday_date),
+            "holiday_type": h.holiday_type,
+            "description": h.description,
+            "is_work_suspended": h.is_work_suspended,
+            "created_at": h.created_at.isoformat() if h.created_at else None,
+        }
+        for h in holidays
+    ]
+
+
+@router.post("/holidays")
+def create_institutional_holiday(
+    payload: HolidayCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Declares an institutional holiday or executive work suspension (e.g. Typhoon/Weather emergency).
+    Restricted to HR Personnel and Super Admin.
+    """
+    if current_user.role not in ["HR Personnel", "Super Admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to HR Personnel and Super Administrators.",
+        )
+
+    try:
+        parsed_date = datetime.date.fromisoformat(payload.holiday_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid holiday_date format. Must be YYYY-MM-DD.")
+
+    existing = (
+        db.query(models.InstitutionalHoliday)
+        .filter(models.InstitutionalHoliday.holiday_date == parsed_date)
+        .first()
+    )
+    if existing:
+        existing.name = payload.name
+        existing.holiday_type = payload.holiday_type or "REGULAR"
+        existing.description = payload.description
+        existing.is_work_suspended = payload.is_work_suspended if payload.is_work_suspended is not None else True
+        db.commit()
+        db.refresh(existing)
+        holiday_obj = existing
+        action_name = "UPDATED"
+    else:
+        holiday_obj = models.InstitutionalHoliday(
+            name=payload.name,
+            holiday_date=parsed_date,
+            holiday_type=payload.holiday_type or "REGULAR",
+            description=payload.description,
+            is_work_suspended=payload.is_work_suspended if payload.is_work_suspended is not None else True,
+            created_by_id=current_user.id,
+        )
+        db.add(holiday_obj)
+        db.commit()
+        db.refresh(holiday_obj)
+        action_name = "CREATED"
+
+    log_audit(
+        db=db,
+        action=f"INSTITUTIONAL_HOLIDAY_{action_name}",
+        target_scope=f"{holiday_obj.name} ({holiday_obj.holiday_date})",
+        operation_details=f"Type: {holiday_obj.holiday_type}, Work Suspended: {holiday_obj.is_work_suspended}. Declared by {current_user.full_name}.",
+        user=current_user,
+    )
+
+    return {
+        "status": "success",
+        "message": f"Institutional holiday '{holiday_obj.name}' successfully {action_name.lower()}.",
+        "holiday": {
+            "id": holiday_obj.id,
+            "name": holiday_obj.name,
+            "holiday_date": str(holiday_obj.holiday_date),
+            "holiday_type": holiday_obj.holiday_type,
+            "description": holiday_obj.description,
+            "is_work_suspended": holiday_obj.is_work_suspended,
+        },
+    }
+
+
+@router.delete("/holidays/{holiday_id}")
+def delete_institutional_holiday(
+    holiday_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.UserAccount = Depends(get_current_user),
+):
+    """
+    Revokes or removes an institutional holiday or declared suspension.
+    Restricted to HR Personnel and Super Admin.
+    """
+    if current_user.role not in ["HR Personnel", "Super Admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to HR Personnel and Super Administrators.",
+        )
+
+    holiday = db.query(models.InstitutionalHoliday).filter(models.InstitutionalHoliday.id == holiday_id).first()
+    if not holiday:
+        raise HTTPException(status_code=404, detail="Institutional holiday record not found.")
+
+    h_name = holiday.name
+    h_date = str(holiday.holiday_date)
+    db.delete(holiday)
+    db.commit()
+
+    log_audit(
+        db=db,
+        action="INSTITUTIONAL_HOLIDAY_DELETED",
+        target_scope=f"{h_name} ({h_date})",
+        operation_details=f"Revoked by {current_user.full_name}.",
+        user=current_user,
+    )
+
+    return {
+        "status": "success",
+        "message": f"Institutional holiday '{h_name}' on {h_date} revoked successfully.",
     }

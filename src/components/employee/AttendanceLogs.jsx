@@ -122,6 +122,12 @@ export default function AttendanceLogs({ currentUser, employeeId = null, employe
     if (s.includes('overtime') || b === 'overtime') {
       return { background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' };
     }
+    if (s.includes('holiday duty') || b === 'holiday_duty') {
+      return { background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe' };
+    }
+    if (s.includes('holiday') || s.includes('suspended') || b === 'holiday') {
+      return { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' };
+    }
     if (s.includes('approved') || s.includes('leave') || b === 'leave') {
       return { background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
     }

@@ -456,3 +456,23 @@ class SystemSetting(Base):
     # Relationships
     updated_by = relationship("UserAccount", foreign_keys=[updated_by_id])
 
+
+# ---------------------------------------------------------------------------
+# InstitutionalHoliday (National, Local SUC, and Work Suspension Calendar)
+# ---------------------------------------------------------------------------
+class InstitutionalHoliday(Base):
+    __tablename__ = "institutional_holiday"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    holiday_date = Column(Date, nullable=False, index=True)
+    holiday_type = Column(String(50), nullable=False, default="REGULAR")  # 'REGULAR' | 'SPECIAL_NON_WORKING' | 'LOCAL' | 'SUSPENSION'
+    description = Column(String(255), nullable=True)
+    is_work_suspended = Column(Boolean, default=True)
+    created_by_id = Column(Integer, ForeignKey("user_account.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    created_by = relationship("UserAccount", foreign_keys=[created_by_id])
+
+
