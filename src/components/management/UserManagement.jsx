@@ -1474,13 +1474,21 @@ export default function UserManagement({
 
                                     <td>
                                       <div style={{ fontSize: '12.5px', color: 'var(--ink-800)' }}>
-                                        {person.contract_end_date
-                                          ? new Date(person.contract_end_date).toLocaleDateString('en-US', {
-                                              month: 'short',
-                                              day: '2-digit',
-                                              year: 'numeric',
-                                            })
-                                          : 'Jun 30, 2026'}
+                                        {person.role !== 'COS Employee' ? (
+                                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-600)' }}>
+                                            Permanent Plantilla
+                                          </span>
+                                        ) : person.contract_end_date ? (
+                                          new Date(person.contract_end_date).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: '2-digit',
+                                            year: 'numeric',
+                                          })
+                                        ) : (
+                                          <span className="badge badge-pending" style={{ fontSize: '10.5px' }}>
+                                            Pending Contract
+                                          </span>
+                                        )}
                                       </div>
                                     </td>
 
@@ -1618,13 +1626,19 @@ export default function UserManagement({
 
                                     <td>
                                       <div style={{ fontSize: '12.5px', color: 'var(--ink-600)' }}>
-                                        {person.contract_end_date
-                                          ? new Date(person.contract_end_date).toLocaleDateString('en-US', {
-                                              month: 'short',
-                                              day: '2-digit',
-                                              year: 'numeric',
-                                            })
-                                          : 'Jun 30, 2026'}
+                                        {person.role !== 'COS Employee' ? (
+                                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-500)' }}>
+                                            Permanent Plantilla
+                                          </span>
+                                        ) : person.contract_end_date ? (
+                                          new Date(person.contract_end_date).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: '2-digit',
+                                            year: 'numeric',
+                                          })
+                                        ) : (
+                                          '—'
+                                        )}
                                       </div>
                                     </td>
 
@@ -2229,22 +2243,24 @@ export default function UserManagement({
               >
                 Official Identity
               </button>
-              <button
-                type="button"
-                style={{
-                  padding: '8px 14px',
-                  border: 'none',
-                  background: 'none',
-                  borderBottom: userSettingsTab === 'contract' ? '2px solid var(--brand-700)' : '2px solid transparent',
-                  fontWeight: userSettingsTab === 'contract' ? 800 : 600,
-                  color: userSettingsTab === 'contract' ? 'var(--brand-700)' : 'var(--ink-600)',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                }}
-                onClick={() => setUserSettingsTab('contract')}
-              >
-                Contract
-              </button>
+              {settingsUser?.role === 'COS Employee' && (
+                <button
+                  type="button"
+                  style={{
+                    padding: '8px 14px',
+                    border: 'none',
+                    background: 'none',
+                    borderBottom: userSettingsTab === 'contract' ? '2px solid var(--brand-700)' : '2px solid transparent',
+                    fontWeight: userSettingsTab === 'contract' ? 800 : 600,
+                    color: userSettingsTab === 'contract' ? 'var(--brand-700)' : 'var(--ink-600)',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                  }}
+                  onClick={() => setUserSettingsTab('contract')}
+                >
+                  Contract
+                </button>
+              )}
               <button
                 type="button"
                 style={{
@@ -2371,8 +2387,8 @@ export default function UserManagement({
               </form>
             )}
 
-            {/* TAB: Contract Terms Management */}
-            {userSettingsTab === 'contract' && (
+            {/* TAB: Contract Terms Management (COS Employees Only) */}
+            {userSettingsTab === 'contract' && settingsUser?.role === 'COS Employee' && (
               <form onSubmit={handleSaveUserContract}>
                 <div style={{ marginBottom: '16px' }}>
                   <p className="muted" style={{ margin: '0 0 12px', fontSize: '12.5px', lineHeight: 1.5 }}>
