@@ -10,11 +10,13 @@ import {
   X,
   ArrowLeft,
   History,
+  MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
 import HistoricalAttendanceRoster from '../common/HistoricalAttendanceRoster';
 import PredictiveTextarea from '../common/PredictiveTextarea';
+import PunchLocationModal from '../common/PunchLocationModal';
 import { getCachedData, setCachedData, invalidateCache } from '../../utils/swrCache';
 
 export default function DepartmentAttendance({ currentUser, onBack = null, initialTab = 'radar' }) {
@@ -26,6 +28,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
     }
   }, [initialTab]);
   const [toast, setToast] = useState(null);
+  const [selectedPunchMap, setSelectedPunchMap] = useState(null);
 
   // SWR Instant Cache Keys
   const cacheKeyRoster = `dept_roster_${currentUser?.departmentId || 'all'}`;
@@ -314,16 +317,88 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                           {sub.employee_id_number} &bull; {sub.job_title}
                         </div>
                       </td>
-                      <td style={{ fontSize: '13px', fontWeight: sub.time_in !== '—' ? 600 : 400 }}>
-                        {sub.time_in}
-                        {sub.is_early && (
-                          <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                            Credited: {sub.credited_time_in}
-                          </div>
+                      <td>
+                        {sub.time_in !== '—' ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedPunchMap({
+                                punchType: 'time_in',
+                                employeeName: sub.name,
+                                employeeId: sub.employee_id_number,
+                                jobTitle: sub.job_title,
+                                department: rosterData?.department || (typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department),
+                                time: sub.time_in,
+                                date: rosterData?.date,
+                                latitude: sub.in_latitude,
+                                longitude: sub.in_longitude,
+                                geofenceSite: sub.geofence_site,
+                              })
+                            }
+                            title="Click to view Time In GPS location on map"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              margin: 0,
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontFamily: 'inherit',
+                              color: 'inherit',
+                            }}
+                          >
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: '#15803d' }}>
+                              <MapPin size={13} style={{ flexShrink: 0 }} />
+                              <span>{sub.time_in}</span>
+                            </div>
+                            {sub.is_early && (
+                              <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
+                                Credited: {sub.credited_time_in}
+                              </div>
+                            )}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>—</span>
                         )}
                       </td>
-                      <td style={{ fontSize: '13px', fontWeight: sub.time_out !== '—' ? 600 : 400 }}>
-                        {sub.time_out}
+                      <td>
+                        {sub.time_out !== '—' ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedPunchMap({
+                                punchType: 'time_out',
+                                employeeName: sub.name,
+                                employeeId: sub.employee_id_number,
+                                jobTitle: sub.job_title,
+                                department: rosterData?.department || (typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department),
+                                time: sub.time_out,
+                                date: rosterData?.date,
+                                latitude: sub.out_latitude,
+                                longitude: sub.out_longitude,
+                                geofenceSite: sub.geofence_site,
+                              })
+                            }
+                            title="Click to view Time Out GPS location on map"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              margin: 0,
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontFamily: 'inherit',
+                              color: 'inherit',
+                            }}
+                          >
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--brand-700)' }}>
+                              <MapPin size={13} style={{ flexShrink: 0 }} />
+                              <span>{sub.time_out}</span>
+                            </div>
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>—</span>
+                        )}
                       </td>
                       <td>
                         <span
@@ -780,6 +855,13 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
           </div>
         );
       })()}
+
+      {/* GPS Punch Location Map Modal */}
+      <PunchLocationModal
+        isOpen={Boolean(selectedPunchMap)}
+        onClose={() => setSelectedPunchMap(null)}
+        punchData={selectedPunchMap}
+      />
     </div>
   );
 }

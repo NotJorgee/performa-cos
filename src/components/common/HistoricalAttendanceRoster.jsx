@@ -3,9 +3,11 @@ import {
   Calendar,
   Search,
   Download,
+  MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from './Toast';
+import PunchLocationModal from './PunchLocationModal';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -31,6 +33,7 @@ export default function HistoricalAttendanceRoster({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [toast, setToast] = useState(null);
+  const [selectedPunchMap, setSelectedPunchMap] = useState(null);
 
   // Fetch roster for selected date and department
   const fetchRoster = async (dateStr, dept) => {
@@ -343,17 +346,89 @@ export default function HistoricalAttendanceRoster({
                       </td>
                     )}
 
-                    <td style={{ fontSize: '13px', fontWeight: sub.time_in !== '—' ? 600 : 400 }}>
-                      {sub.time_in}
-                      {sub.is_early && (
-                        <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                          Credited: {sub.credited_time_in}
-                        </div>
+                    <td>
+                      {sub.time_in !== '—' ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedPunchMap({
+                              punchType: 'time_in',
+                              employeeName: sub.name,
+                              employeeId: sub.employee_id_number,
+                              jobTitle: sub.job_title,
+                              department: sub.department || departmentName,
+                              time: sub.time_in,
+                              date: rosterData?.date || selectedDate,
+                              latitude: sub.in_latitude,
+                              longitude: sub.in_longitude,
+                              geofenceSite: sub.geofence_site,
+                            })
+                          }
+                          title="Click to view Time In GPS location on map"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            margin: 0,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                            color: 'inherit',
+                          }}
+                        >
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: '#15803d' }}>
+                            <MapPin size={13} style={{ flexShrink: 0 }} />
+                            <span>{sub.time_in}</span>
+                          </div>
+                          {sub.is_early && (
+                            <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
+                              Credited: {sub.credited_time_in}
+                            </div>
+                          )}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>—</span>
                       )}
                     </td>
 
-                    <td style={{ fontSize: '13px', fontWeight: sub.time_out !== '—' ? 600 : 400 }}>
-                      {sub.time_out}
+                    <td>
+                      {sub.time_out !== '—' ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedPunchMap({
+                              punchType: 'time_out',
+                              employeeName: sub.name,
+                              employeeId: sub.employee_id_number,
+                              jobTitle: sub.job_title,
+                              department: sub.department || departmentName,
+                              time: sub.time_out,
+                              date: rosterData?.date || selectedDate,
+                              latitude: sub.out_latitude,
+                              longitude: sub.out_longitude,
+                              geofenceSite: sub.geofence_site,
+                            })
+                          }
+                          title="Click to view Time Out GPS location on map"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            margin: 0,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                            color: 'inherit',
+                          }}
+                        >
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--brand-700)' }}>
+                            <MapPin size={13} style={{ flexShrink: 0 }} />
+                            <span>{sub.time_out}</span>
+                          </div>
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>—</span>
+                      )}
                     </td>
 
                     <td>
@@ -397,6 +472,13 @@ export default function HistoricalAttendanceRoster({
           </table>
         </div>
       </div>
+
+      {/* GPS Punch Location Map Modal */}
+      <PunchLocationModal
+        isOpen={Boolean(selectedPunchMap)}
+        onClose={() => setSelectedPunchMap(null)}
+        punchData={selectedPunchMap}
+      />
     </div>
   );
 }

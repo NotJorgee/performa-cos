@@ -14,10 +14,12 @@ import {
   X,
   AlertTriangle,
   History,
+  MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
 import HistoricalAttendanceRoster from '../common/HistoricalAttendanceRoster';
+import PunchLocationModal from '../common/PunchLocationModal';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
 import { getDepartmentDomain } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
@@ -43,7 +45,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
   const [rosterSearch, setRosterSearch] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState('roster'); // 'roster' | 'departments'
+  const [selectedPunchMap, setSelectedPunchMap] = useState(null);
 
   // University Leaves State
   const [campusLeaves, setCampusLeaves] = useState([]);
@@ -304,7 +306,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
             gap: '8px',
           }}
         >
-          <Building2 size={16} /> Campus Roll Call &amp; Departments
+          <Building2 size={16} /> Campus Attendance Roster
         </button>
 
         <button
@@ -415,318 +417,256 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                   Today's Campus Attendance Roster ({rosterData?.date || overviewData?.date})
                 </div>
                 <div className="muted" style={{ fontSize: '12px', marginTop: '2px' }}>
-                  {viewMode === 'roster'
-                    ? `Showing ${filteredCampusRoster.length} of ${rosterData?.total_subordinates ?? 0} campus personnel`
-                    : `Department attendance roll call across ${filteredDepts.length} departments`}
+                  Showing {filteredCampusRoster.length} of {rosterData?.total_subordinates ?? 0} campus personnel
                 </div>
-              </div>
-
-              {/* View Mode Toggle: Personnel Roster vs Department Summary */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${viewMode === 'roster' ? 'btn-primary' : ''}`}
-                  onClick={() => setViewMode('roster')}
-                  style={{ fontSize: '12px', padding: '6px 14px' }}
-                >
-                  Campus Roster
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${viewMode === 'departments' ? 'btn-primary' : ''}`}
-                  onClick={() => setViewMode('departments')}
-                  style={{ fontSize: '12px', padding: '6px 14px' }}
-                >
-                  Department Summary
-                </button>
               </div>
             </div>
 
             {/* Filter Bar for Campus Roster */}
-            {viewMode === 'roster' && (
-              <div
-                style={{
-                  padding: '12px 20px',
-                  background: '#f8fafc',
-                  borderBottom: '1px solid var(--line)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                }}
-              >
-                {/* Search */}
-                <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px' }}>
-                  <Search
-                    size={14}
-                    color="#94a3b8"
-                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search personnel, ID, or job title..."
-                    value={rosterSearch}
-                    onChange={(e) => setRosterSearch(e.target.value)}
-                    className="form-control"
-                    style={{ width: '100%', paddingLeft: '32px', fontSize: '12.5px', height: '36px' }}
-                  />
-                </div>
-
-                {/* Department Filter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-700)' }}>Dept:</span>
-                  <select
-                    className="form-control"
-                    value={selectedDeptFilter}
-                    onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                    style={{ fontSize: '12.5px', height: '36px', padding: '4px 10px', minWidth: '160px' }}
-                  >
-                    <option value="ALL">All Departments ({uniqueDepartments.length})</option>
-                    {uniqueDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Status Filter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-700)' }}>Status:</span>
-                  <select
-                    className="form-control"
-                    value={selectedStatusFilter}
-                    onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                    style={{ fontSize: '12.5px', height: '36px', padding: '4px 10px', minWidth: '140px' }}
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="present">Present (On-Time / Early / OT)</option>
-                    <option value="late">Late Arrivals</option>
-                    <option value="leave">On Leave</option>
-                    <option value="pending">Not Timed In</option>
-                  </select>
-                </div>
+            <div
+              style={{
+                padding: '12px 20px',
+                background: '#f8fafc',
+                borderBottom: '1px solid var(--line)',
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              {/* Search */}
+              <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px' }}>
+                <Search
+                  size={14}
+                  color="#94a3b8"
+                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search personnel, ID, or job title..."
+                  value={rosterSearch}
+                  onChange={(e) => setRosterSearch(e.target.value)}
+                  className="form-control"
+                  style={{ width: '100%', paddingLeft: '32px', fontSize: '12.5px', height: '36px' }}
+                />
               </div>
-            )}
 
-            {/* Filter Bar for Department Summary */}
-            {viewMode === 'departments' && (
-              <div
-                style={{
-                  padding: '12px 20px',
-                  background: '#f8fafc',
-                  borderBottom: '1px solid var(--line)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                }}
-              >
-                <div style={{ position: 'relative', width: '280px' }}>
-                  <Search
-                    size={14}
-                    color="#94a3b8"
-                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search department..."
-                    value={deptSearchQuery}
-                    onChange={(e) => setDeptSearchQuery(e.target.value)}
-                    className="form-control"
-                    style={{ width: '100%', paddingLeft: '32px', fontSize: '12.5px', height: '36px' }}
-                  />
-                </div>
+              {/* Department Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-700)' }}>Dept:</span>
+                <select
+                  className="form-control"
+                  value={selectedDeptFilter}
+                  onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                  style={{ fontSize: '12.5px', height: '36px', padding: '4px 10px', minWidth: '160px' }}
+                >
+                  <option value="ALL">All Departments ({uniqueDepartments.length})</option>
+                  {uniqueDepartments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
 
-            {/* Table: View Mode = Roster (Same layout as Department Roster) */}
-            {viewMode === 'roster' && (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="data-table">
-                  <thead>
+              {/* Status Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-700)' }}>Status:</span>
+                <select
+                  className="form-control"
+                  value={selectedStatusFilter}
+                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  style={{ fontSize: '12.5px', height: '36px', padding: '4px 10px', minWidth: '140px' }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="present">Present (On-Time / Early / OT)</option>
+                  <option value="late">Late Arrivals</option>
+                  <option value="leave">On Leave</option>
+                  <option value="pending">Not Timed In</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Campus Personnel Roster Table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Personnel</th>
+                    <th>Department</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Presence Status</th>
+                    <th>Campus Site</th>
+                    <th>Today's DAR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingRoster ? (
                     <tr>
-                      <th>Personnel</th>
-                      <th>Department</th>
-                      <th>Time In</th>
-                      <th>Time Out</th>
-                      <th>Presence Status</th>
-                      <th>Campus Site</th>
-                      <th>Today's DAR</th>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
+                        Loading campus attendance roster...
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {isLoadingRoster ? (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
-                          Loading campus attendance roster...
-                        </td>
-                      </tr>
-                    ) : filteredCampusRoster.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                          No personnel records match the selected filters.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredCampusRoster.map((sub) => {
-                        const dom = getDepartmentDomain(sub.department);
-                        return (
-                          <tr key={sub.id}>
-                            <td>
-                              <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--ink-900)' }}>
-                                {sub.name}
-                              </div>
-                              <div className="muted" style={{ fontSize: '11.5px' }}>
-                                {sub.employee_id_number} &bull; {sub.job_title}
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink-900)' }}>
-                                {sub.department}
-                              </div>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '1px 6px',
-                                  borderRadius: '8px',
-                                  background: dom.style.bg,
-                                  color: dom.style.text,
-                                  border: `1px solid ${dom.style.border}`,
-                                  marginTop: '2px',
-                                }}
-                              >
-                                {dom.shortName}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '13px', fontWeight: sub.time_in !== '—' ? 600 : 400 }}>
-                              {sub.time_in}
-                              {sub.is_early && (
-                                <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
-                                  Credited: {sub.credited_time_in}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ fontSize: '13px', fontWeight: sub.time_out !== '—' ? 600 : 400 }}>
-                              {sub.time_out}
-                            </td>
-                            <td>
-                              <span
-                                className={`badge ${
-                                  sub.badge_type === 'on_time'
-                                    ? 'badge-completed'
-                                    : sub.badge_type === 'late'
-                                    ? 'badge-archived'
-                                    : sub.badge_type === 'undertime'
-                                    ? 'badge-pending'
-                                    : sub.badge_type === 'leave'
-                                    ? 'badge-active'
-                                    : 'badge-inactive'
-                                }`}
-                                style={{ fontSize: '11.5px' }}
-                              >
-                                {sub.status}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '12.5px', color: 'var(--ink-700)' }}>{sub.geofence_site}</td>
-                            <td>
-                              {sub.dar_submitted ? (
-                                <span style={{ fontSize: '12px', color: 'var(--green-700, #15803d)', fontWeight: 600 }}>
-                                  {sub.dar_tasks_count} task(s) logged
-                                </span>
-                              ) : (
-                                <span className="muted" style={{ fontSize: '12px' }}>
-                                  Not submitted
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Table: View Mode = Departments (Department Roll Call) */}
-            {viewMode === 'departments' && (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="data-table">
-                  <thead>
+                  ) : filteredCampusRoster.length === 0 ? (
                     <tr>
-                      <th style={{ minWidth: '320px', width: '38%' }}>Department Unit</th>
-                      <th>Active COS</th>
-                      <th>On Campus Today</th>
-                      <th>Late Arrivals</th>
-                      <th>On Approved Leave</th>
-                      <th>Not Timed In</th>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                        No personnel records match the selected filters.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
-                          Loading campus overview...
-                        </td>
-                      </tr>
-                    ) : filteredDepts.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                          No active COS departments found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredDepts.map((d) => (
-                        <tr key={d.department_id}>
-                          <td style={{ minWidth: '320px', paddingRight: '24px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-900)' }}>
-                                {d.department_name}
-                              </span>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  padding: '2px 8px',
-                                  borderRadius: '10px',
-                                  background: getDepartmentDomain(d.department_name).style.bg,
-                                  color: getDepartmentDomain(d.department_name).style.text,
-                                  border: `1px solid ${getDepartmentDomain(d.department_name).style.border}`,
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {getDepartmentDomain(d.department_name).shortName}
-                              </span>
-                              {d.is_meso && (
-                                <span className="badge badge-active" style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
-                                  MESO Unit
-                                </span>
-                              )}
+                  ) : (
+                    filteredCampusRoster.map((sub) => {
+                      const dom = getDepartmentDomain(sub.department);
+                      return (
+                        <tr key={sub.id}>
+                          <td>
+                            <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--ink-900)' }}>
+                              {sub.name}
+                            </div>
+                            <div className="muted" style={{ fontSize: '11.5px' }}>
+                              {sub.employee_id_number} &bull; {sub.job_title}
                             </div>
                           </td>
-                          <td style={{ fontWeight: 600, fontSize: '13px' }}>{d.total_cos}</td>
-                          <td style={{ color: d.present > 0 ? 'var(--green-700)' : 'var(--ink-600)', fontWeight: 600 }}>
-                            {d.present}
+                          <td>
+                            <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--ink-900)' }}>
+                              {sub.department}
+                            </div>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                padding: '1px 6px',
+                                borderRadius: '8px',
+                                background: dom.style.bg,
+                                color: dom.style.text,
+                                border: `1px solid ${dom.style.border}`,
+                                marginTop: '2px',
+                              }}
+                            >
+                              {dom.shortName}
+                            </span>
                           </td>
-                          <td style={{ color: d.late > 0 ? 'var(--amber-700)' : 'var(--ink-600)' }}>
-                            {d.late}
+                          <td>
+                            {sub.time_in !== '—' ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPunchMap({
+                                    punchType: 'time_in',
+                                    employeeName: sub.name,
+                                    employeeId: sub.employee_id_number,
+                                    jobTitle: sub.job_title,
+                                    department: sub.department,
+                                    time: sub.time_in,
+                                    date: rosterData?.date || overviewData?.date,
+                                    latitude: sub.in_latitude,
+                                    longitude: sub.in_longitude,
+                                    geofenceSite: sub.geofence_site,
+                                  })
+                                }
+                                title="Click to view Time In GPS location on map"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  margin: 0,
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  fontFamily: 'inherit',
+                                  color: 'inherit',
+                                }}
+                              >
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: '#15803d' }}>
+                                  <MapPin size={13} style={{ flexShrink: 0 }} />
+                                  <span>{sub.time_in}</span>
+                                </div>
+                                {sub.is_early && (
+                                  <div style={{ fontSize: '11px', color: 'var(--brand-700)', fontWeight: 600 }}>
+                                    Credited: {sub.credited_time_in}
+                                  </div>
+                                )}
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>—</span>
+                            )}
                           </td>
-                          <td style={{ color: d.on_leave > 0 ? 'var(--brand-700)' : 'var(--ink-600)' }}>
-                            {d.on_leave}
+                          <td>
+                            {sub.time_out !== '—' ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPunchMap({
+                                    punchType: 'time_out',
+                                    employeeName: sub.name,
+                                    employeeId: sub.employee_id_number,
+                                    jobTitle: sub.job_title,
+                                    department: sub.department,
+                                    time: sub.time_out,
+                                    date: rosterData?.date || overviewData?.date,
+                                    latitude: sub.out_latitude,
+                                    longitude: sub.out_longitude,
+                                    geofenceSite: sub.geofence_site,
+                                  })
+                                }
+                                title="Click to view Time Out GPS location on map"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  margin: 0,
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  fontFamily: 'inherit',
+                                  color: 'inherit',
+                                }}
+                              >
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--brand-700)' }}>
+                                  <MapPin size={13} style={{ flexShrink: 0 }} />
+                                  <span>{sub.time_out}</span>
+                                </div>
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '13px', color: 'var(--ink-400)' }}>—</span>
+                            )}
                           </td>
-                          <td style={{ color: d.pending > 0 ? 'var(--amber-700)' : 'var(--ink-500)' }}>
-                            {d.pending}
+                          <td>
+                            <span
+                              className={`badge ${
+                                sub.badge_type === 'on_time'
+                                  ? 'badge-completed'
+                                  : sub.badge_type === 'late'
+                                  ? 'badge-archived'
+                                  : sub.badge_type === 'undertime'
+                                  ? 'badge-pending'
+                                  : sub.badge_type === 'leave'
+                                  ? 'badge-active'
+                                  : 'badge-inactive'
+                              }`}
+                              style={{ fontSize: '11.5px' }}
+                            >
+                              {sub.status}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '12.5px', color: 'var(--ink-700)' }}>{sub.geofence_site}</td>
+                          <td>
+                            {sub.dar_submitted ? (
+                              <span style={{ fontSize: '12px', color: 'var(--green-700, #15803d)', fontWeight: 600 }}>
+                                {sub.dar_tasks_count} task(s) logged
+                              </span>
+                            ) : (
+                              <span className="muted" style={{ fontSize: '12px' }}>
+                                Not submitted
+                              </span>
+                            )}
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -889,11 +829,83 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
                       <tr key={r.date} style={{ background: r.is_weekend ? '#fafafa' : '#ffffff' }}>
                         <td style={{ fontWeight: 600, fontSize: '13px' }}>{r.display_date}</td>
                         <td style={{ fontSize: '12.5px', color: 'var(--ink-600)' }}>{r.day_of_week}</td>
-                        <td style={{ fontSize: '13px', fontWeight: r.time_in !== '—' ? 600 : 400 }}>
-                          {r.time_in}
+                        <td style={{ fontSize: '13px' }}>
+                          {r.time_in !== '—' ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPunchMap({
+                                  punchType: 'time_in',
+                                  employeeName: payrollPacket?.employee?.name,
+                                  employeeId: payrollPacket?.employee?.employee_id_number,
+                                  jobTitle: payrollPacket?.employee?.job_title,
+                                  department: payrollPacket?.employee?.department,
+                                  time: r.time_in,
+                                  date: r.display_date,
+                                  latitude: r.in_latitude,
+                                  longitude: r.in_longitude,
+                                  geofenceSite: r.geofence_site,
+                                })
+                              }
+                              title="Click to view Time In GPS location on map"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                margin: 0,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontFamily: 'inherit',
+                                color: 'inherit',
+                              }}
+                            >
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: '#15803d' }}>
+                                <MapPin size={13} style={{ flexShrink: 0 }} />
+                                <span>{r.time_in}</span>
+                              </div>
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--ink-400)' }}>—</span>
+                          )}
                         </td>
-                        <td style={{ fontSize: '13px', fontWeight: r.time_out !== '—' ? 600 : 400 }}>
-                          {r.time_out}
+                        <td style={{ fontSize: '13px' }}>
+                          {r.time_out !== '—' ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPunchMap({
+                                  punchType: 'time_out',
+                                  employeeName: payrollPacket?.employee?.name,
+                                  employeeId: payrollPacket?.employee?.employee_id_number,
+                                  jobTitle: payrollPacket?.employee?.job_title,
+                                  department: payrollPacket?.employee?.department,
+                                  time: r.time_out,
+                                  date: r.display_date,
+                                  latitude: r.out_latitude,
+                                  longitude: r.out_longitude,
+                                  geofenceSite: r.geofence_site,
+                                })
+                              }
+                              title="Click to view Time Out GPS location on map"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                margin: 0,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontFamily: 'inherit',
+                                color: 'inherit',
+                              }}
+                            >
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: 'var(--brand-700)' }}>
+                                <MapPin size={13} style={{ flexShrink: 0 }} />
+                                <span>{r.time_out}</span>
+                              </div>
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--ink-400)' }}>—</span>
+                          )}
                         </td>
                         <td>
                           <span
@@ -1063,6 +1075,13 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
           isHR={true}
         />
       )}
+
+      {/* GPS Punch Location Map Modal */}
+      <PunchLocationModal
+        isOpen={Boolean(selectedPunchMap)}
+        onClose={() => setSelectedPunchMap(null)}
+        punchData={selectedPunchMap}
+      />
     </div>
   );
 }
