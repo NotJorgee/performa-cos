@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   History,
   MapPin,
+  Building2,
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from '../common/Toast';
