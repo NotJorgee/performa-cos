@@ -418,7 +418,47 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                           {sub.status}
                         </span>
                       </td>
-                      <td style={{ fontSize: '12.5px', color: 'var(--ink-700)' }}>{sub.geofence_site}</td>
+                      <td style={{ fontSize: '12.5px' }}>
+                        {sub.geofence_site && sub.geofence_site !== '—' && (sub.time_in !== '—' || sub.time_out !== '—') ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedPunchMap({
+                                punchType: sub.time_in !== '—' ? 'time_in' : 'time_out',
+                                employeeName: sub.name,
+                                employeeId: sub.employee_id_number,
+                                jobTitle: sub.job_title,
+                                department: rosterData?.department || (typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department),
+                                time: sub.time_in !== '—' ? sub.time_in : sub.time_out,
+                                date: rosterData?.date,
+                                latitude: sub.time_in !== '—' ? sub.in_latitude : sub.out_latitude,
+                                longitude: sub.time_in !== '—' ? sub.in_longitude : sub.out_longitude,
+                                geofenceSite: sub.geofence_site,
+                              })
+                            }
+                            title="Click to view Geofence Perimeter on map"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              margin: 0,
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontFamily: 'inherit',
+                              color: 'var(--brand-700)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            <Building2 size={12} style={{ flexShrink: 0 }} />
+                            <span>{sub.geofence_site}</span>
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--ink-500)' }}>{sub.geofence_site}</span>
+                        )}
+                      </td>
                       <td>
                         {sub.dar_submitted ? (
                           <span style={{ fontSize: '12px', color: 'var(--green-700, #15803d)', fontWeight: 600 }}>

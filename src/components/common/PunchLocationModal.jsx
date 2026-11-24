@@ -12,8 +12,14 @@ import {
   Building2,
   Calendar,
   AlertCircle,
+  Navigation,
 } from 'lucide-react';
-import { getCampusGeofences, DEFAULT_CAMPUSES } from '../../utils/campusGeofence';
+import api from '../../services/api';
+import {
+  getCampusGeofences,
+  DEFAULT_CAMPUSES,
+  calculateHaversineDistanceMeters,
+} from '../../utils/campusGeofence';
 
 export default function PunchLocationModal({
   isOpen = false,
@@ -25,6 +31,7 @@ export default function PunchLocationModal({
   const streetsTileRef = useRef(null);
   const satelliteTileRef = useRef(null);
   const [mapLayer, setMapLayer] = useState('streets'); // 'streets' | 'satellite'
+  const [campuses, setCampuses] = useState(() => getCampusGeofences() || DEFAULT_CAMPUSES);
 
   // Focus lock and Escape key handling
   useEffect(() => {
@@ -43,6 +50,26 @@ export default function PunchLocationModal({
     };
   }, [isOpen, onClose]);
 
+  // Sync campuses with database API whenever modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    const fetchGeofences = async () => {
+      try {
+        const res = await api.geofences.list();
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          setCampuses(res);
+        }
+      } catch (err) {
+        // Graceful fallback to cached/default campuses
+      }
+    };
+    fetchGeofences();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
   // Extract punch details with safe fallbacks
   const isTimeIn = punchData?.punchType === 'time_in';
   const punchLabel = isTimeIn ? 'Clock In (Time In)' : 'Clock Out (Time Out)';
@@ -52,15 +79,9 @@ export default function PunchLocationModal({
   const department = punchData?.department || '';
   const punchTime = punchData?.time || (isTimeIn ? punchData?.time_in : punchData?.time_out) || '—';
   const punchDate = punchData?.date || '';
-  const siteName = punchData?.geofenceSite || punchData?.geofence_site || 'EVSU Ormoc Campus';
+  const siteName = (punchData?.geofenceSite || punchData?.geofence_site || '').trim();
 
   // Determine punch GPS coordinates
-  const campuses = getCampusGeofences() || DEFAULT_CAMPUSES;
-  const isLuna = (siteName || '').toLowerCase().includes('luna');
-  const targetCampus = campuses.find((c) => isLuna ? c.id.includes('luna') : c.id.includes('main')) || campuses[0];
-  const defaultLat = targetCampus?.latitude || 11.010466;
-  const defaultLng = targetCampus?.longitude || 124.605469;
-
   const rawLat = isTimeIn
     ? (punchData?.latitude ?? punchData?.in_latitude)
     : (punchData?.latitude ?? punchData?.out_latitude);
@@ -70,6 +91,39 @@ export default function PunchLocationModal({
 
   const hasExactGps = rawLat !== null && rawLat !== undefined && !isNaN(Number(rawLat)) &&
                       rawLng !== null && rawLng !== undefined && !isNaN(Number(rawLng));
+
+  // Match target campus by site name or nearest distance
+  const targetCampus = (() => {
+    if (campuses && campuses.length > 0) {
+      if (siteName && siteName !== '—' && siteName !== 'Out of Campus Bounds') {
+        const lowerSite = siteName.toLowerCase();
+        const byName = campuses.find((c) => {
+          const cName = (c.name || '').toLowerCase();
+          const cShort = (c.shortName || '').toLowerCase();
+          const cId = (c.id || '').toLowerCase();
+          return cName === lowerSite || cShort === lowerSite || lowerSite.includes(cName) || cName.includes(lowerSite) || cId === lowerSite;
+        });
+        if (byName) return byName;
+      }
+
+      if (hasExactGps) {
+        let closest = campuses[0];
+        let minDistance = Infinity;
+        for (const c of campuses) {
+          const d = calculateHaversineDistanceMeters(Number(rawLat), Number(rawLng), Number(c.latitude), Number(c.longitude));
+          if (d < minDistance) {
+            minDistance = d;
+            closest = c;
+          }
+        }
+        return closest;
+      }
+    }
+    return campuses[0] || DEFAULT_CAMPUSES[0];
+  })();
+
+  const defaultLat = targetCampus?.latitude || 11.010466;
+  const defaultLng = targetCampus?.longitude || 124.605469;
   const finalLat = hasExactGps ? Number(rawLat) : defaultLat;
   const finalLng = hasExactGps ? Number(rawLng) : defaultLng;
 
@@ -85,7 +139,7 @@ export default function PunchLocationModal({
 
     const map = L.map(mapContainerRef.current, {
       center: [finalLat, finalLng],
-      zoom: 17,
+      zoom: 16,
       zoomControl: true,
       attributionControl: false,
     });
@@ -107,39 +161,105 @@ export default function PunchLocationModal({
       streets.addTo(map);
     }
 
-    // 1. Draw Campus Geofence Boundary (Polygon or Circle)
+    const bounds = L.latLngBounds([[finalLat, finalLng]]);
+
+    // 1. Draw all other campuses with a subtle background boundary
+    if (campuses && campuses.length > 0) {
+      campuses.forEach((c) => {
+        if (!c || c.id === targetCampus?.id) return;
+        const cLat = Number(c.latitude);
+        const cLng = Number(c.longitude);
+        if (isNaN(cLat) || isNaN(cLng)) return;
+
+        if (c.boundaryType === 'polygon' && c.polygonCoords && c.polygonCoords.length >= 3) {
+          L.polygon(c.polygonCoords, {
+            color: '#94a3b8',
+            fillColor: '#94a3b8',
+            fillOpacity: 0.05,
+            weight: 1.5,
+            dashArray: '4, 4',
+          }).addTo(map).bindTooltip(`<b>${c.name}</b>`, { sticky: true });
+        } else {
+          const r = Number(c.radiusM || c.radius_meters || 500);
+          L.circle([cLat, cLng], {
+            radius: r,
+            color: '#94a3b8',
+            fillColor: '#94a3b8',
+            fillOpacity: 0.05,
+            weight: 1.5,
+            dashArray: '4, 4',
+          }).addTo(map).bindTooltip(`<b>${c.name}</b>`, { sticky: true });
+        }
+      });
+    }
+
+    // 2. Draw Target Campus Geofence Boundary (Polygon or Radius Circle)
     if (targetCampus) {
+      const cLat = Number(targetCampus.latitude);
+      const cLng = Number(targetCampus.longitude);
+
       if (targetCampus.boundaryType === 'polygon' && targetCampus.polygonCoords && targetCampus.polygonCoords.length >= 3) {
-        L.polygon(targetCampus.polygonCoords, {
+        const poly = L.polygon(targetCampus.polygonCoords, {
           color: '#7a1128',
           fillColor: '#7a1128',
-          fillOpacity: 0.12,
-          weight: 2,
-          dashArray: '5, 5',
+          fillOpacity: 0.16,
+          weight: 2.5,
+          dashArray: '6, 6',
         }).addTo(map);
-      } else {
-        const radius = targetCampus.radiusM || 500;
-        L.circle([targetCampus.latitude, targetCampus.longitude], {
+        poly.bindTooltip(
+          `<div style="font-family: inherit; font-size: 11.5px;"><b>${targetCampus.name}</b><br/><span style="color: #7a1128; font-weight: 700;">Authorized Campus Perimeter (Polygon)</span></div>`,
+          { sticky: true }
+        );
+        targetCampus.polygonCoords.forEach(([pLat, pLng]) => bounds.extend([pLat, pLng]));
+      } else if (!isNaN(cLat) && !isNaN(cLng)) {
+        const radius = Number(targetCampus.radiusM || targetCampus.radius_meters || 500);
+        const circle = L.circle([cLat, cLng], {
           radius: radius,
           color: '#7a1128',
           fillColor: '#7a1128',
-          fillOpacity: 0.10,
-          weight: 2,
-          dashArray: '5, 5',
+          fillOpacity: 0.15,
+          weight: 2.5,
+          dashArray: '6, 6',
         }).addTo(map);
+        circle.bindTooltip(
+          `<div style="font-family: inherit; font-size: 11.5px;"><b>${targetCampus.name}</b><br/><span style="color: #7a1128; font-weight: 700;">Authorized Perimeter Radius: ${radius.toLocaleString()}m</span></div>`,
+          { sticky: true }
+        );
+
+        // Extend map bounds to cover the entire circle perimeter
+        const latDelta = radius / 111139.0;
+        const lngDelta = radius / (111139.0 * Math.cos(cLat * (Math.PI / 180)));
+        bounds.extend([cLat + latDelta, cLng + lngDelta]);
+        bounds.extend([cLat - latDelta, cLng - lngDelta]);
+      }
+
+      // Add Campus Center Landmark Badge
+      if (!isNaN(cLat) && !isNaN(cLng)) {
+        const campusBadgeIcon = L.divIcon({
+          className: 'campus-badge-icon',
+          html: `
+            <div style="background: #7a1128; color: #ffffff; padding: 3px 8px; border-radius: 12px; font-size: 10.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1.5px solid #ffffff; white-space: nowrap; transform: translate(-50%, -50%);">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/></svg>
+              <span>${targetCampus.shortName || targetCampus.name}</span>
+            </div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
+        });
+        L.marker([cLat, cLng], { icon: campusBadgeIcon, zIndexOffset: 200 }).addTo(map);
       }
     }
 
-    // 2. Draw GPS Precision Radius Circle around punch location
+    // 3. Draw GPS Precision Radius Circle around punch location
     L.circle([finalLat, finalLng], {
-      radius: 18,
+      radius: punchData?.accuracy || 18,
       color: isTimeIn ? '#16a34a' : '#7a1128',
       fillColor: isTimeIn ? '#22c55e' : '#991b1b',
       fillOpacity: 0.18,
       weight: 1.5,
     }).addTo(map);
 
-    // 3. Custom Punch Pin Marker with pulse effect
+    // 4. Custom Punch Pin Marker with pulse effect
     const pinColor = isTimeIn ? '#16a34a' : '#7a1128';
     const pulseBg = isTimeIn ? 'rgba(22, 163, 74, 0.3)' : 'rgba(122, 17, 40, 0.3)';
     const customIcon = L.divIcon({
@@ -160,7 +280,7 @@ export default function PunchLocationModal({
       popupAnchor: [0, -20],
     });
 
-    const marker = L.marker([finalLat, finalLng], { icon: customIcon }).addTo(map);
+    const marker = L.marker([finalLat, finalLng], { icon: customIcon, zIndexOffset: 500 }).addTo(map);
     marker
       .bindPopup(
         `<div style="font-family: inherit; font-size: 12px; min-width: 190px; line-height: 1.5;">
@@ -171,7 +291,7 @@ export default function PunchLocationModal({
           <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">${employeeId} &bull; ${department}</div>
           <div style="border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 11.5px; color: #334155;">
             <div><b>Recorded:</b> ${punchTime}</div>
-            <div><b>Site:</b> ${siteName}</div>
+            <div><b>Site:</b> ${siteName || targetCampus?.name || 'Authorized Campus'}</div>
             <div><b>Coordinates:</b> ${finalLat.toFixed(6)}, ${finalLng.toFixed(6)}</div>
           </div>
         </div>`
@@ -180,6 +300,11 @@ export default function PunchLocationModal({
 
     // Scale control
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
+
+    // Automatically fit view to encompass punch pin AND campus boundary
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [45, 45], maxZoom: 17 });
+    }
 
     mapInstanceRef.current = map;
 
@@ -414,6 +539,62 @@ export default function PunchLocationModal({
               <Layers size={13} color="var(--brand-700)" />
               <span>{mapLayer === 'streets' ? 'Satellite View' : 'Street Map'}</span>
             </button>
+
+            {/* Floating Visual Geofence Context Legend */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '10px',
+                right: '10px',
+                zIndex: 1000,
+                background: 'rgba(255, 255, 255, 0.94)',
+                backdropFilter: 'blur(4px)',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                fontSize: '10.5px',
+                color: '#1e293b',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.10)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                maxWidth: '240px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: '14px',
+                    height: '10px',
+                    borderRadius: '2px',
+                    border: '2px dashed #7a1128',
+                    background: 'rgba(122, 17, 40, 0.2)',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {targetCampus?.shortName || targetCampus?.name || 'Campus Boundary'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: isTimeIn ? '#16a34a' : '#7a1128',
+                    border: '1.5px solid #ffffff',
+                    boxShadow: '0 0 3px rgba(0,0,0,0.4)',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontWeight: 600 }}>
+                  {punchLabel} Location
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

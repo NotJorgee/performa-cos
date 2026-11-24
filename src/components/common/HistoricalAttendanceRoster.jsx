@@ -4,6 +4,7 @@ import {
   Search,
   Download,
   MapPin,
+  Building2,
 } from 'lucide-react';
 import api from '../../services/api';
 import Toast from './Toast';
@@ -450,8 +451,46 @@ export default function HistoricalAttendanceRoster({
                       </span>
                     </td>
 
-                    <td style={{ fontSize: '12.5px', color: 'var(--ink-700)' }}>
-                      {sub.geofence_site}
+                    <td style={{ fontSize: '12.5px' }}>
+                      {sub.geofence_site && sub.geofence_site !== '—' && (sub.time_in !== '—' || sub.time_out !== '—') ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedPunchMap({
+                              punchType: sub.time_in !== '—' ? 'time_in' : 'time_out',
+                              employeeName: sub.name,
+                              employeeId: sub.employee_id_number,
+                              jobTitle: sub.job_title,
+                              department: sub.department || departmentName,
+                              time: sub.time_in !== '—' ? sub.time_in : sub.time_out,
+                              date: rosterData?.date || selectedDate,
+                              latitude: sub.time_in !== '—' ? sub.in_latitude : sub.out_latitude,
+                              longitude: sub.time_in !== '—' ? sub.in_longitude : sub.out_longitude,
+                              geofenceSite: sub.geofence_site,
+                            })
+                          }
+                          title="Click to view Geofence Perimeter on map"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            margin: 0,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                            color: 'var(--brand-700)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Building2 size={12} style={{ flexShrink: 0 }} />
+                          <span>{sub.geofence_site}</span>
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--ink-500)' }}>{sub.geofence_site}</span>
+                      )}
                     </td>
 
                     <td>
