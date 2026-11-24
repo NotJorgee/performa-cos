@@ -701,12 +701,12 @@ def get_department_attendance_roster(
                 sub_status = "On-Time (Present)"
                 badge_type = "on_time"
                 total_present += 1
-        elif is_pre_onboarding:
-            sub_status = "N/A"
-            badge_type = "na"
         elif is_work_suspended_holiday:
             sub_status = f"Official Holiday ({target_holiday.name})"
             badge_type = "holiday"
+        elif is_pre_onboarding:
+            sub_status = "N/A"
+            badge_type = "na"
         else:
             sub_status = "Not Timed In"
             badge_type = "pending"
@@ -1056,18 +1056,18 @@ def get_payroll_dtr_packet(
             if not has_dar and not is_weekend and not is_future and not is_holiday_suspended:
                 discrepancy = "Time-In logged but no Daily Accomplishment Report submitted."
         else:
-            if is_future:
-                day_status = "N/A"
-                badge_type = "na"
-            elif is_before_onboarding:
-                day_status = "Weekend Rest Day" if is_weekend else "N/A"
-                badge_type = "weekend" if is_weekend else "na"
-            elif is_holiday_suspended:
+            if is_holiday_suspended:
                 day_status = f"Official Holiday: {day_holiday.name}"
                 badge_type = "holiday"
             elif is_weekend:
                 day_status = "Weekend Rest Day"
                 badge_type = "weekend"
+            elif is_before_onboarding:
+                day_status = "N/A"
+                badge_type = "na"
+            elif is_future:
+                day_status = "N/A"
+                badge_type = "na"
             elif curr_date == today:
                 day_status = "Pending Punch"
                 badge_type = "pending"
