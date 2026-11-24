@@ -201,7 +201,12 @@ export default function OnboardingUserModal({
       });
       onToast(`Official invitation link created for ${email.trim()}!`);
     } catch (err) {
-      setInviteError(err.message || 'Failed to generate invitation link. Please check your inputs and try again.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('not authenticated') || msg.toLowerCase().includes('expired token')) {
+        setInviteError('Your administrator session has expired or is unauthenticated. Please sign out and log back in to generate invitations.');
+      } else {
+        setInviteError(msg || 'Failed to generate invitation link. Please check your inputs and try again.');
+      }
     } finally {
       setIsSendingInvite(false);
     }
@@ -278,7 +283,12 @@ export default function OnboardingUserModal({
       );
       await onUserCreated();
     } catch (err) {
-      setManualError(err.message || 'Failed to create user account. Please verify the entered details.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('not authenticated') || msg.toLowerCase().includes('expired token')) {
+        setManualError('Your administrator session has expired or is unauthenticated. Please sign out and log back in to register personnel.');
+      } else {
+        setManualError(msg || 'Failed to create user account. Please verify the entered details.');
+      }
     } finally {
       setIsSubmittingManual(false);
     }

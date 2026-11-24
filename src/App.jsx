@@ -70,23 +70,13 @@ export default function App() {
   const initialInviteToken = getInviteTokenFromUrl();
   const hasInviteLink = Boolean(initialInviteToken);
 
-  // If opening an institutional invitation link (?token=... or ?invite=...),
-  // clear any previous account session from localStorage/sessionStorage
-  // so the employee lands directly on the onboarding sign-up page without session collision.
-  if (hasInviteLink && typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem('performa_token');
-      localStorage.removeItem('performa_user');
-      localStorage.removeItem('currentUser');
-      clearAllPerformaCache();
-    } catch (_) {}
-  }
+  // Initialize auth state from existing localStorage token/user if present.
+  // Note: Opening an invitation link does not wipe localStorage globally so that
+  // administrative tabs issuing invites in the same browser remain safely authenticated.
+  const storedUser = api.auth.getCurrentUser();
+  const hasToken = Boolean(localStorage.getItem('performa_token'));
 
-  // Initialize auth state from existing localStorage token/user if present AND not an invitation link
-  const storedUser = hasInviteLink ? null : api.auth.getCurrentUser();
-  const hasToken = hasInviteLink ? false : Boolean(localStorage.getItem('performa_token'));
-
-  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(!hasInviteLink && hasToken && storedUser));
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(hasToken && storedUser));
   const [currentUser, setCurrentUser] = useState(() => {
     if (storedUser) {
       return {
@@ -256,13 +246,6 @@ export default function App() {
     const handleUrlTokenCheck = () => {
       const token = getInviteTokenFromUrl();
       if (token && token !== inviteToken) {
-        try {
-          localStorage.removeItem('performa_token');
-          localStorage.removeItem('performa_user');
-          localStorage.removeItem('currentUser');
-          clearAllPerformaCache();
-        } catch (_) {}
-        setIsAuthenticated(false);
         setInviteToken(token);
         setAuthView('signup');
       }
