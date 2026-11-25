@@ -420,7 +420,30 @@ export default function TokenizedSignUp({
               )}
 
               {/* REGISTRATION FORM */}
-              <form onSubmit={handleSubmit} autoComplete="off">
+              <form onSubmit={handleSubmit} autoComplete="on">
+                {/* W3C Credential Anchor: Tells Google Password Manager the account username is the official email */}
+                <input
+                  type="email"
+                  name="username"
+                  autoComplete="username"
+                  value={tokenData?.email || (roleMode === 'cos' ? cosEmail : adminEmail)}
+                  readOnly
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    width: '1px',
+                    height: '1px',
+                    padding: 0,
+                    margin: '-1px',
+                    overflow: 'hidden',
+                    clip: 'rect(0, 0, 0, 0)',
+                    whiteSpace: 'nowrap',
+                    border: 0,
+                    opacity: 0,
+                    pointerEvents: 'none',
+                  }}
+                />
             {roleMode === 'cos' ? (
               /* ====================================================
                  1. REGULAR COS EMPLOYEE SIGN-UP FIELDS
