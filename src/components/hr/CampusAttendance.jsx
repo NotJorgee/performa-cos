@@ -20,9 +20,15 @@ import api from '../../services/api';
 import Toast from '../common/Toast';
 import HistoricalAttendanceRoster from '../common/HistoricalAttendanceRoster';
 import PunchLocationModal from '../common/PunchLocationModal';
+import RequestTimelineFilterBar from '../common/RequestTimelineFilterBar';
 import { getCachedData, setCachedData } from '../../utils/swrCache';
 import { getDepartmentDomain } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
+import {
+  formatRequestStatus,
+  partitionRequestsByTimeline,
+  REQUEST_BUCKET_META,
+} from '../../utils/requestHelpers';
 
 export default function CampusAttendance({ currentUser, onBack = null, initialTab = 'overview' }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'overview'); // 'overview' | 'payroll' | 'leaves'
@@ -48,10 +54,11 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
   const [selectedPunchMap, setSelectedPunchMap] = useState(null);
 
-  // University Leaves State
+  // University Requests State
   const [campusLeaves, setCampusLeaves] = useState([]);
   const [isLoadingLeaves, setIsLoadingLeaves] = useState(true);
   const [leaveSearch, setLeaveSearch] = useState('');
+  const [requestTimelineFilter, setRequestTimelineFilter] = useState('all');
 
   // Load Campus Overview (silent background revalidation when cached)
   const loadOverview = async (silent = Boolean(overviewData)) => {
@@ -265,11 +272,13 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
   const filteredLeaves = campusLeaves.filter((l) => {
     const q = leaveSearch.toLowerCase();
     return (
-      l.employee_name.toLowerCase().includes(q) ||
-      l.department.toLowerCase().includes(q) ||
-      l.leave_type.toLowerCase().includes(q)
+      (l.employee_name || '').toLowerCase().includes(q) ||
+      (l.department || '').toLowerCase().includes(q) ||
+      (l.leave_type || '').toLowerCase().includes(q) ||
+      (l.reason || '').toLowerCase().includes(q)
     );
   });
+  const partitionedRequests = partitionRequestsByTimeline(filteredLeaves);
 
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto' }}>
@@ -328,7 +337,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
             gap: '8px',
           }}
         >
-          <Calendar size={16} /> University Leaves Log
+          <Calendar size={16} /> University Requests Log
         </button>
 
         <button
@@ -1056,7 +1065,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
         </div>
       )}
 
-      {/* TAB 3: UNIVERSITY LEAVES LOG */}
+      {/* TAB 2: UNIVERSITY REQUESTS LOG */}
       {activeTab === 'leaves' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div
@@ -1065,100 +1074,177 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
               borderBottom: '1px solid var(--line)',
               background: '#fff',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
+              flexDirection: 'column',
               gap: '12px',
             }}
           >
-            <div>
-              <div className="card-title" style={{ margin: 0 }}>
-                University COS Leaves &amp; Absence Registry
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <div className="card-title" style={{ margin: 0 }}>
+                  University COS Time &amp; Shift Requests
+                </div>
+              </div>
+
+              <div style={{ position: 'relative', width: '260px' }}>
+                <Search
+                  size={15}
+                  color="#94a3b8"
+                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search requests..."
+                  value={leaveSearch}
+                  onChange={(e) => setLeaveSearch(e.target.value)}
+                  className="form-control"
+                  style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
+                />
               </div>
             </div>
 
-            <div style={{ position: 'relative', width: '260px' }}>
-              <Search
-                size={15}
-                color="#94a3b8"
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }}
-              />
-              <input
-                type="text"
-                placeholder="Search leaves..."
-                value={leaveSearch}
-                onChange={(e) => setLeaveSearch(e.target.value)}
-                className="form-control"
-                style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
-              />
-            </div>
+            <RequestTimelineFilterBar
+              value={requestTimelineFilter}
+              onChange={setRequestTimelineFilter}
+              counts={partitionedRequests.counts}
+              includePending={true}
+            />
           </div>
 
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Personnel</th>
-                <th>Department</th>
-                <th>Category</th>
-                <th>Dates</th>
-                <th>Days</th>
-                <th>Reason</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoadingLeaves ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
-                    Loading leave records...
-                  </td>
+                  <th>Personnel</th>
+                  <th>Department</th>
+                  <th>Category</th>
+                  <th>Schedule / Scope</th>
+                  <th>Reason &amp; Deliverables</th>
+                  <th>Status</th>
                 </tr>
-              ) : filteredLeaves.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                    No leave records found.
-                  </td>
-                </tr>
-              ) : (
-                filteredLeaves.map((l) => {
-                  const isOt = l.leave_type?.toLowerCase().includes('overtime');
-                  const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
-                  const cleanReason = l.reason?.replace(/^\[[^\]]+\]\s*/, '') || l.reason;
-                  return (
-                    <tr key={l.id}>
-                      <td>
-                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
-                        <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
-                      </td>
-                      <td style={{ fontSize: '12.5px' }}>{l.department}</td>
-                      <td style={{ fontWeight: 600, fontSize: '13px' }}>{l.leave_type}</td>
-                      <td style={{ fontSize: '12.5px' }}>
-                        {l.start_date === l.end_date ? l.start_date : `${l.start_date} to ${l.end_date}`}
-                      </td>
-                      <td style={{ fontSize: '12.5px' }}>{isOt ? `${otHours ? `${otHours}h` : 'OT'}` : `${l.days_count}d`}</td>
-                      <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {cleanReason}
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            l.status === 'APPROVED'
-                              ? 'badge-completed'
-                              : l.status === 'REJECTED'
-                              ? 'badge-archived'
-                              : 'badge-active'
-                          }`}
-                          style={{ fontSize: '11.5px' }}
-                        >
-                          {l.status === 'PENDING_DEPT_HEAD' ? 'Pending Review' : l.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {isLoadingLeaves ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px' }}>
+                      Loading request records...
+                    </td>
+                  </tr>
+                ) : (requestTimelineFilter === 'all' ? filteredLeaves : partitionedRequests.grouped[requestTimelineFilter] || []).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                      No request records found in this category.
+                    </td>
+                  </tr>
+                ) : (
+                  (requestTimelineFilter === 'all'
+                    ? partitionedRequests.orderedGroups
+                    : [
+                        {
+                          ...REQUEST_BUCKET_META[requestTimelineFilter],
+                          items: partitionedRequests.grouped[requestTimelineFilter] || [],
+                        },
+                      ]
+                  ).map((group) => (
+                    <React.Fragment key={group.key}>
+                      {requestTimelineFilter === 'all' && (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            style={{
+                              padding: '8px 16px',
+                              background: '#f8fafc',
+                              borderTop: '1px solid var(--line)',
+                              borderBottom: '1px solid var(--line)',
+                              fontSize: '11.5px',
+                              fontWeight: 800,
+                              color: group.text,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                            }}
+                          >
+                            {group.sectionTitle} ({group.items.length})
+                          </td>
+                        </tr>
+                      )}
+                      {group.items.map((l) => {
+                        const isOt = l.leave_type?.toLowerCase().includes('overtime');
+                        const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                        const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
+                        const cleanReason = l.reason?.replace(/^\[[^\]]+\]\s*/, '') || l.reason;
+                        const statusMeta = formatRequestStatus(l.status);
+                        const bucketMeta = REQUEST_BUCKET_META[l._timelineBucket || group.key];
+                        return (
+                          <tr key={l.id}>
+                            <td>
+                              <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
+                              <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
+                            </td>
+                            <td style={{ fontSize: '12.5px' }}>{l.department}</td>
+                            <td>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
+                                  color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
+                                  border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
+                                }}
+                              >
+                                {l.leave_type}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '12.5px' }}>
+                              <div>
+                                {isOt
+                                  ? `${l.start_date} (${otHours ? `${otHours}h` : 'OT'})`
+                                  : l.start_date === l.end_date
+                                  ? `${l.start_date} (${l.days_count}d)`
+                                  : `${l.start_date} to ${l.end_date} (${l.days_count}d)`}
+                              </div>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  marginTop: '3px',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  background: bucketMeta.bg,
+                                  color: bucketMeta.text,
+                                  border: `1px solid ${bucketMeta.border}`,
+                                }}
+                              >
+                                {bucketMeta.label}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '12px', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {cleanReason}
+                            </td>
+                            <td>
+                              <span className={`badge ${statusMeta.badgeClass}`} style={{ fontSize: '11.5px' }}>
+                                {statusMeta.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -18,7 +18,13 @@ import Toast from '../common/Toast';
 import HistoricalAttendanceRoster from '../common/HistoricalAttendanceRoster';
 import PredictiveTextarea from '../common/PredictiveTextarea';
 import PunchLocationModal from '../common/PunchLocationModal';
+import RequestTimelineFilterBar from '../common/RequestTimelineFilterBar';
 import { getCachedData, setCachedData, invalidateCache } from '../../utils/swrCache';
+import {
+  formatRequestStatus,
+  partitionRequestsByTimeline,
+  REQUEST_BUCKET_META,
+} from '../../utils/requestHelpers';
 
 export default function DepartmentAttendance({ currentUser, onBack = null, initialTab = 'radar' }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'radar'); // 'radar' | 'leaves' | 'history'
@@ -87,9 +93,10 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
   const [isLoading, setIsLoading] = useState(!rosterData);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Leaves Queue State (Connected to Live Database API)
+  // Requests Queue State (Connected to Live Database API)
   const [leaveQueue, setLeaveQueue] = useState(() => getCachedData(cacheKeyLeaves) || []);
   const [isLoadingLeaves, setIsLoadingLeaves] = useState(!leaveQueue.length);
+  const [requestTimelineFilter, setRequestTimelineFilter] = useState('all');
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -609,7 +616,20 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
       )}
 
       {/* TAB 2: REQUEST APPROVALS QUEUE */}
-      {activeTab === 'leaves' && (
+      {activeTab === 'leaves' && (() => {
+        const partitionedRequests = partitionRequestsByTimeline(leaveQueue);
+        const visibleGroups =
+          requestTimelineFilter === 'all'
+            ? partitionedRequests.orderedGroups
+            : [
+                {
+                  ...REQUEST_BUCKET_META[requestTimelineFilter],
+                  items: partitionedRequests.grouped[requestTimelineFilter] || [],
+                },
+              ];
+        const hasVisibleItems = visibleGroups.some((g) => g.items.length > 0);
+
+        return (
         <div>
           {/* Requests Queue Table */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -618,11 +638,20 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--line)',
                 background: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
               }}
             >
               <div className="card-title" style={{ margin: 0 }}>
                 Staff Time &amp; Shift Requests
               </div>
+              <RequestTimelineFilterBar
+                value={requestTimelineFilter}
+                onChange={setRequestTimelineFilter}
+                counts={partitionedRequests.counts}
+                includePending={true}
+              />
             </div>
 
             <div style={{ overflowX: 'auto' }}>
@@ -644,105 +673,138 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
                         Loading requests...
                       </td>
                     </tr>
-                  ) : leaveQueue.length === 0 ? (
+                  ) : !hasVisibleItems ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                        No time &amp; shift requests filed in your department.
+                        {leaveQueue.length === 0
+                          ? 'No time & shift requests filed in your department.'
+                          : 'No requests found in this timeline category.'}
                       </td>
                     </tr>
                   ) : (
-                    leaveQueue.map((l) => {
-                      const isOt = l.leave_type?.toLowerCase().includes('overtime');
-                      const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
-                      const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
-                      const cleanReason = l.reason?.replace(/^\[[^\]]+\]\s*/, '') || l.reason;
-                      return (
-                        <tr key={l.id}>
-                          <td>
-                            <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
-                            <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
-                          </td>
-                          <td>
-                            <span
+                    visibleGroups.map((group) => (
+                      <React.Fragment key={group.key}>
+                        {requestTimelineFilter === 'all' && (
+                          <tr>
+                            <td
+                              colSpan={6}
                               style={{
-                                display: 'inline-block',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
-                                color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
-                                border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
+                                padding: '8px 16px',
+                                background: '#f8fafc',
+                                borderTop: '1px solid var(--line)',
+                                borderBottom: '1px solid var(--line)',
+                                fontSize: '11.5px',
+                                fontWeight: 800,
+                                color: group.text,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
                               }}
                             >
-                              {l.leave_type}
-                            </span>
-                          </td>
-                          <td style={{ fontSize: '12.5px' }}>
-                            {isOt
-                              ? `${l.start_date} (${otHours ? `${otHours} hrs` : 'Overtime'})`
-                              : l.start_date === l.end_date
-                              ? `${l.start_date}`
-                              : `${l.start_date} to ${l.end_date}`}
-                          </td>
-                          <td style={{ fontSize: '12px', maxWidth: '240px' }}>
-                            {cleanReason}
-                          </td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                l.status === 'APPROVED'
-                                  ? 'badge-completed'
-                                  : l.status === 'REJECTED'
-                                  ? 'badge-reject'
-                                  : 'badge-pending'
-                              }`}
-                              style={{ fontSize: '11.5px' }}
-                            >
-                              {l.status === 'PENDING_DEPT_HEAD'
-                                ? 'Pending Review'
-                                : l.status === 'APPROVED'
-                                ? 'Approved'
-                                : 'Disapproved'}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {l.status === 'PENDING_DEPT_HEAD' ? (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-primary"
-                                onClick={() => {
-                                  setSelectedLeave(l);
-                                  setReviewNotes(l.review_notes || '');
-                                }}
-                                style={{ fontSize: '12px', padding: '6px 14px' }}
-                              >
-                                Review Request
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                onClick={() => {
-                                  setSelectedLeave(l);
-                                  setReviewNotes(l.review_notes || '');
-                                }}
-                                style={{ fontSize: '11.5px', padding: '4px 10px', background: '#f1f5f9', color: 'var(--ink-700)' }}
-                              >
-                                View Details
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
+                              {group.sectionTitle} ({group.items.length})
+                            </td>
+                          </tr>
+                        )}
+                        {group.items.map((l) => {
+                          const isOt = l.leave_type?.toLowerCase().includes('overtime');
+                          const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                          const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
+                          const cleanReason = l.reason?.replace(/^\[[^\]]+\]\s*/, '') || l.reason;
+                          const statusMeta = formatRequestStatus(l.status);
+                          const bucketMeta = REQUEST_BUCKET_META[l._timelineBucket || group.key];
+                          return (
+                            <tr key={l.id}>
+                              <td>
+                                <div style={{ fontWeight: 600, fontSize: '13px' }}>{l.employee_name}</div>
+                                <div className="muted" style={{ fontSize: '11.5px' }}>{l.employee_id_number}</div>
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
+                                    color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
+                                    border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
+                                  }}
+                                >
+                                  {l.leave_type}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '12.5px' }}>
+                                <div>
+                                  {isOt
+                                    ? `${l.start_date} (${otHours ? `${otHours} hrs` : 'Overtime'})`
+                                    : l.start_date === l.end_date
+                                    ? `${l.start_date}`
+                                    : `${l.start_date} to ${l.end_date}`}
+                                </div>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    marginTop: '3px',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    background: bucketMeta.bg,
+                                    color: bucketMeta.text,
+                                    border: `1px solid ${bucketMeta.border}`,
+                                  }}
+                                >
+                                  {bucketMeta.label}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '12px', maxWidth: '240px' }}>
+                                {cleanReason}
+                              </td>
+                              <td>
+                                <span className={`badge ${statusMeta.badgeClass}`} style={{ fontSize: '11.5px' }}>
+                                  {statusMeta.label}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                {l.status === 'PENDING_DEPT_HEAD' ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => {
+                                      setSelectedLeave(l);
+                                      setReviewNotes(l.review_notes || '');
+                                    }}
+                                    style={{ fontSize: '12px', padding: '6px 14px' }}
+                                  >
+                                    Review Request
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm"
+                                    onClick={() => {
+                                      setSelectedLeave(l);
+                                      setReviewNotes(l.review_notes || '');
+                                    }}
+                                    style={{ fontSize: '11.5px', padding: '4px 10px', background: '#f1f5f9', color: 'var(--ink-700)' }}
+                                  >
+                                    View Details
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))
                   )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* TAB 3: HISTORICAL ATTENDANCE ROSTER */}
       {activeTab === 'history' && (

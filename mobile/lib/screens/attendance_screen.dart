@@ -566,19 +566,59 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       AppCard(
         padding: EdgeInsets.zero,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Padding(padding: EdgeInsets.fromLTRB(18, 16, 18, 4), child: CardTitle('My Leave & Absence History')),
+          const Padding(padding: EdgeInsets.fromLTRB(18, 16, 18, 4), child: CardTitle('My Request History')),
           const Divider(height: 1),
           if (_leaves.isEmpty)
             const Padding(
               padding: EdgeInsets.all(28),
-              child: MutedText('No leave requests filed yet.', align: TextAlign.center),
+              child: MutedText('No requests submitted yet.', align: TextAlign.center),
             )
           else
-            for (final l in _leaves) _LeaveTile(l),
+            for (final l in _sortedRequests()) _LeaveTile(l),
         ]),
       ),
     ];
   }
+
+  List<Map<String, dynamic>> _sortedRequests() {
+    final todayIso = _todayPhtIso();
+    final copy = List<Map<String, dynamic>>.from(_leaves);
+    int rank(Map<String, dynamic> r) {
+      final bucket = _classifyTimeline(r, todayIso);
+      return switch (bucket) {
+        'pending' => 0,
+        'in_progress' => 1,
+        'upcoming' => 2,
+        _ => 3,
+      };
+    }
+
+    copy.sort((a, b) => rank(a).compareTo(rank(b)));
+    return copy;
+  }
+}
+
+String _todayPhtIso() {
+  final pht = DateTime.now().toUtc().add(const Duration(hours: 8));
+  return '${pht.year.toString().padLeft(4, '0')}-${pht.month.toString().padLeft(2, '0')}-${pht.day.toString().padLeft(2, '0')}';
+}
+
+String _classifyTimeline(Map<String, dynamic> l, String todayIso) {
+  final status = '${l['status'] ?? ''}';
+  final start = '${l['start_date'] ?? ''}';
+  final end = '${l['end_date'] ?? start}';
+  if (status == 'APPROVED') {
+    if (start.isNotEmpty && end.isNotEmpty && start.compareTo(todayIso) <= 0 && todayIso.compareTo(end) <= 0) {
+      return 'in_progress';
+    }
+    if (start.isNotEmpty && start.compareTo(todayIso) > 0) return 'upcoming';
+    return 'past';
+  }
+  if (status == 'PENDING_DEPT_HEAD') {
+    if (end.isEmpty || end.compareTo(todayIso) >= 0) return 'pending';
+    return 'past';
+  }
+  return 'past';
 }
 
 class _LeaveTile extends StatelessWidget {
@@ -587,18 +627,44 @@ class _LeaveTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = '${l['status'] ?? ''}';
-    final tone = status == 'APPROVED' ? 'completed' : (status == 'REJECTED' ? 'archived' : 'active');
+    final statusLabel = switch (status) {
+      'APPROVED' => 'Approved',
+      'REJECTED' => 'Disapproved',
+      'CANCELLED' => 'Cancelled',
+      _ => 'Pending Review',
+    };
+    final statusTone = switch (status) {
+      'APPROVED' => 'completed',
+      'REJECTED' => 'delayed',
+      'CANCELLED' => 'inactive',
+      _ => 'pending',
+    };
+    final bucket = _classifyTimeline(l, _todayPhtIso());
+    final (timelineLabel, timelineTone) = switch (bucket) {
+      'in_progress' => ('In Progress', 'completed'),
+      'upcoming' => ('Upcoming', 'inprogress'),
+      'pending' => ('Pending Review', 'pending'),
+      _ => ('Past Record', 'inactive'),
+    };
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('${l['leave_type']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5))),
-          StatusBadge.tone(status == 'PENDING_DEPT_HEAD' ? 'Pending Review' : status, tone),
+          StatusBadge.tone(statusLabel, statusTone),
         ]),
-        const SizedBox(height: 4),
-        Text('${l['start_date']} to ${l['end_date']} • ${l['days_count']} day(s)',
-            style: const TextStyle(fontSize: 12.5, color: AppColors.ink700)),
+        const SizedBox(height: 5),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('${l['start_date']} to ${l['end_date']} • ${l['days_count']} day(s)',
+                style: const TextStyle(fontSize: 12.5, color: AppColors.ink700)),
+            StatusBadge.tone(timelineLabel, timelineTone),
+          ],
+        ),
         if ((l['review_notes'] ?? '').toString().isNotEmpty) ...[
           const SizedBox(height: 4),
           MutedText('Notes: ${l['review_notes']}', size: 12),
