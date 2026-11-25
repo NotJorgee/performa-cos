@@ -11,6 +11,7 @@ from ..config import settings
 from ..database import get_db
 from .. import models, schemas
 from ..auth import get_current_user
+from ..department_helpers import get_overseeing_department_ids
 
 router = APIRouter(prefix="/api/dar", tags=["Daily Accomplishment Reports"])
 
@@ -183,6 +184,16 @@ def list_dars(
     if current_user.role == "COS Employee" and target_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot view another employee's DAR logs.")
 
+    # Department Head scoping: verify target employee belongs to an overseen department (LOG-04)
+    if current_user.role == "Department Head" and target_user_id != current_user.id:
+        overseeing = get_overseeing_department_ids(current_user, db)
+        target_emp = db.query(models.UserAccount).filter(models.UserAccount.id == target_user_id).first()
+        if not target_emp or target_emp.department_id not in overseeing:
+            raise HTTPException(
+                status_code=403,
+                detail="Department Heads can only view accomplishment reports for personnel within their assigned departments.",
+            )
+
     query = db.query(models.DailyAccomplishmentReport).filter(
         models.DailyAccomplishmentReport.user_id == target_user_id
     )
@@ -218,6 +229,16 @@ def get_monthly_accomplishment_report(
     target_user_id = user_id or current_user.id
     if current_user.role == "COS Employee" and target_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized.")
+
+    # Department Head scoping: verify target employee belongs to an overseen department (LOG-04)
+    if current_user.role == "Department Head" and target_user_id != current_user.id:
+        overseeing = get_overseeing_department_ids(current_user, db)
+        target_emp = db.query(models.UserAccount).filter(models.UserAccount.id == target_user_id).first()
+        if not target_emp or target_emp.department_id not in overseeing:
+            raise HTTPException(
+                status_code=403,
+                detail="Department Heads can only view monthly accomplishment reports for personnel within their assigned departments.",
+            )
 
     query = db.query(models.DailyAccomplishmentReport).filter(
         models.DailyAccomplishmentReport.user_id == target_user_id

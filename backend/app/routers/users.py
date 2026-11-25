@@ -189,6 +189,24 @@ def create_user_manual(
         department_name=payload.department_name,
     )
 
+    # Enforce single Department Head per department constraint (LOG-02)
+    if payload.role == "Department Head" and dept_id:
+        existing_dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.department_id == dept_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if existing_dh:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot assign Department Head: {existing_dh.full_name} is already the active Department Head for this department. The incumbent must be reassigned or archived first.",
+            )
+
     new_user = models.UserAccount(
         employee_id_number=emp_id,
         full_name=full_name,
@@ -248,7 +266,8 @@ def update_user_contact(
 
     if payload.contact_number is not None:
         user.contact_number = payload.contact_number
-    if payload.job_title is not None:
+    # Privilege boundary: official job designation can only be updated by HR Personnel (LOG-09)
+    if payload.job_title is not None and current_user.role == "HR Personnel":
         user.job_title = payload.job_title
     if payload.alternate_email is not None:
         user.alternate_email = payload.alternate_email
@@ -311,7 +330,22 @@ def admin_update_user(
     if payload.full_name is not None:
         user.full_name = payload.full_name
     if payload.email is not None:
-        user.email = payload.email
+        clean_new_email = payload.email.strip().lower()
+        if clean_new_email:
+            existing_email_user = (
+                db.query(models.UserAccount)
+                .filter(
+                    models.UserAccount.id != user_id,
+                    func.lower(models.UserAccount.email) == clean_new_email,
+                )
+                .first()
+            )
+            if existing_email_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Institutional email '{payload.email.strip()}' is already assigned to {existing_email_user.full_name} ({existing_email_user.role}).",
+                )
+            user.email = payload.email.strip()
     if payload.employee_id_number is not None:
         user.employee_id_number = payload.employee_id_number
     if payload.job_title is not None:
@@ -531,6 +565,25 @@ def restore_user(
     user = db.query(models.UserAccount).filter(models.UserAccount.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+
+    # Enforce single Department Head constraint when restoring an archived account (LOG-03)
+    if user.role == "Department Head" and user.department_id:
+        existing_dh = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.id != user_id,
+                models.UserAccount.department_id == user.department_id,
+                models.UserAccount.role == "Department Head",
+                models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
+            )
+            .first()
+        )
+        if existing_dh:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot restore Department Head: {existing_dh.full_name} is currently the active Department Head for this department. Reassign or archive the current incumbent before restoring this account.",
+            )
 
     user.is_archived = False
     user.is_active = True

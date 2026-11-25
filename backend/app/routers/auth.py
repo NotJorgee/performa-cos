@@ -208,15 +208,24 @@ def register(
     if invite.expires_at < datetime.datetime.utcnow():
         raise HTTPException(status_code=400, detail="Invitation token has expired.")
 
-    # 2. Check email uniqueness (case-insensitive)
+    # 2. Strict invitation email binding (LOG-01)
     clean_signup_email = (payload.email or "").strip().lower()
+    if invite.email:
+        clean_invite_email = invite.email.strip().lower()
+        if clean_signup_email != clean_invite_email:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Registration email mismatch: This invitation token was issued specifically for {clean_invite_email}.",
+            )
+
+    # 3. Check email uniqueness (case-insensitive)
     if db.query(models.UserAccount).filter(func.lower(models.UserAccount.email) == clean_signup_email).first():
         raise HTTPException(status_code=400, detail="Email is already registered.")
 
-    # 3. Institutional password complexity validation
+    # 4. Institutional password complexity validation
     validate_password_complexity(payload.password)
 
-    # 4. Determine role and department strictly bound to HR invite
+    # 5. Determine role and department strictly bound to HR invite
     role = invite.role or payload.role or "COS Employee"
     dept_id = resolve_onboarding_department_id(db, role, invite.department_id or payload.department_id)
 

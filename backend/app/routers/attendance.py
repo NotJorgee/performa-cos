@@ -1241,6 +1241,12 @@ def apply_for_leave(
     Submits a formal leave request from a COS employee.
     Notifies the supervisor/Department Head for institutional review.
     """
+    if current_user.role != "COS Employee":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Leave, Overtime, and Official Business requests are designated exclusively for Contract of Service (COS) personnel.",
+        )
+
     is_overtime = "overtime" in payload.leave_type.lower()
     is_ob = "official business" in payload.leave_type.lower() or "ob" in payload.leave_type.lower()
 
@@ -1283,22 +1289,47 @@ def apply_for_leave(
     db.commit()
     db.refresh(leave_entry)
 
-    # Notify Department Head
+    # Notify Department Head (primary or overseeing assignment) (LOG-08)
     if current_user.department_id:
-        dept_head = (
+        dept_heads = (
             db.query(models.UserAccount)
             .filter(
                 models.UserAccount.department_id == current_user.department_id,
                 models.UserAccount.role == "Department Head",
                 models.UserAccount.is_active == True,
+                models.UserAccount.is_archived == False,
             )
-            .first()
+            .all()
         )
-        if dept_head:
-            req_label = "Overtime Request" if is_overtime else ("Official Business (OB) Slip" if is_ob else "Leave Request")
-            hours_info = f" ({payload.hours} hr(s))" if is_overtime and payload.hours else f" ({days_cnt} day(s))"
+        overseeing_assignments = (
+            db.query(models.UserDepartmentAssignment)
+            .filter(
+                models.UserDepartmentAssignment.department_id == current_user.department_id,
+                models.UserDepartmentAssignment.assignment_type == "overseeing",
+            )
+            .all()
+        )
+        overseeing_ids = {a.user_id for a in overseeing_assignments}
+        if overseeing_ids:
+            overseeing_heads = (
+                db.query(models.UserAccount)
+                .filter(
+                    models.UserAccount.id.in_(overseeing_ids),
+                    models.UserAccount.role == "Department Head",
+                    models.UserAccount.is_active == True,
+                    models.UserAccount.is_archived == False,
+                )
+                .all()
+            )
+            all_dept_heads = list({dh.id: dh for dh in dept_heads + overseeing_heads}.values())
+        else:
+            all_dept_heads = dept_heads
+
+        req_label = "Overtime Request" if is_overtime else ("Official Business (OB) Slip" if is_ob else "Leave Request")
+        hours_info = f" ({payload.hours} hr(s))" if is_overtime and payload.hours else f" ({days_cnt} day(s))"
+        for dh in all_dept_heads:
             notif = models.Notification(
-                user_id=dept_head.id,
+                user_id=dh.id,
                 target_role=None,
                 title=f"{req_label}: {current_user.full_name}",
                 message=f"{current_user.full_name} submitted a {payload.leave_type} request for {start_d}{hours_info}. Reason: {payload.reason.strip()[:80]}",
@@ -1308,7 +1339,7 @@ def apply_for_leave(
                 created_at=datetime.datetime.utcnow(),
             )
             db.add(notif)
-            db.commit()
+        db.commit()
 
     action_label = "OVERTIME_REQUEST_FILED" if is_overtime else ("OFFICIAL_BUSINESS_FILED" if is_ob else "LEAVE_APPLICATION_FILED")
     log_audit(

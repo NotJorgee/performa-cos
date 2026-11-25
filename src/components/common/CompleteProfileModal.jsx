@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserCheck, Briefcase, Phone, MapPin, AlertCircle, X, ShieldAlert } from 'lucide-react';
+import { UserCheck, Briefcase, Phone, MapPin, AlertCircle, X, ShieldAlert, Lock } from 'lucide-react';
 import api from '../../services/api';
 
 export default function CompleteProfileModal({
@@ -10,12 +10,11 @@ export default function CompleteProfileModal({
 }) {
   if (!isOpen) return null;
 
-  const currentJob = currentUser?.jobTitle || currentUser?.job_title || currentUser?.position || '';
+  const currentJob = currentUser?.jobTitle || currentUser?.job_title || currentUser?.position || 'COS Employee';
   const currentPhone = currentUser?.contactNumber || currentUser?.contact_number || '';
   const currentEmergency = currentUser?.emergencyContact || currentUser?.emergency_contact || '';
   const currentOffice = currentUser?.officeLocation || currentUser?.office_location || '';
 
-  const [jobTitle, setJobTitle] = useState(currentJob === 'COS Staff' ? '' : currentJob);
   const [contactNumber, setContactNumber] = useState(currentPhone);
   const [emergencyContact, setEmergencyContact] = useState(currentEmergency);
   const [officeLocation, setOfficeLocation] = useState(currentOffice);
@@ -27,13 +26,8 @@ export default function CompleteProfileModal({
     e.preventDefault();
     setErrorMessage(null);
 
-    const cleanJob = jobTitle.trim();
     const cleanPhone = contactNumber.trim();
 
-    if (!cleanJob) {
-      setErrorMessage('Please enter your official Job Position or Designation.');
-      return;
-    }
     if (!cleanPhone) {
       setErrorMessage('Please enter your official contact / mobile phone number.');
       return;
@@ -42,7 +36,6 @@ export default function CompleteProfileModal({
     setIsSubmitting(true);
     try {
       const payload = {
-        job_title: cleanJob,
         contact_number: cleanPhone,
         emergency_contact: emergencyContact.trim() || null,
         office_location: officeLocation.trim() || null,
@@ -149,29 +142,43 @@ export default function CompleteProfileModal({
             </div>
           )}
 
-          {/* Job Position / Designation */}
+          {/* Job Position / Designation (Institutional HR Assignment - LOG-09) */}
           <div className="form-group" style={{ margin: 0 }}>
-            <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'block', marginBottom: '6px', color: 'var(--ink-800)' }}>
-              Job Position / Designation <span style={{ color: 'var(--red-600)' }}>*</span>
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--ink-800)' }}>
+                Official Job Designation
+              </label>
+              <span style={{ fontSize: '11px', color: '#991b1b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <Lock size={11} /> Pre-assigned by HRMO
+              </span>
+            </div>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
-                required
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                placeholder="e.g. Administrative Aide VI / Instructor I"
+                readOnly
+                disabled
+                value={currentJob}
                 className="form-control"
-                style={{ width: '100%', paddingLeft: '36px', height: '42px', fontSize: '14px' }}
+                style={{
+                  width: '100%',
+                  paddingLeft: '36px',
+                  height: '42px',
+                  fontSize: '14px',
+                  backgroundColor: '#f8fafc',
+                  color: '#334155',
+                  cursor: 'not-allowed',
+                  border: '1px solid #cbd5e1',
+                  fontWeight: 600,
+                }}
               />
               <Briefcase
                 size={16}
-                color="var(--ink-400)"
+                color="#64748b"
                 style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
               />
             </div>
             <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
-              Your official role title as designated in your university contract.
+              Official appointment title designated in university HR contract records.
             </span>
           </div>
 
