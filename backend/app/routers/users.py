@@ -149,10 +149,10 @@ def create_user_manual(
         raise HTTPException(status_code=400, detail="Full name is required.")
 
     starting_date = payload.starting_date or payload.date_appointed or payload.contract_start_date or datetime.date.today()
-    contract_start_date = (payload.contract_start_date or starting_date) if payload.role == "COS Employee" else None
+    contract_start_date = payload.contract_start_date if payload.role == "COS Employee" else None
     contract_end_date = payload.contract_end_date
-    if payload.role == "COS Employee":
-        if not contract_end_date and contract_start_date:
+    if payload.role == "COS Employee" and contract_start_date:
+        if not contract_end_date:
             from .system_settings import get_system_setting, calculate_contract_end_date
             policy_val = get_system_setting(db, "cos_contract_duration_months", default="6")
             try:
@@ -160,8 +160,11 @@ def create_user_manual(
             except ValueError:
                 policy_months = 6
             contract_end_date = calculate_contract_end_date(contract_start_date, policy_months)
+        total_contracts = 1
     else:
+        contract_start_date = None
         contract_end_date = None
+        total_contracts = 0
 
     emp_id = (payload.employee_id_number or "").strip()
     if emp_id:
@@ -221,7 +224,7 @@ def create_user_manual(
         contract_end_date=contract_end_date,
         is_active=payload.is_active,
         is_archived=False,
-        total_contracts=1 if payload.role == "COS Employee" else 0,
+        total_contracts=total_contracts,
     )
     db.add(new_user)
     db.flush()

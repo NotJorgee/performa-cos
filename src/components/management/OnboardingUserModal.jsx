@@ -7,25 +7,19 @@ import {
   Lock,
   Eye,
   EyeOff,
-  KeyRound,
   AlertCircle,
   Mail,
-  Briefcase,
-  Phone,
   Calendar,
   ArrowLeft,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { groupDepartmentsByDomain } from '../../utils/departments';
-import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import {
   UNIVERSITY_TITLES,
   getTodayIsoDate,
   formatFullLegalName,
   evaluatePasswordComplexity,
-  calculateSixMonthContractEnd,
   formatReadableDate,
-  generateTemporaryPassword,
 } from '../../utils/onboardingHelpers';
 import PasswordComplexityChecklist from '../common/PasswordComplexityChecklist';
 
@@ -63,27 +57,20 @@ export default function OnboardingUserModal({
     return existingUsers.find((u) => (u.email || '').toLowerCase() === clean);
   }, [email, existingUsers]);
 
-  // Manual creation state (parity with TokenizedSignUp + manual features)
+  // Manual creation state (aligned with TokenizedSignUp)
   const [titlePrefix, setTitlePrefix] = useState('None');
   const [firstName, setFirstName] = useState('');
   const [middleInitial, setMiddleInitial] = useState('');
   const [lastName, setLastName] = useState('');
   const [startingDate, setStartingDate] = useState(getTodayIsoDate());
-  const [contractStartDate, setContractStartDate] = useState(getTodayIsoDate());
-  const [contractStartTouched, setContractStartTouched] = useState(false);
-  const [jobPosition, setJobPosition] = useState('');
-  const [phone, setPhone] = useState('');
   const [tempPassword, setTempPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(true);
-  const [showCustomIdOverride, setShowCustomIdOverride] = useState(false);
-  const [customIdOverride, setCustomIdOverride] = useState('');
-  const [isActiveAccount, setIsActiveAccount] = useState(true);
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [manualError, setManualError] = useState(null);
   const [createdManualUser, setCreatedManualUser] = useState(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
-  const [copiedTempPwd, setCopiedTempPwd] = useState(false);
 
   // Compute default non-HRMDO department fallback for University Departments tab
   const defaultDeptOption = useMemo(() => {
@@ -106,21 +93,14 @@ export default function OnboardingUserModal({
     setMiddleInitial('');
     setLastName('');
     setStartingDate(today);
-    setContractStartDate(today);
-    setContractStartTouched(false);
-    setJobPosition('');
-    setPhone('');
     setTempPassword('');
-    setShowPassword(true);
-    setShowCustomIdOverride(false);
-    setCustomIdOverride('');
-    setIsActiveAccount(true);
-    setSendWelcomeEmail(true);
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setIsSubmittingManual(false);
     setManualError(null);
     setCreatedManualUser(null);
     setCopiedCreds(false);
-    setCopiedTempPwd(false);
   };
 
   useEffect(() => {
@@ -141,32 +121,6 @@ export default function OnboardingUserModal({
 
   // Include both standard grouped EVSU units and any custom departments added via + Add Department
   const groupedDepartmentOptions = useMemo(() => groupDepartmentsByDomain(departments), [departments]);
-
-  const previewEmployeeId = useMemo(() => {
-    if (showCustomIdOverride && customIdOverride.trim()) {
-      return customIdOverride.trim();
-    }
-    return generateEvsuEmployeeId({
-      firstName,
-      middleInitial,
-      lastName,
-      startingDate,
-      existingIds: existingEmployeeIds,
-    });
-  }, [
-    showCustomIdOverride,
-    customIdOverride,
-    firstName,
-    middleInitial,
-    lastName,
-    startingDate,
-    existingEmployeeIds,
-  ]);
-
-  const previewContractEndIso = useMemo(() => {
-    if (effectiveRole !== 'COS Employee') return '';
-    return calculateSixMonthContractEnd(contractStartDate);
-  }, [effectiveRole, contractStartDate]);
 
   if (!isOpen) return null;
 
@@ -239,8 +193,13 @@ export default function OnboardingUserModal({
     const complexity = evaluatePasswordComplexity(tempPassword);
     if (!complexity.isValid) {
       setManualError(
-        'Temporary password must contain at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special symbol.'
+        'Password must contain at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special character.'
       );
+      return;
+    }
+
+    if (tempPassword !== confirmPassword) {
+      setManualError('Passwords do not match. Please ensure both password fields match.');
       return;
     }
 
@@ -263,24 +222,15 @@ export default function OnboardingUserModal({
         role: effectiveRole,
         department_id: selectedDeptObj?.id || null,
         department_name: effectiveDeptName,
-        job_title:
-          jobPosition.trim() ||
-          (effectiveRole === 'COS Employee'
-            ? 'Administrative Aide'
-            : effectiveRole === 'HR Personnel'
-              ? 'HRMO Officer'
-              : 'Department Head'),
-        contact_number: phone.trim() || null,
+        job_title: effectiveRole === 'COS Employee' ? 'COS Staff' : effectiveRole,
+        contact_number: '',
         starting_date: startingDate || getTodayIsoDate(),
         date_appointed: startingDate || getTodayIsoDate(),
-        contract_start_date:
-          effectiveRole === 'COS Employee' ? contractStartDate || startingDate : null,
-        contract_end_date:
-          effectiveRole === 'COS Employee' && previewContractEndIso ? previewContractEndIso : null,
-        employee_id_number: showCustomIdOverride && customIdOverride.trim() ? customIdOverride.trim() : null,
+        contract_start_date: null,
+        contract_end_date: null,
         password: tempPassword,
-        is_active: isActiveAccount,
-        send_welcome_email: sendWelcomeEmail,
+        is_active: true,
+        send_welcome_email: true,
       };
 
       const created = await api.users.create(payload);
@@ -310,13 +260,6 @@ export default function OnboardingUserModal({
     navigator.clipboard.writeText(createdInvite.url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
-  };
-
-  const handleCopyTempPassword = () => {
-    if (!tempPassword) return;
-    navigator.clipboard.writeText(tempPassword);
-    setCopiedTempPwd(true);
-    setTimeout(() => setCopiedTempPwd(false), 2000);
   };
 
   const handleCopyCredentials = () => {
@@ -786,226 +729,38 @@ export default function OnboardingUserModal({
                 </div>
               </div>
 
-              {/* Campus Starting Date & Contract Dates */}
-              {effectiveRole === 'COS Employee' ? (
-                <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
-                        Campus Starting Date <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="form-control"
-                          type="date"
-                          required
-                          value={startingDate}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setStartingDate(val);
-                            if (!contractStartTouched) {
-                              setContractStartDate(val);
-                            }
-                          }}
-                          style={{ paddingLeft: '34px', fontSize: '12px' }}
-                        />
-                        <Calendar
-                          size={15}
-                          color="var(--ink-400)"
-                          style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                        />
-                      </div>
-                      <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', display: 'block', marginTop: '2px' }}>
-                        Original hiring date. Formats official ID.
-                      </span>
-                    </div>
-
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '11.5px', fontWeight: 600 }}>
-                        Current Contract Start <span style={{ color: 'var(--red-600)' }}>*</span>
-                      </label>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="form-control"
-                          type="date"
-                          required
-                          value={contractStartDate}
-                          onChange={(e) => {
-                            setContractStartTouched(true);
-                            setContractStartDate(e.target.value);
-                          }}
-                          style={{ paddingLeft: '34px', fontSize: '12px' }}
-                        />
-                        <Calendar
-                          size={15}
-                          color="var(--ink-400)"
-                          style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                        />
-                      </div>
-                      <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', display: 'block', marginTop: '2px' }}>
-                        Active 6-month evaluation cycle start.
-                      </span>
-                    </div>
-                  </div>
-                  {previewContractEndIso && (
-                    <div style={{ marginTop: '6px', fontSize: '11.5px', color: 'var(--ink-600)' }}>
-                      Auto-Calculated Contract End Date:{' '}
-                      <strong style={{ color: 'var(--brand-700)' }}>
-                        {formatReadableDate(previewContractEndIso)}
-                      </strong>{' '}
-                      (6-month contract cycle)
-                    </div>
-                  )}
+              {/* Date Appointed (Matches Invitation Sign-Up) */}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11.5px', fontWeight: 600, margin: '0 0 3px', display: 'block' }}>
+                  Date Appointed (Campus Starting Date) <span style={{ color: 'var(--red-600)' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="form-control"
+                    type="date"
+                    required
+                    value={startingDate}
+                    onChange={(e) => setStartingDate(e.target.value)}
+                    style={{ paddingLeft: '34px', fontSize: '12px' }}
+                  />
+                  <Calendar
+                    size={15}
+                    color="var(--ink-400)"
+                    style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                  />
                 </div>
-              ) : (
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
-                    Campus Starting Date (Date of Initial Appointment) <span style={{ color: 'var(--red-600)' }}>*</span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="date"
-                      required
-                      value={startingDate}
-                      onChange={(e) => setStartingDate(e.target.value)}
-                      style={{ paddingLeft: '34px', fontSize: '12px' }}
-                    />
-                    <Calendar
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                    />
-                  </div>
-                </div>
-              )}
+                <span style={{ fontSize: '10.5px', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
+                  Official appointment date on campus. Formats the date segment of the generated ID number. Official contract terms can be assigned in Account Settings.
+                </span>
+              </div>
 
-              {/* Job Position & Contact Phone */}
+              {/* Password + Confirm Password (Matches Invitation Sign-Up) */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Position / Designation</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="text"
-                      value={jobPosition}
-                      onChange={(e) => setJobPosition(e.target.value)}
-                      placeholder={
-                        effectiveRole === 'COS Employee'
-                          ? 'e.g. Administrative Aide VI'
-                          : effectiveRole === 'HR Personnel'
-                            ? 'e.g. HRMO Officer'
-                            : 'e.g. Department Head'
-                      }
-                      style={{ paddingLeft: '34px' }}
-                    />
-                    <Briefcase
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Official Contact Number</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-control"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+63 9XX XXX XXXX"
-                      style={{ paddingLeft: '34px' }}
-                    />
-                    <Phone
-                      size={15}
-                      color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* System Generated EVSU ID Preview + Optional Custom Override */}
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1px dashed var(--line)',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--ink-600)' }}>
-                    {showCustomIdOverride ? 'Assigned Official ID (Custom):' : 'System Generated Official ID:'}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 800,
-                        color: 'var(--brand-700)',
-                        letterSpacing: '0.8px',
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      {previewEmployeeId}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-sm"
-                      onClick={() => {
-                        setShowCustomIdOverride((prev) => !prev);
-                        if (showCustomIdOverride) setCustomIdOverride('');
-                      }}
-                      style={{ padding: '2px 8px', fontSize: '11px', cursor: 'pointer' }}
-                    >
-                      {showCustomIdOverride ? 'Use Auto ID' : 'Override ID'}
-                    </button>
-                  </div>
-                </div>
-                {showCustomIdOverride && (
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={customIdOverride}
-                    onChange={(e) => setCustomIdOverride(e.target.value)}
-                    placeholder="Enter custom institutional Employee ID (optional)"
-                    style={{ marginTop: '8px', fontSize: '12.5px', fontFamily: 'monospace' }}
-                  />
-                )}
-              </div>
-
-              {/* Temporary Password + Generator + Complexity Rules */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, margin: 0 }}>
-                    Temporary Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
+                    Password <span style={{ color: 'var(--red-600)' }}>*</span>
                   </label>
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => {
-                      setTempPassword(generateTemporaryPassword());
-                      setShowPassword(true);
-                    }}
-                    style={{
-                      padding: '2px 9px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <KeyRound size={12} />
-                    <span>Generate Strong Password</span>
-                  </button>
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <div style={{ position: 'relative', flex: 1 }}>
+                  <div style={{ position: 'relative' }}>
                     <input
                       className="form-control"
                       type={showPassword ? 'text' : 'password'}
@@ -1013,13 +768,13 @@ export default function OnboardingUserModal({
                       required
                       value={tempPassword}
                       onChange={(e) => setTempPassword(e.target.value)}
-                      placeholder="Enter or generate compliant temporary password"
-                      style={{ paddingLeft: '34px', paddingRight: '36px', fontFamily: showPassword ? 'monospace' : 'inherit' }}
+                      placeholder="Min. 8 characters"
+                      style={{ paddingLeft: '34px', paddingRight: '36px' }}
                     />
                     <Lock
                       size={15}
                       color="var(--ink-400)"
-                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }}
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 2 }}
                     />
                     <button
                       type="button"
@@ -1035,45 +790,56 @@ export default function OnboardingUserModal({
                         cursor: 'pointer',
                       }}
                       tabIndex={-1}
-                      aria-label={showPassword ? 'Hide temporary password' : 'Show temporary password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                  {tempPassword && (
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>
+                    Confirm Password <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-control"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-type password"
+                      style={{ paddingLeft: '34px', paddingRight: '36px' }}
+                    />
+                    <Lock
+                      size={15}
+                      color="var(--ink-400)"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 2 }}
+                    />
                     <button
                       type="button"
-                      className="btn btn-sm"
-                      onClick={handleCopyTempPassword}
-                      style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--ink-500)',
+                        cursor: 'pointer',
+                      }}
+                      tabIndex={-1}
+                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     >
-                      {copiedTempPwd ? <Check size={13} /> : <Copy size={13} />}
-                      <span>{copiedTempPwd ? 'Copied' : 'Copy'}</span>
+                      {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
-                  )}
+                  </div>
                 </div>
-                <PasswordComplexityChecklist password={tempPassword} />
               </div>
 
-              {/* Manual Onboarding Toggles */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', paddingTop: '2px' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--ink-700)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={isActiveAccount}
-                    onChange={(e) => setIsActiveAccount(e.target.checked)}
-                  />
-                  <span>Activate account immediately</span>
-                </label>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--ink-700)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={sendWelcomeEmail}
-                    onChange={(e) => setSendWelcomeEmail(e.target.checked)}
-                  />
-                  <span>Send welcome confirmation email</span>
-                </label>
-              </div>
+              <PasswordComplexityChecklist password={tempPassword} />
             </div>
 
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
