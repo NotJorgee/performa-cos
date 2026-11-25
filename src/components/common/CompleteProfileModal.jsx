@@ -31,6 +31,8 @@ export default function CompleteProfileModal({
 
     const cleanJob = jobTitle.trim();
     const cleanPhone = contactNumber.trim();
+    const cleanEmergency = emergencyContact.trim();
+    const cleanOffice = officeLocation.trim();
 
     if (!cleanJob) {
       setErrorMessage('Please enter your Job Position or Designation.');
@@ -42,13 +44,23 @@ export default function CompleteProfileModal({
       return;
     }
 
+    if (!cleanEmergency) {
+      setErrorMessage('Please enter your emergency contact person and phone number.');
+      return;
+    }
+
+    if (!cleanOffice) {
+      setErrorMessage('Please enter your assigned office station or room assignment.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const payload = {
         job_title: cleanJob,
         contact_number: cleanPhone,
-        emergency_contact: emergencyContact.trim() || null,
-        office_location: officeLocation.trim() || null,
+        emergency_contact: cleanEmergency,
+        office_location: cleanOffice,
       };
 
       const updated = await api.users.updateContact(currentUser.id, payload);
@@ -230,11 +242,12 @@ export default function CompleteProfileModal({
           {/* Emergency Contact */}
           <div className="form-group" style={{ margin: 0 }}>
             <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'block', marginBottom: '6px', color: 'var(--ink-800)' }}>
-              Emergency Contact Person &amp; Phone <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ink-400)' }}>(Optional)</span>
+              Emergency Contact Person &amp; Phone <span style={{ color: 'var(--red-600)' }}>*</span>
             </label>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
+                required
                 value={emergencyContact}
                 onChange={(e) => setEmergencyContact(e.target.value)}
                 placeholder="e.g. Juan Dela Cruz (Spouse) - 0123 456 7890"
@@ -247,16 +260,20 @@ export default function CompleteProfileModal({
                 style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
               />
             </div>
+            <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
+              Primary contact person in case of campus emergencies.
+            </span>
           </div>
 
           {/* Office Station / Desk Location */}
           <div className="form-group" style={{ margin: 0 }}>
             <label style={{ fontSize: '12.5px', fontWeight: 700, display: 'block', marginBottom: '6px', color: 'var(--ink-800)' }}>
-              Office Station / Room Assignment <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ink-400)' }}>(Optional)</span>
+              Office Station / Room Assignment <span style={{ color: 'var(--red-600)' }}>*</span>
             </label>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
+                required
                 value={officeLocation}
                 onChange={(e) => setOfficeLocation(e.target.value)}
                 placeholder="e.g. IT Building, IT Office"
@@ -269,6 +286,9 @@ export default function CompleteProfileModal({
                 style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
               />
             </div>
+            <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
+              Your assigned office, department laboratory, or workstation on campus.
+            </span>
           </div>
 
           {/* Action Button */}
