@@ -266,8 +266,7 @@ def update_user_contact(
 
     if payload.contact_number is not None:
         user.contact_number = payload.contact_number
-    # Privilege boundary: official job designation can only be updated by HR Personnel (LOG-09)
-    if payload.job_title is not None and current_user.role == "HR Personnel":
+    if payload.job_title is not None:
         user.job_title = payload.job_title
     if payload.alternate_email is not None:
         user.alternate_email = payload.alternate_email
