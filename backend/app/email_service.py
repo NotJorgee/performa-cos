@@ -384,3 +384,59 @@ def send_contract_window_alert_email(to: str, emp_name: str, days_left: int, end
     </div>
     """
     return _dispatch_email(to=to, subject=f"PerformaCOS {urgency_subject} — Contract Renewal Window Open ({days_left} Days Remaining)", html=html)
+
+
+def send_new_registration_hr_notice_email(
+    to: str,
+    hr_name: str,
+    new_user_name: str,
+    new_user_email: str,
+    new_user_role: str,
+    emp_id_number: str,
+    dept_name: str,
+) -> bool:
+    """Dispatches a notice to HR Personnel when a new user registers, prompting contract date setup for COS employees."""
+    portal_url = f"{settings.frontend_base_url}/#/user_management"
+    salutation = f"Dear <strong>{hr_name}</strong>," if hr_name else "Dear HR Personnel,"
+    is_cos = new_user_role == "COS Employee"
+    action_note = (
+        "Since this employee is newly registered under Contract of Service (COS), please open User Management to assign their official contract start and end dates."
+        if is_cos
+        else "You may review their account details and department assignment in User Management."
+    )
+    cta_label = "Set Contract Date in Portal" if is_cos else "Open User Management"
+
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;color:#1e293b;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h2 style="color:#7a1128;margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PerformaCOS</h2>
+        <p style="color:#64748b;font-size:12px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Eastern Visayas State University</p>
+      </div>
+      <h3 style="color:#0f172a;margin:0 0 12px;font-size:16px;font-weight:700;">New Personnel Account Registered</h3>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        {salutation}
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        A new <strong>{new_user_role}</strong> account has just been registered in the system:
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:16px 0;font-size:13px;line-height:1.7;color:#1e293b;">
+        <div><strong>Full Name:</strong> {new_user_name}</div>
+        <div><strong>Employee ID:</strong> {emp_id_number}</div>
+        <div><strong>Email:</strong> {new_user_email}</div>
+        <div><strong>Department:</strong> {dept_name}</div>
+      </div>
+      <p style="font-size:14px;line-height:1.6;color:#334155;">
+        {action_note}
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{portal_url}" style="display:inline-block;background-color:#7a1128;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:8px;font-weight:700;font-size:14px;">{cta_label}</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px;">
+      <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">EVSU Ormoc Campus - PerformaCOS System</p>
+    </div>
+    """
+    return _dispatch_email(
+        to=to,
+        subject=f"PerformaCOS Action Required - New {new_user_role} Registered: {new_user_name}",
+        html=html,
+    )

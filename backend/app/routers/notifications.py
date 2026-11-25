@@ -206,6 +206,8 @@ def list_user_notifications(
                 action_label = "View Campus Overtime"
             else:
                 action_label = "View Campus Leaves" if "leave" in (n.category or "") else "Open Attendance"
+        elif n.action_view in ("user_management", "employee_management", "administrator_management"):
+            action_label = "Set Contract Date" if "contract" in (n.category or "") or "contract" in msg_lower else "Open User Management"
 
         formatted.append({
             "id": n.id,

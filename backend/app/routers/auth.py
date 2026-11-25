@@ -22,7 +22,7 @@ from ..auth import (
     validate_password_complexity,
     resolve_onboarding_department_id,
 )
-from ..email_service import send_otp_email, send_welcome_email
+from ..email_service import send_otp_email, send_welcome_email, send_new_registration_hr_notice_email
 from ..id_generator import generate_evsu_employee_id
 from .audit import log_audit
 
@@ -304,7 +304,74 @@ def register(
         request=None,
     )
 
-    # 8. Send welcome email in background
+    # 8. Notify active HR Personnel of new registration (so contract dates can be assigned)
+    dept_name = new_user.department.name if new_user.department else "Unassigned Department"
+    hr_users = (
+        db.query(models.UserAccount)
+        .filter(
+            models.UserAccount.role == "HR Personnel",
+            models.UserAccount.is_active == True,
+            models.UserAccount.is_archived == False,
+            models.UserAccount.id != new_user.id,
+        )
+        .all()
+    )
+
+    is_cos = new_user.role == "COS Employee"
+    notif_title = (
+        f"New COS Employee Registered: {new_user.full_name}"
+        if is_cos
+        else f"New {new_user.role} Registered: {new_user.full_name}"
+    )
+    notif_msg = (
+        f"{new_user.full_name} ({dept_name}, ID: {new_user.employee_id_number}) just registered. Please assign their official contract start and end dates in User Management."
+        if is_cos
+        else f"{new_user.full_name} ({dept_name}, ID: {new_user.employee_id_number}) has completed account registration."
+    )
+    notif_cat = "contract" if is_cos else "records"
+    now_utc = datetime.datetime.utcnow()
+
+    if hr_users:
+        for hr in hr_users:
+            db.add(
+                models.Notification(
+                    user_id=hr.id,
+                    target_role=None,
+                    title=notif_title,
+                    message=notif_msg,
+                    category=notif_cat,
+                    is_read=False,
+                    action_view="user_management",
+                    created_at=now_utc,
+                )
+            )
+            if hr.email:
+                background_tasks.add_task(
+                    send_new_registration_hr_notice_email,
+                    to=hr.email,
+                    hr_name=hr.full_name,
+                    new_user_name=new_user.full_name,
+                    new_user_email=new_user.email,
+                    new_user_role=new_user.role,
+                    emp_id_number=new_user.employee_id_number,
+                    dept_name=dept_name,
+                )
+    else:
+        db.add(
+            models.Notification(
+                user_id=None,
+                target_role="HR Personnel",
+                title=notif_title,
+                message=notif_msg,
+                category=notif_cat,
+                is_read=False,
+                action_view="user_management",
+                created_at=now_utc,
+            )
+        )
+    db.commit()
+
+    # 9. Send welcome email in background
     background_tasks.add_task(send_welcome_email, new_user.email, new_user.full_name, new_user.role)
 
     token = create_access_token({"user_id": new_user.id, "role": new_user.role})
