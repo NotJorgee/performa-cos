@@ -40,8 +40,9 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
   const [deptSearchQuery, setDeptSearchQuery] = useState('');
 
   // Campus Daily Attendance Roster State
-  const [rosterData, setRosterData] = useState(null);
-  const [isLoadingRoster, setIsLoadingRoster] = useState(true);
+  const cacheKeyRoster = 'hr_campus_roster';
+  const [rosterData, setRosterData] = useState(() => getCachedData(cacheKeyRoster));
+  const [isLoadingRoster, setIsLoadingRoster] = useState(!rosterData);
   const [rosterSearch, setRosterSearch] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
@@ -72,6 +73,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       if (!silent) setIsLoadingRoster(true);
       const res = await api.attendance.getDepartmentRoster();
       setRosterData(res);
+      setCachedData(cacheKeyRoster, res);
     } catch (err) {
       console.warn('Campus roster load warning:', err.message);
     } finally {
@@ -1167,6 +1169,7 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
           departmentId={null}
           departmentName=""
           isHR={true}
+          initialTodayRoster={rosterData}
         />
       )}
 

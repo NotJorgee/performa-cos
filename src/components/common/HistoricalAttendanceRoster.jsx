@@ -11,12 +11,14 @@ import Toast from './Toast';
 import PunchLocationModal from './PunchLocationModal';
 import { EVSU_DEPARTMENTS, groupDepartmentsByDomain } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function HistoricalAttendanceRoster({
   currentUser,
   departmentId = null,
   departmentName = '',
   isHR = false,
+  initialTodayRoster = null,
 }) {
   // Format today as YYYY-MM-DD
   const getTodayISO = () => {
@@ -27,11 +29,33 @@ export default function HistoricalAttendanceRoster({
     return `${year}-${month}-${day}`;
   };
 
+  const getRosterCacheKey = (dateStr, dept) =>
+    `hist_roster_${isHR ? 'hr' : (currentUser?.id || 'dh')}_${!isHR && departmentId ? departmentId : (dept || 'ALL')}_${dateStr}`;
+
+  const resolveSeededRoster = (dateStr, dept) => {
+    const cached = getCachedData(getRosterCacheKey(dateStr, dept));
+    if (cached) return cached;
+    if (
+      dateStr === getTodayISO() &&
+      initialTodayRoster &&
+      Array.isArray(initialTodayRoster.roster) &&
+      (!isHR || !dept || dept === 'ALL')
+    ) {
+      return initialTodayRoster;
+    }
+    return null;
+  };
+
   const [selectedDate, setSelectedDate] = useState(() => getTodayISO());
   const [selectedDept, setSelectedDept] = useState(isHR ? 'ALL' : (departmentName || 'ALL'));
-  const [departmentsList, setDepartmentsList] = useState(EVSU_DEPARTMENTS);
-  const [rosterData, setRosterData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [departmentsList, setDepartmentsList] = useState(() => {
+    const cachedDepts = getCachedData('departments_list');
+    return Array.isArray(cachedDepts) && cachedDepts.length > 0 ? cachedDepts : EVSU_DEPARTMENTS;
+  });
+  const [rosterData, setRosterData] = useState(() =>
+    resolveSeededRoster(getTodayISO(), isHR ? 'ALL' : (departmentName || 'ALL'))
+  );
+  const [isLoading, setIsLoading] = useState(() => !resolveSeededRoster(getTodayISO(), isHR ? 'ALL' : (departmentName || 'ALL')));
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [toast, setToast] = useState(null);
@@ -45,6 +69,7 @@ export default function HistoricalAttendanceRoster({
       .then((res) => {
         if (!cancelled && Array.isArray(res) && res.length > 0) {
           setDepartmentsList(res);
+          setCachedData('departments_list', res);
         }
       })
       .catch(() => {});
@@ -53,9 +78,15 @@ export default function HistoricalAttendanceRoster({
     };
   }, [isHR]);
 
-  // Fetch roster for selected date and department
+  // Fetch roster for selected date and department (SWR silent revalidation when cached/seeded)
   const fetchRoster = async (dateStr, dept) => {
-    setIsLoading(true);
+    const seeded = resolveSeededRoster(dateStr, dept);
+    if (seeded) {
+      setRosterData(seeded);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const params = {};
       if (!isHR && departmentId) {
@@ -64,10 +95,15 @@ export default function HistoricalAttendanceRoster({
         params.department_name = dept;
       }
       const res = await api.attendance.getDepartmentRoster(dateStr, params);
-      setRosterData(res || null);
+      if (res) {
+        setRosterData(res);
+        setCachedData(getRosterCacheKey(dateStr, dept), res);
+      }
     } catch (err) {
       console.warn('Historical roster fetch warning:', err.message);
-      setToast({ type: 'error', message: err.message || 'Failed to load historical attendance roster.' });
+      if (!seeded) {
+        setToast({ type: 'error', message: err.message || 'Failed to load historical attendance roster.' });
+      }
     } finally {
       setIsLoading(false);
     }

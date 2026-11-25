@@ -755,6 +755,7 @@ export default function DepartmentAttendance({ currentUser, onBack = null, initi
               : (typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department)
           }
           isHR={false}
+          initialTodayRoster={rosterData}
         />
       )}
 
