@@ -9,7 +9,7 @@ import {
 import api from '../../services/api';
 import Toast from './Toast';
 import PunchLocationModal from './PunchLocationModal';
-import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import { EVSU_DEPARTMENTS, groupDepartmentsByDomain } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
 
 export default function HistoricalAttendanceRoster({
@@ -29,6 +29,7 @@ export default function HistoricalAttendanceRoster({
 
   const [selectedDate, setSelectedDate] = useState(() => getTodayISO());
   const [selectedDept, setSelectedDept] = useState(isHR ? 'ALL' : (departmentName || 'ALL'));
+  const [departmentsList, setDepartmentsList] = useState(EVSU_DEPARTMENTS);
   const [rosterData, setRosterData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,12 +37,28 @@ export default function HistoricalAttendanceRoster({
   const [toast, setToast] = useState(null);
   const [selectedPunchMap, setSelectedPunchMap] = useState(null);
 
+  useEffect(() => {
+    if (!isHR) return;
+    let cancelled = false;
+    api.departments
+      .list()
+      .then((res) => {
+        if (!cancelled && Array.isArray(res) && res.length > 0) {
+          setDepartmentsList(res);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isHR]);
+
   // Fetch roster for selected date and department
   const fetchRoster = async (dateStr, dept) => {
     setIsLoading(true);
     try {
       const params = {};
-      if (departmentId) {
+      if (!isHR && departmentId) {
         params.department_id = departmentId;
       } else if (isHR && dept && dept !== 'ALL') {
         params.department_name = dept;
@@ -209,10 +226,17 @@ export default function HistoricalAttendanceRoster({
                   }}
                 >
                   <option value="ALL">All University Departments</option>
-                  {EVSU_DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
+                  {groupDepartmentsByDomain(departmentsList).map((grp) => (
+                    <optgroup key={grp.key} label={grp.label}>
+                      {grp.items.map((dept) => {
+                        const dName = typeof dept === 'object' && dept !== null ? dept.name : dept;
+                        return (
+                          <option key={dName} value={dName}>
+                            {dName}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
                   ))}
                 </select>
               </div>

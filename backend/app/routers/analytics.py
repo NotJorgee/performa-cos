@@ -677,6 +677,50 @@ def get_executive_analytics(
         13: {"code": "IGP", "color": "#7e22ce", "domain": "extension_operations"},
     }
 
+    domain_default_colors = {
+        "academic": "#2563eb",
+        "administrative": "#800020",
+        "student_services": "#059669",
+        "extension_operations": "#7c3aed",
+    }
+
+    def _normalize_domain_key(raw_domain: Optional[str]) -> str:
+        norm = (raw_domain or "").strip().lower()
+        if norm in ("academic", "academic departments"):
+            return "academic"
+        if norm in ("administrative", "administrative & fiscal services"):
+            return "administrative"
+        if norm in ("student_services", "student support & services", "student services"):
+            return "student_services"
+        if norm in ("extension_operations", "research_operations", "extension & operations"):
+            return "extension_operations"
+        return "extension_operations"
+
+    def _derive_dept_code(dept: models.Department) -> str:
+        if getattr(dept, "college_code", None) and dept.college_code.strip():
+            return dept.college_code.strip().upper()[:16]
+        cleaned = (dept.name or "DEPT").strip()
+        for suffix in (" department", " office", " division", " unit"):
+            if cleaned.lower().endswith(suffix):
+                cleaned = cleaned[: -len(suffix)].strip()
+                break
+        if len(cleaned) <= 14:
+            return cleaned.upper()
+        words = [w for w in cleaned.replace("&", " ").replace("/", " ").split() if w.lower() not in ("and", "of", "the")]
+        if len(words) >= 2:
+            return "".join(w[0].upper() for w in words)[:12]
+        return cleaned[:12].upper()
+
+    def _resolve_dept_meta(dept: models.Department) -> Dict[str, str]:
+        if dept.id in dept_meta:
+            return dept_meta[dept.id]
+        dom_key = _normalize_domain_key(dept.college)
+        return {
+            "code": _derive_dept_code(dept),
+            "color": domain_default_colors.get(dom_key, "#7c3aed"),
+            "domain": dom_key,
+        }
+
     # Pre-calculate DARs for all COS employees
     user_dars_map = {}
     for user in db_cos_employees:
@@ -747,7 +791,7 @@ def get_executive_analytics(
 
         all_dept_records = []
         for dept in db_departments:
-            meta = dept_meta.get(dept.id, {"code": "DEPT", "color": "#64748b", "domain": "extension_operations"})
+            meta = _resolve_dept_meta(dept)
             real_headcount = real_dept_headcounts.get(dept.id, 0)
             scores_in_dept = dept_month_evals.get(dept.id, [])
 
@@ -902,7 +946,7 @@ def get_executive_analytics(
         "extension_operations": [],
     }
     for dept in db_departments:
-        meta = dept_meta.get(dept.id, {"code": "DEPT", "color": "#64748b", "domain": "extension_operations"})
+        meta = _resolve_dept_meta(dept)
         dom_key = meta["domain"]
         pts = dept_monthly_scores[dept.id]
         department_trajectories[dom_key].append({
@@ -915,15 +959,15 @@ def get_executive_analytics(
 
     # Build 12-Month Domain Trajectories
     domain_meta_list = [
-        {"id": "academic", "name": "Academic Departments", "code": "ACAD", "color": "#2563eb", "count": 5},
-        {"id": "administrative", "name": "Administrative & Fiscal Services", "code": "ADMIN", "color": "#800020", "count": 5},
-        {"id": "student_services", "name": "Student Support & Services", "code": "STUDENT", "color": "#059669", "count": 5},
-        {"id": "extension_operations", "name": "Extension & Operations", "code": "EXT/OPS", "color": "#7c3aed", "count": 7},
+        {"id": "academic", "name": "Academic Departments", "code": "ACAD", "color": "#2563eb"},
+        {"id": "administrative", "name": "Administrative & Fiscal Services", "code": "ADMIN", "color": "#800020"},
+        {"id": "student_services", "name": "Student Support & Services", "code": "STUDENT", "color": "#059669"},
+        {"id": "extension_operations", "name": "Extension & Operations", "code": "EXT/OPS", "color": "#7c3aed"},
     ]
 
     domain_trajectories = []
     for dom in domain_meta_list:
-        depts_in_dom = [d for d in db_departments if dept_meta.get(d.id, {}).get("domain") == dom["id"]]
+        depts_in_dom = [d for d in db_departments if _resolve_dept_meta(d)["domain"] == dom["id"]]
         pts = [None] * 12
         for m_i in range(12):
             if months[m_i]["isPreLaunch"]:
@@ -940,7 +984,7 @@ def get_executive_analytics(
             "code": dom["code"],
             "color": dom["color"],
             "points": pts,
-            "deptCount": dom["count"],
+            "deptCount": len(depts_in_dom),
         })
 
     active_month_index = 10 if is_current_year else (10 if is_launch_year else 11)

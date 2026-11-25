@@ -1164,8 +1164,8 @@ export default function CampusAttendance({ currentUser, onBack = null, initialTa
       {activeTab === 'history' && (
         <HistoricalAttendanceRoster
           currentUser={currentUser}
-          departmentId={currentUser?.department_id}
-          departmentName={typeof currentUser?.department === 'object' ? currentUser?.department?.name : currentUser?.department}
+          departmentId={null}
+          departmentName=""
           isHR={true}
         />
       )}
