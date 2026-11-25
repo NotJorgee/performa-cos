@@ -1,7 +1,7 @@
 import Toast from '../common/Toast';
 import PredictiveTextarea from '../common/PredictiveTextarea';
 import React, { useState, useEffect } from 'react';
-import { Check, X, FileCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, FileCheck, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { api } from '../../services/api';
 import { EVSU_DEPARTMENTS, getDepartmentDomain } from '../../utils/departments';
 
