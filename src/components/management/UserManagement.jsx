@@ -36,6 +36,7 @@ import {
   EVSU_DEPARTMENT_DOMAINS,
   EVSU_DEPARTMENT_GROUPS,
   getDepartmentDomain,
+  groupDepartmentsByDomain,
 } from '../../utils/departments';
 
 export default function UserManagement({
@@ -2734,21 +2735,15 @@ export default function UserManagement({
                         required
                       >
                         <option value="">Select Primary Department...</option>
-                        {EVSU_DEPARTMENT_GROUPS.map((grp) => {
-                          const groupDepts = departments.filter((d) =>
-                            grp.departments.includes(d.name)
-                          );
-                          if (groupDepts.length === 0) return null;
-                          return (
-                            <optgroup key={grp.key} label={grp.name}>
-                              {groupDepts.map((d) => (
-                                <option key={d.id} value={d.id}>
-                                  {d.name}
-                                </option>
-                              ))}
-                            </optgroup>
-                          );
-                        })}
+                        {groupDepartmentsByDomain(departments).map((grp) => (
+                          <optgroup key={grp.key} label={grp.label}>
+                            {grp.items.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
                       </select>
                       <span style={{ fontSize: '11px', color: 'var(--ink-500)', marginTop: '4px', display: 'block' }}>
                         The primary department handles performance evaluations (IPCR/SPMS), contract renewals, and administrative ratings where the employee carries their primary workload.

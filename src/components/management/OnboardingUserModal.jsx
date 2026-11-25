@@ -16,7 +16,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { EVSU_DEPARTMENT_GROUPS } from '../../utils/departments';
+import { groupDepartmentsByDomain } from '../../utils/departments';
 import { generateEvsuEmployeeId } from '../../utils/idGenerator';
 import {
   UNIVERSITY_TITLES,
@@ -140,20 +140,7 @@ export default function OnboardingUserModal({
   const effectiveDeptName = isDepartmentLocked ? 'HRMDO Office' : deptName;
 
   // Include both standard grouped EVSU units and any custom departments added via + Add Department
-  const groupedDepartmentOptions = useMemo(() => {
-    const groupedNames = new Set();
-    const groups = EVSU_DEPARTMENT_GROUPS.map((grp) => {
-      const matches = departments.filter((d) => grp.departments.includes(d.name));
-      matches.forEach((m) => groupedNames.add(m.name));
-      return { key: grp.key, label: grp.name, items: matches };
-    }).filter((g) => g.items.length > 0);
-
-    const customUnits = departments.filter((d) => !groupedNames.has(d.name));
-    if (customUnits.length > 0) {
-      groups.push({ key: 'custom', label: 'Additional / Custom Units', items: customUnits });
-    }
-    return groups;
-  }, [departments]);
+  const groupedDepartmentOptions = useMemo(() => groupDepartmentsByDomain(departments), [departments]);
 
   const previewEmployeeId = useMemo(() => {
     if (showCustomIdOverride && customIdOverride.trim()) {

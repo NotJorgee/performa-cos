@@ -124,6 +124,39 @@ export const EVSU_DEPARTMENT_GROUPS = [
   EVSU_DEPARTMENT_DOMAINS.extension_operations,
 ];
 
+/**
+ * Groups department records or plain names under their configured campus governance domains,
+ * placing any unrecognized custom units into an "Additional / Custom Units" group.
+ *
+ * @param {Array<object|string>} departments
+ * @returns {Array<{key: string, label: string, items: Array<object|string>}>}
+ */
+export function groupDepartmentsByDomain(departments = []) {
+  const buckets = new Map(EVSU_DEPARTMENT_GROUPS.map((grp) => [grp.key, []]));
+  const customUnits = [];
+
+  (departments || []).forEach((dept) => {
+    const isObj = dept && typeof dept === 'object';
+    const deptName = isObj ? dept.name : String(dept || '');
+    const explicitDomain = isObj ? (dept.domain ?? dept.college ?? null) : null;
+    const domain = getDepartmentDomain(deptName, explicitDomain);
+    if (domain && buckets.has(domain.key)) {
+      buckets.get(domain.key).push(dept);
+    } else {
+      customUnits.push(dept);
+    }
+  });
+
+  const groups = EVSU_DEPARTMENT_GROUPS
+    .map((grp) => ({ key: grp.key, label: grp.name, items: buckets.get(grp.key) || [] }))
+    .filter((g) => g.items.length > 0);
+
+  if (customUnits.length > 0) {
+    groups.push({ key: 'custom', label: 'Additional / Custom Units', items: customUnits });
+  }
+  return groups;
+}
+
 // Department-to-Domain reverse lookup map
 const DEPARTMENT_TO_DOMAIN_MAP = {};
 EVSU_DEPARTMENT_GROUPS.forEach((domain) => {

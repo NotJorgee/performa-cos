@@ -11,6 +11,7 @@ import {
   EVSU_DEPARTMENT_DOMAINS,
   EVSU_DEPARTMENT_GROUPS,
   getDepartmentDomain,
+  groupDepartmentsByDomain,
 } from '../../utils/departments';
 
 const EMPTY_PROPS_EMPLOYEES = [];
@@ -140,7 +141,7 @@ const enrichEmployeesWithEvaluations = (rawUsers, evalsList = []) => {
 
 export default function ReportGenerator({
   employees: propEmployees = EMPTY_PROPS_EMPLOYEES,
-  departments = EVSU_DEPARTMENTS,
+  departments: propDepartments = null,
   departmentName = null,
   restrictDepartment = null,
   overseeingDepartments = null,
@@ -152,33 +153,47 @@ export default function ReportGenerator({
   const isDeptRestricted = Boolean(deptScope) && !isMultiOverseeing;
 
   const [employees, setEmployees] = useState(propEmployees);
+  const [liveDepartments, setLiveDepartments] = useState(propDepartments || EVSU_DEPARTMENTS);
+  const departments = propDepartments || liveDepartments;
   const [isLoading, setIsLoading] = useState(propEmployees.length === 0);
 
   const loadData = async (isMounted = true) => {
     setIsLoading(true);
     try {
+      const deptsPromise = propDepartments ? Promise.resolve(propDepartments) : api.departments.list();
       if (propEmployees && propEmployees.length > 0) {
         let evals = [];
+        let deptsData = null;
         try {
-          const evalsRes = await api.evaluations.list();
-          if (Array.isArray(evalsRes)) evals = evalsRes;
+          const [evalsRes, deptsRes] = await Promise.allSettled([api.evaluations.list(), deptsPromise]);
+          if (evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value)) evals = evalsRes.value;
+          if (deptsRes.status === 'fulfilled' && Array.isArray(deptsRes.value) && deptsRes.value.length > 0) {
+            deptsData = deptsRes.value;
+          }
         } catch (e) {
           console.warn('Evaluations fetch notice:', e.message);
         }
         if (isMounted) {
           const filtered = propEmployees.filter((u) => !u.role || u.role === 'COS Employee');
           setEmployees(enrichEmployeesWithEvaluations(filtered, evals));
+          if (deptsData) setLiveDepartments(deptsData);
         }
       } else {
-        const [usersRes, evalsRes] = await Promise.allSettled([
+        const [usersRes, evalsRes, deptsRes] = await Promise.allSettled([
           api.users.list({ role: 'COS Employee' }),
           api.evaluations.list(),
+          deptsPromise,
         ]);
         const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
         const evals = evalsRes.status === 'fulfilled' && Array.isArray(evalsRes.value) ? evalsRes.value : [];
+        const deptsData =
+          deptsRes.status === 'fulfilled' && Array.isArray(deptsRes.value) && deptsRes.value.length > 0
+            ? deptsRes.value
+            : null;
         if (isMounted) {
           const cosUsers = users.filter((u) => !u.role || u.role === 'COS Employee');
           setEmployees(enrichEmployeesWithEvaluations(cosUsers, evals));
+          if (deptsData) setLiveDepartments(deptsData);
         }
       }
     } catch (err) {
@@ -471,19 +486,18 @@ export default function ReportGenerator({
                   style={{ fontSize: '13px' }}
                 >
                   <option value="All">All Campus Units ({departments.length})</option>
-                  {EVSU_DEPARTMENT_GROUPS.map((grp) => {
-                    const groupDepts = grp.departments.filter((d) => departments.includes(d));
-                    if (groupDepts.length === 0) return null;
-                    return (
-                      <optgroup key={grp.key} label={grp.name}>
-                        {groupDepts.map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
+                  {groupDepartmentsByDomain(departments).map((grp) => (
+                    <optgroup key={grp.key} label={grp.label}>
+                      {grp.items.map((dept) => {
+                        const dName = typeof dept === 'object' && dept !== null ? dept.name : dept;
+                        return (
+                          <option key={dName} value={dName}>
+                            {dName}
                           </option>
-                        ))}
-                      </optgroup>
-                    );
-                  })}
+                        );
+                      })}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
             )}
