@@ -99,6 +99,8 @@ export default function ContractStatus({
             rawStartDate: rawStart,
             rawEndDate: rawEnd,
             daysRemaining,
+            isExpiredContract: Boolean(data.isExpiredContract),
+            contractStatusLabel: data.contractStatus || '',
             totalDarsLogged: data.totalDarsLogged ?? prev.totalDarsLogged,
             renewalStatus: data.renewalIntentStatus || prev.renewalStatus,
           };
@@ -207,6 +209,19 @@ export default function ContractStatus({
         </div>
       )}
 
+      {/* Expired Contract HR Notice */}
+      {contract.isExpiredContract && (
+        <div className="card" style={{ border: '1px solid #fecaca', background: '#fef2f2', marginBottom: '20px' }}>
+          <div className="card-title" style={{ color: '#b91c1c', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={20} />
+            Contract Term Expired
+          </div>
+          <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.5, color: '#991b1b' }}>
+            Your previous Contract of Service ended on <strong>{contract.endDate}</strong>. Attendance punching and daily accomplishment reporting are paused until HRMO finalizes a contract renewal for the new term.
+          </p>
+        </div>
+      )}
+
       {/* Contract Lifecycle Overview Card */}
       <div className="card" style={{ marginBottom: '20px' }}>
         <div className="card-title">Contract of Service Lifecycle Details</div>
@@ -223,11 +238,19 @@ export default function ContractStatus({
               style={{
                 fontSize: '15px',
                 fontWeight: 700,
-                color: (status === 'Pending Contract' || (contract.daysRemaining ?? 74) <= 30) ? 'var(--amber-600)' : 'var(--ink-900)',
+                color: contract.isExpiredContract
+                  ? 'var(--red-600)'
+                  : (status === 'Pending Contract' || (contract.daysRemaining ?? 74) <= 30)
+                  ? 'var(--amber-600)'
+                  : 'var(--ink-900)',
                 marginTop: '2px',
               }}
             >
-              {status === 'Pending Contract' ? 'Awaiting HR Terms' : `${contract.daysRemaining} Days`}
+              {status === 'Pending Contract'
+                ? 'Awaiting HR Terms'
+                : contract.isExpiredContract
+                ? 'Expired'
+                : `${contract.daysRemaining} Days`}
             </div>
           </div>
           <div>
@@ -285,7 +308,7 @@ export default function ContractStatus({
       )}
 
       {/* Contract Active / Notice when > 30 days left */}
-      {!isExpiringSoon && (
+      {!isExpiringSoon && status !== 'Pending Contract' && !contract.isExpiredContract && (
         <div className="card" style={{ marginBottom: '20px', border: '1px solid var(--line)', background: '#fafbfc' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
             <div

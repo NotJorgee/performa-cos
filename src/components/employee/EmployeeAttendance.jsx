@@ -455,6 +455,53 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               </span>
             </div>
 
+            {/* Contract Lock Notice (Pending / Not Started / Expired) */}
+            {todayData?.is_contract_active === false && (
+              <div
+                style={{
+                  marginBottom: '18px',
+                  padding: '14px 18px',
+                  background: todayData?.contract_state === 'EXPIRED' ? '#fef2f2' : '#fffbeb',
+                  border: `1px solid ${todayData?.contract_state === 'EXPIRED' ? '#fecaca' : '#fde68a'}`,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                }}
+              >
+                <AlertCircle
+                  size={20}
+                  color={todayData?.contract_state === 'EXPIRED' ? '#dc2626' : '#d97706'}
+                  style={{ flexShrink: 0, marginTop: '2px' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      color: todayData?.contract_state === 'EXPIRED' ? '#991b1b' : '#92400e',
+                    }}
+                  >
+                    {todayData?.contract_state === 'EXPIRED'
+                      ? 'Contract Expired - Attendance Paused'
+                      : todayData?.contract_state === 'NOT_STARTED'
+                      ? 'Contract Term Has Not Started Yet'
+                      : 'Pending Contract Assignment - Attendance Locked'}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '12.5px',
+                      color: todayData?.contract_state === 'EXPIRED' ? '#b91c1c' : '#b45309',
+                      marginTop: '3px',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {todayData?.contract_gate_message}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Institutional Holiday Notice */}
             {todayData?.is_holiday && (
               <div
@@ -551,17 +598,17 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
               <button
                 type="button"
                 className="btn"
-                disabled={isPunching || todayData?.has_timed_in}
+                disabled={isPunching || todayData?.has_timed_in || todayData?.is_contract_active === false}
                 onClick={() => handlePunch('time_in')}
                 style={{
                   flex: 1,
                   padding: '13px 20px',
                   fontWeight: 700,
                   fontSize: '14px',
-                  background: todayData?.has_timed_in ? '#e2e8f0' : 'var(--brand-700)',
-                  color: todayData?.has_timed_in ? '#94a3b8' : '#ffffff',
+                  background: (todayData?.has_timed_in || todayData?.is_contract_active === false) ? '#e2e8f0' : 'var(--brand-700)',
+                  color: (todayData?.has_timed_in || todayData?.is_contract_active === false) ? '#94a3b8' : '#ffffff',
                   border: 'none',
-                  cursor: todayData?.has_timed_in ? 'not-allowed' : 'pointer',
+                  cursor: (todayData?.has_timed_in || todayData?.is_contract_active === false) ? 'not-allowed' : 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -572,6 +619,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                 <CheckCircle2 size={16} />
                 {todayData?.has_timed_in
                   ? 'Timed In'
+                  : todayData?.is_contract_active === false
+                  ? (todayData?.contract_state === 'EXPIRED' ? 'Contract Expired' : 'Awaiting Contract')
                   : punchAction === 'locating_in'
                   ? 'Acquiring GPS...'
                   : punchAction === 'saving_in'
@@ -714,6 +763,22 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
           {/* File a Request Form */}
           <div className="card" style={{ padding: '24px' }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '17px' }}>New Time &amp; Shift Request</h3>
+            {todayData?.is_contract_active === false && (
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 14px',
+                  background: todayData?.contract_state === 'EXPIRED' ? '#fef2f2' : '#fffbeb',
+                  border: `1px solid ${todayData?.contract_state === 'EXPIRED' ? '#fecaca' : '#fde68a'}`,
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  color: todayData?.contract_state === 'EXPIRED' ? '#991b1b' : '#92400e',
+                  lineHeight: 1.45,
+                }}
+              >
+                {todayData?.contract_gate_message}
+              </div>
+            )}
             <form onSubmit={handleSubmitLeave}>
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
@@ -869,7 +934,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
 
               <button
                 type="submit"
-                disabled={isSubmittingLeave}
+                disabled={isSubmittingLeave || todayData?.is_contract_active === false}
                 className="btn btn-primary"
                 style={{
                   width: '100%',
@@ -879,6 +944,8 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
+                  opacity: todayData?.is_contract_active === false ? 0.55 : 1,
+                  cursor: todayData?.is_contract_active === false ? 'not-allowed' : 'pointer',
                 }}
               >
                 <Send size={15} />

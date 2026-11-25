@@ -195,7 +195,8 @@ def get_employee_dashboard_metrics(
     # 3. Contract expiration calculations
     contract_start = current_user.contract_start_date
     contract_end = current_user.contract_end_date
-    is_pending_contract = bool(current_user.role == "COS Employee" and contract_end is None)
+    is_pending_contract = bool(current_user.role == "COS Employee" and (contract_start is None or contract_end is None))
+    is_expired_contract = bool(current_user.role == "COS Employee" and contract_end is not None and contract_end < today)
     days_until_expiration = 0
     if contract_end:
         days_until_expiration = max(0, (contract_end - today).days)
@@ -230,9 +231,18 @@ def get_employee_dashboard_metrics(
                 if latest_renewal.status == "Declined" and latest_renewal.mar_narrative:
                     decline_reason = latest_renewal.mar_narrative.replace("[COS DECLINED RENEWAL]:", "").strip()
 
+    contract_status_label = (
+        "Pending Contract"
+        if is_pending_contract
+        else "Contract Expired"
+        if is_expired_contract
+        else ("Contract Active" if days_until_expiration > 30 else "Nearing Expiration")
+    )
+
     return {
         "isPendingContract": is_pending_contract,
-        "contractStatus": "Pending Contract" if is_pending_contract else ("Contract Active" if days_until_expiration > 30 else "Nearing Expiration"),
+        "isExpiredContract": is_expired_contract,
+        "contractStatus": contract_status_label,
         "contractStartDate": contract_start.strftime("%B %d, %Y") if contract_start else "Awaiting HR Assignment",
         "contractEndDate": contract_end.strftime("%B %d, %Y") if contract_end else "Awaiting HR Assignment",
         "rawStartDate": contract_start.isoformat() if contract_start else None,

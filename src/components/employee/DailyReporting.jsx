@@ -133,8 +133,9 @@ export default function DailyReporting({
     (attendanceStatus?.leave_type?.toLowerCase().includes('official business') ||
      attendanceStatus?.leave_type?.toLowerCase().includes('ob'))
   );
+  const isContractLocked = Boolean(attendanceStatus && attendanceStatus.is_contract_active === false);
   const hasClockedIn = Boolean(attendanceStatus?.has_timed_in);
-  const canAccessDar = hasClockedIn || isOfficialBusiness;
+  const canAccessDar = !isContractLocked && (hasClockedIn || isOfficialBusiness);
 
   /**
    * Resilient GPS coordinate retriever.
@@ -382,11 +383,15 @@ export default function DailyReporting({
             </div>
 
             <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 10px', color: 'var(--ink-900, #0f172a)' }}>
-              Clock-In Required
+              {isContractLocked
+                ? (attendanceStatus?.contract_state === 'EXPIRED' ? 'Contract Term Expired' : 'Contract Assignment Pending')
+                : 'Clock-In Required'}
             </h2>
 
             <p style={{ fontSize: '14px', color: 'var(--ink-600, #475569)', lineHeight: 1.6, maxWidth: '440px', margin: '0 auto 24px' }}>
-              You need to clock in first before submitting your Daily Accomplishment Report for today.
+              {isContractLocked
+                ? (attendanceStatus?.contract_gate_message || 'Daily accomplishment reporting is locked until your contract is active.')
+                : 'You need to clock in first before submitting your Daily Accomplishment Report for today.'}
             </p>
 
             <div
@@ -408,7 +413,11 @@ export default function DailyReporting({
                 Today: <strong>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
               </span>
               <span style={{ margin: '0 4px' }}>|</span>
-              <span style={{ color: '#dc2626', fontWeight: 600 }}>Not Clocked In</span>
+              <span style={{ color: '#dc2626', fontWeight: 600 }}>
+                {isContractLocked
+                  ? (attendanceStatus?.contract_state === 'EXPIRED' ? 'Contract Expired' : 'No Active Contract')
+                  : 'Not Clocked In'}
+              </span>
             </div>
 
             <div style={{ maxWidth: '280px', margin: '0 auto' }}>
@@ -417,7 +426,7 @@ export default function DailyReporting({
                 className="btn btn-primary"
                 onClick={() => {
                   if (onNavigate) {
-                    onNavigate('employee_attendance');
+                    onNavigate(isContractLocked ? 'contract_status' : 'employee_attendance');
                   } else if (onBack) {
                     onBack();
                   }
@@ -434,7 +443,7 @@ export default function DailyReporting({
                   cursor: 'pointer',
                 }}
               >
-                <Clock size={16} /> Go to Attendance
+                <Clock size={16} /> {isContractLocked ? 'View Contract Status' : 'Go to Attendance'}
               </button>
             </div>
           </div>

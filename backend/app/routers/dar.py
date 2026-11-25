@@ -12,6 +12,7 @@ from ..database import get_db
 from .. import models, schemas
 from ..auth import get_current_user
 from ..department_helpers import get_overseeing_department_ids
+from .attendance import resolve_cos_contract_gate
 
 router = APIRouter(prefix="/api/dar", tags=["Daily Accomplishment Reports"])
 
@@ -43,6 +44,14 @@ def submit_dar(
     """
     pht_now = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
     today_date = pht_now.date()
+
+    # 0. Active Contract Gate (Pending / Not Started / Expired)
+    contract_gate = resolve_cos_contract_gate(current_user, today_date)
+    if not contract_gate["is_active_contract"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=contract_gate["reason"],
+        )
 
     # Verify that employee has recorded shift attendance time-in or has approved OB
     attendance_log = (

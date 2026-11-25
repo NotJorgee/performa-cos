@@ -198,6 +198,41 @@ def verify_campus_perimeter(lat: float, lon: float, db: Session, accuracy: Optio
 
 
 # ---------------------------------------------------------------------------
+# COS Contract Status Gate Helper
+# ---------------------------------------------------------------------------
+def resolve_cos_contract_gate(user: models.UserAccount, target_date: datetime.date) -> dict:
+    """
+    Determines whether a COS Employee has an active contract covering target_date.
+    Returns state in {'ACTIVE', 'PENDING_CONTRACT', 'NOT_STARTED', 'EXPIRED'}.
+    """
+    if user.role != "COS Employee":
+        return {"is_active_contract": True, "state": "ACTIVE", "reason": None}
+
+    if user.contract_start_date is None or user.contract_end_date is None:
+        return {
+            "is_active_contract": False,
+            "state": "PENDING_CONTRACT",
+            "reason": "Attendance and reporting are locked while your official contract dates are awaiting HR assignment.",
+        }
+
+    if target_date < user.contract_start_date:
+        return {
+            "is_active_contract": False,
+            "state": "NOT_STARTED",
+            "reason": f"Your contract starts on {user.contract_start_date.strftime('%B %d, %Y')}. Attendance and reporting will open on that date.",
+        }
+
+    if target_date > user.contract_end_date:
+        return {
+            "is_active_contract": False,
+            "state": "EXPIRED",
+            "reason": f"Your contract ended on {user.contract_end_date.strftime('%B %d, %Y')}. Attendance and reporting are locked until HR finalizes your contract renewal.",
+        }
+
+    return {"is_active_contract": True, "state": "ACTIVE", "reason": None}
+
+
+# ---------------------------------------------------------------------------
 # Attendance Punch Endpoints (Time-In & Time-Out)
 # ---------------------------------------------------------------------------
 @router.post("/time-in")
@@ -213,6 +248,14 @@ def attendance_time_in(
     """
     pht_now = get_pht_now()
     today_date = pht_now.date()
+
+    # 0. Active Contract Gate (Pending / Not Started / Expired)
+    contract_gate = resolve_cos_contract_gate(current_user, today_date)
+    if not contract_gate["is_active_contract"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=contract_gate["reason"],
+        )
 
     # 1. Shift Schedule Resolution
     shift = get_user_shift_schedule(current_user, db)
@@ -545,11 +588,18 @@ def get_today_status(
     else:
         today_display_status = "PENDING_PUNCH"
 
+    contract_gate = resolve_cos_contract_gate(current_user, today_date)
+
     return {
         "date": today_date.strftime("%B %d, %Y"),
         "day_of_week": pht_now.strftime("%A"),
         "server_time_pht": pht_now.strftime("%I:%M:%S %p"),
         "shift": shift,
+        "contract_state": contract_gate["state"],
+        "is_contract_active": contract_gate["is_active_contract"],
+        "contract_gate_message": contract_gate["reason"],
+        "contract_start_date": current_user.contract_start_date.isoformat() if current_user.contract_start_date else None,
+        "contract_end_date": current_user.contract_end_date.isoformat() if current_user.contract_end_date else None,
         "is_weekend": pht_now.weekday() in (5, 6),
         "is_saturday": pht_now.weekday() == 5,
         "is_holiday": bool(today_holiday),
@@ -668,12 +718,20 @@ def get_department_attendance_roster(
 
         sub_created = (sub.created_at + datetime.timedelta(hours=8)).date() if sub.created_at else None
         sub_contract = sub.contract_start_date
-        is_pre_onboarding = False
+        sub_contract_end = sub.contract_end_date
+        is_outside_contract = False
+        outside_label = "N/A"
         if not att and not leave:
             if sub_created and target_date < sub_created:
-                is_pre_onboarding = True
-            if sub_contract and target_date < sub_contract:
-                is_pre_onboarding = True
+                is_outside_contract = True
+            if sub_contract is None or sub_contract_end is None:
+                is_outside_contract = True
+                outside_label = "Pending Contract"
+            elif target_date < sub_contract:
+                is_outside_contract = True
+            elif target_date > sub_contract_end:
+                is_outside_contract = True
+                outside_label = "Contract Expired"
 
         if leave:
             sub_status = f"On Leave ({leave.leave_type})"
@@ -704,8 +762,8 @@ def get_department_attendance_roster(
         elif is_work_suspended_holiday:
             sub_status = f"Official Holiday ({target_holiday.name})"
             badge_type = "holiday"
-        elif is_pre_onboarding:
-            sub_status = "N/A"
+        elif is_outside_contract:
+            sub_status = outside_label
             badge_type = "na"
         else:
             sub_status = "Not Timed In"
@@ -1001,19 +1059,24 @@ def get_payroll_dtr_packet(
         has_dar = len(day_dars) > 0
         leave = next((l for l in leaves if l.start_date <= curr_date <= l.end_date), None)
 
-        # Date precedes onboarding if prior to account creation or contract start
-        is_before_onboarding = False
+        # Date is outside contract coverage if prior to account creation/contract start, after contract end, or while contract is pending HR assignment
+        is_outside_contract = False
         if not att and not leave:
             if account_created_date and curr_date < account_created_date:
-                is_before_onboarding = True
-            if contract_start and curr_date < contract_start:
-                is_before_onboarding = True
+                is_outside_contract = True
+            if target_user.role == "COS Employee":
+                if contract_start is None or target_user.contract_end_date is None:
+                    is_outside_contract = True
+                elif curr_date < contract_start or curr_date > target_user.contract_end_date:
+                    is_outside_contract = True
+            elif contract_start and curr_date < contract_start:
+                is_outside_contract = True
 
         day_holiday = holiday_map.get(curr_date)
         is_holiday_suspended = bool(day_holiday and day_holiday.is_work_suspended)
 
         # CSC/SUC Rule: Official holidays and executive suspensions do not count as required working days for absent deductions
-        if not is_weekend and not is_before_onboarding and not is_holiday_suspended:
+        if not is_weekend and not is_outside_contract and not is_holiday_suspended:
             total_working_days += 1
 
         time_in_str = att.time_in.strftime("%I:%M %p") if (att and att.time_in) else "—"
@@ -1062,7 +1125,7 @@ def get_payroll_dtr_packet(
             elif is_weekend:
                 day_status = "Weekend Rest Day"
                 badge_type = "weekend"
-            elif is_before_onboarding:
+            elif is_outside_contract:
                 day_status = "N/A"
                 badge_type = "na"
             elif is_future:
@@ -1261,6 +1324,14 @@ def apply_for_leave(
 
     if end_d < start_d:
         raise HTTPException(status_code=400, detail="End date cannot be earlier than start date.")
+
+    # Enforce active contract gate for requested leave/OT dates
+    start_gate = resolve_cos_contract_gate(current_user, start_d)
+    if not start_gate["is_active_contract"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=start_gate["reason"])
+    end_gate = resolve_cos_contract_gate(current_user, end_d)
+    if not end_gate["is_active_contract"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=end_gate["reason"])
 
     days_cnt = (end_d - start_d).days + 1
 
