@@ -318,57 +318,145 @@ def register(
     )
 
     is_cos = new_user.role == "COS Employee"
-    notif_title = (
-        f"New COS Employee Registered: {new_user.full_name}"
-        if is_cos
-        else f"New {new_user.role} Registered: {new_user.full_name}"
-    )
-    notif_msg = (
-        f"{new_user.full_name} ({dept_name}, ID: {new_user.employee_id_number}) just registered. Please assign their official contract start and end dates in User Management."
-        if is_cos
-        else f"{new_user.full_name} ({dept_name}, ID: {new_user.employee_id_number}) has completed account registration."
-    )
-    notif_cat = "contract" if is_cos else "records"
     now_utc = datetime.datetime.utcnow()
 
-    if hr_users:
-        for hr in hr_users:
+    if is_cos:
+        pending_contract_count = (
+            db.query(models.UserAccount)
+            .filter(
+                models.UserAccount.role == "COS Employee",
+                models.UserAccount.is_archived == False,
+                or_(
+                    models.UserAccount.contract_start_date == None,
+                    models.UserAccount.contract_end_date == None,
+                ),
+            )
+            .count()
+        )
+        today_start = datetime.datetime.combine(now_utc.date(), datetime.time.min)
+
+        if pending_contract_count <= 1:
+            notif_title = f"New COS Employee Registered: {new_user.full_name}"
+            notif_msg = f"{new_user.full_name} ({dept_name}, ID: {new_user.employee_id_number}) just registered. Click to assign their contract start and end dates."
+            notif_view = f"user_management?userId={new_user.id}&tab=contract"
+        else:
+            notif_title = f"{pending_contract_count} COS Employees Pending Contract Setup"
+            notif_msg = f"{new_user.full_name} ({dept_name}) just registered. {pending_contract_count} COS employees are awaiting contract dates in User Management."
+            notif_view = "user_management?pendingContracts=1"
+
+        if hr_users:
+            for hr in hr_users:
+                existing_rollup = (
+                    db.query(models.Notification)
+                    .filter(
+                        models.Notification.user_id == hr.id,
+                        models.Notification.category == "registration_rollup_hr",
+                        models.Notification.is_read == False,
+                        models.Notification.created_at >= today_start,
+                    )
+                    .first()
+                )
+                if existing_rollup:
+                    existing_rollup.title = notif_title
+                    existing_rollup.message = notif_msg
+                    existing_rollup.action_view = notif_view
+                    existing_rollup.created_at = now_utc
+                else:
+                    db.add(
+                        models.Notification(
+                            user_id=hr.id,
+                            target_role=None,
+                            title=notif_title,
+                            message=notif_msg,
+                            category="registration_rollup_hr",
+                            is_read=False,
+                            action_view=notif_view,
+                            created_at=now_utc,
+                        )
+                    )
+                if hr.email:
+                    background_tasks.add_task(
+                        send_new_registration_hr_notice_email,
+                        to=hr.email,
+                        hr_name=hr.full_name,
+                        new_user_name=new_user.full_name,
+                        new_user_email=new_user.email,
+                        new_user_role=new_user.role,
+                        emp_id_number=new_user.employee_id_number,
+                        dept_name=dept_name,
+                    )
+        else:
+            existing_role_rollup = (
+                db.query(models.Notification)
+                .filter(
+                    models.Notification.user_id == None,
+                    models.Notification.target_role == "HR Personnel",
+                    models.Notification.category == "registration_rollup_hr",
+                    models.Notification.is_read == False,
+                    models.Notification.created_at >= today_start,
+                )
+                .first()
+            )
+            if existing_role_rollup:
+                existing_role_rollup.title = notif_title
+                existing_role_rollup.message = notif_msg
+                existing_role_rollup.action_view = notif_view
+                existing_role_rollup.created_at = now_utc
+            else:
+                db.add(
+                    models.Notification(
+                        user_id=None,
+                        target_role="HR Personnel",
+                        title=notif_title,
+                        message=notif_msg,
+                        category="registration_rollup_hr",
+                        is_read=False,
+                        action_view=notif_view,
+                        created_at=now_utc,
+                    )
+                )
+    else:
+        notif_title = f"New {new_user.role} Registered: {new_user.full_name}"
+        notif_msg = f"{new_user.full_name} ({dept_name}, ID: {new_user.employee_id_number}) has completed account registration."
+        notif_view = f"user_management?userId={new_user.id}"
+        if hr_users:
+            for hr in hr_users:
+                db.add(
+                    models.Notification(
+                        user_id=hr.id,
+                        target_role=None,
+                        title=notif_title,
+                        message=notif_msg,
+                        category="records",
+                        is_read=False,
+                        action_view=notif_view,
+                        created_at=now_utc,
+                    )
+                )
+                if hr.email:
+                    background_tasks.add_task(
+                        send_new_registration_hr_notice_email,
+                        to=hr.email,
+                        hr_name=hr.full_name,
+                        new_user_name=new_user.full_name,
+                        new_user_email=new_user.email,
+                        new_user_role=new_user.role,
+                        emp_id_number=new_user.employee_id_number,
+                        dept_name=dept_name,
+                    )
+        else:
             db.add(
                 models.Notification(
-                    user_id=hr.id,
-                    target_role=None,
+                    user_id=None,
+                    target_role="HR Personnel",
                     title=notif_title,
                     message=notif_msg,
-                    category=notif_cat,
+                    category="records",
                     is_read=False,
-                    action_view="user_management",
+                    action_view=notif_view,
                     created_at=now_utc,
                 )
             )
-            if hr.email:
-                background_tasks.add_task(
-                    send_new_registration_hr_notice_email,
-                    to=hr.email,
-                    hr_name=hr.full_name,
-                    new_user_name=new_user.full_name,
-                    new_user_email=new_user.email,
-                    new_user_role=new_user.role,
-                    emp_id_number=new_user.employee_id_number,
-                    dept_name=dept_name,
-                )
-    else:
-        db.add(
-            models.Notification(
-                user_id=None,
-                target_role="HR Personnel",
-                title=notif_title,
-                message=notif_msg,
-                category=notif_cat,
-                is_read=False,
-                action_view="user_management",
-                created_at=now_utc,
-            )
-        )
     db.commit()
 
     # 9. Send welcome email in background

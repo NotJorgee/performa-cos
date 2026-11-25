@@ -137,16 +137,21 @@ export default function App() {
   const isInviteSignup = Boolean(inviteToken);
 
   const [currentView, setCurrentView] = useState(() => parseHashView());
+  const [routeQuery, setRouteQuery] = useState(() =>
+    typeof window !== 'undefined' ? (window.location.hash.split('?')[1] || '') : ''
+  );
   const [isModuleTransitioning, setIsModuleTransitioning] = useState(false);
   const hasMountedRef = useRef(false);
 
   // Centralized navigation handler syncing React state with browser history & URL hash
   const navigateTo = useCallback((viewPath, replace = false) => {
-    const target = viewPath || 'dashboard';
-    setCurrentView((prev) => (prev !== target ? target : prev));
+    const rawTarget = viewPath || 'dashboard';
+    const [cleanTarget, queryPart = ''] = rawTarget.split('?');
+    setCurrentView((prev) => (prev !== cleanTarget ? cleanTarget : prev));
+    setRouteQuery(queryPart);
 
     if (typeof window !== 'undefined') {
-      const targetHash = `#/${target}`;
+      const targetHash = `#/${rawTarget}`;
       if (window.location.hash !== targetHash) {
         if (replace) {
           window.history.replaceState(null, '', targetHash);
@@ -221,7 +226,9 @@ export default function App() {
         return;
       }
       const targetView = parseHashView();
+      const queryPart = window.location.hash.split('?')[1] || '';
       setCurrentView((prev) => (prev !== targetView ? targetView : prev));
+      setRouteQuery(queryPart);
     };
 
     window.addEventListener('hashchange', handleHashSync);
@@ -705,6 +712,13 @@ export default function App() {
             currentView === 'department_management') && (
             <UserManagement
               currentUser={currentUser}
+              routeQuery={routeQuery}
+              onClearRouteQuery={() => {
+                setRouteQuery('');
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState(null, '', `#/${currentView}`);
+                }
+              }}
               onNavigate={navigateTo}
               onBack={() => navigateTo('dashboard')}
             />

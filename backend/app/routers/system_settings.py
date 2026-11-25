@@ -168,23 +168,14 @@ def update_contract_policy(
         f"Upcoming renewal contracts will adopt this new {payload.duration_months}-month term."
     )
 
-    # 1. Global campus broadcast (unassigned user_id / target_role)
-    db.add(
-        models.Notification(
-            user_id=None,
-            target_role=None,
-            title=broadcast_title,
-            message=broadcast_msg,
-            category="system",
-            is_read=False,
-            action_view="contract_length",
-            created_at=now,
-        )
-    )
-
-    # 2. Targeted direct notification rows for each active account to ensure immediate UI presentation
+    # Direct notification rows for each active account (single card per user, role-appropriate view)
     active_users = db.query(models.UserAccount).filter(models.UserAccount.is_archived == False).all()
     for u in active_users:
+        target_view = (
+            "contract_status"
+            if u.role == "COS Employee"
+            else ("intent_review" if u.role == "Department Head" else "user_management")
+        )
         db.add(
             models.Notification(
                 user_id=u.id,
@@ -192,7 +183,7 @@ def update_contract_policy(
                 message=broadcast_msg,
                 category="system",
                 is_read=False,
-                action_view="contract_length",
+                action_view=target_view,
                 created_at=now,
             )
         )

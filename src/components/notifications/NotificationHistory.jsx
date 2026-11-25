@@ -71,6 +71,14 @@ export default function NotificationHistory({
           bg: '#fdf2f4',
           border: '#fbcfe8',
         };
+      case 'registration_rollup_hr':
+        return {
+          label: 'New Registrations',
+          badgeClass: 'badge-pending',
+          icon: <Clock size={18} color="var(--amber-600, #d97706)" />,
+          bg: '#fffbeb',
+          border: '#fde68a',
+        };
       case 'renewal':
         return {
           label: 'Contract Renewal',

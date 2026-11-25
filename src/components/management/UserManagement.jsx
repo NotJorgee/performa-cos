@@ -40,6 +40,8 @@ import {
 
 export default function UserManagement({
   currentUser: propCurrentUser = null,
+  routeQuery = '',
+  onClearRouteQuery = () => {},
   onBack = null,
   onNavigate = null,
   onSelectEmployee = () => {},
@@ -259,6 +261,14 @@ export default function UserManagement({
     });
   };
 
+  const isMissingContract = (p) =>
+    Boolean(p && p.role === 'COS Employee' && !p.is_archived && (!p.contract_start_date || !p.contract_end_date));
+
+  const pendingContractCount = useMemo(
+    () => users.filter(isMissingContract).length,
+    [users]
+  );
+
   // Dynamic functional domain counts
   const deptDomainCounts = useMemo(() => {
     const counts = {
@@ -280,9 +290,11 @@ export default function UserManagement({
 
   // Filter departments based on search query, domain, and status
   const filteredDepartments = structuredDepartments.filter((dept) => {
-    // 1. Match Domain Filter
+    // 1. Match Pending Contracts Queue Filter or Domain Filter
     const dom = getDepartmentDomain(dept.name, dept.domain || dept.college);
-    if (selectedDomainFilter !== 'ALL' && dom.key !== selectedDomainFilter) {
+    if (selectedDomainFilter === 'PENDING_CONTRACTS') {
+      if (!dept.personnel.some(isMissingContract)) return false;
+    } else if (selectedDomainFilter !== 'ALL' && dom.key !== selectedDomainFilter) {
       return false;
     }
 
@@ -325,13 +337,13 @@ export default function UserManagement({
     return deptMatch || domainMatch || supervisorMatch || personnelMatch;
   });
 
-  // Auto-expand departments when searching
+  // Auto-expand departments when searching or filtering Pending Contracts
   useEffect(() => {
-    if (searchTerm.trim().length >= 2) {
+    if (searchTerm.trim().length >= 2 || selectedDomainFilter === 'PENDING_CONTRACTS') {
       const matchedIds = filteredDepartments.map((d) => d.id);
       setExpandedDeptIds(new Set(matchedIds));
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedDomainFilter, users]);
 
   // Overall Statistics
   const totalSupervisors = users.filter((u) => u.role === 'Department Head' || u.role === 'Immediate Supervisor').length;
@@ -423,7 +435,7 @@ export default function UserManagement({
   // -------------------------------------------------------------
   // User Handlers
   // -------------------------------------------------------------
-  const handleOpenUserSettings = (user, e) => {
+  const handleOpenUserSettings = (user, e, initialTab = 'identity') => {
     if (e) e.stopPropagation();
     setSettingsUser(user);
     setEditFullName(user.full_name || '');
@@ -461,9 +473,43 @@ export default function UserManagement({
         }
       }).catch(() => {});
     }
-    setUserSettingsTab('identity');
+    setUserSettingsTab(initialTab === 'contract' && user.role === 'COS Employee' ? 'contract' : initialTab);
     setUserModalSuccess(null);
   };
+
+  // Notification deep-link handler (?userId=...&tab=contract or ?pendingContracts=1)
+  useEffect(() => {
+    if (!routeQuery || isLoading || users.length === 0) return;
+    const params = new URLSearchParams(routeQuery);
+    const targetUserId = params.get('userId');
+    const targetTab = params.get('tab') || 'identity';
+    const showPending = params.get('pendingContracts') === '1';
+
+    if (showPending) {
+      setActiveTab('departments');
+      setSelectedDomainFilter('PENDING_CONTRACTS');
+      setStatusFilter('all');
+      setSearchTerm('');
+      onClearRouteQuery();
+      return;
+    }
+
+    if (targetUserId) {
+      const targetUser = users.find((u) => String(u.id) === String(targetUserId));
+      if (targetUser) {
+        if (targetUser.role === 'HR Personnel') {
+          setActiveTab('hr_admins');
+        } else {
+          setActiveTab('departments');
+          if (targetUser.department_id) {
+            setExpandedDeptIds((prev) => new Set([...Array.from(prev), targetUser.department_id]));
+          }
+        }
+        handleOpenUserSettings(targetUser, null, targetTab);
+      }
+      onClearRouteQuery();
+    }
+  }, [routeQuery, isLoading, users]);
 
   const handleContractStartDateChange = (newStart) => {
     setEditContractStartDate(newStart);
@@ -1018,6 +1064,45 @@ export default function UserManagement({
           >
             All Units ({deptDomainCounts.ALL})
           </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{
+              fontWeight: 700,
+              fontSize: '12px',
+              borderRadius: '20px',
+              padding: '6px 14px',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              background:
+                selectedDomainFilter === 'PENDING_CONTRACTS'
+                  ? '#b45309'
+                  : pendingContractCount > 0
+                  ? '#fffbeb'
+                  : '#ffffff',
+              color:
+                selectedDomainFilter === 'PENDING_CONTRACTS'
+                  ? '#ffffff'
+                  : pendingContractCount > 0
+                  ? '#b45309'
+                  : 'var(--ink-700)',
+              border:
+                '1px solid ' +
+                (selectedDomainFilter === 'PENDING_CONTRACTS'
+                  ? '#b45309'
+                  : pendingContractCount > 0
+                  ? '#fde68a'
+                  : 'var(--line)'),
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onClick={() => setSelectedDomainFilter('PENDING_CONTRACTS')}
+          >
+            <Clock size={12} />
+            <span>Pending Contracts ({pendingContractCount})</span>
+          </button>
           {EVSU_DEPARTMENT_GROUPS.map((grp) => {
             const isSelected = selectedDomainFilter === grp.key;
             return (
@@ -1068,6 +1153,7 @@ export default function UserManagement({
               onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('all');
+                setSelectedDomainFilter('ALL');
               }}
             >
               Clear Filters
@@ -1078,8 +1164,11 @@ export default function UserManagement({
             const isExpanded = expandedDeptIds.has(dept.id);
             const hasSupervisor = Boolean(dept.supervisor);
 
-            // Filter personnel by search query if applicable
+            // Filter personnel by Pending Contracts queue & search query if applicable
             const deptPersonnelMatchingQuery = dept.personnel.filter((p) => {
+              if (selectedDomainFilter === 'PENDING_CONTRACTS' && !isMissingContract(p)) {
+                return false;
+              }
               if (!searchTerm.trim()) return true;
               const q = searchTerm.toLowerCase().trim();
               return (

@@ -173,41 +173,48 @@ def list_user_notifications(
         action_label = "View"
         title_lower = (n.title or "").lower()
         msg_lower = (n.message or "").lower()
+        action_raw = n.action_view or ""
+        action_base = action_raw.split("?")[0]
         is_overtime_notif = "overtime" in title_lower or "overtime" in msg_lower
 
-        if n.action_view == "daily_report":
+        if action_base == "daily_report":
             action_label = "Submit DAR"
-        elif n.action_view == "peer_evaluations":
+        elif action_base == "peer_evaluations":
             action_label = "Evaluate Peer"
-        elif n.action_view == "contract_status":
+        elif action_base == "contract_status":
             action_label = "Check Contract Status"
-        elif n.action_view == "monthly_report":
+        elif action_base == "monthly_report":
             action_label = "View Compiled MAR"
-        elif n.action_view == "pending_evaluations":
+        elif action_base == "pending_evaluations":
             action_label = "Open Roster"
-        elif n.action_view == "intent_review":
+        elif action_base == "intent_review":
             action_label = "Review Intents"
-        elif n.action_view == "evaluation_management":
+        elif action_base == "evaluation_management":
             action_label = "Manage Renewals" if "renewal" in (n.category or "") else "Open Mediation"
-        elif n.action_view == "hr_evaluations_proxy":
+        elif action_base == "hr_evaluations_proxy":
             action_label = "Input HR Scores"
-        elif n.action_view in ("employee_attendance", "my_attendance", "leave_filing", "my_leaves"):
+        elif action_base in ("employee_attendance", "my_attendance", "leave_filing", "my_leaves"):
             if is_overtime_notif:
                 action_label = "View Overtime Status"
             else:
                 action_label = "View Leave Status" if "leave" in (n.category or "") else "Open Attendance"
-        elif n.action_view in ("department_attendance", "department_leaves", "subordinate_leaves"):
+        elif action_base in ("department_attendance", "department_leaves", "subordinate_leaves"):
             if is_overtime_notif:
                 action_label = "Review Overtime"
             else:
                 action_label = "Review Leave" if "leave" in (n.category or "") else "Open Attendance"
-        elif n.action_view in ("campus_attendance", "campus_leaves"):
+        elif action_base in ("campus_attendance", "campus_leaves"):
             if is_overtime_notif:
                 action_label = "View Campus Overtime"
             else:
                 action_label = "View Campus Leaves" if "leave" in (n.category or "") else "Open Attendance"
-        elif n.action_view in ("user_management", "employee_management", "administrator_management"):
-            action_label = "Set Contract Date" if "contract" in (n.category or "") or "contract" in msg_lower else "Open User Management"
+        elif action_base in ("user_management", "employee_management", "administrator_management"):
+            if "pendingContracts=1" in action_raw:
+                action_label = "Review Pending Contracts"
+            elif "tab=contract" in action_raw or "contract" in (n.category or "") or "contract" in msg_lower:
+                action_label = "Set Contract Date"
+            else:
+                action_label = "Open User Management"
 
         formatted.append({
             "id": n.id,
