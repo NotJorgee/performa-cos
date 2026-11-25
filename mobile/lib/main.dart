@@ -48,15 +48,66 @@ class PerformaCosApp extends StatelessWidget {
   }
 }
 
-class _Root extends StatelessWidget {
+class _Root extends StatefulWidget {
   const _Root();
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> {
+  StreamSubscription<Uri>? _linkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = AppScope.read(context);
+      if (kIsWeb) {
+        final token = invitationTokenFromUri(Uri.base);
+        if (token != null && token.isNotEmpty) state.setPendingInviteToken(token);
+      } else {
+        final links = AppLinks();
+        links.getInitialLink().then((uri) {
+          if (!mounted || uri == null) return;
+          final token = invitationTokenFromUri(uri);
+          if (token != null && token.isNotEmpty) AppScope.read(context).setPendingInviteToken(token);
+        }).catchError((_) {});
+        _linkSub = links.uriLinkStream.listen((uri) {
+          if (!mounted) return;
+          final token = invitationTokenFromUri(uri);
+          if (token != null && token.isNotEmpty) AppScope.read(context).setPendingInviteToken(token);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final inviteToken = state.pendingInviteToken;
+    final showInviteSignup = inviteToken != null && inviteToken.isNotEmpty;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: state.isAuthenticated ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
-      child: state.isAuthenticated ? const _EmployeeShell() : const _AuthFlow(),
+      value: (state.isAuthenticated && !showInviteSignup) ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+      child: showInviteSignup
+          ? SignUpScreen(
+              key: ValueKey('invite-$inviteToken'),
+              invitationToken: inviteToken,
+              onBackToLogin: state.clearPendingInviteToken,
+              onLoginAsNewUser: (user) {
+                state.clearPendingInviteToken();
+                state.signIn(user);
+              },
+            )
+          : (state.isAuthenticated ? const _EmployeeShell() : const _AuthFlow()),
     );
   }
 }

@@ -4,19 +4,15 @@ import 'package:intl/intl.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
 import '../../utils/format.dart';
-import '../../utils/id_generator.dart';
 import '../../utils/invite_link.dart';
 import '../../widgets/common.dart';
 import 'auth_widgets.dart';
 
 const universityTitles = ['None', 'Engr.', 'Dr.', 'Prof.', 'Assoc. Prof.', 'Asst. Prof.', 'Instr.', 'Atty.', 'Arch.'];
 
-/// Invitation-based COS Employee registration (port of the COS branch of auth/TokenizedSignUp.jsx).
-/// Administrator / Department Head invitations are refused and pointed to the main web portal.
-///
-/// The screen is opened only from the invitation link HRMDO emails to the employee; the link
-/// carries [invitationToken], so the employee never types a token. If the link could not be
-/// opened in the app (e.g. the e-mail client stripped it), the employee can paste the link.
+/// Invitation-based COS Employee registration (streamlined port of auth/TokenizedSignUp.jsx).
+/// Collects essential account/ID creation details; job title and contact details are completed post-login,
+/// and contract dates are assigned by HRMDO.
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen(
       {super.key, required this.onBackToLogin, required this.onLoginAsNewUser, this.invitationToken = ''});
@@ -35,14 +31,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _first = TextEditingController();
   final _middle = TextEditingController();
   final _last = TextEditingController();
-  final _job = TextEditingController();
-  final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
   String _titlePrefix = 'None';
   DateTime _startingDate = DateTime.now();
-  DateTime _contractStartDate = DateTime.now();
   String _dept = 'Computer Studies Department';
   bool _agreed = false;
 
@@ -61,6 +54,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void dispose() {
     _pastedLink.dispose();
+    _email.dispose();
+    _first.dispose();
+    _middle.dispose();
+    _last.dispose();
+    _password.dispose();
+    _confirm.dispose();
     super.dispose();
   }
 
@@ -124,15 +123,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool get _hasSpecial => RegExp(r'[^A-Za-z0-9]').hasMatch(_password.text);
   bool get _complex => _hasLen && _hasUpper && _hasLower && _hasNum && _hasSpecial;
 
-  Future<void> _pickDate(bool contract) async {
-    final initial = contract ? _contractStartDate : _startingDate;
+  Future<void> _pickStartingDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial,
+      initialDate: _startingDate,
       firstDate: DateTime(1980),
       lastDate: DateTime(DateTime.now().year + 2),
     );
-    if (picked != null) setState(() => contract ? _contractStartDate = picked : _startingDate = picked);
+    if (picked != null) setState(() => _startingDate = picked);
   }
 
   Future<void> _submit() async {
@@ -141,10 +139,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final first = _first.text.trim();
     final middle = _middle.text.trim();
     final last = _last.text.trim();
+    final emailToUse = ((_tokenData?['email']?.toString() ?? '').trim().isNotEmpty
+            ? _tokenData!['email'].toString()
+            : _email.text)
+        .trim();
 
     String? err;
     if (token.isEmpty || _tokenData == null) {
       err = 'Please open the invitation link sent to your email to register.';
+    } else if (emailToUse.isEmpty) {
+      err = 'Invitation email is missing. Please request an updated registration link from HRMO.';
     } else if (first.isEmpty || last.isEmpty) {
       err = 'Please enter both your First Name and Last Name.';
     } else if (!_complex) {
@@ -166,7 +170,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final fullName = '$prefix$first $mi$last'.trim();
       final res = await Api.instance.register({
         'invitation_token': token,
-        'email': _email.text.trim(),
+        'email': emailToUse,
         'full_name': fullName,
         'first_name': first,
         'middle_initial': middle,
@@ -176,8 +180,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'contract_start_date': null,
         'password': _password.text,
         'role': cosEmployeeRole,
-        'job_title': _job.text.trim(),
-        'contact_number': _phone.text.trim(),
+        'job_title': 'COS Staff',
+        'contact_number': '',
       });
       if (!mounted) return;
       _showSuccess(Map<String, dynamic>.from(res['user'] as Map));
@@ -273,12 +277,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ]),
       );
 
-  Widget _dateField(String label, DateTime value, String help, bool contract) => Column(
+  Widget _dateField(String label, DateTime value, String help) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FieldLabel(label, required: true),
           InkWell(
-            onTap: () => _pickDate(contract),
+            onTap: _pickStartingDate,
             child: InputDecorator(
               decoration: const InputDecoration(suffixIcon: Icon(Icons.calendar_today, size: 18)),
               child: Text(DateFormat('MMM d, yyyy').format(value), style: const TextStyle(fontSize: 14)),
@@ -291,13 +295,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final generatedId = generateEvsuEmployeeId(
-      firstName: _first.text,
-      middleInitial: _middle.text,
-      lastName: _last.text,
-      startingDate: _startingDate,
-    );
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -310,30 +307,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         children: [
           if (_validating)
             const FlashBanner('Verifying your institutional invitation link...', tone: FlashTone.info, icon: Icons.sync),
-          if (_tokenData != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFA7F3D0))),
-              child: Row(children: [
-                const CircleAvatar(
-                    radius: 18, backgroundColor: Color(0xFF10B981), child: Icon(Icons.check, color: Colors.white, size: 20)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Institutional COS Employee Onboarding',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF065F46))),
-                    Text('Assigned to ${_tokenData!['department_name'] ?? 'Eastern Visayas State University'}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF047857))),
-                  ]),
-                ),
-                StatusBadge('${_tokenData!['role'] ?? 'COS Staff'}'.toUpperCase(),
-                    bg: const Color(0xFFD1FAE5), fg: const Color(0xFF065F46)),
-              ]),
-            ),
           if (_tokenError != null)
             FlashBanner('Invalid or Expired Invitation — $_tokenError Please ensure you are opening the exact link sent to your email, or contact HRMDO.'),
           if (_tokenData == null && !_validating) ...[
@@ -358,23 +331,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
             const SizedBox(height: 8),
             TextButton(onPressed: widget.onBackToLogin, child: const Text('← Back to Sign In')),
           ],
-          if (_tokenData != null) ..._form(generatedId),
+          if (_tokenData != null) ..._form(),
         ],
       ),
     );
   }
 
-  /// The registration form, shown only once the invitation link has been verified.
-  List<Widget> _form(String generatedId) => [
+  /// The streamlined registration form, shown only once the invitation link has been verified.
+  List<Widget> _form() => [
           if (_formError != null) FlashBanner(_formError!),
-          const FieldLabel('Institutional Email', required: true),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            autocorrect: false,
-            decoration: const InputDecoration(hintText: 'name@evsu.edu.ph'),
-          ),
-          const SizedBox(height: 12),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(
               width: 120,
@@ -396,7 +361,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _first,
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(hintText: 'e.g. Maria'),
-                  onChanged: (_) => setState(() {}),
                 ),
               ]),
             ),
@@ -412,7 +376,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   maxLength: 2,
                   textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(hintText: 'S', counterText: ''),
-                  onChanged: (_) => setState(() {}),
                 ),
               ]),
             ),
@@ -424,53 +387,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: _last,
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(hintText: 'e.g. Dela Cruz'),
-                  onChanged: (_) => setState(() {}),
                 ),
               ]),
             ),
           ]),
           const SizedBox(height: 12),
-          _dateField('Date Appointed (Campus Starting Date)', _startingDate, 'Campus appointment date. Formats the date segment of your generated ID number. Official contract terms are assigned by HRMO.', false),
+          _dateField('Date Appointed (Campus Starting Date)', _startingDate,
+              'Your official appointment date on campus. Formats the date segment of your generated ID number. Official contract terms are assigned by HRMO.'),
           const SizedBox(height: 12),
-          const FieldLabel('Assigned Department / Academic Unit'),
-          TextField(
-            enabled: false,
-            controller: TextEditingController(text: _dept),
-            decoration: const InputDecoration(fillColor: Color(0xFFF1F5F9)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(child: FieldLabel('Assigned Department / Academic Unit')),
+              Row(mainAxisSize: MainAxisSize.min, children: const [
+                Icon(Icons.lock_outline, size: 12, color: AppColors.brand700),
+                SizedBox(width: 4),
+                Text('Pre-assigned by HR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.brand700)),
+              ]),
+            ],
           ),
-          const SizedBox(height: 12),
-          const FieldLabel('Job Position / Designation'),
-          TextField(
-            controller: _job,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'e.g. Administrative Aide VI'),
-          ),
-          const SizedBox(height: 12),
-          const FieldLabel('Official Contact Number'),
-          TextField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(hintText: '+63 9XX XXX XXXX'),
-          ),
-          const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.all(12),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-                color: AppColors.brand50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.brandBorder)),
-            child: Row(children: [
-              const Expanded(
-                child: Text('System Generated Official ID:',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.ink700)),
-              ),
-              Text(generatedId,
-                  style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.brand700,
-                      letterSpacing: 0.6)),
-            ]),
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            child: Text(
+              _dept,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink800),
+            ),
           ),
           const SizedBox(height: 14),
           const FieldLabel('Password', required: true),

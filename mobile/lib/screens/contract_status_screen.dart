@@ -25,6 +25,7 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
   int _totalDars = 0;
   String _department = '';
   String _status = 'Open for Intent Confirmation';
+  bool _isExpiredContract = false;
   final _declineReason = TextEditingController();
   bool _processing = false;
   bool _initialized = false;
@@ -56,6 +57,7 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
         _daysRemaining = d['daysUntilExpiration'] is num ? (d['daysUntilExpiration'] as num).toInt() : daysRemaining(rawEnd);
         _totalDars = (d['totalDarsLogged'] as num?)?.toInt() ?? _totalDars;
         _department = (d['department'] ?? user.department).toString();
+        _isExpiredContract = d['isExpiredContract'] == true;
         if (d['renewalIntentStatus'] != null) _status = d['renewalIntentStatus'].toString();
         if ((d['declineReason'] ?? '').toString().isNotEmpty) _declineReason.text = d['declineReason'].toString();
       });
@@ -300,14 +302,38 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
           ),
           const SizedBox(height: 14),
         ],
+        if (_isExpiredContract) ...[
+          AppCard(
+            color: const Color(0xFFFEF2F2),
+            borderColor: const Color(0xFFFECACA),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Row(children: [
+                Icon(Icons.error_outline, size: 20, color: Color(0xFFB91C1C)),
+                SizedBox(width: 8),
+                Text('Contract Term Expired',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFB91C1C))),
+              ]),
+              const SizedBox(height: 6),
+              Text(
+                'Your previous Contract of Service ended on $_endDate. Attendance punching and daily accomplishment reporting are paused until HRMO finalizes a contract renewal for the new term.',
+                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF991B1B)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 14),
+        ],
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const CardTitle('Contract of Service Lifecycle Details', bottom: 16),
             InfoTile(label: 'Contract Period', value: isPendingContract ? 'Pending HR Assignment' : _period),
             InfoTile(
               label: 'Days Until Expiration',
-              value: isPendingContract ? 'Awaiting HR Terms' : '$_daysRemaining Days',
-              valueColor: (isPendingContract || expiringSoon) ? AppColors.amber600 : AppColors.green700,
+              value: isPendingContract
+                  ? 'Awaiting HR Terms'
+                  : (_isExpiredContract ? 'Expired' : '$_daysRemaining Days'),
+              valueColor: _isExpiredContract
+                  ? AppColors.red600
+                  : ((isPendingContract || expiringSoon) ? AppColors.amber600 : AppColors.green700),
             ),
             InfoTile(label: 'Accumulated DAR Logs', value: '$_totalDars Entries', valueColor: AppColors.brand700),
             InfoTile(
@@ -330,7 +356,7 @@ class _ContractStatusScreenState extends State<ContractStatusScreen> {
               ElevatedButton(onPressed: _openActions, child: const Text('View Options')),
             ]),
           ),
-        if (!expiringSoon && !isPendingContract)
+        if (!expiringSoon && !isPendingContract && !_isExpiredContract)
           AppCard(
             color: AppColors.surfaceMuted,
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

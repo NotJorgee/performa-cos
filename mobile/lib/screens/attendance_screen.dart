@@ -260,6 +260,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     };
     final timedIn = t?['has_timed_in'] == true;
     final timedOut = t?['has_timed_out'] == true;
+    final isContractActive = t == null ? true : t['is_contract_active'] != false;
+    final contractState = (t?['contract_state'] ?? 'ACTIVE').toString();
+    final contractGateMsg = (t?['contract_gate_message'] ??
+            'Attendance punching is locked until your official contract is active.')
+        .toString();
+    final isExpired = contractState == 'EXPIRED';
 
     Widget timeBlock(String label, String value, List<Widget> notes) => Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -301,6 +307,52 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     color: AppColors.brand700, fontFamily: 'monospace', fontSize: 18, fontWeight: FontWeight.w800)),
           ])),
           const SizedBox(height: 16),
+          if (!isContractActive) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isExpired ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isExpired ? const Color(0xFFFECACA) : const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, color: isExpired ? AppColors.red600 : const Color(0xFFD97706), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isExpired
+                              ? 'Contract Expired - Attendance Paused'
+                              : contractState == 'NOT_STARTED'
+                                  ? 'Contract Term Has Not Started Yet'
+                                  : 'Pending Contract Assignment - Attendance Locked',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            color: isExpired ? const Color(0xFF991B1B) : const Color(0xFF92400E),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          contractGateMsg,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            color: isExpired ? const Color(0xFFB91C1C) : const Color(0xFFB45309),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -338,10 +390,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _punching || timedIn ? null : () => _punch(true),
+                  onPressed: _punching || timedIn || !isContractActive ? null : () => _punch(true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: timedIn ? const Color(0xFFE2E8F0) : AppColors.brand700,
-                    foregroundColor: timedIn ? const Color(0xFF94A3B8) : Colors.white,
+                    backgroundColor: (timedIn || !isContractActive) ? const Color(0xFFE2E8F0) : AppColors.brand700,
+                    foregroundColor: (timedIn || !isContractActive) ? const Color(0xFF94A3B8) : Colors.white,
                     disabledBackgroundColor: const Color(0xFFE2E8F0),
                     disabledForegroundColor: const Color(0xFF94A3B8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -365,11 +417,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Text(
                           timedIn
                               ? 'Timed In'
-                              : _punchAction == 'locating_in'
-                                  ? 'Acquiring GPS...'
-                                  : _punchAction == 'saving_in'
-                                      ? 'Recording Punch...'
-                                      : 'Clock In',
+                              : !isContractActive
+                                  ? (isExpired ? 'Contract Expired' : 'Awaiting Contract')
+                                  : _punchAction == 'locating_in'
+                                      ? 'Acquiring GPS...'
+                                      : _punchAction == 'saving_in'
+                                          ? 'Recording Punch...'
+                                          : 'Clock In',
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -445,6 +499,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   List<Widget> _buildLeaves(AppState state) {
     final user = state.user!;
+    final t = _today;
+    final isContractActive = t == null ? true : t['is_contract_active'] != false;
+    final isExpired = (t?['contract_state'] ?? '').toString() == 'EXPIRED';
+    final contractGateMsg = (t?['contract_gate_message'] ??
+            'Leave requests are locked until your official contract is active.')
+        .toString();
     String fmt(DateTime? d) => d == null ? 'Select date' : DateFormat('MMM d, yyyy').format(d);
 
     Widget dateBox(String label, DateTime? value, bool start) => Expanded(
@@ -466,6 +526,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const CardTitle('File Leave / Absence Notice'),
+          if (!isContractActive) ...[
+            FlashBanner(
+              contractGateMsg,
+              tone: isExpired ? FlashTone.danger : FlashTone.warning,
+              icon: Icons.lock_clock_outlined,
+            ),
+          ],
           const FieldLabel('Leave / Absence Category'),
           DropdownButtonFormField<String>(
             initialValue: _leaveType,
@@ -489,7 +556,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           SizedBox(
             height: 48,
             child: ElevatedButton.icon(
-              onPressed: _submittingLeave ? null : _submitLeave,
+              onPressed: _submittingLeave || !isContractActive ? null : _submitLeave,
               icon: const Icon(Icons.send, size: 16),
               label: Text(_submittingLeave ? 'Submitting Leave...' : 'Submit to Department Head'),
             ),

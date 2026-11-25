@@ -69,6 +69,7 @@ class CurrentUser {
   }
 
   CurrentUser copyWith({
+    String? jobTitle,
     String? avatarUrl,
     bool clearAvatar = false,
     String? contactNumber,
@@ -83,7 +84,7 @@ class CurrentUser {
         departmentId: departmentId,
         email: email,
         employeeIdNumber: employeeIdNumber,
-        jobTitle: jobTitle,
+        jobTitle: jobTitle ?? this.jobTitle,
         avatarUrl: clearAvatar ? null : (avatarUrl ?? this.avatarUrl),
         dateAppointed: dateAppointed,
         contractStartDate: contractStartDate,
@@ -122,6 +123,8 @@ class AppState extends ChangeNotifier {
 
   CurrentUser? user;
   bool get isAuthenticated => user != null;
+
+  String? pendingInviteToken;
 
   String currentView = 'dashboard';
   final List<String> _history = [];
@@ -190,6 +193,20 @@ class AppState extends ChangeNotifier {
 
   void updateUser(CurrentUser next) {
     user = next;
+    notifyListeners();
+  }
+
+  void setPendingInviteToken(String? token) {
+    final clean = token?.trim();
+    if (clean == null || clean.isEmpty) return;
+    if (pendingInviteToken == clean) return;
+    pendingInviteToken = clean;
+    notifyListeners();
+  }
+
+  void clearPendingInviteToken() {
+    if (pendingInviteToken == null) return;
+    pendingInviteToken = null;
     notifyListeners();
   }
 

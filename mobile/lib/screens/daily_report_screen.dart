@@ -55,8 +55,11 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   Map<String, dynamic>? _todayAttendance;
   bool _loadingAttendance = false;
 
+  bool get _isContractLocked => _todayAttendance != null && _todayAttendance!['is_contract_active'] == false;
+
   bool get _hasClockedInToday {
     if (_todayAttendance == null) return true; // optimistic until response
+    if (_isContractLocked) return false;
     return _todayAttendance!['has_timed_in'] == true || _todayAttendance!['on_approved_leave'] == true;
   }
 
@@ -539,19 +542,26 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                   child: const Icon(Icons.schedule, size: 30, color: Color(0xFFD97706)),
                 ),
                 const SizedBox(height: 18),
-                const Text(
-                  'Clock-In Required',
-                  style: TextStyle(
+                Text(
+                  _isContractLocked
+                      ? (_todayAttendance?['contract_state'] == 'EXPIRED'
+                          ? 'Contract Term Expired'
+                          : 'Contract Assignment Pending')
+                      : 'Clock-In Required',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.ink900,
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'You need to clock in first before submitting your Daily Accomplishment Report for today.',
+                Text(
+                  _isContractLocked
+                      ? (_todayAttendance?['contract_gate_message']?.toString() ??
+                          'Daily accomplishment reporting is locked until your contract is active.')
+                      : 'You need to clock in first before submitting your Daily Accomplishment Report for today.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF475569),
                     height: 1.5,
@@ -582,9 +592,13 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         padding: EdgeInsets.symmetric(horizontal: 8),
                         child: Text('|', style: TextStyle(color: Color(0xFFCBD5E1))),
                       ),
-                      const Text(
-                        'Not Clocked In',
-                        style: TextStyle(
+                      Text(
+                        _isContractLocked
+                            ? (_todayAttendance?['contract_state'] == 'EXPIRED'
+                                ? 'Contract Expired'
+                                : 'No Active Contract')
+                            : 'Not Clocked In',
+                        style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFFDC2626),
                           fontWeight: FontWeight.w700,
@@ -600,7 +614,8 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                     width: double.infinity,
                     height: 46,
                     child: ElevatedButton.icon(
-                      onPressed: () => state.navigate('employee_attendance'),
+                      onPressed: () =>
+                          state.navigate(_isContractLocked ? 'contract_status' : 'employee_attendance'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brand700,
                         foregroundColor: Colors.white,
@@ -608,7 +623,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                         elevation: 0,
                       ),
                       icon: const Icon(Icons.schedule, size: 16),
-                      label: const Text('Go to Attendance', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      label: Text(
+                        _isContractLocked ? 'View Contract Status' : 'Go to Attendance',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
                     ),
                   ),
                 ),

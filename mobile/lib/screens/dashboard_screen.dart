@@ -7,6 +7,7 @@ import '../utils/format.dart';
 import '../widgets/animated_seal.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/common.dart';
+import '../widgets/complete_profile_dialog.dart';
 import '../widgets/loading_buffer.dart';
 
 /// COS Employee dashboard (port of dashboard/EmployeeDashboard.jsx).
@@ -70,8 +71,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = state.user!;
     final days = (_metrics?['daysUntilExpiration'] as num?)?.toInt() ?? 0;
     final isPendingContract = _metrics?['isPendingContract'] == true;
-    final expiringSoon = !isPendingContract && days <= 30 && days > 0;
+    final isExpiredContract = _metrics?['isExpiredContract'] == true;
+    final expiringSoon = !isPendingContract && !isExpiredContract && days <= 30 && days > 0;
     final darsToday = (_metrics?['darTasksToday'] as num?)?.toInt() ?? 0;
+
+    final hasContact = user.contactNumber.trim().isNotEmpty;
+    final currentJob = user.jobTitle.trim();
+    final hasJobTitle = currentJob.isNotEmpty && currentJob != 'COS Staff' && currentJob != 'COS Employee';
+    final isProfileIncomplete = !hasContact || !hasJobTitle;
 
     String attendanceText() {
       final t = _today;
@@ -79,12 +86,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (t['has_timed_out'] == true) return 'Timed Out (${t['time_out']})';
       if (t['has_timed_in'] == true) return 'Timed In (${t['time_in']})';
       if (t['on_approved_leave'] == true) return 'On Leave (${t['leave_type']})';
+      if (t['is_contract_active'] == false) {
+        return t['contract_state'] == 'EXPIRED' ? 'Contract Expired' : 'Awaiting Contract';
+      }
       return 'Pending Clock-In';
     }
 
     return PageBody(
       onRefresh: _load,
       children: [
+        if (isProfileIncomplete)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.error_outline, color: Color(0xFFB45309), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Action Required: Complete Your Personnel Profile',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF92400E)),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Please enter your job title and contact details to finish setting up your account.',
+                            style: TextStyle(fontSize: 12.5, color: Color(0xFFB45309), height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () => showCompleteProfileDialog(context),
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  label: const Text('Complete Profile'),
+                ),
+              ],
+            ),
+          ),
         Container(
           padding: const EdgeInsets.all(20),
           margin: const EdgeInsets.only(bottom: 20),
@@ -122,10 +184,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.schedule,
               value: _metrics == null
                   ? null
-                  : (isPendingContract ? 'Pending Contract' : '$days Days'),
-              valueColor: (isPendingContract || expiringSoon) ? AppColors.amber600 : AppColors.ink900,
-              valueSize: isPendingContract ? 18 : 24,
-              linkText: isPendingContract ? 'Awaiting HR Terms' : 'Check Contract Status',
+                  : (isPendingContract
+                      ? 'Pending Contract'
+                      : (isExpiredContract ? 'Contract Expired' : '$days Days')),
+              valueColor: isExpiredContract
+                  ? AppColors.red600
+                  : ((isPendingContract || expiringSoon) ? AppColors.amber600 : AppColors.ink900),
+              valueSize: (isPendingContract || isExpiredContract) ? 18 : 24,
+              linkText: isPendingContract
+                  ? 'Awaiting HR Terms'
+                  : (isExpiredContract ? 'Renew or Contact HR' : 'Check Contract Status'),
               onTap: () => state.navigate('contract_status'),
             ),
             _StatCard(
