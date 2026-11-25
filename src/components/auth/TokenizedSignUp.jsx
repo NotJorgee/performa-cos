@@ -512,10 +512,10 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Date Appointed (Used for Institutional ID Generation) */}
+                {/* Date of Employment (Used for Institutional ID Generation) */}
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: '11.5px', fontWeight: 600, margin: '0 0 3px', display: 'block' }}>
-                    Date Appointed (Campus Starting Date) <span style={{ color: 'var(--red-600)' }}>*</span>
+                    Date of Employment <span style={{ color: 'var(--red-600)' }}>*</span>
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -783,11 +783,11 @@ export default function TokenizedSignUp({
                   </div>
                 </div>
 
-                {/* Campus Starting Date (Initial Appointment) */}
+                {/* Date of Employment */}
                 <div className="form-group" style={{ margin: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 600, margin: 0 }}>
-                      Campus Starting Date (Date of Initial Appointment) <span style={{ color: 'var(--red-600)' }}>*</span>
+                      Date of Employment <span style={{ color: 'var(--red-600)' }}>*</span>
                     </label>
                   </div>
                   <div style={{ position: 'relative' }}>

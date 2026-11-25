@@ -729,10 +729,10 @@ export default function OnboardingUserModal({
                 </div>
               </div>
 
-              {/* Date Appointed (Matches Invitation Sign-Up) */}
+              {/* Date of Employment (Matches Invitation Sign-Up) */}
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11.5px', fontWeight: 600, margin: '0 0 3px', display: 'block' }}>
-                  Date Appointed (Campus Starting Date) <span style={{ color: 'var(--red-600)' }}>*</span>
+                  Date of Employment <span style={{ color: 'var(--red-600)' }}>*</span>
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input

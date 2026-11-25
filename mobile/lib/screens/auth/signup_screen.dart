@@ -392,8 +392,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ]),
           const SizedBox(height: 12),
-          _dateField('Date Appointed (Campus Starting Date)', _startingDate,
-              'Your official appointment date on campus. Formats the date segment of your generated ID number. Official contract terms are assigned by HRMO.'),
+          _dateField('Date of Employment', _startingDate,
+              'Your official employment date on campus. Formats the date segment of your generated ID number. Official contract terms are assigned by HRMO.'),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
