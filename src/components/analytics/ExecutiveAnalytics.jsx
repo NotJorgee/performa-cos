@@ -16,6 +16,7 @@ import api from '../../services/api';
 import Toast from '../common/Toast';
 import { getDepartmentDomain } from '../../utils/departments';
 import { exportToExcel } from '../../utils/excelExport';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function ExecutiveAnalytics({
   onBack = () => {},
@@ -29,8 +30,8 @@ export default function ExecutiveAnalytics({
   const [hoveredPeriodIndex, setHoveredPeriodIndex] = useState(null);
   const [activeDrilldownDomain, setActiveDrilldownDomain] = useState(null); // null = All Campus Domains, or 'academic' | 'administrative' | 'student_services' | 'extension_operations'
   const [hiddenSeries, setHiddenSeries] = useState(new Set());
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState(() => getCachedData(`exec_analytics_${selectedYear}`));
+  const [isLoading, setIsLoading] = useState(() => !getCachedData(`exec_analytics_${selectedYear}`));
   const [toastMsg, setToastMsg] = useState(null);
   const [toastType, setToastType] = useState('success');
 
@@ -58,12 +59,20 @@ export default function ExecutiveAnalytics({
 
   useEffect(() => {
     let isMounted = true;
+    const cacheKey = `exec_analytics_${selectedYear}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      setAnalyticsData(cached);
+      setIsLoading(false);
+    }
+
     const fetchAnalytics = async (yr = selectedYear) => {
       try {
-        setIsLoading(true);
+        if (!cached) setIsLoading(true);
         const data = await api.analytics.getExecutiveAnalytics(yr);
         if (isMounted && data) {
           setAnalyticsData(data);
+          setCachedData(`exec_analytics_${yr}`, data);
         }
       } catch (err) {
         console.error('Failed to load executive analytics:', err);

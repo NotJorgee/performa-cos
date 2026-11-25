@@ -16,6 +16,7 @@ import evsuSeal from '../../assets/images/evsu-seal.png';
 import Toast from '../common/Toast';
 import { generateDarPdf } from '../../utils/darPdf';
 import { getDepartmentSupervisor, isGenericSupervisorPlaceholder } from '../../utils/departments';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function MonthlyReport({
   employeeId = null,
@@ -40,12 +41,6 @@ export default function MonthlyReport({
     (typeof department === 'object' && department?.supervisor?.full_name ? department.supervisor.full_name : null) ||
     getDepartmentSupervisor(department);
 
-  const [records, setRecords] = useState(Array.isArray(initialRecords) ? initialRecords : []);
-  const [isLoading, setIsLoading] = useState(!Array.isArray(initialRecords));
-  const [fetchError, setFetchError] = useState(null);
-  const [toastMsg, setToastMsg] = useState(null);
-  const [toastType, setToastType] = useState('success');
-
   // Quincena & Filter States
   const now = new Date();
   const currentMonthName = now.toLocaleString('en-US', { month: 'long' });
@@ -56,13 +51,28 @@ export default function MonthlyReport({
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
   const [previewPhoto, setPreviewPhoto] = useState(null);
 
+  const targetUserId = employeeId || api?.auth?.getCurrentUser()?.id || null;
+  const getMonthlyCacheKey = (m, y, c) => `monthly_dar_${targetUserId || 'me'}_${m}_${y}_${c}`;
+
+  const [records, setRecords] = useState(() => {
+    if (Array.isArray(initialRecords)) return initialRecords;
+    return getCachedData(getMonthlyCacheKey(currentMonthName, currentYearStr, '1st_half')) || [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (Array.isArray(initialRecords)) return false;
+    return !getCachedData(getMonthlyCacheKey(currentMonthName, currentYearStr, '1st_half'));
+  });
+  const [fetchError, setFetchError] = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [toastType, setToastType] = useState('success');
+
   // Standard Calendar Months
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
-  // Fetch real accumulated DAR records from backend database
+  // Fetch real accumulated DAR records from backend database (SWR cached per month/year/cutoff)
   useEffect(() => {
     // If initialRecords was explicitly passed and valid, use that
     if (Array.isArray(initialRecords) && initialRecords.length > 0) {
@@ -72,17 +82,23 @@ export default function MonthlyReport({
     }
 
     let isMounted = true;
-    setIsLoading(true);
+    const cacheKey = getMonthlyCacheKey(selectedMonth, selectedYear, cutoffPeriod);
+    const cached = getCachedData(cacheKey);
+    if (Array.isArray(cached)) {
+      setRecords(cached);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
     setFetchError(null);
 
-    const targetUser = employeeId || api?.auth?.getCurrentUser()?.id || null;
-
     api.dar
-      .monthly(targetUser, selectedMonth === 'All Months' ? null : selectedMonth, Number(selectedYear), cutoffPeriod)
+      .monthly(targetUserId, selectedMonth === 'All Months' ? null : selectedMonth, Number(selectedYear), cutoffPeriod)
       .then((data) => {
         if (!isMounted) return;
         if (Array.isArray(data)) {
           setRecords(data);
+          setCachedData(cacheKey, data);
         } else {
           setRecords([]);
         }
@@ -91,8 +107,10 @@ export default function MonthlyReport({
       .catch((err) => {
         if (!isMounted) return;
         console.warn('Unable to load accumulated DAR records:', err.message);
-        setFetchError('Failed to fetch accumulated logs: ' + (err.message || 'Server error'));
-        setRecords([]);
+        if (!cached) {
+          setFetchError('Failed to fetch accumulated logs: ' + (err.message || 'Server error'));
+          setRecords([]);
+        }
         setIsLoading(false);
       });
 

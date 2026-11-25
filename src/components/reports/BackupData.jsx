@@ -14,32 +14,37 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import Toast from '../common/Toast';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
+
+const DEFAULT_DB_STATS = {
+  usersCount: 0,
+  departmentsCount: 0,
+  darsCount: 0,
+  evaluationsCount: 0,
+  renewalsCount: 0,
+  geofencesCount: 0,
+  auditLogsCount: 0,
+  totalRecords: 0,
+  lastBackupDate: null,
+};
 
 export default function BackupData({ onBack = null }) {
+  const statsCacheKey = 'hr_backup_stats';
+  const historyCacheKey = 'hr_backup_history';
   const [toastMsg, setToastMsg] = useState(null);
   const [toastType, setToastType] = useState('success');
   const [errorMsg, setErrorMsg] = useState(null);
   const [downloadingFormat, setDownloadingFormat] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !getCachedData(statsCacheKey));
 
-  // Live database stats
-  const [dbStats, setDbStats] = useState({
-    usersCount: 0,
-    departmentsCount: 0,
-    darsCount: 0,
-    evaluationsCount: 0,
-    renewalsCount: 0,
-    geofencesCount: 0,
-    auditLogsCount: 0,
-    totalRecords: 0,
-    lastBackupDate: null,
-  });
+  // Live database stats (SWR instant paint)
+  const [dbStats, setDbStats] = useState(() => getCachedData(statsCacheKey) || DEFAULT_DB_STATS);
 
   // Past backup exports from audit logs
-  const [backupHistory, setBackupHistory] = useState([]);
+  const [backupHistory, setBackupHistory] = useState(() => getCachedData(historyCacheKey) || []);
 
-  const loadStatsAndHistory = async () => {
-    setIsLoading(true);
+  const loadStatsAndHistory = async (silent = Boolean(getCachedData(statsCacheKey))) => {
+    if (!silent) setIsLoading(true);
     setErrorMsg(null);
     try {
       if (api?.backup) {
@@ -50,9 +55,11 @@ export default function BackupData({ onBack = null }) {
 
         if (statsData.status === 'fulfilled' && statsData.value) {
           setDbStats(statsData.value);
+          setCachedData(statsCacheKey, statsData.value);
         }
         if (historyData.status === 'fulfilled' && Array.isArray(historyData.value)) {
           setBackupHistory(historyData.value);
+          setCachedData(historyCacheKey, historyData.value);
         }
       }
     } catch (err) {
@@ -63,7 +70,7 @@ export default function BackupData({ onBack = null }) {
   };
 
   useEffect(() => {
-    loadStatsAndHistory();
+    loadStatsAndHistory(Boolean(getCachedData(statsCacheKey)));
   }, []);
 
   const handleDownload = async (format) => {

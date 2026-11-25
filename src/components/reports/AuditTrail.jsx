@@ -3,6 +3,7 @@ import api from '../../services/api';
 import { ShieldAlert, Download, FileDown, X, Calendar, Clock, User, Zap, TableProperties, Check, RefreshCw } from 'lucide-react';
 import Toast from '../common/Toast';
 import { exportToExcel } from '../../utils/excelExport';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export const formatAuditAction = (action) => {
   switch (action) {
@@ -49,8 +50,15 @@ export default function AuditTrail({
   logs: initialLogs = [],
   onBack = null,
 }) {
-  const [logs, setLogs] = useState(initialLogs);
-  const [isLoading, setIsLoading] = useState(!(initialLogs && initialLogs.length > 0));
+  const auditCacheKey = 'hr_audit_logs';
+  const [logs, setLogs] = useState(() => {
+    if (initialLogs && initialLogs.length > 0) return initialLogs;
+    return getCachedData(auditCacheKey) || [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (initialLogs && initialLogs.length > 0) return false;
+    return !getCachedData(auditCacheKey);
+  });
 
   useEffect(() => {
     if (initialLogs && initialLogs.length > 0) {
@@ -58,11 +66,14 @@ export default function AuditTrail({
       return;
     }
     const fetchAuditLogs = async () => {
+      const hasCached = Boolean(getCachedData(auditCacheKey));
       try {
-        setIsLoading(true);
+        if (!hasCached) setIsLoading(true);
         if (api.audit && api.audit.list) {
           const res = await api.audit.list();
-          setLogs(Array.isArray(res) ? res : res.logs || []);
+          const list = Array.isArray(res) ? res : res.logs || [];
+          setLogs(list);
+          setCachedData(auditCacheKey, list);
         }
       } catch (err) {
         console.error('Failed to load audit logs:', err);

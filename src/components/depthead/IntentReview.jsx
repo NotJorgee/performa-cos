@@ -26,6 +26,7 @@ import {
   getComparativeTrajectory,
   ComparativeTrajectoryBadge,
 } from '../../utils/comparativeAnalytics';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 // Helper to safely extract department name as string (guards against raw backend DepartmentOut objects)
 const getSafeDeptName = (dept, fallback = 'Computer Studies Department') => {
@@ -45,10 +46,14 @@ export default function IntentReview({
   initialCandidates = [],
 }) {
   const displayDepartmentName = getSafeDeptName(departmentName, 'Computer Studies Department');
+  const cacheKey = `dh_intent_review_${currentUser?.id || 'me'}_${displayDepartmentName}`;
 
-  const [candidates, setCandidates] = useState(initialCandidates || []);
+  const [candidates, setCandidates] = useState(() => {
+    if (Array.isArray(initialCandidates) && initialCandidates.length > 0) return initialCandidates;
+    return getCachedData(cacheKey) || [];
+  });
   const [isLoading, setIsLoading] = useState(
-    !(Array.isArray(initialCandidates) && initialCandidates.length > 0)
+    !((Array.isArray(initialCandidates) && initialCandidates.length > 0) || Boolean(getCachedData(cacheKey)))
   );
   const [expandedEmpId, setExpandedEmpId] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
@@ -70,6 +75,7 @@ export default function IntentReview({
         if (!isMounted) return;
         if (!renewals || renewals.length === 0) {
           setCandidates([]);
+          setCachedData(cacheKey, []);
           setIsLoading(false);
           return;
         }
@@ -200,6 +206,7 @@ export default function IntentReview({
           const mapped = (await Promise.all(mappedPromises)).filter(Boolean);
           if (!isMounted) return;
           setCandidates(mapped);
+          setCachedData(cacheKey, mapped);
           setIsLoading(false);
         }).catch((err) => {
           console.warn('Notice loading users in IntentReview:', err);

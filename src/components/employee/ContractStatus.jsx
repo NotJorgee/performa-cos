@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Check, X, FileCheck, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { api } from '../../services/api';
 import { EVSU_DEPARTMENTS, getDepartmentDomain } from '../../utils/departments';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 function formatDisplayDate(dateInput) {
   if (!dateInput) return 'Not Specified';
@@ -54,27 +55,43 @@ export default function ContractStatus({
 }) {
   const initialRawStart = currentUser?.contractStartDate || currentUser?.dateAppointed;
   const initialRawEnd = currentUser?.contractEndDate;
+  const contractCacheKey = `contract_status_${currentUser?.id || 'me'}`;
+  const cachedContractDash = getCachedData(contractCacheKey);
 
-  const [contractDetails, setContractDetails] = useState({
-    employeeName: currentUser?.fullName || currentUser?.full_name || 'COS Personnel',
-    department: typeof currentUser?.department === 'object' && currentUser?.department !== null
-      ? (currentUser.department.name || 'Computer Studies Department')
-      : (currentUser?.department || currentUser?.department_name || 'Computer Studies Department'),
-    startDate: formatDisplayDate(initialRawStart),
-    endDate: formatDisplayDate(initialRawEnd),
-    rawStartDate: initialRawStart,
-    rawEndDate: initialRawEnd,
-    daysRemaining: initialRawEnd ? calculateDaysRemaining(initialRawEnd) : 0,
-    renewalStatus: 'Open for Intent Confirmation',
-    totalDarsLogged: 0,
-    verifiedDarCount: 0,
-  });
+  const buildContractState = (data, prev = null) => {
+    const rawStart = data?.rawStartDate || currentUser?.contractStartDate || currentUser?.dateAppointed || prev?.rawStartDate;
+    const rawEnd = data?.rawEndDate || currentUser?.contractEndDate || prev?.rawEndDate;
+    const daysRemaining = typeof data?.daysUntilExpiration === 'number'
+      ? data.daysUntilExpiration
+      : (rawEnd ? calculateDaysRemaining(rawEnd) : 0);
 
-  const [status, setStatus] = useState('Open for Intent Confirmation');
+    return {
+      employeeName: data?.employeeName || currentUser?.fullName || currentUser?.full_name || prev?.employeeName || 'COS Personnel',
+      department: data?.department || (typeof currentUser?.department === 'object' && currentUser?.department !== null
+        ? (currentUser.department.name || 'Computer Studies Department')
+        : (currentUser?.department || currentUser?.department_name || prev?.department || 'Computer Studies Department')),
+      startDate: data?.contractStartDate ? formatDisplayDate(data.contractStartDate) : formatDisplayDate(rawStart),
+      endDate: data?.contractEndDate ? formatDisplayDate(data.contractEndDate) : formatDisplayDate(rawEnd),
+      rawStartDate: rawStart,
+      rawEndDate: rawEnd,
+      daysRemaining,
+      isExpiredContract: Boolean(data?.isExpiredContract),
+      contractStatusLabel: data?.contractStatus || prev?.contractStatusLabel || '',
+      totalDarsLogged: data?.totalDarsLogged ?? prev?.totalDarsLogged ?? 0,
+      verifiedDarCount: prev?.verifiedDarCount ?? 0,
+      renewalStatus: data?.renewalIntentStatus || prev?.renewalStatus || 'Open for Intent Confirmation',
+    };
+  };
+
+  const [contractDetails, setContractDetails] = useState(() =>
+    buildContractState(cachedContractDash, { rawStartDate: initialRawStart, rawEndDate: initialRawEnd })
+  );
+
+  const [status, setStatus] = useState(cachedContractDash?.renewalIntentStatus || 'Open for Intent Confirmation');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAction, setSelectedAction] = useState(null); // 'renew' | 'decline' | null
-  const [declineReason, setDeclineReason] = useState('');
+  const [declineReason, setDeclineReason] = useState(cachedContractDash?.declineReason || '');
   const [toastMsg, setToastMsg] = useState(null);
 
   useEffect(() => {
@@ -83,28 +100,8 @@ export default function ContractStatus({
       .getEmployeeDashboard()
       .then((data) => {
         if (!isMounted || !data) return;
-        setContractDetails((prev) => {
-          const rawStart = data.rawStartDate || currentUser?.contractStartDate || currentUser?.dateAppointed || prev.rawStartDate;
-          const rawEnd = data.rawEndDate || currentUser?.contractEndDate || prev.rawEndDate;
-          const daysRemaining = typeof data.daysUntilExpiration === 'number'
-            ? data.daysUntilExpiration
-            : calculateDaysRemaining(rawEnd);
-
-          return {
-            ...prev,
-            employeeName: data.employeeName || currentUser?.fullName || prev.employeeName,
-            department: data.department || currentUser?.department || prev.department,
-            startDate: data.contractStartDate ? formatDisplayDate(data.contractStartDate) : formatDisplayDate(rawStart),
-            endDate: data.contractEndDate ? formatDisplayDate(data.contractEndDate) : formatDisplayDate(rawEnd),
-            rawStartDate: rawStart,
-            rawEndDate: rawEnd,
-            daysRemaining,
-            isExpiredContract: Boolean(data.isExpiredContract),
-            contractStatusLabel: data.contractStatus || '',
-            totalDarsLogged: data.totalDarsLogged ?? prev.totalDarsLogged,
-            renewalStatus: data.renewalIntentStatus || prev.renewalStatus,
-          };
-        });
+        setCachedData(contractCacheKey, data);
+        setContractDetails((prev) => buildContractState(data, prev));
 
         if (data.renewalIntentStatus) {
           setStatus(data.renewalIntentStatus);

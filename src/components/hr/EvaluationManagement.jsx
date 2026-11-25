@@ -17,6 +17,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import { EVSU_DEPARTMENTS } from '../../utils/departments';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function EvaluationManagement({
   eligibleEmployees = [],
@@ -27,9 +28,16 @@ export default function EvaluationManagement({
   onBack = null,
   onNavigate = null,
 }) {
-  const [employees, setEmployees] = useState(eligibleEmployees);
-  const [dbDepartments, setDbDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const evalCacheKey = 'hr_eval_management';
+  const [employees, setEmployees] = useState(() => {
+    if (Array.isArray(eligibleEmployees) && eligibleEmployees.length > 0) return eligibleEmployees;
+    return getCachedData(evalCacheKey) || [];
+  });
+  const [dbDepartments, setDbDepartments] = useState(() => getCachedData('departments_list') || []);
+  const [loading, setLoading] = useState(() => {
+    if (Array.isArray(eligibleEmployees) && eligibleEmployees.length > 0) return false;
+    return !getCachedData(evalCacheKey);
+  });
   const [toastMsg, setToastMsg] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,9 +51,9 @@ export default function EvaluationManagement({
   const [hrRenewalDecision, setHrRenewalDecision] = useState('Yes'); // 'Yes' | 'No'
   const [hrRenewalRemarks, setHrRenewalRemarks] = useState('');
 
-  const loadData = async () => {
+  const loadData = async (silent = Boolean(getCachedData(evalCacheKey))) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [renewalsRes, usersRes, evalsRes, deptsRes] = await Promise.allSettled([
         api.renewals.list(),
         api.users.list({ role: 'COS Employee' }),
@@ -60,6 +68,7 @@ export default function EvaluationManagement({
 
       if (depts.length > 0) {
         setDbDepartments(depts);
+        setCachedData('departments_list', depts);
       }
 
       // Map renewals by employee_id (latest renewal wins)
@@ -261,6 +270,7 @@ export default function EvaluationManagement({
 
       if (mapped.length > 0) {
         setEmployees(mapped);
+        setCachedData(evalCacheKey, mapped);
       }
     } catch (err) {
       console.warn('EvaluationManagement loadData error:', err);
@@ -270,7 +280,7 @@ export default function EvaluationManagement({
   };
 
   useEffect(() => {
-    loadData();
+    loadData(Boolean(getCachedData(evalCacheKey)));
   }, []);
 
   const handleStartRouting = async (empId) => {

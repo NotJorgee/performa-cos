@@ -12,6 +12,7 @@ import {
 import Toast from '../common/Toast';
 import EvaluationFormEditor from './EvaluationFormEditor';
 import { api } from '../../services/api';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 export default function EvaluationSettings({
   currentUser = null,
@@ -19,15 +20,17 @@ export default function EvaluationSettings({
   onNavigate = null,
   initialTab = 'form_editor', // 'form_editor' | 'contract_length'
 }) {
+  const policyCacheKey = 'contract_policy';
+  const cachedPolicy = getCachedData(policyCacheKey);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [toast, setToast] = useState(null);
 
-  // Institutional Standard Contract Policy State
-  const [policyMonths, setPolicyMonths] = useState(6);
-  const [policyMemo, setPolicyMemo] = useState('');
-  const [policyUpdatedAt, setPolicyUpdatedAt] = useState(null);
-  const [policyUpdatedByName, setPolicyUpdatedByName] = useState('HRMDO');
-  const [contractMonthsInput, setContractMonthsInput] = useState(6);
+  // Institutional Standard Contract Policy State (SWR seeded)
+  const [policyMonths, setPolicyMonths] = useState(cachedPolicy?.duration_months || 6);
+  const [policyMemo, setPolicyMemo] = useState(cachedPolicy?.memo || '');
+  const [policyUpdatedAt, setPolicyUpdatedAt] = useState(cachedPolicy?.updated_at || null);
+  const [policyUpdatedByName, setPolicyUpdatedByName] = useState(cachedPolicy?.updated_by_name || 'HRMDO');
+  const [contractMonthsInput, setContractMonthsInput] = useState(cachedPolicy?.duration_months || 6);
   const [directiveMemoInput, setDirectiveMemoInput] = useState('');
   const [isSavingPolicy, setIsSavingPolicy] = useState(false);
   const [showPolicyConfirmModal, setShowPolicyConfirmModal] = useState(false);
@@ -49,6 +52,7 @@ export default function EvaluationSettings({
       if (api.systemSettings?.getContractPolicy) {
         const res = await api.systemSettings.getContractPolicy();
         if (res) {
+          setCachedData(policyCacheKey, res);
           const duration = res.duration_months || 6;
           setPolicyMonths(duration);
           setContractMonthsInput(duration);
@@ -81,6 +85,7 @@ export default function EvaluationSettings({
         memo: directiveMemoInput.trim() || undefined,
       });
 
+      setCachedData(policyCacheKey, res);
       setPolicyMonths(res.duration_months);
       setContractMonthsInput(res.duration_months);
       setPolicyMemo(res.memo);

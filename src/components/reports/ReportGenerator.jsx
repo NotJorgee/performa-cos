@@ -13,6 +13,7 @@ import {
   getDepartmentDomain,
   groupDepartmentsByDomain,
 } from '../../utils/departments';
+import { getCachedData, setCachedData } from '../../utils/swrCache';
 
 const EMPTY_PROPS_EMPLOYEES = [];
 
@@ -151,14 +152,23 @@ export default function ReportGenerator({
   const deptScope = restrictDepartment || departmentName;
   const isMultiOverseeing = Array.isArray(overseeingDepartments) && overseeingDepartments.length > 1;
   const isDeptRestricted = Boolean(deptScope) && !isMultiOverseeing;
+  const cacheKeyEmps = `report_generator_emps_${deptScope || (isMultiOverseeing ? 'multi' : 'all')}`;
 
-  const [employees, setEmployees] = useState(propEmployees);
-  const [liveDepartments, setLiveDepartments] = useState(propDepartments || EVSU_DEPARTMENTS);
+  const [employees, setEmployees] = useState(() => {
+    if (propEmployees.length > 0) return propEmployees;
+    return getCachedData(cacheKeyEmps) || [];
+  });
+  const [liveDepartments, setLiveDepartments] = useState(() => {
+    if (propDepartments) return propDepartments;
+    const cachedDepts = getCachedData('departments_list');
+    return Array.isArray(cachedDepts) && cachedDepts.length > 0 ? cachedDepts : EVSU_DEPARTMENTS;
+  });
   const departments = propDepartments || liveDepartments;
-  const [isLoading, setIsLoading] = useState(propEmployees.length === 0);
+  const [isLoading, setIsLoading] = useState(() => !(propEmployees.length > 0 || Boolean(getCachedData(cacheKeyEmps))));
 
   const loadData = async (isMounted = true) => {
-    setIsLoading(true);
+    const hasCachedEmps = propEmployees.length > 0 || Boolean(getCachedData(cacheKeyEmps));
+    if (!hasCachedEmps) setIsLoading(true);
     try {
       const deptsPromise = propDepartments ? Promise.resolve(propDepartments) : api.departments.list();
       if (propEmployees && propEmployees.length > 0) {
@@ -175,8 +185,13 @@ export default function ReportGenerator({
         }
         if (isMounted) {
           const filtered = propEmployees.filter((u) => !u.role || u.role === 'COS Employee');
-          setEmployees(enrichEmployeesWithEvaluations(filtered, evals));
-          if (deptsData) setLiveDepartments(deptsData);
+          const enriched = enrichEmployeesWithEvaluations(filtered, evals);
+          setEmployees(enriched);
+          setCachedData(cacheKeyEmps, enriched);
+          if (deptsData) {
+            setLiveDepartments(deptsData);
+            if (!propDepartments) setCachedData('departments_list', deptsData);
+          }
         }
       } else {
         const [usersRes, evalsRes, deptsRes] = await Promise.allSettled([
@@ -192,8 +207,13 @@ export default function ReportGenerator({
             : null;
         if (isMounted) {
           const cosUsers = users.filter((u) => !u.role || u.role === 'COS Employee');
-          setEmployees(enrichEmployeesWithEvaluations(cosUsers, evals));
-          if (deptsData) setLiveDepartments(deptsData);
+          const enriched = enrichEmployeesWithEvaluations(cosUsers, evals);
+          setEmployees(enriched);
+          setCachedData(cacheKeyEmps, enriched);
+          if (deptsData) {
+            setLiveDepartments(deptsData);
+            if (!propDepartments) setCachedData('departments_list', deptsData);
+          }
         }
       }
     } catch (err) {
