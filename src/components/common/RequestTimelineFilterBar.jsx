@@ -3,16 +3,15 @@ import { REQUEST_BUCKET_META } from '../../utils/requestHelpers';
 
 /**
  * Filter pill bar separating requests by lifecycle/schedule timeline:
- * All, Pending Review, Currently In Progress, Upcoming, and Past Records.
+ * Pending Review, Currently In Progress, Upcoming, and Past Records.
  */
 export default function RequestTimelineFilterBar({
-  value = 'all',
+  value = 'pending',
   onChange = () => {},
   counts = {},
   includePending = true,
 }) {
   const pills = [
-    { key: 'all', label: 'All Requests', count: counts.all || 0, bg: '#f8fafc', text: 'var(--brand-700)', border: '#cbd5e1' },
     ...(includePending ? [REQUEST_BUCKET_META.pending] : []),
     REQUEST_BUCKET_META.in_progress,
     REQUEST_BUCKET_META.upcoming,
@@ -23,7 +22,7 @@ export default function RequestTimelineFilterBar({
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
       {pills.map((pill) => {
         const isActive = value === pill.key;
-        const count = pill.key === 'all' ? (counts.all || 0) : (counts[pill.key] || 0);
+        const count = counts[pill.key] || 0;
         return (
           <button
             key={pill.key}

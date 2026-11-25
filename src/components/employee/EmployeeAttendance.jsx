@@ -88,7 +88,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveRequests, setLeaveRequests] = useState(() => getCachedData(cacheKeyLeaves) || []);
   const [isLoadingLeaves, setIsLoadingLeaves] = useState(!getCachedData(cacheKeyLeaves));
-  const [requestTimelineFilter, setRequestTimelineFilter] = useState('all');
+  const [requestTimelineFilter, setRequestTimelineFilter] = useState('pending');
   const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
 
   // Computed weekend overtime flags
@@ -968,16 +968,7 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
           {/* Past Requests History */}
           {(() => {
             const partitionedRequests = partitionRequestsByTimeline(leaveRequests);
-            const visibleGroups =
-              requestTimelineFilter === 'all'
-                ? partitionedRequests.orderedGroups
-                : [
-                    {
-                      ...REQUEST_BUCKET_META[requestTimelineFilter],
-                      items: partitionedRequests.grouped[requestTimelineFilter] || [],
-                    },
-                  ];
-            const hasVisibleItems = visibleGroups.some((g) => g.items.length > 0);
+            const visibleItems = partitionedRequests.grouped[requestTimelineFilter] || [];
 
             return (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1020,97 +1011,53 @@ export default function EmployeeAttendance({ currentUser, onBack = null, onNavig
                       Loading submitted requests...
                     </td>
                   </tr>
-                ) : !hasVisibleItems ? (
+                ) : visibleItems.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                      {leaveRequests.length === 0
-                        ? 'No requests submitted yet.'
-                        : 'No requests found in this timeline category.'}
+                      {REQUEST_BUCKET_META[requestTimelineFilter]?.emptyText || 'No requests submitted yet.'}
                     </td>
                   </tr>
                 ) : (
-                  visibleGroups.map((group) => (
-                    <React.Fragment key={group.key}>
-                      {requestTimelineFilter === 'all' && (
-                        <tr>
-                          <td
-                            colSpan={5}
+                  visibleItems.map((l) => {
+                    const isOt = l.leave_type?.toLowerCase().includes('overtime');
+                    const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
+                    const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
+                    const statusMeta = formatRequestStatus(l.status);
+                    return (
+                      <tr key={l.id}>
+                        <td>
+                          <span
                             style={{
-                              padding: '8px 16px',
-                              background: '#f8fafc',
-                              borderTop: '1px solid var(--line)',
-                              borderBottom: '1px solid var(--line)',
-                              fontSize: '11.5px',
-                              fontWeight: 800,
-                              color: group.text,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
+                              color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
+                              border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
                             }}
                           >
-                            {group.sectionTitle} ({group.items.length})
-                          </td>
-                        </tr>
-                      )}
-                      {group.items.map((l) => {
-                        const isOt = l.leave_type?.toLowerCase().includes('overtime');
-                        const isOb = l.leave_type?.toLowerCase().includes('official business') || l.leave_type?.toLowerCase().includes('ob');
-                        const otHours = l.hours || l.reason?.match(/\[(?:Weekend OT · )?([0-9.]+)\s*hr\(s\)/)?.[1];
-                        const statusMeta = formatRequestStatus(l.status);
-                        const bucketMeta = REQUEST_BUCKET_META[l._timelineBucket || group.key];
-                        return (
-                          <tr key={l.id}>
-                            <td>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  background: isOt ? '#f5f3ff' : isOb ? '#eff6ff' : '#f8fafc',
-                                  color: isOt ? '#6d28d9' : isOb ? '#1d4ed8' : '#334155',
-                                  border: `1px solid ${isOt ? '#ddd6fe' : isOb ? '#bfdbfe' : '#e2e8f0'}`,
-                                }}
-                              >
-                                {l.leave_type}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '12.5px' }}>
-                              <div>
-                                {l.start_date === l.end_date ? l.start_date : `${l.start_date} to ${l.end_date}`}
-                              </div>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  marginTop: '3px',
-                                  padding: '1px 6px',
-                                  borderRadius: '4px',
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  background: bucketMeta.bg,
-                                  color: bucketMeta.text,
-                                  border: `1px solid ${bucketMeta.border}`,
-                                }}
-                              >
-                                {bucketMeta.label}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '12.5px' }}>
-                              {isOt ? `${otHours ? `${otHours} hr(s)` : 'Overtime'}` : `${l.days_count} day(s)`}
-                            </td>
-                            <td>
-                              <span className={`badge ${statusMeta.badgeClass}`} style={{ fontSize: '11.5px' }}>
-                                {statusMeta.label}
-                              </span>
-                            </td>
-                            <td style={{ fontSize: '12px', color: 'var(--ink-700)' }}>
-                              {l.review_notes || '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))
+                            {l.leave_type}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '12.5px' }}>
+                          {l.start_date === l.end_date ? l.start_date : `${l.start_date} to ${l.end_date}`}
+                        </td>
+                        <td style={{ fontSize: '12.5px' }}>
+                          {isOt ? `${otHours ? `${otHours} hr(s)` : 'Overtime'}` : `${l.days_count} day(s)`}
+                        </td>
+                        <td>
+                          <span className={`badge ${statusMeta.badgeClass}`} style={{ fontSize: '11.5px' }}>
+                            {statusMeta.label}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '12px', color: 'var(--ink-700)' }}>
+                          {l.review_notes || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
               </table>
