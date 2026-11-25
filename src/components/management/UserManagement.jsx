@@ -2483,18 +2483,20 @@ export default function UserManagement({
                       Current Status:{' '}
                       <b>
                         {!settingsUser.contract_end_date && !editContractEndDate
-                          ? 'Pending Contract Terms (Awaiting HR Configuration)'
-                          : 'Active Contract Assigned'}
+                          ? 'Pending Contract'
+                          : 'Active Contract'}
                       </b>
                     </span>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '14px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: 700, marginBottom: '5px', display: 'block', color: 'var(--ink-800)' }}>
-                      Contract Start Date
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', minHeight: '24px', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--ink-800)', whiteSpace: 'nowrap' }}>
+                        Contract Start Date
+                      </label>
+                    </div>
                     <input
                       type="date"
                       className="form-control"
@@ -2507,23 +2509,25 @@ export default function UserManagement({
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                      <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', minHeight: '24px', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--ink-800)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                         <Lock size={12} color="var(--ink-500)" />
                         Contract End Date
                       </label>
                       <span
                         style={{
-                          fontSize: '11px',
+                          fontSize: '10.5px',
                           fontWeight: 700,
                           color: 'var(--brand-700)',
                           background: 'var(--brand-50, #fdf2f4)',
-                          padding: '1px 7px',
+                          padding: '2px 8px',
                           borderRadius: '12px',
                           border: '1px solid #fecdd3',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
                         }}
                       >
-                        Auto-calculated ({contractPolicyMonths} Months)
+                        Auto ({contractPolicyMonths} Mos)
                       </span>
                     </div>
                     <input
