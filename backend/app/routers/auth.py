@@ -24,6 +24,7 @@ from ..auth import (
 )
 from ..email_service import send_otp_email, send_welcome_email, send_new_registration_hr_notice_email
 from ..id_generator import generate_evsu_employee_id
+from ..rate_limit import enforce_rate_limit, get_client_ip
 from .audit import log_audit
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -96,6 +97,21 @@ def _build_user_response(user: models.UserAccount) -> dict:
 @router.post("/login")
 def login(creds: schemas.LoginRequest, request: Request, db: Session = Depends(get_db)):
     login_ident = (creds.email or "").strip()
+    client_ip = get_client_ip(request)
+    enforce_rate_limit(
+        bucket="auth_login_ip",
+        key=client_ip,
+        max_requests=60,
+        window_seconds=60.0,
+        detail="Too many login requests from this network. Please wait a minute before retrying.",
+    )
+    enforce_rate_limit(
+        bucket="auth_login_ident",
+        key=f"{client_ip}:{login_ident.lower()}",
+        max_requests=10,
+        window_seconds=60.0,
+        detail="Too many login attempts for this account. Please wait a minute before retrying.",
+    )
     user = db.query(models.UserAccount).filter(
         or_(
             models.UserAccount.email.ilike(login_ident),
@@ -196,8 +212,16 @@ def logout(
 def register(
     payload: schemas.RegisterRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    enforce_rate_limit(
+        bucket="auth_register",
+        key=get_client_ip(request),
+        max_requests=10,
+        window_seconds=60.0,
+        detail="Too many registration attempts. Please wait a minute before retrying.",
+    )
     # 1. Validate invitation token
     invite = db.query(models.InvitationToken).filter(
         models.InvitationToken.token == payload.invitation_token,

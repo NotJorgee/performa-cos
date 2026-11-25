@@ -11,6 +11,7 @@ from ..database import get_db
 from ..auth import get_current_user
 from .. import models
 from ..department_helpers import get_overseeing_department_ids
+from ..rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/api/analytics", tags=["Dashboard Analytics"])
 
@@ -452,6 +453,14 @@ def trigger_employee_ai_synthesis(
     """
     if current_user.role not in ["Department Head", "HR Personnel"] and current_user.id != employee_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    enforce_rate_limit(
+        bucket="ai_synthesize",
+        key=str(current_user.id),
+        max_requests=12,
+        window_seconds=60.0,
+        detail="AI synthesis rate limit reached. Please wait a minute before retrying.",
+    )
 
     emp = db.query(models.UserAccount).filter(models.UserAccount.id == employee_id).first()
     if not emp:

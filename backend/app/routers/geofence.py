@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models
 from ..auth import get_current_user
+from ..department_helpers import get_overseeing_department_ids
 from .audit import log_audit
 
 router = APIRouter(prefix="/api/geofences", tags=["Campus Geofence Engine"])
@@ -425,9 +426,19 @@ def get_recent_geofence_verifications(
     luna_campus = next((c for c in campuses if "luna" in c.id.lower()), None)
 
     limit_val = int(limit.default) if hasattr(limit, "default") else int(limit or 50)
-    # 1. Fetch real DAR records from database
+    # 1. Fetch real DAR records scoped by role/department
+    dar_query = db.query(models.DailyAccomplishmentReport)
+    if current_user.role == "COS Employee":
+        dar_query = dar_query.filter(models.DailyAccomplishmentReport.user_id == current_user.id)
+    elif current_user.role == "Department Head":
+        overseeing_ids = get_overseeing_department_ids(current_user, db)
+        dar_query = dar_query.join(
+            models.UserAccount,
+            models.DailyAccomplishmentReport.user_id == models.UserAccount.id,
+        ).filter(models.UserAccount.department_id.in_(overseeing_ids))
+
     real_dars = (
-        db.query(models.DailyAccomplishmentReport)
+        dar_query
         .order_by(models.DailyAccomplishmentReport.created_at.desc())
         .limit(limit_val)
         .all()

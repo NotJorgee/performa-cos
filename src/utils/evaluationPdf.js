@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 import { EVSU_PERFORMANCE_CRITERIA, getPerformanceInterpretation } from '../components/common/DynamicRubric';
 import { EVSU_SEAL_BASE64 } from './evsuSealBase64';
 import { getDepartmentSupervisor, isGenericSupervisorPlaceholder } from './departments';
+import { escapeHtml } from './htmlEscape';
 
 /**
  * Distribute a percentage score (0-100) across 6 rubric criteria using valid discrete scale values (2, 4, 6, 8, 10, totaling max 60 pts)
@@ -148,23 +149,23 @@ export async function generateEvaluationPdf({
         <tbody>
           <tr>
             <td style="width: 50%; padding: 5px 8px; border-right: 1px solid #000; border-bottom: 1px solid #000;">
-              <b>Name:</b> ${employee.fullName || '—'}
+              <b>Name:</b> ${escapeHtml(employee.fullName || '—')}
             </td>
             <td style="width: 50%; padding: 5px 8px; border-bottom: 1px solid #000;">
-              <b>Employee Job Title:</b> ${employee.jobTitle || 'Admin Aide'}
+              <b>Employee Job Title:</b> ${escapeHtml(employee.jobTitle || 'Admin Aide')}
             </td>
           </tr>
           <tr>
             <td colspan="2" style="padding: 5px 8px; border-bottom: 1px solid #000;">
-              <b>Department:</b> ${deptName}
+              <b>Department:</b> ${escapeHtml(deptName)}
             </td>
           </tr>
           <tr>
             <td style="width: 50%; padding: 5px 8px; border-right: 1px solid #000;">
-              <b>Supervisor:</b> ${supervisorName}
+              <b>Supervisor:</b> ${escapeHtml(supervisorName)}
             </td>
             <td style="width: 50%; padding: 5px 8px;">
-              <b>Period:</b> ${periodLabel}
+              <b>Period:</b> ${escapeHtml(periodLabel)}
             </td>
           </tr>
         </tbody>
@@ -191,7 +192,7 @@ export async function generateEvaluationPdf({
           return `
             <tr style="border-bottom: 1px solid #000;">
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top;">
-                <div style="font-weight: bold;">${item.title} – <span style="font-weight: normal;">${item.description}</span></div>
+                <div style="font-weight: bold;">${escapeHtml(item.title)} – <span style="font-weight: normal;">${escapeHtml(item.description)}</span></div>
               </td>
               ${[2, 4, 6, 8, 10]
                 .map(
@@ -213,7 +214,7 @@ export async function generateEvaluationPdf({
           </td>
           <td colspan="5" style="padding: 6px; text-align: center; font-weight: bold; font-size: 12px;">
             <div style="border: 1.5px solid #000; padding: 3px 10px; display: inline-block; min-width: 120px; background: #fff;">
-              ${scaledScore.toFixed(1)}% (${interpretation})
+              ${scaledScore.toFixed(1)}% (${escapeHtml(interpretation)})
             </div>
             <div style="font-size: 10.5px; font-weight: normal; margin-top: 2px;">
               Raw Score: ${rawSum} / 60
@@ -229,7 +230,7 @@ export async function generateEvaluationPdf({
       <div style="margin-bottom: 8px;">
         <div style="font-weight: bold; margin-bottom: 3px;">Strengths of the Employee/Areas for Improvement:</div>
         <div style="min-height: 28px; padding: 2px 4px; border-bottom: 1px solid #555; font-size: 11.5px; line-height: 1.4;">
-          ${strengths}
+          ${escapeHtml(strengths)}
         </div>
       </div>
       <div>
@@ -243,7 +244,7 @@ export async function generateEvaluationPdf({
                 <div style="width: 14px; height: 14px; border: 1.5px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px;">
                   ${isChecked ? '✓' : ''}
                 </div>
-                <span>${recOption}</span>
+                <span>${escapeHtml(recOption)}</span>
               </div>
             `;
             })
@@ -255,9 +256,9 @@ export async function generateEvaluationPdf({
     <!-- Sign-Off Block -->
     <div style="font-size: 11.5px; line-height: 1.7;">
       <div style="width: 100%;">
-        <div><b>Rated by:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${resolvedSupervisor}</span></div>
+        <div><b>Rated by:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${escapeHtml(resolvedSupervisor)}</span></div>
         <div><b>Position:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">Immediate Supervisor (Dept Head)</span></div>
-        <div><b>Date:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${cycle.evaluationDate || 'Dec 18, 2026'}</span></div>
+        <div><b>Date:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">${escapeHtml(cycle.evaluationDate || 'Dec 18, 2026')}</span></div>
         <div><b>Signature:</b> <span style="border-bottom: 1px solid #000; display: inline-block; min-width: 220px;">&nbsp;</span></div>
       </div>
     </div>

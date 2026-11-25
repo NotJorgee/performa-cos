@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { EVSU_SEAL_BASE64 } from './evsuSealBase64';
 import { getDepartmentSupervisor, isGenericSupervisorPlaceholder } from './departments';
+import { escapeHtml } from './htmlEscape';
 
 /**
  * Generate and automatically trigger download of an official EVSU Daily Accomplishment Report (DAR) PDF
@@ -67,15 +68,15 @@ export async function generateDarPdf({
         <tbody>
           <tr>
             <td style="width: 50%; padding: 5px 8px; border-right: 1px solid #000; border-bottom: 1px solid #000;">
-              <b>Personnel Name:</b> ${empName}
+              <b>Personnel Name:</b> ${escapeHtml(empName)}
             </td>
             <td style="width: 50%; padding: 5px 8px; border-bottom: 1px solid #000;">
-              <b>ID Number:</b> ${empId}
+              <b>ID Number:</b> ${escapeHtml(empId)}
             </td>
           </tr>
           <tr>
             <td style="width: 50%; padding: 5px 8px; border-right: 1px solid #000; border-bottom: 1px solid #000;">
-              <b>Department:</b> ${deptName}
+              <b>Department:</b> ${escapeHtml(deptName)}
             </td>
             <td style="width: 50%; padding: 5px 8px; border-bottom: 1px solid #000;">
               <b>Status:</b> Contract of Service (COS)
@@ -83,7 +84,7 @@ export async function generateDarPdf({
           </tr>
           <tr>
             <td colspan="2" style="padding: 5px 8px;">
-              <b>Coverage Period:</b> ${period}
+              <b>Coverage Period:</b> ${escapeHtml(period)}
             </td>
           </tr>
         </tbody>
@@ -113,20 +114,20 @@ export async function generateDarPdf({
                   return `
             <tr style="border-bottom: 1px solid #000;">
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top; white-space: nowrap;">
-                <b>${mainDate}</b>
-                ${timePart ? `<div style="font-size: 10px; color: #444; margin-top: 2px;">${timePart}</div>` : ''}
+                <b>${escapeHtml(mainDate)}</b>
+                ${timePart ? `<div style="font-size: 10px; color: #444; margin-top: 2px;">${escapeHtml(timePart)}</div>` : ''}
               </td>
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top;">
-                <b>${row.jobDescription || '—'}</b>
+                <b>${escapeHtml(row.jobDescription || '—')}</b>
               </td>
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top; line-height: 1.35;">
-                ${row.workAccomplished || '—'}
+                ${escapeHtml(row.workAccomplished || '—')}
               </td>
               <td style="padding: 6px 8px; border-right: 1px solid #000; vertical-align: top; text-align: center;">
-                ${row.quantity || '1 task'}
+                ${escapeHtml(row.quantity || '1 task')}
               </td>
               <td style="padding: 6px 8px; vertical-align: top; font-size: 10.5px; line-height: 1.3;">
-                ${row.remarks || '—'}
+                ${escapeHtml(row.remarks || '—')}
               </td>
             </tr>
           `;
@@ -156,7 +157,7 @@ export async function generateDarPdf({
       <div style="width: 31%; text-align: center;">
         <div style="font-weight: bold; margin-bottom: 38px;">Prepared By:</div>
         <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 11.5px; white-space: nowrap;">
-          ${empName.toUpperCase()}
+          ${escapeHtml(empName.toUpperCase())}
         </div>
         <div style="font-size: 10px; color: #333;">COS Employee / Personnel</div>
       </div>
@@ -164,7 +165,7 @@ export async function generateDarPdf({
       <div style="width: 31%; text-align: center;">
         <div style="font-weight: bold; margin-bottom: 38px;">Noted &amp; Verified By:</div>
         <div style="border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 11.5px; white-space: nowrap;">
-          ${resolvedSupervisor.toUpperCase()}
+          ${escapeHtml(resolvedSupervisor.toUpperCase())}
         </div>
         <div style="font-size: 10px; color: #333;">Immediate Supervisor (Dept Head)</div>
       </div>

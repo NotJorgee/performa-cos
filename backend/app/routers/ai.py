@@ -9,6 +9,7 @@ from ..database import get_db
 from .. import models, schemas
 from ..auth import get_current_user
 from ..ai_service import generate_predictive_completion
+from ..rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/api/ai", tags=["AI Services"])
 
@@ -22,6 +23,13 @@ def get_predictive_text_completion(
     Returns real-time predictive ghost text autocomplete and contextual suggestion chips
     for evaluation qualitative remarks and employee daily accomplishment reporting (DAR).
     """
+    enforce_rate_limit(
+        bucket="ai_predictive",
+        key=str(current_user.id),
+        max_requests=40,
+        window_seconds=60.0,
+        detail="AI predictive text rate limit reached. Please pause briefly and try again.",
+    )
     try:
         user_role = payload.employee_role or (current_user.job_title if current_user else "COS Personnel")
         dept_name = payload.department or (current_user.department.name if current_user and current_user.department else "Academic Affairs")

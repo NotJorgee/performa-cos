@@ -37,11 +37,14 @@ from .routers.ai import router as ai_router
 from .routers.system_settings import router as system_settings_router
 from .routers.audit import log_audit
 
-# Initialize FastAPI App
+# Initialize FastAPI App (disable interactive schema docs when DEBUG=False)
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="PerformaCOS 3-Tier Backend API for EVSU Performance Evaluation and Contract Renewal System",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 # CORS Middleware for React frontend
@@ -60,8 +63,10 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if not settings.DEBUG:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
     return response
 
 # Include Routers
@@ -133,6 +138,8 @@ async def startup_event():
             conn.commit()
     except Exception as e:
         print(f"[startup] RLS initialization check notice: {e}")
+    if not settings.DEBUG and settings.JWT_SECRET_KEY == "performa-cos-jwt-secret-change-in-production-2026":
+        print("[startup] WARNING: Default JWT_SECRET_KEY is active while DEBUG=False. Set a unique JWT_SECRET_KEY.")
     try:
         asyncio.create_task(start_deadline_scheduler())
     except Exception as e:
@@ -1463,9 +1470,14 @@ def trigger_deadline_check(
     current_user: models.UserAccount = Depends(get_current_user),
 ):
     """
-    Manually triggers the automated contract expiration & renewal window evaluation.
+    Manually triggers the automated contract expiration & renewal window evaluation (HR Personnel only).
     Evaluates all active COS Employee contracts and dispatches due alerts.
     """
+    if current_user.role != "HR Personnel":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only HR Personnel can trigger contract deadline evaluations.",
+        )
     result = evaluate_contract_deadlines(db)
     log_audit(
         db=db,

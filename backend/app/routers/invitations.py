@@ -2,9 +2,8 @@
 routers/invitations.py — Invitation token management & onboarding for PerformaCOS.
 """
 import secrets
-import time
 import datetime
-from typing import List, Dict
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -14,6 +13,7 @@ from ..config import settings
 from .. import models, schemas
 from ..auth import get_current_user, resolve_onboarding_department_id
 from ..email_service import send_invitation_email
+from ..rate_limit import enforce_rate_limit, get_client_ip
 from .audit import log_audit
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations"])
@@ -180,28 +180,17 @@ def revoke_invitation(
     return {"message": "Invitation token revoked successfully."}
 
 
-_VALIDATE_RATE_LIMIT: Dict[str, List[float]] = {}
-_MAX_VALIDATE_PER_MINUTE = 30
-
-
-def _check_validate_rate_limit(client_ip: str) -> None:
-    now = time.time()
-    cutoff = now - 60.0
-    attempts = [t for t in _VALIDATE_RATE_LIMIT.get(client_ip, []) if t > cutoff]
-    if len(attempts) >= _MAX_VALIDATE_PER_MINUTE:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many invitation validation requests. Please wait a minute before retrying.",
-        )
-    attempts.append(now)
-    _VALIDATE_RATE_LIMIT[client_ip] = attempts
-
-
 @router.get("/validate")
 def validate_invitation(token: str, request: Request, db: Session = Depends(get_db)):
     """Public endpoint — validates an invitation token without requiring authentication (SEC-01: Rate Limited)."""
-    client_ip = request.client.host if request.client else "unknown"
-    _check_validate_rate_limit(client_ip)
+    client_ip = get_client_ip(request)
+    enforce_rate_limit(
+        bucket="invite_validate",
+        key=client_ip,
+        max_requests=30,
+        window_seconds=60.0,
+        detail="Too many invitation validation requests. Please wait a minute before retrying.",
+    )
 
     clean_token = (token or "").strip()
     invite = (
